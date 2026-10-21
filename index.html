@@ -673,6 +673,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 .gauge svg { display: block; width: 100%; height: auto; }
 .gauge-centro { position: absolute; left: 0; right: 0; bottom: 4%; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .gauge-num { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; color: #202124; }
+.dash-trilho em.marca-antes { background: #fff; border: 2px solid #1A73E8; width: 8px; margin-left: -4px; border-radius: 3px; }
 .gauge-info { text-align: center; font-size: 12px; line-height: 1.4; color: var(--texto-2); margin-top: 4px; }
 .gauge-rot { font-size: 12px; color: #5F6368; text-transform: uppercase; letter-spacing: .06em; }
 .pagina.anima .gauge-arco { animation: gbx-gauge 1.3s cubic-bezier(.2,.7,.2,1) .2s both; }
@@ -1886,6 +1887,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 21, data: '2026-10-21', titulo: 'Antes e agora no motorista e no veículo', texto: 'No dashboard individual, o Perfil de condução mostra também como o condutor estava no período de comparação (linha azul), e o cartão Antes, agora e frota traz para cada indicador o valor de agora, o de antes com a variação e a média da frota.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 20, data: '2026-10-21', titulo: 'Calendário de desempenho colorido', texto: 'Sem nota diária, o Calendário de desempenho do motorista e do veículo passa a colorir cada dia pelo início da faixa verde (ideal 85%+, aceitável 55% a 84%). A nota oficial do mês fica no medidor, com a posição no ranking logo abaixo.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 19, data: '2026-10-21', titulo: 'Nota do condutor no dashboard', texto: 'No Motorista individual, o medidor mostra a Nota Gobrax oficial do mês (da premiação da API) quando a nota diária não vem, com a posição do motorista no ranking do mês. No Veículo individual aparece a nota do motorista que dirigiu.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 18, data: '2026-10-21', titulo: 'Premiação mês a mês', texto: 'A tela de Premiação ganhou a evolução mês a mês: cada motorista com nota, km e bonificação de todos os meses que vieram da API, a variação contra o mês anterior e a bonificação somada no período.', href: '#/premiacao', link: 'Abrir Premiação' },
@@ -3634,7 +3636,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { k: 'kml', rot: 'Consumo', f: (v) => clamp(((v - 2) / 1.6) * 100, 0, 100) },
     { k: 'frenagens', rot: 'Frenagens', f: (v) => clamp(100 - v * 40, 0, 100) }
   ];
-  function teia(a, ref) {
+  function teia(a, ref, ant) {
     const eixos = EIXOS.filter((e) => temInd(e.k) && a[e.k] !== null && a[e.k] !== undefined);
     if (eixos.length < 3) return '<div class="vazio"><span class="apoio">Poucos indicadores para montar o gráfico de teia.</span></div>';
     const C = 150, R = 100, n = eixos.length;
@@ -3644,11 +3646,14 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const raios = eixos.map((_, i) => { const [x, y] = pt(i, 100); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#E3E6E8"/>`; }).join('');
     const rot = eixos.map((e, i) => { const [x, y] = pt(i, 122); return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#5F6368">${e.rot}</text>`; }).join('');
     const va = eixos.map((e) => e.f(a[e.k])), vr = eixos.map((e) => (ref && ref[e.k] !== null && ref[e.k] !== undefined ? e.f(ref[e.k]) : 0));
+    // período anterior do próprio condutor (só quando todos os eixos têm valor antes)
+    const temAnt = ant && eixos.every((e) => ant[e.k] !== null && ant[e.k] !== undefined), vb = temAnt ? eixos.map((e) => e.f(ant[e.k])) : null;
     return `<svg viewBox="0 0 300 300" class="teia" role="img" aria-label="Comparação dos indicadores com a média da frota" style="width:100%;max-width:360px;display:block;margin:0 auto">
       ${aneis}${raios}
       <polygon class="teia-ref" points="${poli(vr)}" fill="rgba(128,134,139,.10)" stroke="#80868B" stroke-width="1.5" stroke-dasharray="4 3"/>
+      ${vb ? `<polygon class="teia-ref" points="${poli(vb)}" fill="none" stroke="#1A73E8" stroke-width="1.8" stroke-dasharray="2 3" stroke-linejoin="round"/>` : ''}
       <polygon class="teia-val" points="${poli(va)}" fill="rgba(252,183,9,.28)" stroke="#FCB709" stroke-width="2.5" stroke-linejoin="round"/>
-      ${va.map((v, i) => { const [x, y] = pt(i, v); return `<circle class="teia-pt" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#FCB709" stroke="#fff" stroke-width="1.5"><title>${eixos[i].rot}: ${fmtInd(IND_MAP[eixos[i].k], a[eixos[i].k])}</title></circle>`; }).join('')}
+      ${va.map((v, i) => { const [x, y] = pt(i, v); return `<circle class="teia-pt" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#FCB709" stroke="#fff" stroke-width="1.5"><title>${eixos[i].rot}: ${fmtInd(IND_MAP[eixos[i].k], a[eixos[i].k])}${temAnt ? ' (antes ' + fmtInd(IND_MAP[eixos[i].k], ant[eixos[i].k]) + ')' : ''}</title></circle>`; }).join('')}
       ${rot}</svg>`;
   }
   // Indicador que pinta o calendário: a nota diária; sem ela (API só traz a nota mensal), o início da faixa verde, com as faixas do treinamento Gobrax
@@ -3723,16 +3728,18 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const ks = ['faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'excesso_rotacao', 'frenagens'].filter((k) => temInd(k) && a[k] !== null && a[k] !== undefined);
     const comp = ks.map((k) => {
       const ind = IND_MAP[k], v = X.variacao(ind, a[k], F[k]);
-      const mx = Math.max(a[k], F[k] || 0, ind.un === '%' ? 40 : 1) * 1.15, w = (val) => clamp((val / mx) * 100, 1.5, 100);
+      const mx = Math.max(a[k], F[k] || 0, b[k] || 0, ind.un === '%' ? 40 : 1) * 1.15, w = (val) => clamp((val / mx) * 100, 1.5, 100);
       const cor = v.semBase ? '#BDC1C6' : v.sentido === 'melhor' ? '#1E8E3E' : v.sentido === 'pior' ? '#D93025' : '#FCB709';
-      return `<div class="dash-bar"><div class="dash-bar-cab"><span><b>${esc(ind.label)}</b></span><span class="num"><b>${fmtInd(ind, a[k])}</b> <span class="mudo">frota ${fmtInd(ind, F[k])}</span></span></div>
-        <div class="dash-trilho"><i style="width:${w(a[k]).toFixed(1)}%;background:${cor}"></i>${F[k] ? `<em style="left:${w(F[k]).toFixed(1)}%" title="Média da frota"></em>` : ''}</div></div>`;
+      const temB = b[k] !== null && b[k] !== undefined, vAnt = X.variacao(ind, a[k], b[k]);
+      return `<div class="dash-bar"><div class="dash-bar-cab"><span><b>${esc(ind.label)}</b></span><span class="num"><b>${fmtInd(ind, a[k])}</b> <span class="mudo">antes ${temB ? fmtInd(ind, b[k]) : '—'} · frota ${fmtInd(ind, F[k])}</span></span></div>
+        <div class="dash-trilho"><i style="width:${w(a[k]).toFixed(1)}%;background:${cor}"></i>${temB ? `<em class="marca-antes" style="left:${w(b[k]).toFixed(1)}%" title="Período anterior: ${fmtInd(ind, b[k])}"></em>` : ''}${F[k] ? `<em style="left:${w(F[k]).toFixed(1)}%" title="Média da frota"></em>` : ''}</div>
+        <div style="margin-top:4px">${variacao(vAnt, refB())}</div></div>`;
     }).join('');
     E.graficos['mot-km'] = { tipo: 'barras', serie: X.serieDiaria(m.linhas, IND_MAP.km, E.A, E.base), ind: IND_MAP.km, ref: b.km_dia, titulo: 'Km rodados por dia' };
     return `${hero}${radar}
       <div class="grade-2">
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Perfil de condução</h2><span class="h2-sub">Amarelo: ${veic ? 'este veículo' : 'este motorista'}. Cinza tracejado: média da frota. Quanto mais longe do centro, melhor.</span></div></div><div class="card-corpo">${teia(a, F)}</div></section>
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Comparado à frota</h2><span class="h2-sub">A marca vertical é a média da frota. Verde melhor, vermelho pior.</span></div></div><div class="card-corpo">${comp || '<span class="apoio">Sem indicadores de condução na planilha.</span>'}</div></section>
+        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Perfil de condução</h2><span class="h2-sub">Amarelo: ${veic ? 'este veículo' : 'este motorista'} agora (${D.periodoCurto(E.A)}). Azul pontilhado: como estava (${D.periodoCurto(E.B)}). Cinza tracejado: média da frota. Quanto mais longe do centro, melhor.</span></div></div><div class="card-corpo">${teia(a, F, b)}</div></section>
+        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Antes, agora e frota</h2><span class="h2-sub">Barra: agora (${D.periodoCurto(E.A)}), verde se melhor que a frota e vermelha se pior. Marca vazada: como estava (${D.periodoCurto(E.B)}). Marca escura: média da frota.</span></div></div><div class="card-corpo">${comp || '<span class="apoio">Sem indicadores de condução na planilha.</span>'}</div></section>
       </div>
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Calendário de desempenho</h2><span class="h2-sub">Cada quadrado é um dia do período, colorido pelo ${indCalendario(x.la).rot}. Passe o mouse para ver o valor.</span></div></div><div class="card-corpo">${mapaCalor(x.la)}</div></section>
       <div class="grade-2">

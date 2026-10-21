@@ -5056,7 +5056,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // ---------- Início ----------
   function iniciar() {
-    if (!armazem.ler('gbx-reset-2026-10-20')) { [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo'].forEach((k) => armazem.apagar(k)); armazem.gravar('gbx-reset-2026-10-20', '1'); }
+    // limpeza única dos dados antigos deste navegador (planilhas, clientes, tratativas, resultados da API); os tokens da API ficam
+    if (!armazem.ler('gbx-reset-2026-10-21')) {
+      [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo', CHAVE_TRAT, CHAVE_API_LOCAL, 'gbx-reset-2026-10-20'].forEach((k) => armazem.apagar(k));
+      armazem.gravar('gbx-reset-2026-10-21', '1');
+    }
     const p = Number(armazem.ler(CHAVE_PRECO));
     if (Number.isFinite(p) && p > 0) { E.preco = p; E.precoManual = true; }
     E.cliente = armazem.ler(CHAVE_CLIENTE_SEL) || '';

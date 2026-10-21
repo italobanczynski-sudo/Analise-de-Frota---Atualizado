@@ -1885,6 +1885,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 19, data: '2026-10-21', titulo: 'Nota do condutor no dashboard', texto: 'No Motorista individual, o medidor mostra a Nota Gobrax oficial do mês (da premiação da API) quando a nota diária não vem, com a posição do motorista no ranking do mês. No Veículo individual aparece a nota do motorista que dirigiu.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 18, data: '2026-10-21', titulo: 'Premiação mês a mês', texto: 'A tela de Premiação ganhou a evolução mês a mês: cada motorista com nota, km e bonificação de todos os meses que vieram da API, a variação contra o mês anterior e a bonificação somada no período.', href: '#/premiacao', link: 'Abrir Premiação' },
     { id: 17, data: '2026-10-21', titulo: 'Km, litros, hodômetro e premiação pela API', texto: 'As estatísticas, o hodômetro e a premiação da API Gobrax voltaram a responder: a Xtsul agora tem km, litros e km/l por dia, odômetro de cada veículo e nota e bonificação por mês. A evolução de motoristas e veículos passa a ser medida pela média de km/l.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
     { id: 16, data: '2026-10-21', titulo: 'Mais indicadores da performance', texto: 'A API de performance agora traz também início e final da faixa verde, Eco Roll / I-Roll e o pedal na pressão ideal e em atenção. Os dados da Xtsul passaram a cobrir 90 dias, para comparar com o período anterior.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
@@ -3663,17 +3664,32 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     return `<div class="cal-mapa"><div class="cal-dias">${dias.map((d) => `<span>${d}</span>`).join('')}</div><div class="cal-grade">${cel.join('')}</div></div>
       <div class="graf-legenda" style="margin-top:10px"><span><i class="cal-leg" style="background:#1E8E3E"></i>Bom (70+)</span><span><i class="cal-leg" style="background:#F9AB00"></i>Atenção (40 a 69)</span><span><i class="cal-leg" style="background:#D93025"></i>Crítico (abaixo de 40)</span><span><i class="cal-leg" style="background:#EEF0F2"></i>Sem registro</span></div>`;
   }
+  // Nota oficial do motorista no mês do fim do período analisado (ou no último mês buscado antes dele), vinda da premiação da API
+  function notaPremiacao(nome) {
+    if (!nome) return null;
+    const mes = E.A.fim.slice(0, 7);
+    const docs = docsApi('premiacao', E.cliente).filter((d) => d.data <= mes).sort((p, q) => (p.data < q.data ? 1 : -1));
+    for (const d of docs) {
+      const ls = d.motoristas.filter((y) => y.nota !== null && y.nota !== undefined).sort((p, q) => q.nota - p.nota);
+      const i = ls.findIndex((y) => ckey(y.nome) === ckey(nome));
+      if (i >= 0) return { nota: ls[i].nota, mes: D.nomeMes(d.data + '-01') + (d.data === D.hoje().slice(0, 7) ? ' (parcial)' : ''), pos: i + 1, total: ls.length };
+    }
+    return null;
+  }
   function dashboardIndividual(x, m, c) {
     const a = x.a, b = x.b, F = c.frotaA;
     if (!x.la.length) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem registros no período analisado</span><span class="apoio">Escolha outro período acima.</span></div></div></section>`;
     const veic = E.rota.tipo === 'veiculo';
-    const nota = temInd('nota') && a.nota > 0 ? a.nota : null;
-    const fx = X.faixaNota(nota);
+    let nota = temInd('nota') && a.nota > 0 ? a.nota : null, rotNota = IND_MAP.nota.label, subNota = '';
     const ranking = c.mots.filter((y) => y.a.nota > 0).sort((p, q) => q.a.nota - p.a.nota);
     const pos = ranking.findIndex((y) => y.m.id === m.id) + 1;
+    if (pos) subNota = pos + 'º de ' + ranking.length + (veic ? ' veículos' : ' motoristas');
+    const pm = nota === null ? notaPremiacao(veic ? ((m.condutores || []).length === 1 ? m.condutores[0] : '') : m.nome) : null;
+    if (pm) { nota = pm.nota; rotNota = (veic ? 'Nota do motorista · ' : 'Nota Gobrax · ') + pm.mes; subNota = pm.pos + 'º de ' + pm.total + ' motoristas na premiação'; }
+    const fx = X.faixaNota(nota);
     const stat = (k, tit) => { const ind = IND_MAP[k]; if (!temInd(k)) return ''; const v = X.variacao(ind, a[k], b[k]); return `<div class="dash-stat"><span class="dash-stat-t">${tit || esc(ind.label)}</span><span class="dash-stat-v num">${fmtInd(ind, a[k])}</span>${variacao(v, refB())}</div>`; };
     const hero = `<section class="card dash-hero"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:20px 34px;align-items:center">
-        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', IND_MAP.nota.label, pos ? pos + 'º de ' + ranking.length + (veic ? ' veículos' : ' motoristas') : '', 230)}
+        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', rotNota, subNota, 230)}
         <div class="dash-stats">${stat('km', 'Km rodados')}${stat('kml', 'Média de consumo')}${stat('litros', 'Diesel consumido')}${stat('dias', 'Dias trabalhados')}${stat('km_dia', 'Km por dia')}${stat('horas', 'Horas de condução')}</div></div></section>`;
     // Insights do próprio condutor/veículo
     const itens = [];

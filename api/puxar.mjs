@@ -85,7 +85,7 @@ const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraE
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
 // Um dia de estatísticas + performance → linhas no layout do painel. O CPF dos motoristas é descartado aqui.
 function diaParaLinhas(dia, estat, perf, cli) {
-  const temPerf = perf.length > 0;
+  const temPerf = true;   // colunas sempre iguais: dia sem performance fica com os indicadores vazios
   const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
     .concat(temPerf ? ['horas', 'nota'].concat(PERF_COLS.map(([k]) => k)) : [], ['cliente', 'dias_periodo']);
   const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
@@ -104,7 +104,7 @@ function diaParaLinhas(dia, estat, perf, cli) {
     const nome = motoristaPrincipal(p);
     const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
     const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
-    const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
+    const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
     const mov = ind.movement ? numApi(ind.movement.duration) : null;
     const lin = [br(dia), escC(nome || placa), escC(placa), soPerf ? '' : n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
       rodou ? n(r.averageSpeed) : '', n(r.odometer)]
@@ -134,15 +134,26 @@ async function puxar(c) {
   const gravar = (id, doc) => fs.writeFileSync(path.join(dir, id + '.json'), JSON.stringify(doc));
   const fim = hoje(), ini = somar(fim, -(DIAS - 1));
   const csv = { veiculos: [], motoristas: [] };
-  let cab = null, perfOk = true, estatOk = true, dias = 0;
-  const avisos = [];
+  let cab = null, dias = 0;
+  const avisos = [], falhas = { estat: 0, perf: 0 }, veio = { estat: false, perf: false }, perdidos = { estat: [], perf: [] };
+  // uma falha pontual pula só aquele dia; 404 ("Veículo não identificado") é dia sem dado; 3 falhas seguidas desligam o tipo
+  const buscar = async (tipo, caminho, jan, d) => {
+    if (falhas[tipo] >= 3) return [];
+    try { const r = registros(await apiGet(caminho, jan, token)); falhas[tipo] = 0; if (r.length) veio[tipo] = true; return r; }
+    catch (e) {
+      if (/token inválido/.test(e.message)) throw e;
+      if (/respondeu 404/.test(e.message)) return [];
+      falhas[tipo]++; perdidos[tipo].push(br(d));
+      if (falhas[tipo] >= 3) avisos.push((tipo === 'estat' ? 'estatísticas (km e litros)' : 'performance') + ' parou depois de 3 falhas seguidas: ' + e.message);
+      return [];
+    }
+  };
   for (let d = ini; d <= fim; d = somar(d, 1)) {
     process.stdout.write('  ' + br(d) + '\r');
     const jan = Object.assign(janelaUTC(d), { vehicleIdentification: '' });
-    let estat = [], perf = [];
-    if (estatOk) { try { estat = registros(await apiGet('v1/vehicle-statistics', jan, token)); } catch (e) { if (/token inválido/.test(e.message)) throw e; estatOk = false; avisos.push('estatísticas (km e litros) não vieram: ' + e.message); } }
-    if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { if (/token inválido/.test(e.message)) throw e; perfOk = false; avisos.push('performance não veio: ' + e.message); } }
-    if (!estatOk && !perfOk) throw new Error(avisos.join('; '));
+    const estat = await buscar('estat', 'v1/vehicle-statistics', jan, d);
+    const perf = await buscar('perf', 'v1/vehicle-performance', jan, d);
+    if (falhas.estat >= 3 && falhas.perf >= 3) throw new Error(avisos.join('; '));
     const { cols, veic, mot } = diaParaLinhas(d, estat, perf, cli);
     if (!veic.length) continue;
     dias++;
@@ -178,7 +189,8 @@ async function puxar(c) {
   Object.keys(porMes).forEach((k) => gravar(idPlan('premiacao', cli, k, 1), { alvo: 'premiacao', cliente: cli, data: k, motoristas: porMes[k], em }));
   // planilhas para importar no painel (GitHub Pages ou Configurações → perfil do cliente)
   ['veiculos', 'motoristas'].forEach((alvo) => { if (csv[alvo].length) fs.writeFileSync(path.join(SAIDA, slugCli(cli) + '-' + alvo + '.csv'), '﻿' + [cab].concat(csv[alvo]).join('\n')); });
-  return { dias, veiculos: veiculos.length, meses: Object.keys(porMes).length, perfOk, estatOk, avisos };
+  ['estat', 'perf'].forEach((t) => { if (perdidos[t].length && falhas[t] < 3) avisos.push((t === 'estat' ? 'estatísticas' : 'performance') + ' falharam em ' + perdidos[t].length + ' dia(s): ' + perdidos[t].join(', ') + ' (rode de novo para completar)'); });
+  return { dias, veiculos: veiculos.length, meses: Object.keys(porMes).length, perfOk: veio.perf, estatOk: veio.estat, avisos };
 }
 
 const alvos = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));

@@ -131,14 +131,18 @@ Traz a nota, o km e a bonificação de cada motorista por mês. O painel guarda 
 
 Os dados aparecem na tela Premiação.
 
-## O que a API respondeu de verdade (teste com o token da Xtsul, 21/10/2026)
+## O que a API respondeu de verdade (token da Xtsul, 21/10/2026)
 
-| Endpoint | Resultado |
-|---|---|
-| `v1/vehicle-performance` | Funciona. Documentação oficial: https://documenter.getpostman.com/view/27100945/2s93eU4FLe |
-| `v1/vehicle-statistics` | HTTP 400 com corpo vazio, mesmo com placa e com outros formatos de data. Não está na documentação pública; confirmar com o suporte se o token precisa de liberação |
-| `v2/vehicle-odometer` | HTTP 400 com corpo vazio, como as estatísticas. Documentação: https://documenter.getpostman.com/view/27100945/2s93sf2BRK. Testado no formato exato da documentação, com e sem placa (com e sem hífen), espaço codificado ou não e na porta 8888: sempre 400 |
-| `v2/driversOverview` | HTTP 500, código 9 ("Erro não esperado"), para qualquer intervalo de meses (testado de 2024 a 2026). Com o mesmo mês no início e no fim, responde 400, código 67 ("Datas fornecidas inválidas"). Documentação: https://documenter.getpostman.com/view/27100945/2s9Ye8hvPt |
+As quatro APIs funcionam. Estatísticas, hodômetro e premiação responderam 400/500 durante parte do dia e voltaram depois; o script tolera falhas pontuais:
+- uma falha pula só aquele dia e o aviso lista os dias que faltaram (rode de novo para completar);
+- 404 ("Veículo não identificado") é tratado como dia sem dado;
+- três falhas seguidas desligam aquele tipo de busca na rodada.
+
+Documentações oficiais: performance https://documenter.getpostman.com/view/27100945/2s93eU4FLe · hodômetro https://documenter.getpostman.com/view/27100945/2s93sf2BRK · premiação https://documenter.getpostman.com/view/27100945/2s9Ye8hvPt
+
+Nota Gobrax: a performance não traz a nota geral, só a nota de cada indicador. Testamos recalcular a nota com os pesos do treinamento (início da faixa verde 45, embalo 25, motor ligado parado 15, acima do verde 10, excesso de velocidade 5, piloto automático 5) e comparamos com a nota oficial mensal da premiação: erro médio de 5 a 6 pontos, até 15. Por isso o painel não estima a nota; a nota oficial aparece na tela Premiação, mês a mês, e a evolução dos motoristas usa a média de km/l.
+
+Premiação (`v2/driversOverview`): o modelo da resposta é `{"success": true, "data": [{"ID", "Name", "DocumentNumber", "Overview": [{"Date", "Reward", "TotalKM", "Score"}]}]}`. O painel usa `Name`, `Date`, `Score`, `TotalKM` e `Reward`; `ID` e `DocumentNumber` (CPF) são descartados. A tela Premiação mostra o mês escolhido e a evolução mês a mês de cada motorista.
 
 Detalhes da resposta da performance:
 - Não existe nota geral (`score`) no registro. Cada indicador traz o próprio `score`, por isso a coluna `nota` fica vazia.

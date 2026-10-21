@@ -1197,11 +1197,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     };
   }
 
-  // Evoluiu / Estável / Regrediu — pela Nota Gobrax (±2 pts); sem nota, pela média km/l (±2%); sem os dois (API só de performance), pela faixa verde (±2 p.p.)
-  const LIMIAR = { nota: 2, kml: 0.02, faixa_verde: 2 };
+  // Evoluiu / Estável / Regrediu — pela Nota Gobrax (±2 pts); sem nota, pela média km/l (±2%); sem os dois, pelo início da faixa verde ou pela faixa verde total (±2 p.p.)
+  const LIMIAR = { nota: 2, kml: 0.02, inicio_faixa_verde: 2, faixa_verde: 2 };
   function statusEvolucao(base, a, b) {
     const tem = (key) => base.indicadores.some((i) => i.key === key);
-    const k = tem('nota') ? 'nota' : tem('kml') ? 'kml' : tem('faixa_verde') ? 'faixa_verde' : 'nota';
+    const k = tem('nota') ? 'nota' : tem('kml') ? 'kml' : tem('inicio_faixa_verde') ? 'inicio_faixa_verde' : tem('faixa_verde') ? 'faixa_verde' : 'nota';
     const va = a[k], vb = b[k];
     if (va === null || va === undefined || vb === null || vb === undefined) return { status: 'sembase', delta: null, ind: k };
     const delta = k === 'kml' ? (vb ? (va - vb) / vb : 0) : va - vb;
@@ -1885,6 +1885,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 18, data: '2026-10-21', titulo: 'Premiação mês a mês', texto: 'A tela de Premiação ganhou a evolução mês a mês: cada motorista com nota, km e bonificação de todos os meses que vieram da API, a variação contra o mês anterior e a bonificação somada no período.', href: '#/premiacao', link: 'Abrir Premiação' },
+    { id: 17, data: '2026-10-21', titulo: 'Km, litros, hodômetro e premiação pela API', texto: 'As estatísticas, o hodômetro e a premiação da API Gobrax voltaram a responder: a Xtsul agora tem km, litros e km/l por dia, odômetro de cada veículo e nota e bonificação por mês. A evolução de motoristas e veículos passa a ser medida pela média de km/l.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
     { id: 16, data: '2026-10-21', titulo: 'Mais indicadores da performance', texto: 'A API de performance agora traz também início e final da faixa verde, Eco Roll / I-Roll e o pedal na pressão ideal e em atenção. Os dados da Xtsul passaram a cobrir 90 dias, para comparar com o período anterior.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 15, data: '2026-10-21', titulo: 'Motoristas e veículos separados certo', texto: 'Veículos e grupos e Veículo individual agora listam placas (com quem dirigiu ao lado), e Motoristas lista só pessoas: placa sem motorista identificado não vira mais motorista. Com dados só de performance, quem teve horas em movimento conta como rodando, e indicadores sem nenhum valor (ex.: km e nota) saem das telas.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 14, data: '2026-10-21', titulo: 'Calendário para escolher os dias', texto: 'Na barra de período, o botão Calendário abre os meses: escolha um dia, uma semana, um mês ou um intervalo livre, e compare com o dia anterior, a semana anterior, o mês anterior ou qualquer período. Em Todo o período aparece a evolução geral, semana a semana ou mês a mês.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -3080,7 +3082,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         ${resultado}${potencial}
         ${num('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), P.ref ? 'meta interna ' + fmt(P.ref, 2) + ' km/l' : '')}
         ${num('Km por dia trabalhado', fmtInd(IND_MAP.km_dia, A.km_dia), dv('km_dia'), fmt(A.dias, 0) + ' dias trabalhados')}
-        ${num('Nota Gobrax', fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.mots.length, 0) + ' motoristas ativos')}
+        ${num(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.mots.length, 0) + ' motoristas ativos')}
       </div>
       <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a R$ ${fmt(E.preco, 2)}/L (ajuste na aba Comparativo). A referência é a média do quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
     </section>`;
@@ -3671,7 +3673,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const pos = ranking.findIndex((y) => y.m.id === m.id) + 1;
     const stat = (k, tit) => { const ind = IND_MAP[k]; if (!temInd(k)) return ''; const v = X.variacao(ind, a[k], b[k]); return `<div class="dash-stat"><span class="dash-stat-t">${tit || esc(ind.label)}</span><span class="dash-stat-v num">${fmtInd(ind, a[k])}</span>${variacao(v, refB())}</div>`; };
     const hero = `<section class="card dash-hero"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:20px 34px;align-items:center">
-        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', 'Nota Gobrax', pos ? pos + 'º de ' + ranking.length + (veic ? ' veículos' : ' motoristas') : '', 230)}
+        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', IND_MAP.nota.label, pos ? pos + 'º de ' + ranking.length + (veic ? ' veículos' : ' motoristas') : '', 230)}
         <div class="dash-stats">${stat('km', 'Km rodados')}${stat('kml', 'Média de consumo')}${stat('litros', 'Diesel consumido')}${stat('dias', 'Dias trabalhados')}${stat('km_dia', 'Km por dia')}${stat('horas', 'Horas de condução')}</div></div></section>`;
     // Insights do próprio condutor/veículo
     const itens = [];
@@ -3742,7 +3744,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (!gs.length) return '';
     gs.sort((p, q) => (q.a.km || 0) - (p.a.km || 0) || (q.a.horas || 0) - (p.a.horas || 0));
     const tem = (k) => bv.indicadores.some((i) => i.key === k);
-    const cols = [['nota', 'Nota Gobrax'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['motor_ocioso', 'Motor ocioso']].filter(([k]) => tem(k));
+    const cols = [['nota', IND_MAP.nota.label], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['motor_ocioso', 'Motor ocioso']].filter(([k]) => tem(k));
     const linhas = gs.slice(0, 10).map((g) => `<tr><td><b style="font-weight:600">${esc(g.nome)}</b></td><td class="dir">${g.n}</td>${cols.map(([k]) => celInd(k, g.a, g.b)).join('')}<td class="dir">${fmtInd(IND_MAP.km, g.a.km)}</td></tr>`).join('');
     return `<section class="card">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Desempenho por grupo de veículos</h2>
@@ -3762,6 +3764,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     return `<div class="barra-filtros hero-clientes" aria-label="Cliente do relatório"><span class="campo-rotulo">Cliente do relatório</span>
       ${ops.map((n) => pil(n, n, ckey(E.cliente) === ckey(n))).join('')}</div>`;
   }
+  // Critério usado para evoluiu / regrediu (segue X.statusEvolucao: nota, km/l, início da faixa verde ou faixa verde)
+  const critEvolucao = (c) => ({ nota: 'pela Nota Gobrax (±2 pts)', kml: 'pela média de km/l (±2%)', inicio_faixa_verde: 'pelo início da faixa verde (±2 p.p.)', faixa_verde: 'pela faixa verde (±2 p.p.)' }[((c.mots.find((x) => x.st && x.st.ind) || {}).st || {}).ind] || 'pela Nota Gobrax (±2 pts)');
   function telaGeral() {
     const c = calc();
     const A = c.frotaA, B = c.frotaB;
@@ -3791,11 +3795,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const e = economia(A, B);
     const itens = [];
     if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'para os mesmos km do período anterior · R$ ' + fmt(E.preco, 2) + '/L'));
-    if (temInd('nota')) itens.push(item('Nota Gobrax', fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota)));
+    if (temInd('nota')) itens.push(item(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota)));
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml)));
     if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde)));
     if (temInd('motor_ocioso')) itens.push(item('Motor ligado parado', fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso), dv('motor_ocioso'), 'antes ' + fmtInd(IND_MAP.motor_ocioso, B.motor_ocioso)));
-    if (c.lb.length) itens.push(item('Motoristas que evoluíram', fmt(c.cont.evoluiu, 0) + ' de ' + fmt(c.mots.length, 0), c.cont.regrediu ? `<span class="exec-ruim">${fmt(c.cont.regrediu, 0)} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', 'pela Nota Gobrax (±2 pts)'));
+    if (c.lb.length) itens.push(item('Motoristas que evoluíram', fmt(c.cont.evoluiu, 0) + ' de ' + fmt(c.mots.length, 0), c.cont.regrediu ? `<span class="exec-ruim">${fmt(c.cont.regrediu, 0)} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', critEvolucao(c)));
     const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Resultado do período</span><span class="exec-sub">${D.periodoBR(E.A)}${c.lb.length ? ' · comparado a ' + D.periodoBR(E.B) : ''}</span></div>
       <div class="exec-grade">${itens.join('')}</div></section>`;
 
@@ -4135,7 +4139,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
   }
   function diaParaCSV(dia, estat, perf, cli) {
-    const temPerf = perf.length > 0;
+    const temPerf = true;   // colunas sempre iguais: dia sem performance fica com os indicadores vazios
     const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
       .concat(temPerf ? ['horas', 'nota'].concat(PERF_COLS.map(([k]) => k)) : [], ['cliente', 'dias_periodo']);
     const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
@@ -4152,7 +4156,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const nome = motoristaPrincipal(p);
       const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
       const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
-      const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
+      const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
       const mov = ind.movement ? numApi(ind.movement.duration) : null;
       const lin = [D.br(dia), escC(nome || placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
         rodou ? n(r.averageSpeed) : '', n(r.odometer)]
@@ -4176,7 +4180,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (f.estat) {
         const dias = [];
         for (let d = f.ini; d <= fim; d = D.somar(d, 1)) dias.push(d);
-        let veics = 0, comDados = 0, perfOk = true, perfErro = '';
+        let veics = 0, comDados = 0, perfOk = true, perfErro = '', perfFalhas = 0;
         E.importCli = cli; E.silencio = true;
         try {
           for (let i = 0; i < dias.length; i++) {
@@ -4185,7 +4189,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
             const recs = registros(await apiGet('v1/vehicle-statistics', jan, token));
             let perf = [];
             // sem a performance (token sem acesso, falha pontual) as estatísticas do dia entram mesmo assim
-            if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { perfOk = false; perfErro = e.message; } }
+            // 404 ("Veículo não identificado") é dia sem dado; falha pontual pula só o dia; 3 seguidas desligam a performance
+            if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); perfFalhas = 0; } catch (e) { if (!/respondeu 404/.test(e.message) && ++perfFalhas >= 3) { perfOk = false; perfErro = e.message; } } }
             const { csv, n, csvMot } = diaParaCSV(dias[i], recs, perf, cli);
             if (!n) continue;
             if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
@@ -4408,7 +4413,27 @@ body, .conteudo, .pagina { background: #FFFFFF; }
             <td><span class="pessoa">${avatar(m.nome, 28)}<span class="pessoa-nome">${esc(m.nome)}</span></span></td>
             <td>${badgeNota(m.nota)}</td><td class="dir">${b ? variacao(X.variacao(indN, m.nota, b.nota)) : '<span class="mudo">—</span>'}</td>
             <td class="dir num">${fmt(m.km, 0)} km</td><td class="dir num">R$ ${fmt(m.premio || 0, 2)}</td></tr>`; }).join('')}</tbody></table></div></div>
-      </section>`;
+      </section>
+      ${docs.length > 1 ? evolucaoPremiacao(docs) : ''}`;
+  }
+  // Evolução mês a mês (Overview da API): cada motorista com nota, km e bonificação de todos os meses buscados
+  function evolucaoPremiacao(docs) {
+    const indN = IND_MAP.nota, nomes = new Map();
+    docs.forEach((d) => d.motoristas.forEach((m) => { if (!nomes.has(ckey(m.nome))) nomes.set(ckey(m.nome), m.nome); }));
+    const por = docs.map((d) => new Map(d.motoristas.map((m) => [ckey(m.nome), m])));
+    const ult = por[por.length - 1];
+    const lista = [...nomes.entries()].sort((a, b) => ((ult.get(b[0]) || {}).nota || -1) - ((ult.get(a[0]) || {}).nota || -1) || a[1].localeCompare(b[1], 'pt-BR'));
+    const totPremio = (k) => por.reduce((s, mp) => s + ((mp.get(k) || {}).premio || 0), 0);
+    return `<section class="card">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução mês a mês</h2><span class="h2-sub">Nota, km e bonificação de cada motorista em todos os meses buscados. A variação compara com o mês anterior. Ordenado pela nota de ${D.nomeMes(docs[docs.length - 1].data + '-01')}.</span></div></div>
+      <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:620px;overflow:auto">
+        <table class="tabela" style="min-width:${260 + docs.length * 150}px"><thead><tr><th>Motorista</th>${docs.map((d) => `<th class="dir">${D.nomeMes(d.data + '-01')}</th>`).join('')}<th class="dir">Bonificação no período</th></tr></thead>
+        <tbody>${lista.map(([k, nome]) => `<tr><td><span class="pessoa">${avatar(nome, 28)}<span class="pessoa-nome">${esc(nome)}</span></span></td>
+          ${por.map((mp, i) => { const m = mp.get(k), a = i > 0 ? por[i - 1].get(k) : null;
+            if (!m) return '<td class="dir mudo">—</td>';
+            return `<td class="dir"><span style="display:block">${badgeNota(m.nota)}</span>${a && a.nota !== null && m.nota !== null ? variacao(X.variacao(indN, m.nota, a.nota)) : ''}<span class="linha2">${fmt(m.km, 0)} km · R$ ${fmt(m.premio || 0, 2)}</span></td>`; }).join('')}
+          <td class="dir num"><b style="font-weight:600">R$ ${fmt(totPremio(k), 2)}</b></td></tr>`).join('')}</tbody></table></div></div>
+    </section>`;
   }
 
   function periodoMotPadrao(nome) {

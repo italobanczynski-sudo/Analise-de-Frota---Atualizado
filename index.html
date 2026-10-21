@@ -1857,6 +1857,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 8, data: '2026-10-21', titulo: 'Dados da API entram sozinhos', texto: 'Salvou o token do cliente, a busca começa na hora: últimos 30 dias de estatísticas, performance, motoristas, odômetro e premiação. Com o painel aberto, os dados se atualizam a cada hora. O relatório geral agora também sai da API, sem planilha.', href: '#/config', link: 'Abrir Configurações' },
     { id: 7, data: '2026-10-21', titulo: 'Performance dos veículos pela API', texto: 'A busca pela API agora traz também a performance de cada veículo, dia a dia: faixa verde, embalo, motor ocioso, pressão do pedal, acima do verde, excesso de velocidade, piloto automático, freio motor e o motorista vinculado.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 6, data: '2026-10-21', titulo: 'Dados direto da API Gobrax', texto: 'No perfil do cliente, salve o token da API e busque sem planilha: estatísticas de cada veículo dia a dia (km, litros, km/l, velocidade média, frenagens), odômetro com a última comunicação de cada unidade e a premiação mensal dos motoristas, que ganhou tela própria.', href: '#/premiacao', link: 'Abrir a Premiação' },
     { id: 5, data: '2026-10-21', titulo: 'Dados compartilhados em tempo real', texto: 'No painel do Claude, as planilhas anexadas vão para uma base compartilhada: todos que acessam veem os mesmos clientes e dados, e cada planilha nova aparece na hora, sem recarregar.' },
@@ -3815,7 +3816,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (tokEl) tokEl.value = '';
     const tokOk = tok && armazem.gravar(chaveToken(nome), tok);
     E.clienteForm = { nome: '', grupo: '', obs: '' };
-    render(); toast(tokOk ? 'Cliente cadastrado com o token da API. Clique em Buscar dados na linha dele.' : 'Cliente cadastrado.');
+    if (tokOk) armazem.apagar(chaveAuto(nome));
+    render(); toast(tokOk ? 'Cliente cadastrado. Buscando os dados da API…' : 'Cliente cadastrado.');
+    if (tokOk) buscarAuto(nome);
     const el = document.getElementById('cli-nome'); if (el) el.focus();
   }
   async function removerCliente(id) {
@@ -4006,7 +4009,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
     const perfPor = new Map();
     perf.forEach((r) => { const k = chavePlaca(r && r.vehicleIdentification); if (k && !perfPor.has(k)) perfPor.set(k, r); });
-    const vistos = new Set(), linhas = [];
+    const vistos = new Set(), linhas = [], linhasMot = [];
     estat.forEach((r) => {
       const placa = placaApi(r && r.vehicleIdentification), k = chavePlaca(placa);
       if (!k || vistos.has(k)) return;
@@ -4018,15 +4021,18 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
       const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
       const mov = ind.movement ? numApi(ind.movement.duration) : null;
-      linhas.push([D.br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+      const lin = [D.br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
         rodou ? n(r.averageSpeed) : '', n(r.odometer)]
-        .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';'));
+        .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
+      linhas.push(lin);
+      if (rodou) linhasMot.push(lin);
     });
-    return { csv: [cols.join(';')].concat(linhas).join('\n'), n: linhas.length };
+    const cab = cols.join(';');
+    return { csv: [cab].concat(linhas).join('\n'), n: linhas.length, csvMot: linhasMot.length ? [cab].concat(linhasMot).join('\n') : '' };
   }
 
-  async function buscarApi(cli) {
-    const f = E.apiForm, token = tokenDe(cli);
+  async function buscarApi(cli, form) {
+    const f = form || E.apiForm, token = tokenDe(cli);
     if (!token) { toast('Salve o token da API deste cliente antes de buscar.', 'erro'); return; }
     if (!f.ini || !f.fim || f.ini > f.fim) { toast('Escolha um período válido.', 'erro'); return; }
     if (D.dif(f.ini, f.fim) > 92) { toast('Busque no máximo 93 dias por vez.', 'erro'); return; }
@@ -4047,11 +4053,12 @@ body, .conteudo, .pagina { background: #FFFFFF; }
             let perf = [];
             // sem a performance (token sem acesso, falha pontual) as estatísticas do dia entram mesmo assim
             if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { perfOk = false; perfErro = e.message; } }
-            const { csv, n } = diaParaCSV(dias[i], recs, perf, cli);
+            const { csv, n, csvMot } = diaParaCSV(dias[i], recs, perf, cli);
             if (!n) continue;
             if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
+            if (csvMot) importarTexto(csvMot, 'API Gobrax · motoristas', true);   // o relatório geral sai da API, sem planilha
           }
-        } finally { E.importCli = null; E.silencio = false; E.impVeic = null; }
+        } finally { E.importCli = null; E.silencio = false; E.impVeic = null; E.importacao = null; }
         st.feito.push(comDados ? 'estatísticas' + (perfOk ? ' e performance' : '') + ' de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
         if (!perfOk) st.feito.push('performance não veio (' + perfErro + ')');
       }
@@ -4088,9 +4095,35 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     }
     st.rodando = false;
     E.veicVer++; baseVeicCache = null; reaplicarFiltro();
+    if (!st.erro && fim === D.hoje()) marcarAuto(cli, { dia: fim });
     render();
-    if (st.erro) toast('API: ' + st.erro + '.', 'erro'); else toast('API: ' + st.feito.join(', ') + '.');
+    if (st.erro) toast('API de ' + cli + ': ' + st.erro + '.', 'erro'); else toast('API de ' + cli + ': ' + st.feito.join(', ') + '.');
   }
+
+  // Busca automática: logo que o token é salvo e, com o painel aberto, a cada hora (só os dias desde a última busca)
+  const chaveAuto = (cli) => 'gbx-api-auto:' + slugCli(cli);
+  const lerAuto = (cli) => { try { return JSON.parse(armazem.ler(chaveAuto(cli)) || 'null') || {}; } catch (e) { return {}; } };
+  const marcarAuto = (cli, o) => armazem.gravar(chaveAuto(cli), JSON.stringify(Object.assign(lerAuto(cli), o)));
+  const DIAS_AUTO = 30, HORA = 3600000;
+  let filaApi = Promise.resolve();
+  const naFila = new Set();
+  function buscarAuto(cli) {
+    const k = ckey(cli);
+    if (!tokenDe(cli) || naFila.has(k)) return;
+    naFila.add(k);
+    marcarAuto(cli, { em: Date.now() });   // falhou (token recusado, sem rede): tenta de novo só daqui a uma hora
+    filaApi = filaApi.then(() => {
+      const hoje = D.hoje(), m = lerAuto(cli), desde = D.somar(hoje, -(DIAS_AUTO - 1));
+      const ini = m.dia && m.dia > desde ? D.somar(m.dia, -1) : desde;   // refaz o último dia buscado, que pode ter vindo parcial
+      return buscarApi(cli, { cli, ini, fim: hoje, estat: true, odo: true, prem: true });
+    }).catch(() => {}).then(() => { naFila.delete(k); });
+  }
+  function verificarAuto() {
+    if (!E.clientesPronto || E.planCarregando || document.hidden) return;
+    E.clientes.forEach((c) => { const m = lerAuto(c.nome); if (tokenDe(c.nome) && !(m.em && Date.now() - m.em < HORA)) buscarAuto(c.nome); });
+  }
+  setTimeout(verificarAuto, 1500);
+  setInterval(verificarAuto, 60000);
 
   function cartaoApi(nome) {
     if (!E.apiForm || E.apiForm.cli !== nome) E.apiForm = { cli: nome, ini: D.somar(D.hoje(), -6), fim: D.hoje(), estat: true, odo: true, prem: true };
@@ -4100,7 +4133,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const odo = docsApi('odometro', nome)[0], prem = docsApi('premiacao', nome).map((d) => d.data).sort();
     return `<section class="card" id="api-gobrax">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Buscar dados pela API Gobrax</h2>
-        <span class="h2-sub">Preenche o painel direto da plataforma, sem planilha: estatísticas de cada veículo dia a dia, odômetro e premiação dos motoristas.</span></div></div>
+        <span class="h2-sub">Preenche o painel direto da plataforma, sem planilha: estatísticas de cada veículo dia a dia, odômetro e premiação dos motoristas. Com o token salvo, a busca roda sozinha (últimos 30 dias) e se atualiza a cada hora com o painel aberto.</span></div></div>
       <div class="card-corpo">
         <div class="campo-bloco"><label class="campo-rotulo" for="api-token">Token da API de ${esc(nome)}</label>
           ${tem && !E.apiTrocar ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="badge badge-ok">Token salvo neste navegador</span>
@@ -4202,8 +4235,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         ? `<span class="apoio" style="margin-right:6px">Apaga também as planilhas.</span><button type="button" class="btn" data-acao="cliente-remover-cancelar">Cancelar</button> <button type="button" class="btn btn-destrutivo" data-acao="cliente-remover-confirmar">Excluir</button>`
         : `<a class="btn" href="#/cliente/${encodeURIComponent(fc.id)}" style="text-decoration:none">Abrir perfil e anexar planilhas</a> <button type="button" class="btn-link peq" data-acao="cliente-remover" data-id="${esc(fc.id)}">Excluir</button>`;
       const sl = slugCli(fc.nome), perfil = '#/cliente/' + encodeURIComponent(fc.id);
+      const stA = E.apiStatus && ckey(E.apiStatus.cli) === ckey(fc.nome) ? E.apiStatus : null;
       const tok = tokenDe(fc.nome) && E.apiTrocarCli !== sl
-        ? `<span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="badge badge-ok">Token salvo</span><a class="btn-link peq" href="${perfil}">Buscar dados</a>
+        ? `<span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="badge badge-ok">Token salvo</span>${stA && stA.rodando ? '<span class="apoio" role="status"><span class="spinner"></span> ' + esc(stA.msg) + '</span>' : stA && stA.erro ? '<span class="apoio critico-txt">Parou: ' + esc(stA.erro) + '</span>' : ''}<a class="btn-link peq" href="${perfil}">Ver no perfil</a>
             <button type="button" class="btn-link peq" data-acao="api-token-trocar" data-cli="${esc(fc.nome)}">Trocar</button><button type="button" class="btn-link peq" data-acao="api-token-esquecer" data-cli="${esc(fc.nome)}">Esquecer</button></span>`
         : `<span style="display:flex;gap:6px;align-items:center"><input type="password" class="campo" id="api-token-${sl}" data-token autocomplete="off" spellcheck="false" placeholder="Cole o token da API" aria-label="Token da API de ${esc(fc.nome)}" style="min-width:150px;max-width:220px">
             <button type="button" class="btn" data-acao="api-token-salvar" data-cli="${esc(fc.nome)}" data-inp="api-token-${sl}">Salvar</button></span>`;
@@ -4900,7 +4934,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (!v) { toast('Cole o token da API antes de salvar.', 'erro'); return; }
       if (inp) inp.value = '';
       if (!armazem.gravar(chaveToken(el.dataset.cli), v)) { toast('Este navegador não deixou guardar o token (janela privada?).', 'erro'); return; }
-      E.apiTrocar = false; E.apiTrocarCli = null; render(); toast('Token de ' + el.dataset.cli + ' salvo neste navegador.');
+      E.apiTrocar = false; E.apiTrocarCli = null; armazem.apagar(chaveAuto(el.dataset.cli));
+      render(); toast('Token de ' + el.dataset.cli + ' salvo. Buscando os dados da API…'); buscarAuto(el.dataset.cli);
     },
     'api-token-trocar': (el) => {
       const id = el.dataset.cli ? 'api-token-' + slugCli(el.dataset.cli) : 'api-token';
@@ -4911,7 +4946,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const f = el.dataset.cli ? { nome: el.dataset.cli } : focoPorSlug(E.rota.id);
       if (f) armazem.apagar(chaveToken(f.nome)); E.apiTrocar = false; E.apiTrocarCli = null; render(); toast('Token apagado deste navegador.');
     },
-    'api-buscar': (el) => buscarApi(el.dataset.cli),
+    'api-buscar': (el) => { const f = Object.assign({}, E.apiForm); filaApi = filaApi.then(() => buscarApi(el.dataset.cli, f)).catch(() => {}); },
     'prem-mes': (el) => { E.premMes = el.dataset.mes; render(); },
     'exportar-premiacao': () => {
       const d = docsApi('premiacao', E.cliente).find((x) => x.data === E.premMes);

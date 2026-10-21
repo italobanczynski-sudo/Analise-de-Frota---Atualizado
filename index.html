@@ -1860,7 +1860,46 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   ];
   const navAtivo = (n) => (n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo);
   const navItem = (n) => { const at = navAtivo(n); return `<a class="nav-item ${at ? 'ativo' : ''}" href="${n.href}" aria-label="${n.rot}" ${at ? 'aria-current="page"' : ''}><img src="${ASSET('i:' + n.icone + '.svg')}" alt=""><span class="nome">${n.rot}</span><span class="dica">${n.rot}</span></a>`; };
+  // Preço do diesel por estado (Petrobras, via combustivelapi.com.br). No GitHub Pages o painel busca direto;
+  // no Claude a página não pode chamar fora e lê o documento config/diesel_uf da base compartilhada.
+  const UFS = [['ac', 'Acre'], ['al', 'Alagoas'], ['ap', 'Amapá'], ['am', 'Amazonas'], ['ba', 'Bahia'], ['ce', 'Ceará'], ['df', 'Distrito Federal'], ['es', 'Espírito Santo'],
+    ['go', 'Goiás'], ['ma', 'Maranhão'], ['mt', 'Mato Grosso'], ['ms', 'Mato Grosso do Sul'], ['mg', 'Minas Gerais'], ['pa', 'Pará'], ['pb', 'Paraíba'], ['pr', 'Paraná'],
+    ['pe', 'Pernambuco'], ['pi', 'Piauí'], ['rj', 'Rio de Janeiro'], ['rn', 'Rio Grande do Norte'], ['rs', 'Rio Grande do Sul'], ['ro', 'Rondônia'], ['rr', 'Roraima'],
+    ['sc', 'Santa Catarina'], ['sp', 'São Paulo'], ['se', 'Sergipe'], ['to', 'Tocantins']];
+  const URL_COMB = 'https://combustivelapi.com.br/api/precos/';
+  const numBR = (v) => { const n = Number(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : null; };
+  function lerPrecosUF(j) {
+    const d = j && j.precos && j.precos.diesel;
+    if (!d) return null;
+    const diesel = {};
+    Object.entries(d).forEach(([uf, v]) => { const n = numBR(v); if (n) diesel[uf.toLowerCase()] = n; });
+    return diesel.br ? { diesel, coleta: String(j.data_coleta || ''), fonte: String(j.fonte || 'Petrobras') } : null;
+  }
+  async function buscarPrecosUF() {
+    try { const r = await fetch(URL_COMB); if (!r.ok) return; const p = lerPrecosUF(await r.json()); if (p) { E.dieselUF = p; render(); } }
+    catch (e) { /* no Claude a chamada é bloqueada: fica o que veio da base compartilhada */ }
+  }
+  setTimeout(buscarPrecosUF, 800);
+  setInterval(buscarPrecosUF, 6 * 3600000);
+  const cliAtual = () => E.clientes.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
+  // Estado usado agora: o do grupo filtrado (se tiver), senão o do cliente, senão a média Brasil
+  function ufAtual() {
+    const c = cliAtual(); if (!c) return { uf: 'br', de: '' };
+    const g = E.filtro.grupo && c.ufGrupos ? c.ufGrupos[nrm(E.filtro.grupo)] : '';
+    if (g) return { uf: g, de: 'grupo ' + E.filtro.grupo };
+    return { uf: c.uf || 'br', de: c.uf ? 'cliente' : '' };
+  }
+  const precoUF = (uf) => (E.dieselUF && (E.dieselUF.diesel[uf] || null)) || null;
+  const nomeUF = (uf) => (uf === 'br' ? 'Média Brasil' : ((UFS.find((x) => x[0] === uf) || [])[1] || uf.toUpperCase()));
+  function precoAutomatico() {
+    const { uf } = ufAtual();
+    return precoUF(uf) || precoUF('br') || (E.diesel && Number(E.diesel.preco_br)) || null;
+  }
   function pilulaDiesel() {
+    if (!E.precoManual && E.dieselUF) {
+      const { uf, de } = ufAtual(), p = precoUF(uf), usado = p ? uf : 'br';
+      return `<a class="pilula-diesel auto" href="${hrefDados()}" title="Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${usado.toUpperCase()}</small></a>`;
+    }
     const d = E.diesel;
     if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel R$ ${fmt(E.preco, 2)}/L</a>`;
     const auto = !E.precoManual;
@@ -1887,6 +1926,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 22, data: '2026-10-21', titulo: 'Diesel pelo estado onde o cliente opera', texto: 'No perfil do cliente, escolha o estado onde ele opera e, se quiser, um estado para cada grupo de veículos. O preço do diesel da Petrobras daquele estado passa a valer nas contas de economia; filtrando um grupo, vale o estado do grupo. O preço se atualiza sozinho.', href: '#/config', link: 'Abrir Configurações' },
     { id: 21, data: '2026-10-21', titulo: 'Antes e agora no motorista e no veículo', texto: 'No dashboard individual, o Perfil de condução mostra também como o condutor estava no período de comparação (linha azul), e o cartão Antes, agora e frota traz para cada indicador o valor de agora, o de antes com a variação e a média da frota.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 20, data: '2026-10-21', titulo: 'Calendário de desempenho colorido', texto: 'Sem nota diária, o Calendário de desempenho do motorista e do veículo passa a colorir cada dia pelo início da faixa verde (ideal 85%+, aceitável 55% a 84%). A nota oficial do mês fica no medidor, com a posição no ranking logo abaixo.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 19, data: '2026-10-21', titulo: 'Nota do condutor no dashboard', texto: 'No Motorista individual, o medidor mostra a Nota Gobrax oficial do mês (da premiação da API) quando a nota diária não vem, com a posição do motorista no ranking do mês. No Veículo individual aparece a nota do motorista que dirigiu.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
@@ -3941,6 +3981,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       try { iniciarPlanilhas(db); } catch (e) { planRef = null; E.planEmDb = false; E.planCarregando = false; }
       dbRef = db.collection('clientes');
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
+      try { db.collection('config').doc('diesel_uf').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !v.diesel || !v.diesel.br) return; if (!E.dieselUF || String(v.coleta) > String(E.dieselUF.coleta)) { E.dieselUF = v; render(); } }, () => {}); } catch (e) { /* sem preços por estado */ }
       try { db.collection('config').doc('diesel').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !(Number(v.preco_br) > 0)) return; E.diesel = v; if (!E.precoManual) E.preco = Number(v.preco_br); render(); }, () => {}); } catch (e) { /* sem preço automático */ }
       try { db.collection('relacionamento').onSnapshot((sn) => { if (E.demo) return; E.rel = sn.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((r) => true); vigiarHubspot(); if (['plano', 'clientes', 'churn'].includes(E.rota.tela)) render(); }, () => {}); } catch (e) { /* sem relacionamento */ }
       E.clientesEmDb = true;
@@ -4362,6 +4403,37 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       </div>`;
   }
 
+  function cartaoEstado(fc) {
+    const grupos = [...new Set(linhasCli('veiculos', fc.nome).map((l) => String(l.grupo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const opc = (sel, vazio) => (vazio ? `<option value="">${vazio}</option>` : '') + [['br', 'Média Brasil']].concat(UFS).map(([uf, n]) => {
+      const p = precoUF(uf);
+      return `<option value="${uf}" ${sel === uf ? 'selected' : ''}>${uf === 'br' ? '' : uf.toUpperCase() + ' · '}${n}${E.dieselUF ? (p ? ' · R$ ' + fmt(p, 2) : ' · sem preço (usa média Brasil)') : ''}</option>`;
+    }).join('');
+    const ufG = fc.ufGrupos || {};
+    return `<section class="card" id="estado-cliente">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Onde o cliente opera</h2>
+        <span class="h2-sub">O preço do diesel nas contas de economia segue o estado escolhido (Petrobras, diesel S10)${E.dieselUF ? ', coleta de ' + esc(E.dieselUF.coleta) : ''}. Cada grupo de veículos pode ter o seu estado; sem estado próprio, o grupo usa o do cliente.</span></div></div>
+      <div class="card-corpo" style="gap:14px">
+        <div class="campo-bloco"><label class="campo-rotulo" for="uf-cliente">Estado do cliente</label>
+          <select class="campo" id="uf-cliente" data-campo="uf-cliente" data-cli="${esc(fc.id)}" style="max-width:420px">${opc(fc.uf || 'br')}</select></div>
+        ${grupos.length ? `<div class="campo-bloco"><span class="campo-rotulo">Estado por grupo de veículos</span>
+          <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Grupo</th><th>Estado</th><th class="dir">Diesel</th></tr></thead><tbody>
+          ${grupos.map((g) => { const uf = ufG[nrm(g)] || ''; const p = precoUF(uf || fc.uf || 'br') || precoUF('br');
+            return `<tr><td><b style="font-weight:600">${esc(g)}</b></td><td><select class="campo" data-campo="uf-grupo" data-cli="${esc(fc.id)}" data-grupo="${esc(g)}" aria-label="Estado do grupo ${esc(g)}">${opc(uf, 'Mesmo do cliente')}</select></td><td class="dir num">${p ? 'R$ ' + fmt(p, 2) : '—'}</td></tr>`; }).join('')}
+          </tbody></table></div></div>` : '<span class="apoio">Nenhum grupo de veículos nos dados deste cliente. Quando a planilha de veículos trouxer a coluna Grupo, cada grupo poderá ter o seu estado aqui.</span>'}
+      </div></section>`;
+  }
+  async function salvarEstado(id, campos) {
+    const c = E.clientes.find((x) => x.id === id);
+    if (!c) return;
+    Object.assign(c, campos);
+    try {
+      if (E.clientesEmDb && dbRef) { const { id: _i, ...doc } = c; await dbRef.doc(id).set(doc); }
+      else salvarLocal();
+      toast('Estado salvo. O preço do diesel já segue ' + (campos.uf ? nomeUF(campos.uf) : 'o novo estado') + '.');
+    } catch (e) { toast('Não foi possível salvar o estado.', 'erro'); }
+    render();
+  }
   function cartaoApi(nome) {
     if (!E.apiForm || E.apiForm.cli !== nome) E.apiForm = { cli: nome, ini: D.somar(D.hoje(), -6), fim: D.hoje(), estat: true, odo: true, prem: true };
     const f = E.apiForm, tem = !!tokenDe(nome);
@@ -4595,6 +4667,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       ${retorno}
       ${retornoVeic}
       ${cartaoApi(nome)}
+      ${cartaoEstado(fc)}
       <div class="grade-2">
         <section class="card"><div class="card-corpo" style="display:flex;flex-direction:column;gap:14px">
           <div class="campo-bloco"><span class="campo-rotulo">Período da planilha de motoristas</span>
@@ -4692,6 +4765,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Render ----------
   function render() {
     garantirCliente();
+    if (!E.precoManual) { const p = precoAutomatico(); if (p) E.preco = p; }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
@@ -5272,7 +5346,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       baixar('analise_por_' + E.grupoPor + '_' + sufixoArquivo() + '.csv', ls.join('\n'));
     },
     'hub-atualizar': (el) => { const r = (E.rel || []).find((x) => x.chave === el.dataset.id); if (r) atualizarHub(r); },
-    'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; if (E.diesel) E.preco = Number(E.diesel.preco_br); render(); toast('Usando o preço da Petrobras.'); },
+    'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
     'churn-cliente': (el) => { E.churnVista = 'cliente'; trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'churn-vista': (el) => { E.churnVista = el.dataset.v === 'carteira' ? 'carteira' : 'cliente'; render(); window.scrollTo(0, 0); },
     'churn-todos': () => { E.churnVista = 'carteira'; render(); window.scrollTo(0, 0); },
@@ -5356,6 +5430,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     else if (k === 'ind-det') { E.detalhe.indGraf = el.value; render(); }
     else if (k === 'ind-comp') { E.comp.ind = el.value; render(); }
     else if (k === 'escopo') { E.comp.escopo = el.value; render(); }
+    else if (k === 'uf-cliente') salvarEstado(el.dataset.cli, { uf: el.value });
+    else if (k === 'uf-grupo') {
+      const c = E.clientes.find((x) => x.id === el.dataset.cli);
+      if (c) { const g = Object.assign({}, c.ufGrupos || {}); if (el.value) g[nrm(el.dataset.grupo)] = el.value; else delete g[nrm(el.dataset.grupo)]; salvarEstado(c.id, { ufGrupos: g }); }
+    }
     else if (k === 'preco') {
       const n = Number(String(el.value).replace(/\./g, '').replace(',', '.'));
       if (Number.isFinite(n) && n > 0) { E.preco = n; E.precoManual = true; armazem.gravar(CHAVE_PRECO, String(n)); }

@@ -155,6 +155,13 @@ Detalhes da resposta da performance:
 - Sem as estatísticas, o script monta as linhas só com a performance: placa, motorista, horas e indicadores, sem km e sem litros. Conta como "rodou" quem teve tempo em movimento.
 - Os erros vêm em `{"success": false, "data": {"code", "description"}}`; a documentação da performance cita também `{"errorCode", "errorDescription"}`.
 
+## Preço do diesel por estado
+
+- Fonte: `GET https://combustivelapi.com.br/api/precos/` (preços da Petrobras, aceita chamada do navegador). O painel usa `precos.diesel` (`br` e a sigla de cada estado, em reais com vírgula).
+- No perfil do cliente, o cartão "Onde o cliente opera" guarda o estado do cliente (`uf`) e, se quiser, um estado por grupo de veículos (`ufGrupos`, chave = nome do grupo normalizado).
+- Preço usado nas contas: o do estado do grupo filtrado; senão o do cliente; senão a média Brasil. Estado sem preço na fonte usa a média Brasil. Um preço digitado à mão continua valendo até voltar para o automático.
+- No GitHub Pages o painel busca ao abrir e a cada 6 horas. No Claude a página não chama fora: o script `api/puxar.mjs` grava `api/saida/diesel_uf.json`, carregado na base em `config/diesel_uf`.
+
 ## Respostas e erros
 
 | Resposta | Significado | O que o painel faz |

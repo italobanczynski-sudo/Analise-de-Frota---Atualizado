@@ -204,5 +204,17 @@ for (const c of alvos) {
     r.avisos.forEach((a) => console.warn('  aviso: ' + a));
   } catch (e) { falhas++; console.error('\r  erro: ' + e.message); }
 }
+// Preço do diesel por estado (Petrobras, via combustivelapi.com.br): vai para config/diesel_uf na base do painel
+try {
+  const r = await fetch('https://combustivelapi.com.br/api/precos/');
+  const j = await r.json(), d = j && j.precos && j.precos.diesel;
+  if (d) {
+    const diesel = {};
+    Object.entries(d).forEach(([uf, v]) => { const n = Number(String(v).replace(',', '.')); if (n > 0) diesel[uf.toLowerCase()] = n; });
+    fs.mkdirSync(SAIDA, { recursive: true });
+    fs.writeFileSync(path.join(SAIDA, 'diesel_uf.json'), JSON.stringify({ diesel, coleta: String(j.data_coleta || ''), fonte: String(j.fonte || 'Petrobras') }));
+    console.log('Diesel por estado: ' + Object.keys(diesel).length + ' preços (coleta ' + j.data_coleta + ').');
+  }
+} catch (e) { console.warn('Diesel por estado não veio: ' + e.message); }
 console.log('Arquivos em api/saida/.');
 process.exit(falhas ? 1 : 0);

@@ -670,6 +670,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 /* ---------- Risco de churn ---------- */
 @keyframes gbx-gauge { from { stroke-dashoffset: var(--len); } }
 .gauge { position: relative; flex: none; }
+.gauge-arco-box { position: relative; }
 .gauge svg { display: block; width: 100%; height: auto; }
 .gauge-centro { position: absolute; left: 0; right: 0; bottom: 4%; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .gauge-num { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; color: #202124; }
@@ -3661,10 +3662,10 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   const COR_NOTA = { bom: '#1E8E3E', atencao: '#F9AB00', critico: '#D93025' };
   function gaugeNota(valor, cor, rot, sub, tam, info) {
     const R = 70, L = Math.PI * R, off = L * (1 - clamp(valor || 0, 0, 100) / 100);
-    return `<div class="gauge" style="width:${tam || 220}px"><svg viewBox="0 0 180 104" role="img" aria-label="${esc(rot)} ${valor === null ? 'sem dado' : fmt(valor, 1)}">
+    return `<div class="gauge" style="width:${tam || 220}px"><div class="gauge-arco-box"><svg viewBox="0 0 180 104" role="img" aria-label="${esc(rot)} ${valor === null ? 'sem dado' : fmt(valor, 1)}">
       <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="#EEF0F2" stroke-width="16" stroke-linecap="round"/>
       <path class="gauge-arco" d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="${cor}" stroke-width="16" stroke-linecap="round" style="stroke-dasharray:${L.toFixed(1)};stroke-dashoffset:${off.toFixed(1)};--len:${L.toFixed(1)}"/></svg>
-      <div class="gauge-centro"><span class="gauge-num num">${valor === null ? '—' : fmt(valor, 1)}</span><span class="gauge-rot">${esc(rot)}</span>${sub ? `<span class="apoio" style="font-size:11.5px;margin-top:2px">${esc(sub)}</span>` : ''}</div>${info ? `<div class="gauge-info">${esc(info)}</div>` : ''}</div>`;
+      <div class="gauge-centro"><span class="gauge-num num">${valor === null ? '—' : fmt(valor, 1)}</span><span class="gauge-rot">${esc(rot)}</span>${sub ? `<span class="apoio" style="font-size:11.5px;margin-top:2px">${esc(sub)}</span>` : ''}</div></div>${info ? `<div class="gauge-info">${esc(info)}</div>` : ''}</div>`;   // número preso ao arco; a informação fica abaixo, fora dele
   }
   // Pontuação 0-100 (quanto maior, melhor) para o gráfico de teia
   const EIXOS = [

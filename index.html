@@ -3811,8 +3811,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (E.clientesEmDb && dbRef) await dbRef.add(reg);
       else { E.clientes.push(Object.assign({ id: 'l' + Date.now() }, reg)); ordenarClientes(); salvarLocal(); }
     } catch (e) { toast('Não foi possível salvar. Você pode não ter permissão para editar este painel.', 'erro'); return; }
+    const tokEl = document.getElementById('cli-token'), tok = tokEl ? tokEl.value.trim() : '';
+    if (tokEl) tokEl.value = '';
+    const tokOk = tok && armazem.gravar(chaveToken(nome), tok);
     E.clienteForm = { nome: '', grupo: '', obs: '' };
-    render(); toast('Cliente cadastrado.');
+    render(); toast(tokOk ? 'Cliente cadastrado com o token da API. Clique em Buscar dados na linha dele.' : 'Cliente cadastrado.');
     const el = document.getElementById('cli-nome'); if (el) el.focus();
   }
   async function removerCliente(id) {
@@ -4216,13 +4219,17 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       ${avisoLocal()}
       <span class="sub">Cadastre o cliente e abra o perfil dele para anexar as planilhas de motoristas e de veículos.${E.clientesEmDb ? ' O cadastro é compartilhado com quem tem acesso a este painel.' : ' O cadastro fica salvo só neste navegador.'}</span>
       <section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Novo cliente</h2></div></div>
+        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Novo cliente</h2><span class="h2-sub">Cadastre o cliente e cole o token da API dele para buscar os dados direto da plataforma.</span></div></div>
         <div class="card-corpo">
           <div class="grade-2" style="align-items:end">
             <div class="campo-bloco"><label class="campo-rotulo" for="cli-nome">Nome do cliente (empresa)</label><input class="campo" id="cli-nome" data-campo="cli-nome" value="${esc(f.nome)}" autocomplete="off" maxlength="120"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="cli-grupo">Grupo de veículos</label><input class="campo" id="cli-grupo" data-campo="cli-grupo" value="${esc(f.grupo)}" autocomplete="off" maxlength="120"></div>
           </div>
-          <div class="campo-bloco" style="margin-top:12px"><label class="campo-rotulo" for="cli-obs">Observações</label><input class="campo" id="cli-obs" data-campo="cli-obs" value="${esc(f.obs)}" autocomplete="off" maxlength="200"></div>
+          <div class="grade-2" style="align-items:end;margin-top:12px">
+            <div class="campo-bloco"><label class="campo-rotulo" for="cli-token">Token da API Gobrax deste cliente</label><input type="password" class="campo" id="cli-token" data-token autocomplete="off" spellcheck="false" placeholder="Cole aqui o token da API">
+              <span class="apoio">Opcional agora: dá para colar depois, na lista abaixo. O token fica só neste navegador.</span></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="cli-obs">Observações</label><input class="campo" id="cli-obs" data-campo="cli-obs" value="${esc(f.obs)}" autocomplete="off" maxlength="200"></div>
+          </div>
           <div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-primario" data-acao="cliente-salvar">Cadastrar cliente</button></div>
         </div>
       </section>

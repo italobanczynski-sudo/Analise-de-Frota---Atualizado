@@ -896,6 +896,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'excesso_rotacao', rotulo: '% do tempo em excesso de rotação', ex: '3,2', aliases: ['excesso_rotacao', 'excesso_de_rotacao', 'rotacao_excessiva'] },
     { key: 'excesso_velocidade', rotulo: 'Eventos de excesso de velocidade', ex: '2', aliases: ['excesso_velocidade', 'excesso_de_velocidade', 'eventos_velocidade'] },
     { key: 'tempo_excesso_velocidade', rotulo: '% do tempo acima da velocidade configurada', ex: '6,2', aliases: ['tempo_excesso_velocidade', 'tempo_em_excesso_de_velocidade', 'excesso_velocidade_pct'] },
+    { key: 'inicio_faixa_verde', rotulo: '% do tempo no início da faixa verde', ex: '80,6', aliases: ['inicio_faixa_verde', 'inicio_da_faixa_verde', 'extra_economic_range'] },
+    { key: 'final_faixa_verde', rotulo: '% do tempo no final da faixa verde', ex: '19,3', aliases: ['final_faixa_verde', 'final_da_faixa_verde', 'economic_range'] },
+    { key: 'eco_roll', rotulo: '% do tempo com Eco Roll / I-Roll', ex: '4,0', aliases: ['eco_roll', 'ecoroll', 'i_roll'] },
+    { key: 'pressao_ideal', rotulo: '% do tempo com o pedal na pressão ideal', ex: '70,6', aliases: ['pressao_ideal', 'pressao_pedal_ideal'] },
+    { key: 'pressao_atencao', rotulo: '% do tempo com o pedal em atenção', ex: '15,0', aliases: ['pressao_atencao', 'pressao_pedal_atencao'] },
     { key: 'piloto_automatico', rotulo: '% do tempo com piloto automático', ex: '12,0', aliases: ['piloto_automatico', 'cruise_control', 'piloto_automatico_pct'] },
     { key: 'freio_motor', rotulo: '% do tempo com freio motor', ex: '8,6', aliases: ['freio_motor', 'freio_motor_pct', 'engine_brake'] },
     { key: 'frenagens', rotulo: 'Frenagens bruscas', ex: '1', aliases: ['frenagens', 'frenagens_bruscas', 'freadas', 'freadas_bruscas', 'frenagem_brusca'] },
@@ -932,6 +937,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'excesso_rotacao', grupo: 'conducao', label: 'Excesso de rotação', desc: 'Tempo acima da faixa de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
     { key: 'excesso_velocidade', grupo: 'conducao', label: 'Excesso de velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'excesso_velocidade', den: 'km', mult: 100, var: 'pct' },
     { key: 'tempo_excesso_velocidade', grupo: 'conducao', label: 'Tempo em excesso de velocidade', desc: 'Tempo acima da velocidade configurada', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'tempo_excesso_velocidade', peso: 'horas', var: 'pp' },
+    { key: 'inicio_faixa_verde', grupo: 'conducao', label: 'Início da faixa verde', desc: 'Parte mais econômica da faixa verde', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'inicio_faixa_verde', peso: 'horas', var: 'pp' },
+    { key: 'final_faixa_verde', grupo: 'conducao', label: 'Final da faixa verde', desc: 'Parte alta da faixa verde', un: '%', casas: 1, melhor: 0, tipo: 'media', col: 'final_faixa_verde', peso: 'horas', var: 'pp' },
+    { key: 'eco_roll', grupo: 'conducao', label: 'Eco Roll / I-Roll', desc: 'Tempo em roda livre', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'eco_roll', peso: 'horas', var: 'pp' },
+    { key: 'pressao_ideal', grupo: 'conducao', label: 'Pedal na pressão ideal', desc: 'Tempo com o acelerador no range ideal', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'pressao_ideal', peso: 'horas', var: 'pp' },
+    { key: 'pressao_atencao', grupo: 'conducao', label: 'Pedal em atenção', desc: 'Tempo com o acelerador no range de atenção', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_atencao', peso: 'horas', var: 'pp' },
     { key: 'piloto_automatico', grupo: 'conducao', label: 'Piloto automático', desc: 'Tempo com piloto automático ativo', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'piloto_automatico', peso: 'horas', var: 'pp' },
     { key: 'freio_motor', grupo: 'conducao', label: 'Freio motor', desc: 'Tempo com freio motor, sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'freio_motor', peso: 'horas', var: 'pp' },
     { key: 'frenagens', grupo: 'conducao', label: 'Frenagens bruscas', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
@@ -1187,13 +1197,14 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     };
   }
 
-  // Evoluiu / Estável / Regrediu — pela Nota Gobrax (±2 pts); sem nota, pela média km/l (±2%)
-  const LIMIAR = { nota: 2, kml: 0.02 };
+  // Evoluiu / Estável / Regrediu — pela Nota Gobrax (±2 pts); sem nota, pela média km/l (±2%); sem os dois (API só de performance), pela faixa verde (±2 p.p.)
+  const LIMIAR = { nota: 2, kml: 0.02, faixa_verde: 2 };
   function statusEvolucao(base, a, b) {
-    const k = base.indicadores.some((i) => i.key === 'nota') ? 'nota' : 'kml';
+    const tem = (key) => base.indicadores.some((i) => i.key === key);
+    const k = tem('nota') ? 'nota' : tem('kml') ? 'kml' : tem('faixa_verde') ? 'faixa_verde' : 'nota';
     const va = a[k], vb = b[k];
     if (va === null || va === undefined || vb === null || vb === undefined) return { status: 'sembase', delta: null, ind: k };
-    const delta = k === 'nota' ? va - vb : vb ? (va - vb) / vb : 0;
+    const delta = k === 'kml' ? (vb ? (va - vb) / vb : 0) : va - vb;
     const lim = LIMIAR[k];
     return { status: delta >= lim ? 'evoluiu' : delta <= -lim ? 'regrediu' : 'estavel', delta: va - vb, ind: k };
   }
@@ -1874,6 +1885,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 16, data: '2026-10-21', titulo: 'Mais indicadores da performance', texto: 'A API de performance agora traz também início e final da faixa verde, Eco Roll / I-Roll e o pedal na pressão ideal e em atenção. Os dados da Xtsul passaram a cobrir 90 dias, para comparar com o período anterior.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 15, data: '2026-10-21', titulo: 'Motoristas e veículos separados certo', texto: 'Veículos e grupos e Veículo individual agora listam placas (com quem dirigiu ao lado), e Motoristas lista só pessoas: placa sem motorista identificado não vira mais motorista. Com dados só de performance, quem teve horas em movimento conta como rodando, e indicadores sem nenhum valor (ex.: km e nota) saem das telas.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 14, data: '2026-10-21', titulo: 'Calendário para escolher os dias', texto: 'Na barra de período, o botão Calendário abre os meses: escolha um dia, uma semana, um mês ou um intervalo livre, e compare com o dia anterior, a semana anterior, o mês anterior ou qualquer período. Em Todo o período aparece a evolução geral, semana a semana ou mês a mês.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 13, data: '2026-10-21', titulo: 'Dados da Xtsul pela API', texto: 'Os últimos 30 dias da Xtsul Transportes entraram pela API: motoristas, veículos e indicadores de condução da performance. Km, litros, odômetro e premiação ainda não vêm para este token.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -2553,6 +2565,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // Roda com a base de veículos no lugar da de motoristas (ver comContexto): período, comparação e status usam o mesmo motor do resto do painel.
   const COLS_VEIC = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['litros', 'Consumo (L)'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['embalo', 'Embalo'],
     ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['excesso_rotacao', 'Acima do verde'], ['tempo_excesso_velocidade', 'Excesso de velocidade (tempo)'],
+    ['inicio_faixa_verde', 'Início da faixa verde'], ['eco_roll', 'Eco Roll'], ['pressao_ideal', 'Pedal ideal'], ['pressao_atencao', 'Pedal em atenção'],
     ['piloto_automatico', 'Piloto automático'], ['freio_motor', 'Freio motor'], ['frenagens', 'Freadas /100 km'],
     ['frenagens_alta', 'Freadas em alta vel. /100 km'], ['velocidade_media', 'Velocidade média']];
   const DIM_SEM = { grupo: 'Sem grupo', modelo: 'Sem modelo', filial: 'Sem filial', tipo: 'Sem tipo' };
@@ -4107,7 +4120,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // Um dia de estatísticas + performance → CSV no layout do painel (uma linha por veículo; parado entra com 0 km)
   // Performance: % do tempo em movimento em cada indicador; o CPF dos motoristas é descartado aqui, só o nome segue.
-  const PERF_COLS = [['faixa_verde', 'greenRange'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
+  const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
     ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
   const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
   // Mais de um motorista no dia: fica quem dirigiu por mais tempo (somar a linha para todos contaria os km e as horas em dobro)

@@ -91,9 +91,14 @@ Usa a mesma janela diária das estatísticas e é juntada a elas pela placa. Se 
 | `indicators.speeding.percentage` | `tempo_excesso_velocidade` |
 | `indicators.cruiseControl.percentage` | `piloto_automatico` |
 | `indicators.engineBrake.percentage` | `freio_motor` |
+| `indicators.extraEconomicRange.percentage` | `inicio_faixa_verde` |
+| `indicators.economicRange.percentage` | `final_faixa_verde` |
+| `indicators.ecoRoll.percentage` | `eco_roll` |
+| `indicators.pedalPressureOnLow.percentage` | `pressao_ideal` |
+| `indicators.pedalPressureOnMid.percentage` | `pressao_atencao` |
 | `indicators.movement.duration` | `horas` (minutos ÷ 60) |
 | `score` | `nota` (só entre 0 e 100) |
-| `drivers[].driverName` | `motorista` (o CPF é descartado) |
+| `drivers[].driverName` | `motorista`: com mais de um no dia, fica quem dirigiu por mais tempo; sem motorista, o dia entra só no veículo (o CPF é descartado) |
 
 ### `GET v2/vehicle-odometer`: odômetro
 
@@ -139,6 +144,10 @@ Detalhes da resposta da performance:
 - Não existe nota geral (`score`) no registro. Cada indicador traz o próprio `score`, por isso a coluna `nota` fica vazia.
 - A pressão crítica do pedal vem como `pedalPressureOnHig`, sem o "h" final. O painel e o script aceitam os dois nomes.
 - `movement.duration` vem em minutos.
+- A pressão crítica do pedal vem como `pedalPressureOnHig` (sem o "h"); o painel aceita os dois nomes.
+- Sem nota e sem km/l, o status de cada motorista e veículo (evoluiu, estável, regrediu) usa a faixa verde: ±2 p.p. contra o período anterior.
+- Sem km, conta como rodando quem teve tempo em movimento, e as médias usam as horas como peso.
+- Modelo da resposta, com os nomes dos campos e sem dados reais: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","drivers":[{"driverName":"","cpf":"","startDate":"","endDate":""}],"indicators":{"movement":{"duration":0,"percentage":0,"score":0}, …}}]}`.
 - Sem as estatísticas, o script monta as linhas só com a performance: placa, motorista, horas e indicadores, sem km e sem litros. Conta como "rodou" quem teve tempo em movimento.
 - Os erros vêm em `{"success": false, "data": {"code", "description"}}`; a documentação da performance cita também `{"errorCode", "errorDescription"}`.
 

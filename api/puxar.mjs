@@ -81,7 +81,7 @@ function motoristaPrincipal(p) {
   });
   return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
 }
-const PERF_COLS = [['faixa_verde', 'greenRange'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
+const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
 // Um dia de estatísticas + performance → linhas no layout do painel. O CPF dos motoristas é descartado aqui.
 function diaParaLinhas(dia, estat, perf, cli) {

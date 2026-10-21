@@ -4198,10 +4198,17 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const rem = E.clienteRemover === fc.id
         ? `<span class="apoio" style="margin-right:6px">Apaga também as planilhas.</span><button type="button" class="btn" data-acao="cliente-remover-cancelar">Cancelar</button> <button type="button" class="btn btn-destrutivo" data-acao="cliente-remover-confirmar">Excluir</button>`
         : `<a class="btn" href="#/cliente/${encodeURIComponent(fc.id)}" style="text-decoration:none">Abrir perfil e anexar planilhas</a> <button type="button" class="btn-link peq" data-acao="cliente-remover" data-id="${esc(fc.id)}">Excluir</button>`;
+      const sl = slugCli(fc.nome), perfil = '#/cliente/' + encodeURIComponent(fc.id);
+      const tok = tokenDe(fc.nome) && E.apiTrocarCli !== sl
+        ? `<span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="badge badge-ok">Token salvo</span><a class="btn-link peq" href="${perfil}">Buscar dados</a>
+            <button type="button" class="btn-link peq" data-acao="api-token-trocar" data-cli="${esc(fc.nome)}">Trocar</button><button type="button" class="btn-link peq" data-acao="api-token-esquecer" data-cli="${esc(fc.nome)}">Esquecer</button></span>`
+        : `<span style="display:flex;gap:6px;align-items:center"><input type="password" class="campo" id="api-token-${sl}" data-token autocomplete="off" spellcheck="false" placeholder="Cole o token da API" aria-label="Token da API de ${esc(fc.nome)}" style="min-width:150px;max-width:220px">
+            <button type="button" class="btn" data-acao="api-token-salvar" data-cli="${esc(fc.nome)}" data-inp="api-token-${sl}">Salvar</button></span>`;
       return `<tr>
         <td><a href="#/cliente/${encodeURIComponent(fc.id)}" style="text-decoration:none"><span class="pessoa">${avatar(fc.nome, 32)}<span style="display:flex;flex-direction:column;min-width:0"><b style="font-weight:600">${esc(fc.nome)}</b>${fc.grupo ? `<span class="apoio">${esc(fc.grupo)}</span>` : ''}</span></span></a></td>
         <td>${cel(mot, nMot, nMot === 1 ? 'motorista' : 'motoristas')}</td>
         <td>${cel(vei, nVei, nVei === 1 ? 'veículo' : 'veículos')}</td>
+        <td>${tok}</td>
         <td class="dir" style="white-space:nowrap">${rem}</td></tr>`;
     }).join('');
     return `
@@ -4222,7 +4229,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       <section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes</h2><span class="h2-sub">${E.clientes.length} ${E.clientes.length === 1 ? 'cliente' : 'clientes'} · ${E.planEmDb ? 'as planilhas ficam na base compartilhada: quem acessa o painel vê os mesmos dados, ao vivo.' : 'as planilhas ficam salvas neste navegador, separadas por cliente.'}</span></div></div>
         ${E.clientes.length
-          ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Motoristas</th><th>Veículos</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`
+          ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Motoristas</th><th>Veículos</th><th>Token da API <span class="apoio" style="font-weight:400">(fica só neste navegador)</span></th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`
           : `<div class="card-corpo"><div class="vazio"><span class="vazio-titulo">${E.clientesPronto ? 'Nenhum cliente cadastrado' : 'Carregando clientes…'}</span><span class="apoio">Cadastre o primeiro no formulário acima.</span></div></div>`}
       </section>
       ${cartaoRelacionamento(true)}`;
@@ -4394,9 +4401,10 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? painelExportacao() : '');
-    const tokEl = document.getElementById('api-token'), tokDigitado = tokEl ? tokEl.value : '';   // o token digitado nunca vai para o HTML
+    // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
+    const tokDigitados = [...document.querySelectorAll('#api-token, input[data-token]')].filter((i) => i.value).map((i) => [i.id, i.value]);
     document.getElementById('app').innerHTML = html;
-    if (tokDigitado && document.getElementById('api-token')) document.getElementById('api-token').value = tokDigitado;
+    tokDigitados.forEach(([id, v]) => { const i = document.getElementById(id); if (i) i.value = v; });
     const chaveAnim = [E.rota.tela, E.rota.id, E.cliente, E.A && E.A.ini, E.A && E.A.fim, E.base ? E.base.linhas.length : 0].join('|');
     const pag = document.getElementById('pagina');
     if (pag && chaveAnim !== ultimaAnim) { ultimaAnim = chaveAnim; pag.classList.add('anima'); animarNumeros(pag); } else if (pag) pag.classList.add('sem-anima');
@@ -4881,14 +4889,21 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'plan-enviar-local': () => enviarLocal(),
     // API Gobrax: o token vai só para o armazenamento deste navegador, nunca para a tela ou para a base
     'api-token-salvar': (el) => {
-      const inp = document.getElementById('api-token'), v = inp ? inp.value.trim() : '';
+      const inp = document.getElementById(el.dataset.inp || 'api-token'), v = inp ? inp.value.trim() : '';
       if (!v) { toast('Cole o token da API antes de salvar.', 'erro'); return; }
       if (inp) inp.value = '';
       if (!armazem.gravar(chaveToken(el.dataset.cli), v)) { toast('Este navegador não deixou guardar o token (janela privada?).', 'erro'); return; }
-      E.apiTrocar = false; render(); toast('Token salvo neste navegador.');
+      E.apiTrocar = false; E.apiTrocarCli = null; render(); toast('Token de ' + el.dataset.cli + ' salvo neste navegador.');
     },
-    'api-token-trocar': () => { E.apiTrocar = true; render(); const i = document.getElementById('api-token'); if (i) i.focus(); },
-    'api-token-esquecer': () => { const f = focoPorSlug(E.rota.id); if (f) armazem.apagar(chaveToken(f.nome)); E.apiTrocar = false; render(); toast('Token apagado deste navegador.'); },
+    'api-token-trocar': (el) => {
+      const id = el.dataset.cli ? 'api-token-' + slugCli(el.dataset.cli) : 'api-token';
+      if (el.dataset.cli) E.apiTrocarCli = slugCli(el.dataset.cli); else E.apiTrocar = true;
+      render(); const i = document.getElementById(id); if (i) i.focus();
+    },
+    'api-token-esquecer': (el) => {
+      const f = el.dataset.cli ? { nome: el.dataset.cli } : focoPorSlug(E.rota.id);
+      if (f) armazem.apagar(chaveToken(f.nome)); E.apiTrocar = false; E.apiTrocarCli = null; render(); toast('Token apagado deste navegador.');
+    },
     'api-buscar': (el) => buscarApi(el.dataset.cli),
     'prem-mes': (el) => { E.premMes = el.dataset.mes; render(); },
     'exportar-premiacao': () => {

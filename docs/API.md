@@ -132,8 +132,8 @@ Os dados aparecem na tela Premiação.
 |---|---|
 | `v1/vehicle-performance` | Funciona. Documentação oficial: https://documenter.getpostman.com/view/27100945/2s93eU4FLe |
 | `v1/vehicle-statistics` | HTTP 400 com corpo vazio, mesmo com placa e com outros formatos de data. Não está na documentação pública; confirmar com o suporte se o token precisa de liberação |
-| `v2/vehicle-odometer` | HTTP 400 com corpo vazio, como as estatísticas |
-| `v2/driversOverview` | HTTP 500, código 9 ("Erro não esperado"), com `startDate` em `MM-AAAA`. Documentação: https://documenter.getpostman.com/view/27100945/2s9Ye8hvPt |
+| `v2/vehicle-odometer` | HTTP 400 com corpo vazio, como as estatísticas. Documentação: https://documenter.getpostman.com/view/27100945/2s93sf2BRK. Testado no formato exato da documentação, com e sem placa (com e sem hífen), espaço codificado ou não e na porta 8888: sempre 400 |
+| `v2/driversOverview` | HTTP 500, código 9 ("Erro não esperado"), para qualquer intervalo de meses (testado de 2024 a 2026). Com o mesmo mês no início e no fim, responde 400, código 67 ("Datas fornecidas inválidas"). Documentação: https://documenter.getpostman.com/view/27100945/2s9Ye8hvPt |
 
 Detalhes da resposta da performance:
 - Não existe nota geral (`score`) no registro. Cada indicador traz o próprio `score`, por isso a coluna `nota` fica vazia.

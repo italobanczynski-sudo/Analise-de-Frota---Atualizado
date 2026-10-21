@@ -506,6 +506,10 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .dropzone.sobre { border-color: var(--amarelo); background: var(--creme); }
 .lista-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 24px; }
 .lista-cols .linha { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--apoio); font-size: 12px; }
+.doc-api code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--tinta); background: var(--apoio); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.doc-api .metodo { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; font-weight: 700; letter-spacing: .04em; background: var(--preto); color: #fff; padding: 2px 7px; border-radius: 4px; }
+.doc-api p, .doc-api li { font-size: 13px; line-height: 1.55; color: var(--texto-2); margin: 0; }
+.doc-api ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .lista-cols code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11.5px; color: var(--tinta); }
 .spinner { width: 14px; height: 14px; border-radius: 999px; border: 2px solid #E8EAED; border-top-color: var(--preto); animation: gbx-spin 800ms linear infinite; display: inline-block; }
 
@@ -1826,6 +1830,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
     { tela: 'comparativo', href: '#/comparativo', icone: 'documento', rot: 'Comparativo de períodos' },
+    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente'] }
   ];
   const navAtivo = (n) => (n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo);
@@ -1857,6 +1862,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 11, data: '2026-10-21', titulo: 'Aba API Gobrax', texto: 'Nova aba no menu com a documentação da API: endpoints, parâmetros, campos usados, erros, limites e a situação da busca de cada cliente.', href: '#/api', link: 'Abrir a aba API' },
     { id: 10, data: '2026-10-21', titulo: 'Tela inicial em branco', texto: 'Sem dados carregados, a Visão geral fica em branco, sem o quadro de instruções.', href: '#/', link: 'Abrir Visão geral' },
     { id: 9, data: '2026-10-21', titulo: 'Erro do token mais claro', texto: 'O token é limpo ao salvar (tira aspas, espaços e "Bearer" colado junto), e quando a API recusa, o painel mostra o motivo que ela deu. A busca também respeita o limite de 1 chamada por segundo da API.', href: '#/config', link: 'Abrir Configurações' },
     { id: 8, data: '2026-10-21', titulo: 'Dados da API entram sozinhos', texto: 'Salvou o token do cliente, a busca começa na hora: últimos 30 dias de estatísticas, performance, motoristas, odômetro e premiação. Com o painel aberto, os dados se atualizam a cada hora. O relatório geral agora também sai da API, sem planilha.', href: '#/config', link: 'Abrir Configurações' },
@@ -4126,6 +4132,67 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   setTimeout(verificarAuto, 1500);
   setInterval(verificarAuto, 60000);
 
+  // ---------- Tela: documentação da API (mesmo conteúdo de docs/API.md) ----------
+  const API_DOC = [
+    { metodo: 'GET', caminho: 'v1/vehicle-statistics', titulo: 'Estatísticas por veículo',
+      uso: 'Uma chamada por dia do período. Cada veículo vira uma linha da planilha de veículos do dia; quem rodou (km > 0) entra também na planilha de motoristas, que alimenta a Visão geral.',
+      params: [['startDate', 'Início do dia de Brasília em UTC: <code>AAAA-MM-DD 03:00:00</code>'], ['endDate', 'Fim do dia em UTC: <code>AAAA-MM-DD+1 02:59:59</code>'], ['vehicleIdentification', 'Vazio = todos os veículos do token']],
+      campos: [['vehicleIdentification', 'veiculo (placa)'], ['totalMileage', 'km'], ['totalConsumption', 'litros'], ['totalBreaking', 'frenagens'], ['totalBreakingOnHighSpeed', 'frenagens_alta'], ['averageSpeed', 'velocidade_media'], ['odometer', 'odometro']],
+      onde: 'Veículos e grupos, Veículo individual, Visão geral, Desenvolvimento da frota' },
+    { metodo: 'GET', caminho: 'v1/vehicle-performance', titulo: 'Performance por veículo',
+      uso: 'Mesma janela diária das estatísticas, juntada pela placa. Se o token não tiver acesso ou a chamada falhar, as estatísticas do dia entram assim mesmo e o aviso aparece no perfil do cliente.',
+      params: [['startDate / endDate', 'Iguais aos das estatísticas'], ['vehicleIdentification', 'Vazio = todos']],
+      campos: [['indicators.greenRange.percentage', 'faixa_verde'], ['indicators.leverage.percentage', 'embalo'], ['indicators.idle.percentage', 'motor_ocioso'], ['indicators.pedalPressureOnHigh.percentage', 'pressao_acelerador'], ['indicators.powerRange.percentage', 'excesso_rotacao'], ['indicators.speeding.percentage', 'tempo_excesso_velocidade'], ['indicators.cruiseControl.percentage', 'piloto_automatico'], ['indicators.engineBrake.percentage', 'freio_motor'], ['indicators.movement.duration', 'horas (minutos ÷ 60)'], ['score', 'nota (0 a 100)'], ['drivers[].driverName', 'motorista (o CPF é descartado)']],
+      onde: 'Indicadores de condução em todas as telas de frota e motoristas' },
+    { metodo: 'GET', caminho: 'v2/vehicle-odometer', titulo: 'Odômetro',
+      uso: 'Último odômetro de cada veículo nos últimos 30 dias. Guarda um documento por cliente, substituído a cada busca.',
+      params: [['startDate / endDate', 'Agora − 30 dias até agora, em UTC'], ['vehicleIdentification', 'Vazio = todos']],
+      campos: [['vehicleIdentification', 'placa'], ['odometer', 'odômetro'], ['lastUpdated', 'última comunicação']],
+      onde: 'Veículos e grupos → Odômetro e comunicação' },
+    { metodo: 'GET', caminho: 'v2/driversOverview', titulo: 'Scores e premiação',
+      uso: 'Nota, km e bonificação de cada motorista por mês. Guarda um documento por cliente e mês.',
+      params: [['startDate / endDate', 'Mês no formato <code>MM-AAAA</code>'], ['documentNumbers', 'Vazio = todos os motoristas']],
+      campos: [['Name', 'nome'], ['Overview[].Date', 'mês'], ['Overview[].Score', 'nota'], ['Overview[].TotalKM', 'km'], ['Overview[].Reward', 'bonificação'], ['DocumentNumber / Id', 'descartados antes de gravar']],
+      onde: 'Premiação' }
+  ];
+  const API_ERROS = [
+    ['200', 'Sucesso', 'Importa os registros (campo <code>records</code> ou <code>data</code>, ou a lista direto).'],
+    ['401 · código 61', 'Token inválido', 'Para a busca e mostra o aviso no perfil. Copie o token inteiro de novo ou peça outro ao suporte.'],
+    ['403 · código 71', 'Acesso não permitido para o cliente', 'O token não enxerga aquele dado. Na performance, segue só com as estatísticas.'],
+    ['429 · código 76', 'Limite de chamadas', 'Espera o tempo do cabeçalho <code>Retry-After</code> e tenta de novo, até 8 vezes.'],
+    ['Outros', 'Erro da API', 'Mostra o status e a descrição devolvida.']
+  ];
+  function telaApi() {
+    const tab = (cab, linhas) => `<div class="tabela-wrap"><table class="tabela"><thead><tr>${cab.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    const cl = E.clientes.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+    const status = cl.length ? tab(['Cliente', 'Token neste navegador', 'Última busca', 'Situação', ''], cl.map((c) => {
+      const m = lerAuto(c.nome), st = E.apiStatus && ckey(E.apiStatus.cli) === ckey(c.nome) ? E.apiStatus : null, tem = !!tokenDe(c.nome);
+      const quando = m.em ? new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+      const sit = st && st.rodando ? '<span class="apoio"><span class="spinner"></span> ' + esc(st.msg) + '</span>' : st && st.erro ? '<span class="badge badge-critico">Parou</span> <span class="apoio">' + esc(st.erro) + '</span>' : m.dia ? '<span class="badge badge-ok">Dados até ' + D.br(m.dia) + '</span>' : '<span class="mudo">—</span>';
+      return [`<b style="font-weight:600">${esc(c.nome)}</b>`, tem ? '<span class="badge badge-ok">Salvo</span>' : '<span class="badge badge-vazio">Sem token</span>', quando, sit, `<a class="btn-link peq" href="#/cliente/${encodeURIComponent(c.id)}">${tem ? 'Abrir perfil' : 'Salvar token'}</a>`];
+    })) : '<p>Nenhum cliente cadastrado. Cadastre em <a class="btn-link" href="#/config">Configurações</a> e informe o token da API.</p>';
+    const card = (titulo, sub, corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${titulo}</h2>${sub ? `<span class="h2-sub">${sub}</span>` : ''}</div></div><div class="card-corpo" style="gap:12px">${corpo}</div></section>`;
+    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">API Gobrax</h1><span class="sub">Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em docs/API.md.</span></div></div>
+      <div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
+      ${card('Situação por cliente', 'O token fica só neste navegador e nunca aparece na tela.', status)}
+      ${card('Como funciona', '', `<ul>
+        <li><b>Base:</b> <code>${API_BASE}</code></li>
+        <li><b>Autenticação:</b> cabeçalho <code>Authorization: Bearer &lt;token&gt;</code>, um token por cliente. Ao salvar, o painel tira aspas, espaços, quebras de linha e um "Bearer" colado junto.</li>
+        <li><b>Busca automática:</b> assim que o token é salvo, o painel busca os últimos ${DIAS_AUTO} dias. Com o painel aberto, repete a cada hora, a partir do último dia buscado (refeito, porque pode ter vindo parcial).</li>
+        <li><b>Busca manual:</b> no perfil do cliente, card "Buscar dados pela API Gobrax", até 93 dias por vez. As buscas entram numa fila e rodam uma de cada vez.</li>
+        <li><b>Fuso:</b> cada dia é o dia de Brasília (UTC−3), convertido para UTC na consulta.</li>
+        <li><b>Limites:</b> rajada de 10 chamadas, depois 1 por segundo. O painel espera 120 ms entre chamadas e respeita o <code>Retry-After</code> do 429.</li>
+        <li><b>Onde os dados ficam:</b> no painel do Claude, na base compartilhada (coleção <code>planilhas</code>); no GitHub Pages, só neste navegador.</li>
+        <li><b>Segurança:</b> o token fica em <code>localStorage</code> (<code>gbx-api-token:&lt;cliente&gt;</code>), nunca na base compartilhada, no código nem no HTML. O CPF e o id dos motoristas são descartados antes de gravar. Nunca cole um token em chat, e-mail ou ticket; se isso acontecer, peça um novo.</li>
+      </ul>`)}
+      ${API_DOC.map((e) => card(`<span style="display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="metodo">${e.metodo}</span><code style="font-size:13px">${e.caminho}</code><span>${e.titulo}</span></span>`, e.uso,
+        `<span class="campo-rotulo">Parâmetros</span>${tab(['Parâmetro', 'Valor enviado'], e.params.map(([p, v]) => [`<code>${p}</code>`, v]))}
+         <span class="campo-rotulo">Campos usados</span>${tab(['Campo da API', 'No painel'], e.campos.map(([p, v]) => [`<code>${p}</code>`, esc(v)]))}
+         <p><b>Aparece em:</b> ${e.onde}.</p>`)).join('')}
+      ${card('Respostas e erros', '', tab(['Resposta', 'Significado', 'O que o painel faz'], API_ERROS))}
+      </div>`;
+  }
+
   function cartaoApi(nome) {
     if (!E.apiForm || E.apiForm.cli !== nome) E.apiForm = { cli: nome, ini: D.somar(D.hoje(), -6), fim: D.hoje(), estat: true, odo: true, prem: true };
     const f = E.apiForm, tem = !!tokenDe(nome);
@@ -4439,8 +4506,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao'].includes(E.rota.tela);
+    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao', 'api'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
@@ -4479,7 +4546,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 

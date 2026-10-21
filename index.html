@@ -3763,13 +3763,13 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   function telaSemDados() {
     if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">As planilhas que a equipe anexou aparecem aqui em instantes.</span></div></div></section>`;
     const passos = [['1', 'Abra o perfil do cliente', 'No menu lateral, em Configurações, escolha o cliente (ou cadastre um novo).'],
-      ['2', 'Anexe as planilhas', 'A de motoristas e a de veículos exportadas da plataforma, em Excel ou CSV.'],
+      ['2', 'Anexe as planilhas ou busque pela API', 'As planilhas de motoristas e de veículos exportadas da plataforma, ou o token da API Gobrax do cliente.'],
       ['3', 'Abra o relatório', 'A Visão geral monta o resultado, a evolução e os pontos de ganho da frota.']];
     return `<section class="hero-geral hero-vazio">
       <div class="hero-txt"><span class="hero-eyebrow">Relatório de desempenho da frota</span>
         <h1 class="hero-titulo">${E.semCliente ? 'Sem dados para este filtro' : E.veic ? 'Falta a planilha de motoristas' : 'Ainda não há dados carregados'}</h1>
         <span class="hero-sub">${E.semCliente ? 'Não há dados de ' + esc(descFiltro() || E.cliente) + ' nas planilhas importadas. Escolha outro filtro ou anexe a planilha no perfil do cliente.' : (E.veic ? 'A planilha de veículos já está carregada. Anexe também a de motoristas, no perfil do cliente (Configurações), para montar o relatório. Enquanto isso, veja Veículos e grupos.' : 'Cadastre o cliente em Configurações e anexe as planilhas no perfil dele para montar o relatório.')}</span>
-        <div class="hero-acoes" style="margin-top:6px"><a class="hero-btn hero-btn-p" href="${hrefDados()}">Anexar planilhas do cliente</a>${E.veic && !E.semCliente ? '<a class="hero-btn" href="#/veiculos">Ver veículos e grupos</a>' : ''}</div></div>
+        <div class="hero-acoes" style="margin-top:6px"><a class="hero-btn hero-btn-p" href="${hrefDados()}">Anexar planilhas do cliente</a><a class="hero-btn" href="${hrefDados()}">Buscar pela API Gobrax</a>${E.veic && !E.semCliente ? '<a class="hero-btn" href="#/veiculos">Ver veículos e grupos</a>' : ''}</div></div>
     </section>
     <div class="passos">${passos.map(([n, t, d]) => `<div class="passo-i"><span class="passo-n">${n}</span><b>${t}</b><span>${d}</span></div>`).join('')}</div>`;
   }
@@ -4095,7 +4095,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const st = E.apiStatus && E.apiStatus.cli === nome ? E.apiStatus : null;
     const ck = (k, rot, dica) => `<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-campo="api-${k}" ${f[k] ? 'checked' : ''} style="margin-top:2px"><span><b style="font-weight:600">${rot}</b><span class="apoio" style="display:block">${dica}</span></span></label>`;
     const odo = docsApi('odometro', nome)[0], prem = docsApi('premiacao', nome).map((d) => d.data).sort();
-    return `<section class="card">
+    return `<section class="card" id="api-gobrax">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Buscar dados pela API Gobrax</h2>
         <span class="h2-sub">Preenche o painel direto da plataforma, sem planilha: estatísticas de cada veículo dia a dia, odômetro e premiação dos motoristas.</span></div></div>
       <div class="card-corpo">
@@ -4289,6 +4289,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       </div></div>
       ${retorno}
       ${retornoVeic}
+      ${cartaoApi(nome)}
       <div class="grade-2">
         <section class="card"><div class="card-corpo" style="display:flex;flex-direction:column;gap:14px">
           <div class="campo-bloco"><span class="campo-rotulo">Período da planilha de motoristas</span>
@@ -4318,7 +4319,6 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           </div>
         </section>
       </div>
-      ${cartaoApi(nome)}
       <section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Formato diário (CSV): colunas</h2>
           <span class="h2-sub">Só para CSV feito à mão. As exportações da plataforma (motoristas e veículos) entram direto, sem ajuste. O nome da coluna pode variar; colunas a mais são ignoradas.</span></div></div>

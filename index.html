@@ -1862,6 +1862,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 13, data: '2026-10-21', titulo: 'Dados da Xtsul pela API', texto: 'Os últimos 30 dias da Xtsul Transportes entraram pela API: motoristas, veículos e indicadores de condução da performance. Km, litros, odômetro e premiação ainda não vêm para este token.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 12, data: '2026-10-21', titulo: 'Script para puxar os dados da API', texto: 'No projeto, o token de cada cliente vai em api/.env e o comando node api/puxar.mjs puxa estatísticas, performance, odômetro e premiação. O painel do Claude não deixa a página chamar a API direto; o aviso agora explica isso.', href: '#/api', link: 'Ver na aba API' },
     { id: 11, data: '2026-10-21', titulo: 'Aba API Gobrax', texto: 'Nova aba no menu com a documentação da API: endpoints, parâmetros, campos usados, erros, limites e a situação da busca de cada cliente.', href: '#/api', link: 'Abrir a aba API' },
     { id: 10, data: '2026-10-21', titulo: 'Tela inicial em branco', texto: 'Sem dados carregados, a Visão geral fica em branco, sem o quadro de instruções.', href: '#/', link: 'Abrir Visão geral' },
@@ -3979,7 +3980,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (r.status === 429 && tentativa < 8) { await esperar(Math.max(1, Number(r.headers.get('Retry-After')) || 1) * 1000 + 100); continue; }
       if (!r.ok) {
         let corpo = null; try { corpo = await r.json(); } catch (e) { /* resposta sem JSON */ }
-        const cod = corpo && Number(corpo.code), desc = corpo && corpo.description ? String(corpo.description) : '';
+        const info = (corpo && corpo.data && typeof corpo.data === 'object' && !Array.isArray(corpo.data)) ? corpo.data : (corpo || {});
+        const cod = Number(info.code), desc = String(info.description || info.errorDescription || '');
         if (cod === 61 || r.status === 401) throw new Error('a API não aceitou o token (Token inválido). Copie o token de novo, inteiro, e salve outra vez; se continuar, peça um token novo ao suporte da Gobrax');
         if (cod === 71 || r.status === 403) throw new Error('o token não tem acesso a este dado (Acesso não permitido para o cliente)');
         throw new Error('a API respondeu ' + r.status + (desc ? ' (' + desc + ')' : ''));
@@ -4025,7 +4027,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const km = numApi(r.totalMileage) || 0, rodou = km > 0;
       const p = rodou ? perfPor.get(k) : null, ind = (p && p.indicators) || {};
       const nomes = [...new Set(((p && p.drivers) || []).map((d) => String((d && d.driverName) || '').trim()).filter(Boolean))];
-      const pct = (nome) => (ind[nome] ? n(ind[nome].percentage) : '');
+      const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
       const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
       const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
       const mov = ind.movement ? numApi(ind.movement.duration) : null;

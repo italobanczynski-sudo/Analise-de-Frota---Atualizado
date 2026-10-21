@@ -59,7 +59,8 @@ async function apiGet(caminho, params, token) {
     if (r.status === 429 && tentativa < 8) { await esperar(Math.max(1, Number(r.headers.get('Retry-After')) || 1) * 1000 + 100); continue; }
     if (!r.ok) {
       let corpo = null; try { corpo = await r.json(); } catch (e) { /* resposta sem JSON */ }
-      const cod = corpo && Number(corpo.code), desc = corpo && corpo.description ? String(corpo.description) : '';
+      const info = (corpo && corpo.data && typeof corpo.data === 'object' && !Array.isArray(corpo.data)) ? corpo.data : (corpo || {});
+      const cod = Number(info.code), desc = String(info.description || info.errorDescription || '');
       if (cod === 61 || r.status === 401) throw new Error('token inválido (a API não aceitou o token)');
       if (cod === 71 || r.status === 403) throw new Error('o token não tem acesso a este dado');
       throw new Error('a API respondeu ' + r.status + (desc ? ' (' + desc + ')' : ''));
@@ -81,18 +82,20 @@ function diaParaLinhas(dia, estat, perf, cli) {
   const perfPor = new Map();
   perf.forEach((r) => { const k = chavePlaca(r && r.vehicleIdentification); if (k && !perfPor.has(k)) perfPor.set(k, r); });
   const vistos = new Set(), veic = [], mot = [];
-  estat.forEach((r) => {
+  const soPerf = !estat.length;
+  (soPerf ? perf : estat).forEach((r) => {
     const placa = placaApi(r && r.vehicleIdentification), k = chavePlaca(placa);
     if (!k || vistos.has(k)) return;
     vistos.add(k);
-    const km = numApi(r.totalMileage) || 0, rodou = km > 0;
-    const p = rodou ? perfPor.get(k) : null, ind = (p && p.indicators) || {};
+    const pk = perfPor.get(k), movK = pk && pk.indicators && pk.indicators.movement ? numApi(pk.indicators.movement.duration) : null;
+    const km = numApi(r.totalMileage) || 0, rodou = soPerf ? (movK || 0) > 0 : km > 0;
+    const p = rodou ? pk : null, ind = (p && p.indicators) || {};
     const nomes = [...new Set(((p && p.drivers) || []).map((d) => String((d && d.driverName) || '').trim()).filter(Boolean))];
-    const pct = (nome) => (ind[nome] ? n(ind[nome].percentage) : '');
+    const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
     const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
     const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
     const mov = ind.movement ? numApi(ind.movement.duration) : null;
-    const lin = [br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+    const lin = [br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), soPerf ? '' : n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
       rodou ? n(r.averageSpeed) : '', n(r.odometer)]
       .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
     veic.push(lin);
@@ -120,13 +123,15 @@ async function puxar(c) {
   const gravar = (id, doc) => fs.writeFileSync(path.join(dir, id + '.json'), JSON.stringify(doc));
   const fim = hoje(), ini = somar(fim, -(DIAS - 1));
   const csv = { veiculos: [], motoristas: [] };
-  let cab = null, perfOk = true, dias = 0;
+  let cab = null, perfOk = true, estatOk = true, dias = 0;
+  const avisos = [];
   for (let d = ini; d <= fim; d = somar(d, 1)) {
     process.stdout.write('  ' + br(d) + '\r');
     const jan = Object.assign(janelaUTC(d), { vehicleIdentification: '' });
-    const estat = registros(await apiGet('v1/vehicle-statistics', jan, token));
-    let perf = [];
-    if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { perfOk = false; console.warn('  performance não veio: ' + e.message); } }
+    let estat = [], perf = [];
+    if (estatOk) { try { estat = registros(await apiGet('v1/vehicle-statistics', jan, token)); } catch (e) { if (/token inválido/.test(e.message)) throw e; estatOk = false; avisos.push('estatísticas (km e litros) não vieram: ' + e.message); } }
+    if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { if (/token inválido/.test(e.message)) throw e; perfOk = false; avisos.push('performance não veio: ' + e.message); } }
+    if (!estatOk && !perfOk) throw new Error(avisos.join('; '));
     const { cols, veic, mot } = diaParaLinhas(d, estat, perf, cli);
     if (!veic.length) continue;
     dias++;
@@ -140,11 +145,13 @@ async function puxar(c) {
     });
   }
   const agora = Date.now();
-  const odo = registros(await apiGet('v2/vehicle-odometer', { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token));
+  let odo = [];
+  try { odo = registros(await apiGet('v2/vehicle-odometer', { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token)); } catch (e) { avisos.push('odômetro não veio: ' + e.message); }
   const veiculos = odo.filter((r) => r && r.vehicleIdentification).map((r) => ({ placa: placaApi(r.vehicleIdentification), odometro: numApi(r.odometer), coletado: String(r.lastUpdated || '') }));
-  gravar(idPlan('odometro', cli, 'atual', 1), { alvo: 'odometro', cliente: cli, data: fim, veiculos, em });
+  if (veiculos.length) gravar(idPlan('odometro', cli, 'atual', 1), { alvo: 'odometro', cliente: cli, data: fim, veiculos, em });
   const mes = (s) => s.slice(5, 7) + '-' + s.slice(0, 4);
-  const j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(ini), endDate: mes(fim) }, token);
+  let j = [];
+  try { j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(ini), endDate: mes(fim) }, token); } catch (e) { avisos.push('premiação não veio: ' + e.message); }
   // só nome, nota, km e bonificação: CPF e id do motorista são descartados antes de gravar
   const porMes = {};
   registros(j).forEach((m) => {
@@ -160,7 +167,7 @@ async function puxar(c) {
   Object.keys(porMes).forEach((k) => gravar(idPlan('premiacao', cli, k, 1), { alvo: 'premiacao', cliente: cli, data: k, motoristas: porMes[k], em }));
   // planilhas para importar no painel (GitHub Pages ou Configurações → perfil do cliente)
   ['veiculos', 'motoristas'].forEach((alvo) => { if (csv[alvo].length) fs.writeFileSync(path.join(SAIDA, slugCli(cli) + '-' + alvo + '.csv'), '﻿' + [cab].concat(csv[alvo]).join('\n')); });
-  return { dias, veiculos: veiculos.length, meses: Object.keys(porMes).length, perfOk };
+  return { dias, veiculos: veiculos.length, meses: Object.keys(porMes).length, perfOk, estatOk, avisos };
 }
 
 const alvos = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));
@@ -170,8 +177,9 @@ for (const c of alvos) {
   console.log(c.cliente + ': últimos ' + DIAS + ' dias…');
   try {
     const r = await puxar(c);
-    console.log('  ok: ' + r.dias + ' dias com dados' + (r.perfOk ? ' (com performance)' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, premiação de ' + r.meses + ' meses.');
-  } catch (e) { falhas++; console.error('  erro: ' + e.message); }
+    console.log('\r  ok: ' + r.dias + ' dias com dados' + (r.estatOk ? '' : ' (só performance, sem km e litros)') + (r.perfOk ? '' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, premiação de ' + r.meses + ' meses.');
+    r.avisos.forEach((a) => console.warn('  aviso: ' + a));
+  } catch (e) { falhas++; console.error('\r  erro: ' + e.message); }
 }
 console.log('Arquivos em api/saida/.');
 process.exit(falhas ? 1 : 0);

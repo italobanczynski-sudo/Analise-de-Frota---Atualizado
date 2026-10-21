@@ -126,6 +126,22 @@ Traz a nota, o km e a bonificação de cada motorista por mês. O painel guarda 
 
 Os dados aparecem na tela Premiação.
 
+## O que a API respondeu de verdade (teste com o token da Xtsul, 21/10/2026)
+
+| Endpoint | Resultado |
+|---|---|
+| `v1/vehicle-performance` | Funciona. Documentação oficial: https://documenter.getpostman.com/view/27100945/2s93eU4FLe |
+| `v1/vehicle-statistics` | HTTP 400 com corpo vazio, mesmo com placa e com outros formatos de data. Não está na documentação pública; confirmar com o suporte se o token precisa de liberação |
+| `v2/vehicle-odometer` | HTTP 400 com corpo vazio, como as estatísticas |
+| `v2/driversOverview` | HTTP 500, código 9 ("Erro não esperado"), com `startDate` em `MM-AAAA`. Documentação: https://documenter.getpostman.com/view/27100945/2s9Ye8hvPt |
+
+Detalhes da resposta da performance:
+- Não existe nota geral (`score`) no registro. Cada indicador traz o próprio `score`, por isso a coluna `nota` fica vazia.
+- A pressão crítica do pedal vem como `pedalPressureOnHig`, sem o "h" final. O painel e o script aceitam os dois nomes.
+- `movement.duration` vem em minutos.
+- Sem as estatísticas, o script monta as linhas só com a performance: placa, motorista, horas e indicadores, sem km e sem litros. Conta como "rodou" quem teve tempo em movimento.
+- Os erros vêm em `{"success": false, "data": {"code", "description"}}`; a documentação da performance cita também `{"errorCode", "errorDescription"}`.
+
 ## Respostas e erros
 
 | Resposta | Significado | O que o painel faz |

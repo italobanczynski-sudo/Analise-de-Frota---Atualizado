@@ -15,6 +15,7 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 ## API Gobrax
 No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway-v3.gobrax.com.br:8889/api/`, `Authorization: Bearer <token>`):
 - `v1/vehicle-statistics`: uma chamada por dia (dia de Brasília convertido para UTC), entra como planilha de veículos.
+- `v1/vehicle-performance`: mesma janela diária, juntada às estatísticas pela placa: faixa verde (greenRange), embalo (leverage), motor ocioso (idle), pressão do pedal crítica (pedalPressureOnHigh), acima do verde (powerRange), excesso de velocidade em tempo (speeding), piloto automático (cruiseControl), freio motor (engineBrake), horas em movimento e o nome do motorista vinculado (CPF descartado). Se falhar, as estatísticas entram assim mesmo.
 - `v2/vehicle-odometer`: último odômetro dos últimos 30 dias, card "Odômetro e comunicação" em Veículos e grupos.
 - `v2/driversOverview`: nota, km e bonificação por mês, tela Premiação. O CPF devolvido é descartado antes de gravar.
 - O token de cada cliente fica só no `localStorage` de quem o digitou (`gbx-api-token:<cliente>`), nunca na base compartilhada nem no código.

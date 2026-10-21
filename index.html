@@ -887,6 +887,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'pressao_acelerador', rotulo: '% com pressão excessiva no acelerador', ex: '18,0', aliases: ['pressao_acelerador', 'pressao_do_acelerador', 'acelerador', 'pressao_acelerador_pct'] },
     { key: 'excesso_rotacao', rotulo: '% do tempo em excesso de rotação', ex: '3,2', aliases: ['excesso_rotacao', 'excesso_de_rotacao', 'rotacao_excessiva'] },
     { key: 'excesso_velocidade', rotulo: 'Eventos de excesso de velocidade', ex: '2', aliases: ['excesso_velocidade', 'excesso_de_velocidade', 'eventos_velocidade'] },
+    { key: 'tempo_excesso_velocidade', rotulo: '% do tempo acima da velocidade configurada', ex: '6,2', aliases: ['tempo_excesso_velocidade', 'tempo_em_excesso_de_velocidade', 'excesso_velocidade_pct'] },
+    { key: 'piloto_automatico', rotulo: '% do tempo com piloto automático', ex: '12,0', aliases: ['piloto_automatico', 'cruise_control', 'piloto_automatico_pct'] },
+    { key: 'freio_motor', rotulo: '% do tempo com freio motor', ex: '8,6', aliases: ['freio_motor', 'freio_motor_pct', 'engine_brake'] },
     { key: 'frenagens', rotulo: 'Frenagens bruscas', ex: '1', aliases: ['frenagens', 'frenagens_bruscas', 'freadas', 'freadas_bruscas', 'frenagem_brusca'] },
     { key: 'frenagens_alta', rotulo: 'Frenagens em alta velocidade', ex: '0', aliases: ['frenagens_alta', 'frenagens_em_alta_velocidade', 'freadas_alta_velocidade'] },
     { key: 'velocidade_media', rotulo: 'Velocidade média (km/h)', ex: '62,5', aliases: ['velocidade_media', 'vel_media', 'velocidade_media_km_h'] },
@@ -920,6 +923,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'pressao_acelerador', grupo: 'conducao', label: 'Pressão do acelerador', desc: 'Tempo com pedal acima do ideal', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_acelerador', peso: 'horas', var: 'pp' },
     { key: 'excesso_rotacao', grupo: 'conducao', label: 'Excesso de rotação', desc: 'Tempo acima da faixa de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
     { key: 'excesso_velocidade', grupo: 'conducao', label: 'Excesso de velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'excesso_velocidade', den: 'km', mult: 100, var: 'pct' },
+    { key: 'tempo_excesso_velocidade', grupo: 'conducao', label: 'Tempo em excesso de velocidade', desc: 'Tempo acima da velocidade configurada', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'tempo_excesso_velocidade', peso: 'horas', var: 'pp' },
+    { key: 'piloto_automatico', grupo: 'conducao', label: 'Piloto automático', desc: 'Tempo com piloto automático ativo', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'piloto_automatico', peso: 'horas', var: 'pp' },
+    { key: 'freio_motor', grupo: 'conducao', label: 'Freio motor', desc: 'Tempo com freio motor, sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'freio_motor', peso: 'horas', var: 'pp' },
     { key: 'frenagens', grupo: 'conducao', label: 'Frenagens bruscas', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
     { key: 'frenagens_alta', grupo: 'conducao', label: 'Frenagens em alta velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens_alta', den: 'km', mult: 100, var: 'pct' },
     { key: 'velocidade_media', grupo: 'conducao', label: 'Velocidade média', desc: 'Média ponderada pelos km rodados', un: 'km/h', casas: 1, melhor: 0, tipo: 'media', col: 'velocidade_media', peso: 'km', var: 'pct' },
@@ -1851,6 +1857,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 7, data: '2026-10-21', titulo: 'Performance dos veículos pela API', texto: 'A busca pela API agora traz também a performance de cada veículo, dia a dia: faixa verde, embalo, motor ocioso, pressão do pedal, acima do verde, excesso de velocidade, piloto automático, freio motor e o motorista vinculado.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 6, data: '2026-10-21', titulo: 'Dados direto da API Gobrax', texto: 'No perfil do cliente, salve o token da API e busque sem planilha: estatísticas de cada veículo dia a dia (km, litros, km/l, velocidade média, frenagens), odômetro com a última comunicação de cada unidade e a premiação mensal dos motoristas, que ganhou tela própria.', href: '#/premiacao', link: 'Abrir a Premiação' },
     { id: 5, data: '2026-10-21', titulo: 'Dados compartilhados em tempo real', texto: 'No painel do Claude, as planilhas anexadas vão para uma base compartilhada: todos que acessam veem os mesmos clientes e dados, e cada planilha nova aparece na hora, sem recarregar.' },
     { id: 4, data: '2026-10-21', titulo: 'Sino de novidades', texto: 'As atualizações do sistema passam a aparecer aqui. O número vermelho mostra quantas você ainda não viu.' },
@@ -2443,7 +2450,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Tela: Análise dos veículos (por veículo e agrupada por grupo, modelo, filial ou tipo) ----------
   // Roda com a base de veículos no lugar da de motoristas (ver comContexto): período, comparação e status usam o mesmo motor do resto do painel.
   const COLS_VEIC = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['litros', 'Consumo (L)'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['embalo', 'Embalo'],
-    ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['frenagens', 'Freadas /100 km'],
+    ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['excesso_rotacao', 'Acima do verde'], ['tempo_excesso_velocidade', 'Excesso de velocidade (tempo)'],
+    ['piloto_automatico', 'Piloto automático'], ['freio_motor', 'Freio motor'], ['frenagens', 'Freadas /100 km'],
     ['frenagens_alta', 'Freadas em alta vel. /100 km'], ['velocidade_media', 'Velocidade média']];
   const DIM_SEM = { grupo: 'Sem grupo', modelo: 'Sem modelo', filial: 'Sem filial', tipo: 'Sem tipo' };
   const ORDEM_ST = { evoluiu: 3, estavel: 2, regrediu: 1, sembase: 0 };
@@ -3982,19 +3990,34 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     armazem.gravar(CHAVE_API_LOCAL, JSON.stringify(E.apiLocal));
   }
 
-  // Um dia de estatísticas → CSV no layout do painel (uma linha por veículo; parado entra com 0 km)
-  function estatParaCSV(dia, recs, cli) {
-    const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'cliente', 'dias_periodo'];
-    const n = (v) => { const x = numApi(v); return x === null ? '' : String(x).replace('.', ','); };
+  // Um dia de estatísticas + performance → CSV no layout do painel (uma linha por veículo; parado entra com 0 km)
+  // Performance: % do tempo em movimento em cada indicador; o CPF dos motoristas é descartado aqui, só o nome segue.
+  const PERF_COLS = [['faixa_verde', 'greenRange'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
+    ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
+  const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
+  function diaParaCSV(dia, estat, perf, cli) {
+    const temPerf = perf.length > 0;
+    const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
+      .concat(temPerf ? ['horas', 'nota'].concat(PERF_COLS.map(([k]) => k)) : [], ['cliente', 'dias_periodo']);
+    const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
     const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
+    const perfPor = new Map();
+    perf.forEach((r) => { const k = chavePlaca(r && r.vehicleIdentification); if (k && !perfPor.has(k)) perfPor.set(k, r); });
     const vistos = new Set(), linhas = [];
-    recs.forEach((r) => {
-      const placa = placaApi(r && r.vehicleIdentification);
-      if (!placa || vistos.has(placa)) return;
-      vistos.add(placa);
+    estat.forEach((r) => {
+      const placa = placaApi(r && r.vehicleIdentification), k = chavePlaca(placa);
+      if (!k || vistos.has(k)) return;
+      vistos.add(k);
       const km = numApi(r.totalMileage) || 0, rodou = km > 0;
-      linhas.push([D.br(dia), escC(placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
-        rodou ? n(r.averageSpeed) : '', n(r.odometer), escC(cli), '1'].join(';'));
+      const p = rodou ? perfPor.get(k) : null, ind = (p && p.indicators) || {};
+      const nomes = [...new Set(((p && p.drivers) || []).map((d) => String((d && d.driverName) || '').trim()).filter(Boolean))];
+      const pct = (nome) => (ind[nome] ? n(ind[nome].percentage) : '');
+      const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
+      const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
+      const mov = ind.movement ? numApi(ind.movement.duration) : null;
+      linhas.push([D.br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+        rodou ? n(r.averageSpeed) : '', n(r.odometer)]
+        .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';'));
     });
     return { csv: [cols.join(';')].concat(linhas).join('\n'), n: linhas.length };
   }
@@ -4011,18 +4034,23 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (f.estat) {
         const dias = [];
         for (let d = f.ini; d <= fim; d = D.somar(d, 1)) dias.push(d);
-        let veics = 0, comDados = 0;
+        let veics = 0, comDados = 0, perfOk = true, perfErro = '';
         E.importCli = cli; E.silencio = true;
         try {
           for (let i = 0; i < dias.length; i++) {
-            passo('Estatísticas por veículo: dia ' + (i + 1) + ' de ' + dias.length + ' (' + D.br(dias[i]) + ')');
-            const recs = registros(await apiGet('v1/vehicle-statistics', Object.assign(janelaUTC(dias[i]), { vehicleIdentification: '' }), token));
-            const { csv, n } = estatParaCSV(dias[i], recs, cli);
+            passo('Estatísticas e performance por veículo: dia ' + (i + 1) + ' de ' + dias.length + ' (' + D.br(dias[i]) + ')');
+            const jan = Object.assign(janelaUTC(dias[i]), { vehicleIdentification: '' });
+            const recs = registros(await apiGet('v1/vehicle-statistics', jan, token));
+            let perf = [];
+            // sem a performance (token sem acesso, falha pontual) as estatísticas do dia entram mesmo assim
+            if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); } catch (e) { perfOk = false; perfErro = e.message; } }
+            const { csv, n } = diaParaCSV(dias[i], recs, perf, cli);
             if (!n) continue;
             if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
           }
         } finally { E.importCli = null; E.silencio = false; E.impVeic = null; }
-        st.feito.push(comDados ? 'estatísticas de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
+        st.feito.push(comDados ? 'estatísticas' + (perfOk ? ' e performance' : '') + ' de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
+        if (!perfOk) st.feito.push('performance não veio (' + perfErro + ')');
       }
       if (f.odo) {
         passo('Odômetro dos veículos…');
@@ -4084,7 +4112,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
             <input type="date" class="campo" style="width:auto" data-campo="api-fim" value="${esc(f.fim)}" aria-label="Fim do período da API">
           </div><span class="apoio">As estatísticas vêm dia a dia (horário de Brasília); o dia de hoje vem parcial e é atualizado a cada nova busca. A premiação vem por mês.</span></div>
         <div style="display:flex;flex-direction:column;gap:10px">
-          ${ck('estat', 'Estatísticas por veículo', 'Km, litros, km/l, velocidade média e frenagens de cada placa, por dia. Entra como planilha de veículos.')}
+          ${ck('estat', 'Estatísticas e performance por veículo', 'Por placa e por dia: km, litros, km/l, velocidade média e frenagens, mais faixa verde, embalo, motor ocioso, pressão do pedal, acima do verde, excesso de velocidade, piloto automático, freio motor e o motorista vinculado. Entra como planilha de veículos.')}
           ${ck('odo', 'Odômetro', 'Último odômetro de cada veículo e quando a unidade comunicou pela última vez.' + (odo ? ' Última busca: ' + D.br(odo.data) + '.' : ''))}
           ${ck('prem', 'Scores e premiação', 'Nota (0–100), km e bonificação de cada motorista, por mês. O CPF que a API devolve é descartado.' + (prem.length ? ' Meses já buscados: ' + prem.map((k) => k.slice(5) + '/' + k.slice(0, 4)).join(', ') + '.' : ''))}
         </div>

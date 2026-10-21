@@ -121,6 +121,18 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .topo-lado { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .topo-lado.dir { justify-content: flex-end; }
 .topo-logo { height: 24px; width: auto; display: block; margin: 0 12px; }
+.sino { position: relative; }
+.sino-btn { position: relative; width: 36px; height: 36px; border: none; border-radius: 999px; background: transparent; color: var(--texto-2); display: grid; place-items: center; cursor: pointer; }
+.sino-btn:hover, .sino-btn[aria-expanded="true"] { background: #F1F3F4; color: #2B2B2B; }
+.sino-cont { position: absolute; top: 2px; right: 1px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 2px solid var(--superficie); background: var(--critico); color: #fff; font-size: 10px; font-weight: 700; line-height: 14px; text-align: center; }
+.sino-painel { position: absolute; top: 44px; left: 0; width: min(380px, calc(100vw - 24px)); max-height: 70vh; overflow: auto; background: #fff; border: 1px solid var(--hairline); border-radius: 12px; box-shadow: var(--sombra-2); z-index: 40; }
+.sino-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px 10px; border-bottom: 1px solid var(--hairline); position: sticky; top: 0; background: #fff; }
+.sino-cab b { font-size: 14px; }
+.sino-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-bottom: 1px solid #F1F3F4; font-size: 13px; color: var(--texto-2); }
+.sino-item:last-child { border-bottom: none; }
+.sino-item.novo { background: #FFFBEA; }
+.sino-item-tit { display: flex; align-items: center; gap: 8px; color: #2B2B2B; font-weight: 600; }
+.sino-item a { align-self: flex-start; font-size: 12.5px; font-weight: 600; color: #2B2B2B; }
 .fonte-dados { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-2); min-width: 0; }
 .fonte-dados span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1259,7 +1271,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     fechar: '<path d="M6 6l12 12M18 6L6 18"></path>',
     filtro: '<path d="M4 5h16l-6 7v6l-4 2v-8z"></path>',
     tabela: '<path d="M4 7h16M4 12h16M4 17h16"></path>',
-    grafico: '<path d="M4 18V8m5 10V5m5 13v-7m5 7V9"></path>'
+    grafico: '<path d="M4 18V8m5 10V5m5 13v-7m5 7V9"></path>',
+    sino: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>'
   };
   function icone(nome, tam, cor) {
     return `<svg width="${tam || 15}" height="${tam || 15}" viewBox="0 0 24 24" fill="none" stroke="${cor || 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none" aria-hidden="true">${ICONES[nome]}</svg>`;
@@ -1688,6 +1701,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         if (prev) return prev;
       }
     }
+    if (p.ini === p.fim && bb) {   // um dia: compara com o último dia anterior que tem planilha diária (pula folgas e fins de semana)
+      let prev = null;
+      bb.linhas.forEach((l) => { if (!(l.dias_periodo > 1) && l.data < p.ini && (!prev || l.data > prev)) prev = l.data; });
+      if (prev) return { ini: prev, fim: prev };
+    }
     const n = D.dias(p);
     return { ini: D.somar(p.ini, -n), fim: D.somar(p.ini, -1) };
   }
@@ -1827,6 +1845,33 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         ${ops.map((o) => `<option value="${esc(o)}" ${nrm(o) === nrm(E.filtro.grupo) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
       </select>`;
   }
+  // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
+  const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
+  const NOVIDADES = [
+    { id: 4, data: '2026-10-21', titulo: 'Sino de novidades', texto: 'As atualizações do sistema passam a aparecer aqui. O número vermelho mostra quantas você ainda não viu.' },
+    { id: 3, data: '2026-10-21', titulo: 'Evolução dia a dia', texto: 'Nova tabela em Comparativo de períodos: cada dia com planilha comparado ao dia anterior com planilha, com Nota, km/l, km, diesel e indicadores de condução. Vale para a frota ou para um motorista, e exporta em CSV.', href: '#/comparativo', link: 'Abrir o comparativo' },
+    { id: 2, data: '2026-10-21', titulo: '“Último dia” pula folgas e fins de semana', texto: 'Ao analisar um dia, a comparação é com o último dia anterior que tem planilha. Segunda-feira passa a ser comparada com sexta, em vez de ficar sem base.' },
+    { id: 1, data: '2026-10-21', titulo: 'Importação diária no perfil do cliente', texto: 'O período da planilha de motoristas já sugere o dia da última planilha de veículos. Para comparar dia a dia, anexe uma planilha por dia, com início e fim no mesmo dia.' }
+  ];
+  const novidadesVistas = () => Number(armazem.ler(CHAVE_NOVIDADES)) || 0;
+  function sino() {
+    const vistas = E.sino ? E.sinoVistas : novidadesVistas();
+    const nao = NOVIDADES.filter((n) => n.id > vistas).length;
+    const rot = 'Novidades do sistema' + (nao ? ' · ' + nao + (nao === 1 ? ' nova' : ' novas') : '');
+    return `<div class="sino">
+      <button type="button" class="sino-btn" data-acao="sino" aria-label="${rot}" title="${rot}" aria-expanded="${!!E.sino}" aria-haspopup="true">${icone('sino', 20)}${nao && !E.sino ? `<span class="sino-cont">${nao > 9 ? '9+' : nao}</span>` : ''}</button>
+      ${E.sino ? `<div class="sino-painel" role="dialog" aria-label="Novidades do sistema">
+        <div class="sino-cab"><b>Novidades do sistema</b><button type="button" class="btn-icone fantasma" data-acao="sino-fechar" aria-label="Fechar">${icone('fechar', 14)}</button></div>
+        ${NOVIDADES.map((n) => `<div class="sino-item ${n.id > vistas ? 'novo' : ''}">
+          <span class="sino-item-tit">${esc(n.titulo)}${n.id > vistas ? '<span class="badge badge-atencao">Novo</span>' : ''}</span>
+          <span class="apoio" style="font-size:11.5px">${D.br(n.data)}</span>
+          <span>${esc(n.texto)}</span>
+          ${n.href ? `<a href="${n.href}" data-acao="sino-fechar">${esc(n.link)} ›</a>` : ''}
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }
+
   function shell(conteudo) {
     const fonte = E.fonte.tipo === 'vazio'
       ? '<span class="tag">Sem dados</span>'
@@ -1839,7 +1884,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       </nav>
       <div class="conteudo">
         <header class="topo">
-          <span class="topo-lado"></span>
+          <span class="topo-lado">${sino()}</span>
           <img class="topo-logo" src="${ASSET('logo')}" alt="gobrax">
           <span class="topo-lado dir">${pilulaDiesel()}${seletorCliente()}${seletorGrupo()}</span>
         </header>
@@ -1862,7 +1907,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;color:var(--corpo)">
           <span><span class="marca marca-a" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>Analisando <b>${D.periodoBR(E.A)}</b></span>
-          <span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>Comparando com o período anterior: <b>${D.periodoBR(E.B)}</b></span>
+          <span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>${E.A.ini === E.A.fim && E.B.ini === E.B.fim ? 'Comparando com o dia anterior com dados' : 'Comparando com o período anterior'}: <b>${D.periodoBR(E.B)}</b></span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--texto-2)">
           <span><b style="color:var(--ok)">▲ Verde</b> melhorou</span><span><b style="color:var(--critico)">▼ Vermelho</b> piorou</span><span><b style="color:var(--texto-3)">Cinza</b> estável ou sem base de comparação</span>
@@ -2325,6 +2370,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           ${(() => { const e = economia(alvo.a, alvo.b); return e ? `<div style="padding:12px 18px 10px" class="apoio">Com a média de consumo da comparação, os mesmos km teriam usado <b class="num">${fmt(alvo.a.km / alvo.b.kml, 0)} L</b>. ${e.reais >= 0 ? 'Economia' : 'Custo adicional'} estimado: <b class="num">R$ ${fmt(Math.abs(e.reais), 2)}</b> (${fmt(Math.abs(e.litros), 0)} L a R$ ${fmt(E.preco, 2)}/L).</div>` : ''; })()}
         </div>
       </section>
+      ${cartaoEvolucaoDiaria(linhasEscopo(), alvo.nome)}
       <section class="card">
         <div class="card-cab">
           <div class="card-cab-texto"><h2 class="h2">Motoristas por indicador</h2><span class="h2-sub">Quem mais melhorou e quem mais piorou em ${esc(ind.label.toLowerCase())}.</span></div>
@@ -2341,6 +2387,51 @@ body, .conteudo, .pagina { background: #FFFFFF; }
             <td><span class="pessoa">${avatar(r.x.m.nome, 28)}<span class="pessoa-nome">${esc(r.x.m.nome)}</span></span></td>
             <td class="dir">${fmtInd(ind, r.x.a[ind.key])}</td><td class="dir" style="color:var(--texto-2)">${fmtInd(ind, r.x.b[ind.key])}</td>
             <td class="dir">${variacao(r.v)}</td><td>${resultado(r.v, ind)}</td></tr>`).join('')}</tbody></table></div></div>
+      </section>`;
+  }
+
+  // ---------- Evolução dia a dia: cada dia com planilha ao lado do dia anterior com planilha (folgas e fins de semana são pulados) ----------
+  const IND_DIARIO = ['nota', 'kml', 'km', 'litros', 'faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador'];
+  function linhasEscopo() {
+    const m = E.comp.escopo !== 'frota' && E.base.porId[E.comp.escopo];
+    return m ? m.linhas : E.base.linhas;
+  }
+  // Dias do período analisado; com menos de 2 dias nele (ex.: "Último dia"), os 14 últimos dias com dados até o fim do período
+  function evolucaoDiaria(linhas) {
+    const porDia = new Map();
+    linhas.forEach((l) => { if (l.dias_periodo > 1) return; if (!porDia.has(l.data)) porDia.set(l.data, []); porDia.get(l.data).push(l); });
+    let ant = null;
+    const todos = [...porDia.keys()].sort().map((d) => {
+      const ls = porDia.get(d);
+      const r = { data: d, mot: new Set(ls.map((l) => l.motorista)).size, v: X.resumo(ls, E.base), ant };
+      ant = r;
+      return r;
+    });
+    const noA = todos.filter((r) => r.data >= E.A.ini && r.data <= E.A.fim);
+    const lista = (noA.length >= 2 ? noA : todos.filter((r) => r.data <= E.A.fim).slice(-14)).reverse();
+    return { inds: IND_DIARIO.filter(temInd).map((k) => IND_MAP[k]), lista };
+  }
+  function cartaoEvolucaoDiaria(linhas, nome) {
+    const { inds, lista } = evolucaoDiaria(linhas);
+    const cab = `<div class="card-cab">
+          <div class="card-cab-texto"><h2 class="h2">Evolução dia a dia · ${esc(nome)}</h2><span class="h2-sub">Cada dia comparado ao dia anterior com planilha. Mais recente no topo.</span></div>
+          ${lista.length ? `<button type="button" class="btn" data-acao="exportar-evolucao">${icone('baixar', 14, '#5F6368')}Exportar CSV</button>` : ''}
+        </div>`;
+    if (!lista.length) {
+      return `<section class="card">${cab}<div class="card-corpo"><div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo">
+        <span class="alerta-titulo">Ainda não há planilhas diárias</span>
+        <span class="alerta-texto">As planilhas anexadas são totais de um período. Para comparar dia a dia, anexe uma planilha por dia no perfil do cliente (na de motoristas, início e fim no mesmo dia).</span>
+        <div class="alerta-acoes"><a class="btn-link peq" href="${hrefDados()}">Anexar planilhas do cliente</a></div></div></div></div></section>`;
+    }
+    const rows = lista.map((r) => `<tr>
+        <td style="white-space:nowrap"><span style="font-weight:500">${D.br(r.data)}</span> <span class="mudo">${D.semana(r.data)}</span><span class="linha2">${r.ant ? 'vs. ' + D.br(r.ant.data) + ' ' + D.semana(r.ant.data) : 'primeiro dia com dados'}</span></td>
+        <td class="dir num">${fmt(r.mot, 0)}</td>
+        ${inds.map((ind) => `<td class="dir"><span style="display:block">${fmtInd(ind, r.v[ind.key])}</span>${r.ant ? variacao(X.variacao(ind, r.v[ind.key], r.ant.v[ind.key])) : ''}</td>`).join('')}
+      </tr>`).join('');
+    return `<section class="card">${cab}
+        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">
+          <table class="tabela" style="min-width:${260 + inds.length * 110}px"><thead><tr><th>Dia</th><th class="dir">Motoristas</th>${inds.map((ind) => `<th class="dir">${esc(ind.label)}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody></table></div></div>
       </section>`;
   }
 
@@ -3717,7 +3808,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     E.clienteRemover = null; if (cli && ckey(E.cliente) === ckey(cli.nome)) E.cliente = ''; if (E.rota.tela === 'cliente') location.hash = '#/config'; render(); toast('Cliente e planilhas removidos.');
   }
   function periodoMotPadrao(nome) {
-    const cs = coberturas({ linhas: linhasCli('veiculos', nome) }).filter((c) => c.ini !== c.fim);
+    const cs = coberturas({ linhas: linhasCli('veiculos', nome) });   // inclui planilha de um dia só (importação diária)
     if (cs.length) return { ini: cs[cs.length - 1].ini, fim: cs[cs.length - 1].fim };
     const fim = D.somar(D.inicioMes(D.hoje()), -1);
     return { ini: D.inicioMes(fim), fim };
@@ -3832,7 +3923,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
               <span class="apoio">até</span>
               <input type="date" class="campo" style="width:auto" data-campo="per-fim" value="${esc(perMot.fim || '')}" aria-label="Fim do período">
             </div>
-            <span class="apoio">A exportação de Motoristas da plataforma não traz datas. Informe a que período ela se refere antes de anexar${vei.length ? ' (já veio da planilha de veículos deste cliente)' : ''}.</span></div>
+            <span class="apoio">A exportação de Motoristas da plataforma não traz datas. Informe a que período ela se refere antes de anexar${vei.length ? ' (já veio da planilha de veículos deste cliente)' : ''}. Para comparar dia a dia, anexe uma planilha por dia, com início e fim no mesmo dia.</span></div>
           ${zona('motoristas', 'Planilha de motoristas de ' + esc(nome), 'Exportação de Motoristas da plataforma (.xlsx) ou CSV diário. Você pode escolher várias de uma vez; cada uma é somada às anteriores.')}
           ${zona('veiculos', 'Planilha de veículos de ' + esc(nome), 'Exportação de Veículos da plataforma (.xlsx) ou CSV. O período é lido da primeira linha da planilha. Alimenta Veículos e grupos.')}
           <button type="button" class="btn-link peq" data-acao="baixar-modelo" style="align-self:flex-start">Baixar modelo CSV diário (só cabeçalho)</button>
@@ -4366,6 +4457,18 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       });
       baixar('analise_motoristas_' + sufixoArquivo() + '.csv', ls.join('\n'));
     },
+    'exportar-evolucao': () => {
+      const { inds, lista } = evolucaoDiaria(linhasEscopo());
+      const m = E.comp.escopo !== 'frota' && E.base.porId[E.comp.escopo];
+      const ls = [csvLinha(['Dia', 'Comparado com', 'Motoristas'].concat(...inds.map((i) => [i.label, i.label + ' (variação)'])))];
+      lista.forEach((r) => {
+        ls.push(csvLinha([D.br(r.data), r.ant ? D.br(r.ant.data) : '', r.mot].concat(...inds.map((i) => {
+          const v = r.ant ? X.variacao(i, r.v[i.key], r.ant.v[i.key]) : { semBase: true };
+          return [numCSV(r.v[i.key], i.casas), v.semBase ? '' : v.texto];
+        }))));
+      });
+      baixar('evolucao_diaria_' + (m ? m.nome.replace(/\s+/g, '_') : 'frota') + '_' + sufixoArquivo() + '.csv', ls.join('\n'));
+    },
     'exportar-matriz': () => {
       const c = calc(); const ind = IND_MAP[E.comp.ind];
       const ls = [csvLinha(['Motorista', ind.label + ' (analisado)', ind.label + ' (comparação)', 'Variação', 'Resultado'])];
@@ -4455,7 +4558,15 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'cliente-salvar': () => salvarCliente(),
     'cliente-remover': (el) => { E.clienteRemover = el.dataset.id; render(); },
     'cliente-remover-cancelar': () => { E.clienteRemover = null; render(); },
-    'cliente-remover-confirmar': () => removerCliente(E.clienteRemover)
+    'cliente-remover-confirmar': () => removerCliente(E.clienteRemover),
+    // Abrir o sino marca tudo como visto; o destaque "Novo" fica até fechar
+    'sino': () => {
+      if (E.sino) { E.sino = false; render(); return; }
+      E.sino = true; E.sinoVistas = novidadesVistas();
+      armazem.gravar(CHAVE_NOVIDADES, String(Math.max(...NOVIDADES.map((n) => n.id))));
+      render();
+    },
+    'sino-fechar': () => { E.sino = false; render(); }
   };
   function deslocar(p, meses, anos) {
     const mover = (s) => { const d = D.deISO(s); d.setUTCFullYear(d.getUTCFullYear() - anos); d.setUTCMonth(d.getUTCMonth() - meses); return D.paraISO(d); };
@@ -4464,6 +4575,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   function salvarPeriodo() { armazem.gravar('gbx-frota-periodo', JSON.stringify({ A: E.A, B: E.B, modo: E.modoComp, preset: E.presetA })); }
 
   document.addEventListener('click', (ev) => {
+    if (E.sino && !ev.target.closest('.sino')) { E.sino = false; render(); }   // clique fora fecha o sino
     const el = ev.target.closest('[data-acao]');
     if (!el || el.disabled) return;
     const f = acoes[el.dataset.acao];
@@ -4474,7 +4586,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('input[data-campo^="cli-"]')) { ev.preventDefault(); salvarCliente(); return; }
     if (ev.key === 'Enter' && ev.target.matches('tr[data-acao]') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
-    if (ev.key === 'Escape') { X.ui.dica(null); if (E.exportacao) { E.exportacao = null; render(); } }
+    if (ev.key === 'Escape') { X.ui.dica(null); if (E.sino) { E.sino = false; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
   });
   document.addEventListener('input', (ev) => {
     const k = ev.target.dataset.campo;

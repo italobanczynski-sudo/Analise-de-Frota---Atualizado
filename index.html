@@ -1847,7 +1847,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
+  const LINK_COMPARTILHADO = 'https://claude.ai/artifact/JtQke6GEAqzz8ohdP653dS';
   const NOVIDADES = [
+    { id: 5, data: '2026-10-21', titulo: 'Dados compartilhados em tempo real', texto: 'No painel do Claude, as planilhas anexadas vão para uma base compartilhada: todos que acessam veem os mesmos clientes e dados, e cada planilha nova aparece na hora, sem recarregar.' },
     { id: 4, data: '2026-10-21', titulo: 'Sino de novidades', texto: 'As atualizações do sistema passam a aparecer aqui. O número vermelho mostra quantas você ainda não viu.' },
     { id: 3, data: '2026-10-21', titulo: 'Evolução dia a dia', texto: 'Nova tabela em Comparativo de períodos: cada dia com planilha comparado ao dia anterior com planilha, com Nota, km/l, km, diesel e indicadores de condução. Vale para a frota ou para um motorista, e exporta em CSV.', href: '#/comparativo', link: 'Abrir o comparativo' },
     { id: 2, data: '2026-10-21', titulo: '“Último dia” pula folgas e fins de semana', texto: 'Ao analisar um dia, a comparação é com o último dia anterior que tem planilha. Segunda-feira passa a ser comparada com sexta, em vez de ficar sem base.' },
@@ -1888,6 +1890,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           <img class="topo-logo" src="${ASSET('logo')}" alt="gobrax">
           <span class="topo-lado dir">${pilulaDiesel()}${seletorCliente()}${seletorGrupo()}</span>
         </header>
+        ${window.claude && window.claude.use ? '' : `<div class="faixa-demo">Esta versão guarda as planilhas só neste navegador. Para ver os dados de toda a equipe em tempo real, <a href="${LINK_COMPARTILHADO}" target="_blank" rel="noopener">abra o painel no Claude</a>.</div>`}
         <main class="pagina" id="pagina">${conteudo}</main>
       </div>
     </div>`;
@@ -3746,6 +3749,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // ---------- Tela: sem dados ----------
   function telaSemDados() {
+    if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">As planilhas que a equipe anexou aparecem aqui em instantes.</span></div></div></section>`;
     const passos = [['1', 'Abra o perfil do cliente', 'No menu lateral, em Configurações, escolha o cliente (ou cadastre um novo).'],
       ['2', 'Anexe as planilhas', 'A de motoristas e a de veículos exportadas da plataforma, em Excel ou CSV.'],
       ['3', 'Abra o relatório', 'A Visão geral monta o resultado, a evolução e os pontos de ganho da frota.']];
@@ -3767,6 +3771,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     let db = null;
     try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
     if (db) {
+      try { iniciarPlanilhas(db); } catch (e) { planRef = null; E.planEmDb = false; E.planCarregando = false; }
       dbRef = db.collection('clientes');
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
       try { db.collection('config').doc('diesel').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !(Number(v.preco_br) > 0)) return; E.diesel = v; if (!E.precoManual) E.preco = Number(v.preco_br); render(); }, () => {}); } catch (e) { /* sem preço automático */ }
@@ -3776,9 +3781,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         if (E.demo) return;
         E.clientes = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
         ordenarClientes(); E.clientesPronto = true;
-        if (E.rota.tela === 'clientes') render();
+        render();   // cliente cadastrado por outra pessoa aparece na hora, em qualquer tela
       }, () => { E.clientesEmDb = false; carregarClientesLocal(); if (E.rota.tela === 'clientes') render(); });
-    } else { carregarClientesLocal(); carregarTratLocal(); if (E.rota.tela === 'clientes') render(); }
+    } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); render(); }
   }
   function carregarClientesLocal() {
     try { E.clientes = (JSON.parse(armazem.ler(CHAVE_CLIENTES) || '[]') || []); } catch (e) { E.clientes = []; }
@@ -3807,6 +3812,132 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     } catch (e) { toast('Não foi possível remover o cliente.', 'erro'); return; }
     E.clienteRemover = null; if (cli && ckey(E.cliente) === ckey(cli.nome)) E.cliente = ''; if (E.rota.tela === 'cliente') location.hash = '#/config'; render(); toast('Cliente e planilhas removidos.');
   }
+  // ---------- Planilhas compartilhadas (db): um documento por tipo, cliente e dia, dividido em partes se passar do limite ----------
+  // Quem tem o painel aberto recebe cada planilha nova na hora. Sem banco (fora do Claude), tudo segue no navegador.
+  let planRef = null, planDocs = new Map();
+  const slugCli = (n) => ckey(n).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sem-cliente';
+  const idPlan = (alvo, cli, data, parte) => [alvo, slugCli(cli), data, 'p' + parte].join('~');
+  const bytes = (t) => new TextEncoder().encode(t).length;
+  function partesCSV(ls, colunas) {   // documento tem até 256 KiB: cada parte fica abaixo de 200 KB
+    for (let n = 1; ; n++) {
+      const tam = Math.ceil(ls.length / n), out = [];
+      for (let i = 0; i < ls.length; i += tam) out.push(X.paraCSV(ls.slice(i, i + tam), colunas));
+      if (tam <= 1 || out.every((t) => bytes(t) < 200000)) return out;
+    }
+  }
+  const msgErroDb = (e) => (e && e.code === 'quota_exceeded'
+    ? 'A base compartilhada está cheia. Apague planilhas antigas de algum cliente para liberar espaço.'
+    : 'Não foi possível gravar na base compartilhada. Você pode não ter permissão para editar este painel.');
+  function periodoSalvo() {
+    try { const p = JSON.parse(armazem.ler('gbx-frota-periodo') || 'null'); return p && { A: p.A, B: p.B, p: p.preset, m: p.modo }; } catch (e) { return null; }
+  }
+  function iniciarPlanilhas(db) {
+    planRef = db.collection('planilhas');
+    E.planEmDb = true; E.planCarregando = true;
+    // o que este navegador guardou antes da base compartilhada fica à parte, para enviar ou descartar em Configurações
+    const loc = {};
+    [['motoristas', CHAVE_CSV], ['veiculos', CHAVE_VEIC]].forEach(([a, k]) => { const s = armazem.ler(k); if (s) loc[a] = s; });
+    E.planLocal = Object.keys(loc).length ? loc : null;
+    planRef.onSnapshot((sn) => {
+      planDocs = new Map(sn.docs.map((d) => [d.id, d.data()]));
+      E.planCarregando = false;
+      aplicarPlanilhasDb();
+      render();
+    }, () => {
+      planRef = null; E.planEmDb = false; E.planCarregando = false; render();
+      toast('A base compartilhada de planilhas não respondeu. Mostrando só os dados deste navegador.', 'erro');
+    });
+  }
+  // Remonta motoristas e veículos a partir da base, mantendo o período escolhido ("Último dia" anda junto quando chega um dia novo)
+  function aplicarPlanilhasDb() {
+    const docs = [...planDocs.values()].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : (a.parte || 0) - (b.parte || 0)));
+    const montar = (alvo) => {
+      const linhas = []; let colunas = [], arqs = [];
+      docs.filter((d) => d.alvo === alvo && typeof d.texto === 'string').forEach((d) => {
+        const r = X.importarCSV(d.texto);
+        if (!r.ok) return;
+        r.linhas.forEach((l) => { l.cliente = d.cliente; linhas.push(l); });
+        colunas = uniao(colunas, r.colunas.concat(['cliente']));
+        if (d.arquivo) arqs = uniao(arqs, [d.arquivo]);
+      });
+      return { linhas, colunas, arqs };
+    };
+    const v = montar('veiculos'), m = montar('motoristas');
+    const per = E.planAplicado ? { A: E.A, B: E.B, p: E.presetA, m: E.modoComp } : periodoSalvo();
+    E.planAplicado = true;
+    E.veic = v.linhas.length ? { nome: rotuloArquivos(v.arqs), arquivos: v.arqs, colunas: v.colunas, linhas: v.linhas } : null;
+    E.veicVer++; baseVeicCache = null;
+    if (m.linhas.length) { E.linhasAll = m.linhas; E.colunasAll = m.colunas; E.arquivos = m.arqs; E.fonte = { tipo: 'planilha', nome: rotuloArquivos(m.arqs) }; }
+    else limparBase();
+    validarFiltro();
+    if (E.linhasAll) aplicarFiltroCliente();
+    if (E.base && per && per.A) {
+      const pp = per.p && presetPeriodo(per.p);
+      const A = pp || (per.A.ini >= E.base.inicio && per.A.fim <= E.base.fim ? per.A : null);
+      if (A) {
+        E.A = A; E.presetA = pp ? per.p : null; E.modoComp = per.m || 'anterior';
+        E.B = E.modoComp === 'anterior' || !per.B ? anterior(E.A) : per.B;
+        E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B };
+      }
+    }
+    memo = null;
+  }
+  // Grava na base os dias que a importação tocou (o dia inteiro do cliente, já mesclado com o que havia)
+  async function enviarPlanilhas(alvo, novas, todas, colunas, arquivo) {
+    if (!planRef) return true;
+    const grupos = new Map();
+    novas.forEach((l) => grupos.set(ckey(l.cliente) + '|' + l.data, { cliente: l.cliente || '', data: l.data }));
+    try {
+      for (const g of grupos.values()) {
+        const ls = todas.filter((l) => ckey(l.cliente) === ckey(g.cliente) && l.data === g.data);
+        const partes = partesCSV(ls, colunas);
+        for (let i = 0; i < partes.length; i++) {
+          await planRef.doc(idPlan(alvo, g.cliente, g.data, i + 1)).set({ alvo, cliente: g.cliente, data: g.data, colunas, texto: partes[i], parte: i + 1, partes: partes.length, arquivo: arquivo || '', em: new Date().toISOString() });
+        }
+        for (const [id, d] of [...planDocs]) {
+          if (d.alvo === alvo && ckey(d.cliente) === ckey(g.cliente) && d.data === g.data && d.parte > partes.length) await planRef.doc(id).delete();
+        }
+      }
+      return true;
+    } catch (e) { toast(msgErroDb(e), 'erro'); return false; }
+  }
+  // Apaga da base as planilhas de um tipo (de um cliente, ou de todos)
+  async function apagarPlanDb(alvo, nome) {
+    if (!planRef) return;
+    const alvos = [...planDocs].filter(([, d]) => d.alvo === alvo && (nome === undefined || ckey(d.cliente) === ckey(nome)));
+    try { for (const [id] of alvos) await planRef.doc(id).delete(); }
+    catch (e) { toast(msgErroDb(e), 'erro'); aplicarPlanilhasDb(); render(); }
+  }
+  async function enviarLocal() {
+    const loc = E.planLocal;
+    if (!loc || !planRef) return;
+    let n = 0;
+    for (const alvo of Object.keys(loc)) {
+      let o = null;
+      try { o = JSON.parse(loc[alvo]); } catch (e) { continue; }
+      const r = X.importarCSV(o.texto);
+      if (!r.ok) continue;
+      // mesma linha (dia + motorista/veículo + cliente) fica com a versão deste navegador
+      const veic = alvo === 'veiculos';
+      const res = mesclar(veic ? (E.veic ? E.veic.linhas : []) : (E.linhasAll || []), r.linhas);
+      const cols = uniao(veic ? E.veic && E.veic.colunas : E.colunasAll, r.colunas);
+      if (!(await enviarPlanilhas(alvo, r.linhas, res.linhas, cols, o.nome))) return;
+      n += r.linhas.length;
+    }
+    descartarLocal();
+    toast(n + ' linhas enviadas para a base compartilhada.');
+  }
+  function descartarLocal() { armazem.apagar(CHAVE_CSV); armazem.apagar(CHAVE_VEIC); E.planLocal = null; render(); }
+  function avisoLocal() {
+    const loc = E.planLocal;
+    if (!loc || !E.planEmDb) return '';
+    const linhas = Object.values(loc).reduce((s, t) => { try { return s + Math.max(0, JSON.parse(t).texto.split('\n').length - 1); } catch (e) { return s; } }, 0);
+    return `<div class="alerta alerta-atencao" role="status"><span class="alerta-icone">!</span><div class="alerta-corpo">
+      <span class="alerta-titulo">Este navegador tem planilhas que só você vê</span>
+      <span class="alerta-texto">São ${fmt(linhas, 0)} linhas anexadas antes da base compartilhada. Envie para que todos vejam, ou descarte se já foram anexadas de novo.</span>
+      <div class="alerta-acoes"><button type="button" class="btn btn-primario" data-acao="plan-enviar-local">Enviar para a base compartilhada</button><button type="button" class="btn-link peq" data-acao="plan-descartar-local">Descartar deste navegador</button></div></div></div>`;
+  }
+
   function periodoMotPadrao(nome) {
     const cs = coberturas({ linhas: linhasCli('veiculos', nome) });   // inclui planilha de um dia só (importação diária)
     if (cs.length) return { ini: cs[cs.length - 1].ini, fim: cs[cs.length - 1].fim };
@@ -3833,6 +3964,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     }).join('');
     return `
       ${abasConfig()}
+      ${avisoLocal()}
       <span class="sub">Cadastre o cliente e abra o perfil dele para anexar as planilhas de motoristas e de veículos.${E.clientesEmDb ? ' O cadastro é compartilhado com quem tem acesso a este painel.' : ' O cadastro fica salvo só neste navegador.'}</span>
       <section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Novo cliente</h2></div></div>
@@ -3846,7 +3978,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         </div>
       </section>
       <section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes</h2><span class="h2-sub">${E.clientes.length} ${E.clientes.length === 1 ? 'cliente' : 'clientes'} · as planilhas ficam salvas neste navegador, separadas por cliente.</span></div></div>
+        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes</h2><span class="h2-sub">${E.clientes.length} ${E.clientes.length === 1 ? 'cliente' : 'clientes'} · ${E.planEmDb ? 'as planilhas ficam na base compartilhada: quem acessa o painel vê os mesmos dados, ao vivo.' : 'as planilhas ficam salvas neste navegador, separadas por cliente.'}</span></div></div>
         ${E.clientes.length
           ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Motoristas</th><th>Veículos</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`
           : `<div class="card-corpo"><div class="vazio"><span class="vazio-titulo">${E.clientesPronto ? 'Nenhum cliente cadastrado' : 'Carregando clientes…'}</span><span class="apoio">Cadastre o primeiro no formulário acima.</span></div></div>`}
@@ -3900,7 +4032,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const apagar = (alvo, rot, tem) => {
       if (!tem) return '';
       if (E.cliApagar === alvo) return `<div class="alerta alerta-erro" style="width:100%"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Apagar ${rot} de ${esc(nome)}?</span>
-          <span class="alerta-texto">Só os dados deste cliente são apagados deste navegador. Os do outro cliente ficam.</span>
+          <span class="alerta-texto">${E.planEmDb ? 'Os dados deste cliente são apagados da base compartilhada, para todos que acessam o painel. Os dos outros clientes ficam.' : 'Só os dados deste cliente são apagados deste navegador. Os do outro cliente ficam.'}</span>
           <div class="alerta-acoes"><button type="button" class="btn" data-acao="cli-apagar-cancelar">Cancelar</button><button type="button" class="btn btn-destrutivo" data-acao="cli-apagar-confirmar">Apagar</button></div></div></div>`;
       return `<button type="button" class="btn btn-destrutivo" data-acao="cli-apagar-pedir" data-alvo="${alvo}">Apagar ${rot}</button>`;
     };
@@ -3911,7 +4043,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       <div class="entidade"><span class="pessoa">${avatar(nome, 44)}<span class="entidade-nome">${esc(nome)}</span></span></div>
       <div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo">
         <span class="alerta-titulo">Não inclua dados pessoais na planilha</span>
-        <span class="alerta-texto">Deixe de fora CPF, telefone, e-mail e endereço. Nome (ou matrícula), placa e os indicadores bastam para a análise. A planilha fica só neste navegador.</span>
+        <span class="alerta-texto">Deixe de fora CPF, telefone, e-mail e endereço. Nome (ou matrícula), placa e os indicadores bastam para a análise. ${E.planEmDb ? 'A planilha vai para a base compartilhada e fica visível a todos que acessam este painel.' : 'A planilha fica só neste navegador.'}</span>
       </div></div>
       ${retorno}
       ${retornoVeic}
@@ -3956,6 +4088,14 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // Apaga só os dados de um cliente (o do outro fica) e regrava o que sobrou
   function apagarDadosCliente(nome, alvo, silencioso) {
+    if (planRef) {   // base compartilhada: some para todos; a tela já reflete e o snapshot confirma
+      apagarPlanDb(alvo, nome);
+      if (alvo === 'veiculos') { const resto = (E.veic ? E.veic.linhas : []).filter((l) => ckey(l.cliente) !== ckey(nome)); E.veic = resto.length ? Object.assign({}, E.veic, { linhas: resto }) : null; E.impVeic = null; E.veicVer++; baseVeicCache = null; reaplicarFiltro(); }
+      else { const resto = (E.linhasAll || []).filter((l) => ckey(l.cliente) !== ckey(nome)); if (resto.length) { E.linhasAll = resto; aplicarFiltroCliente(); } else limparBase(); E.importacao = null; }
+      E.cliApagar = null;
+      if (!silencioso) { render(); toast('Planilhas de ' + nome + ' apagadas para todos.'); }
+      return;
+    }
     if (alvo === 'veiculos') {
       const resto = (E.veic ? E.veic.linhas : []).filter((l) => ckey(l.cliente) !== ckey(nome));
       if (!resto.length) { armazem.apagar(CHAVE_VEIC); E.veic = null; }
@@ -4313,7 +4453,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         if (E.base && sv.A && sv.A.ini >= E.base.inicio && sv.A.fim <= E.base.fim) { E.A = sv.A; E.B = sv.B; E.presetA = sv.p; E.modoComp = sv.m; E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; }
       }
       let salvoV = true;
-      if (salvar) salvoV = armazem.gravar(CHAVE_VEIC, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
+      if (salvar && planRef) enviarPlanilhas('veiculos', r.linhas, linhas, colunas, nome);
+      else if (salvar) salvoV = armazem.gravar(CHAVE_VEIC, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
       E.impVeic = { ok: true, nome, linhas: r.linhas.length, novas: res.novas, atualizadas: res.atualizadas, total: linhas.length, avisos: r.avisos, salvo: salvoV, grupos: gruposInfo, semGrupo, veiculos: placas.size };
       if (salvar) toast('Veículos: ' + res.novas + ' linhas novas' + (res.atualizadas ? ', ' + res.atualizadas + ' atualizadas' : '') + '. Total salvo: ' + linhas.length + '.');
       render();
@@ -4336,7 +4477,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const nMot = new Set(linhas.map((l) => l.motorista)).size;
     let salvo = true;
     // Guarda só as colunas reconhecidas, nunca o arquivo bruto (que pode ter colunas pessoais)
-    if (salvar) salvo = armazem.gravar(CHAVE_CSV, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
+    if (salvar && planRef) enviarPlanilhas('motoristas', r.linhas, linhas, colunas, nome);
+    else if (salvar) salvo = armazem.gravar(CHAVE_CSV, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
     E.importacao = { ok: true, nome, linhas: r.linhas.length, novas: res.novas, atualizadas: res.atualizadas, total: linhas.length, motoristas: nMot, avisos: r.avisos, salvo };
     if (salvar) toast('Motoristas: ' + res.novas + ' linhas novas' + (res.atualizadas ? ', ' + res.atualizadas + ' atualizadas' : '') + '. Total salvo: ' + linhas.length + '.');
     render();
@@ -4486,8 +4628,10 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'remover-cancelar': () => { E.confirmarRemocao = false; render(); },
     'remover-confirmar': () => {
       E.confirmarRemocao = false;
-      armazem.apagar(CHAVE_CSV); E.importacao = null; limparBase(); render(); toast('Planilha removida.');
+      armazem.apagar(CHAVE_CSV); apagarPlanDb('motoristas'); E.importacao = null; limparBase(); render(); toast('Planilha removida.');
     },
+    'plan-enviar-local': () => enviarLocal(),
+    'plan-descartar-local': () => { descartarLocal(); toast('Planilhas deste navegador descartadas.'); },
     'export-fechar': () => { E.exportacao = null; render(); },
     'export-fechar-fundo': (el, ev) => { if (ev.target === el) { E.exportacao = null; render(); } },
     'export-arquivo': () => { baixarArquivo(E.exportacao.nome, E.exportacao.texto); },
@@ -4501,7 +4645,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     },
     'remover-veic': () => { E.confirmarRemocaoVeic = true; render(); },
     'remover-veic-cancelar': () => { E.confirmarRemocaoVeic = false; render(); },
-    'remover-veic-confirmar': () => { E.confirmarRemocaoVeic = false; armazem.apagar(CHAVE_VEIC); E.veic = null; E.impVeic = null; E.veicVer++; baseVeicCache = null; reaplicarFiltro(); render(); toast('Planilha de veículos removida.'); },
+    'remover-veic-confirmar': () => { E.confirmarRemocaoVeic = false; armazem.apagar(CHAVE_VEIC); apagarPlanDb('veiculos'); E.veic = null; E.impVeic = null; E.veicVer++; baseVeicCache = null; reaplicarFiltro(); render(); toast('Planilha de veículos removida.'); },
     'ord-veic': (el) => { const c = el.dataset.col; E.veicOrd = E.veicOrd.col === c ? { col: c, dir: -E.veicOrd.dir } : { col: c, dir: c === 'placa' || ehDim(c) || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
     'ord-grupo': (el) => { const c = el.dataset.col; E.grupoOrd = E.grupoOrd.col === c ? { col: c, dir: -E.grupoOrd.dir } : { col: c, dir: c === 'nome' || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
     'grupo-por': (el) => { E.grupoPor = el.dataset.dim; render(); },
@@ -4647,6 +4791,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         E.modoComp = 'anterior'; E.B = anterior(E.A); E.cal.rascB = { ...E.B };
       }
     } catch (e) { /* período salvo inválido: fica o padrão */ }
+    E.planCarregando = !!(window.claude && window.claude.use);   // dentro do Claude: espera a base compartilhada
     lerRota();
     render();
     iniciarClientes();

@@ -943,7 +943,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'km', grupo: 'produtividade', label: 'Km rodados', desc: 'Distância total no período', un: 'km', casas: 0, melhor: 1, tipo: 'soma', col: 'km', var: 'pct' },
     { key: 'horas', grupo: 'produtividade', label: 'Horas de condução', desc: 'Tempo total dirigindo', un: 'h', casas: 1, melhor: 1, tipo: 'soma', col: 'horas', var: 'pct' },
     { key: 'viagens', grupo: 'produtividade', label: 'Viagens', desc: 'Viagens realizadas', un: '', casas: 0, melhor: 1, tipo: 'soma', col: 'viagens', var: 'pct' },
-    { key: 'dias', grupo: 'produtividade', label: 'Dias trabalhados', desc: 'Dias com km rodado', un: 'dias', casas: 0, melhor: 1, tipo: 'dias', var: 'pct' },
+    { key: 'dias', grupo: 'produtividade', label: 'Dias trabalhados', desc: 'Dias com rodagem', un: 'dias', casas: 0, melhor: 1, tipo: 'dias', var: 'pct' },
     { key: 'km_dia', grupo: 'produtividade', label: 'Km por dia trabalhado', desc: 'Média nos dias com km rodado', un: 'km', casas: 0, melhor: 1, tipo: 'kmdia', var: 'pct' }
   ];
   const IND_MAP = Object.fromEntries(IND.map((i) => [i.key, i]));
@@ -1088,7 +1088,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       });
       return { id: String(i + 1), nome, linhas: ls, veiculos: Object.keys(veic).sort((a, b) => veic[b] - veic[a]), dims };
     });
-    const meta = metaColunas(colunas);
+    const fixas = ['data', 'motorista', 'veiculo', 'cliente', 'dias_periodo'];
+    const meta = metaColunas(colunas.filter((c) => fixas.includes(c) || linhas.some((l) => l[c] !== null && l[c] !== undefined && l[c] !== '')));
     // Quando toda linha é o total de um período, "dias trabalhados" e "km por dia" não são calculáveis (não se sabe em quais dias rodou)
     const soTotais = linhas.length > 0 && linhas.every((l) => l.dias_periodo > 1);
     const indicadores = soTotais ? meta.indicadores.filter((i) => i.tipo !== 'dias' && i.tipo !== 'kmdia') : meta.indicadores;
@@ -1114,15 +1115,20 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       return n ? s : null;
     }
     if (ind.tipo === 'media') {
-      const pesoCol = ind.peso === 'horas' && !base.temHoras ? 'km' : ind.peso;
-      let s = 0, w = 0;
-      linhas.forEach((l) => {
-        const v = l[ind.col];
-        if (v === null || v === undefined) return;
-        const p = l[pesoCol] > 0 ? l[pesoCol] : 0;
-        s += v * p; w += p;
-      });
-      return w > 0 ? s / w : null;
+      // pondera pela coluna do indicador; sem esse peso nos dados (ex.: a API só de performance não traz km), usa o outro, e por fim a média simples
+      const media = (pesoCol) => {
+        let s = 0, w = 0;
+        linhas.forEach((l) => {
+          const v = l[ind.col];
+          if (v === null || v === undefined) return;
+          const p = !pesoCol ? 1 : l[pesoCol] > 0 ? l[pesoCol] : 0;
+          s += v * p; w += p;
+        });
+        return w > 0 ? s / w : null;
+      };
+      const pref = ind.peso === 'horas' && !base.temHoras ? 'km' : ind.peso;
+      const r = media(pref);
+      return r !== null ? r : media(pref === 'km' ? 'horas' : 'km') !== null ? media(pref === 'km' ? 'horas' : 'km') : media(null);
     }
     if (ind.tipo === 'razao') {
       let n = 0, d = 0;
@@ -1132,13 +1138,15 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       });
       return d > 0 ? (n / d) * ind.mult : null;
     }
-    // Dias trabalhados = pares motorista-dia com km rodado (na frota, soma os dias de cada motorista)
-    const dias = new Set(linhas.filter((l) => l.km > 0).map((l) => l.motorista + '|' + l.data)).size;
+    // Dias trabalhados = pares motorista-dia com rodagem (km, ou horas em movimento quando não há km); na frota, soma os dias de cada motorista
+    const dias = new Set(linhas.filter(rodouLinha).map((l) => l.motorista + '|' + l.data)).size;
     if (ind.tipo === 'dias') return dias;
     if (ind.tipo === 'kmdia') return dias ? linhas.reduce((s, l) => s + (l.km || 0), 0) / dias : null;
     return null;
   }
 
+  const rodouLinha = (l) => l.km > 0 || l.horas > 0;
+  const rodou = (a) => !!a && (a.km > 0 || a.horas > 0);
   function resumo(linhas, base) {
     const o = {};
     base.indicadores.forEach((ind) => { o[ind.key] = agregar(linhas, ind, base); });
@@ -1215,7 +1223,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   function gerarExemplo() { return []; }
 
   G.GBX = G.GBX || {};
-  Object.assign(G.GBX, {
+  Object.assign(G.GBX, { rodou, rodouLinha,
     D, COLUNAS, TEXTO, DIMS, GRUPOS, IND, IND_MAP, numero, normalizar, metaColunas, importarCSV, paraCSV, criarBase, filtrar, agregar, resumo, serieDiaria,
     variacao, statusEvolucao, faixaNota, fmt, fmtInd, gerarExemplo, LIMIAR
   });
@@ -1866,6 +1874,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 15, data: '2026-10-21', titulo: 'Motoristas e veículos separados certo', texto: 'Veículos e grupos e Veículo individual agora listam placas (com quem dirigiu ao lado), e Motoristas lista só pessoas: placa sem motorista identificado não vira mais motorista. Com dados só de performance, quem teve horas em movimento conta como rodando, e indicadores sem nenhum valor (ex.: km e nota) saem das telas.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 14, data: '2026-10-21', titulo: 'Calendário para escolher os dias', texto: 'Na barra de período, o botão Calendário abre os meses: escolha um dia, uma semana, um mês ou um intervalo livre, e compare com o dia anterior, a semana anterior, o mês anterior ou qualquer período. Em Todo o período aparece a evolução geral, semana a semana ou mês a mês.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 13, data: '2026-10-21', titulo: 'Dados da Xtsul pela API', texto: 'Os últimos 30 dias da Xtsul Transportes entraram pela API: motoristas, veículos e indicadores de condução da performance. Km, litros, odômetro e premiação ainda não vêm para este token.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 12, data: '2026-10-21', titulo: 'Script para puxar os dados da API', texto: 'No projeto, o token de cada cliente vai em api/.env e o comando node api/puxar.mjs puxa estatísticas, performance, odômetro e premiação. O painel do Claude não deixa a página chamar a API direto; o aviso agora explica isso.', href: '#/api', link: 'Ver na aba API' },
@@ -2039,6 +2048,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     </${tag}>`;
   }
 
+  // Cartões do topo: os cinco principais; o que não vem nos dados (ex.: nota e km pela API só de performance) cede lugar a outros indicadores
+  const kpisPadrao = () => ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km', 'embalo', 'pressao_acelerador', 'excesso_rotacao', 'horas'].filter(temInd).slice(0, 5);
+
   function kpiEconomia(a, b) {
     const e = economia(a, b);
     if (!e) return '';
@@ -2143,7 +2155,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   function telaVisao() {
     const c = calc();
     const total = c.mots.length;
-    const kpis = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km'].map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
+    const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
     const ordenados = c.mots.filter((x) => x.st.delta !== null).sort((p, q) => q.st.delta - p.st.delta);
     const indSt = IND_MAP[ordenados[0] ? ordenados[0].st.ind : 'nota'];
     const fmtDelta = (d) => (indSt.key === 'nota' ? (d > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(d), 1) + ' pts' : (d > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(d), 2) + ' km/l');
@@ -2360,7 +2372,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     } else if (aba === 'resumo') {
       const comp = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'embalo', 'pressao_acelerador', 'km_dia'].filter(temInd);
       corpo = `
-        <div class="grade-kpi">${['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km'].map((k) => kpi(k, x.a, x.b, { acao: 'ind-det', sel: E.detalhe.indGraf === k, linhas: x.la })).join('')}</div>
+        <div class="grade-kpi">${kpisPadrao().map((k) => kpi(k, x.a, x.b, { acao: 'ind-det', sel: E.detalhe.indGraf === k, linhas: x.la })).join('')}</div>
         <div class="grade-2">
           ${cartaoDiaADia('mot-dia', m.linhas, E.detalhe.indGraf, E.detalhe.verTabela, 'ind-det', 'vista-det', 'Evolução dia a dia')}
           <section class="card">
@@ -2417,7 +2429,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           ${avatar(m.nome, 44)}
           <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
             <span class="entidade-nome">${esc(m.nome)}</span>
-            <span class="apoio">Motorista · ${esc(m.veiculos.join(', ') || 'sem veículo informado')}</span>
+            <span class="apoio">${m.condutores ? 'Veículo · ' + esc(m.condutores.length ? 'dirigido por ' + m.condutores.join(', ') : 'sem motorista identificado') : 'Motorista · ' + esc(m.veiculos.join(', ') || 'sem veículo informado')}</span>
           </div>
           ${badgeStatus(x.st.status)}
           ${temInd('nota') ? badgeNota(x.a.nota) : ''}
@@ -2574,7 +2586,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       x.lb.forEach((l) => g.lb.push(l));
       if (x.la.length) {
         g.n++;
-        if (x.a.km > 0) g.rod++; else g.par++;
+        if (X.rodou(x.a)) g.rod++; else g.par++;
         if (x.st.status === 'evoluiu') g.ev++; else if (x.st.status === 'regrediu') g.re++; else if (x.st.status === 'estavel') g.es++;
       }
     });
@@ -2621,8 +2633,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const busca = nrm(E.veicLista.busca);
     let arr = c.mots.filter((x) => x.la.length > 0);
     const st = E.veicLista.status;
-    if (st === 'parado') arr = arr.filter((x) => !(x.a.km > 0));
-    else if (st !== 'todos') arr = arr.filter((x) => x.a.km > 0 && x.st.status === st);
+    if (st === 'parado') arr = arr.filter((x) => !X.rodou(x.a));
+    else if (st !== 'todos') arr = arr.filter((x) => X.rodou(x.a) && x.st.status === st);
     if (busca) arr = arr.filter((x) => nrm([x.m.nome].concat(DIMS.map((d) => dimDoVeic(x, d.key))).join(' ')).includes(busca));
     const { col, dir } = E.veicOrd;
     const val = (x) => (col === 'placa' ? x.m.nome : ehDim(col) ? dimDoVeic(x, col) : col === 'status' ? ORDEM_ST[x.st.status] : x.a[col]);
@@ -2666,13 +2678,13 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     }
     const c = calc();
     const todos = c.mots.filter((x) => x.la.length > 0);
-    const rodando = todos.filter((x) => x.a.km > 0), parados = todos.length - rodando.length;
+    const rodando = todos.filter((x) => X.rodou(x.a)), parados = todos.length - rodando.length;
     const soAnterior = c.mots.length - todos.length;
     const dims = dimsDoVeic();
     if (!dims.some((d) => d.key === E.grupoPor)) E.grupoPor = dims.length ? dims[0].key : 'grupo';
     const grupos = dims.length ? agruparVeic(c, E.grupoPor) : [];
     const nGrupos = DIMS.find((d) => d.key === 'grupo') && dims.some((d) => d.key === 'grupo') ? new Set(todos.map((x) => dimDoVeic(x, 'grupo')).filter(Boolean)).size : 0;
-    const kpis = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km'].map((k) => kpi(k, c.frotaA, c.frotaB, {})).join('');
+    const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, {})).join('');
 
     // lista de veículos
     const arr = veiculosFiltrados(c);
@@ -2683,9 +2695,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const colunas = [['placa', 'Veículo', false]].concat(dims.map((d) => [d.key, d.label, false]), [['status', 'Evolução', false]], COLS_VEIC.filter(([k]) => temInd(k)).map(([k, r]) => [k, r, k !== 'nota']));
     const cabV = colunas.map(([k, r, d]) => `<th class="ord ${d ? 'dir' : ''}" data-acao="ord-veic" data-col="${k}" aria-sort="${E.veicOrd.col === k ? (E.veicOrd.dir > 0 ? 'ascending' : 'descending') : 'none'}">${r}${E.veicOrd.col === k ? `<span class="seta-ord">${E.veicOrd.dir > 0 ? '▲' : '▼'}</span>` : ''}</th>`).join('');
     const celV = (x, k) => {
-      if (k === 'placa') return `<td>${veicNome(x.m.nome)}${x.a.km > 0 ? '' : '<span class="linha2">Sem rodagem no período</span>'}</td>`;
+      if (k === 'placa') return `<td>${veicNome(x.m.nome)}${X.rodou(x.a) ? (x.m.condutores && x.m.condutores.length ? `<span class="linha2">${esc(x.m.condutores.slice(0, 2).join(', '))}${x.m.condutores.length > 2 ? ' +' + (x.m.condutores.length - 2) : ''}</span>` : '') : '<span class="linha2">Sem rodagem no período</span>'}</td>`;
       if (ehDim(k)) return `<td>${dimDoVeic(x, k) ? esc(dimDoVeic(x, k)) : '<span class="mudo">—</span>'}</td>`;
-      if (k === 'status') return `<td>${x.a.km > 0 ? badgeStatus(x.st.status) : '<span class="badge badge-vazio">Parado</span>'}</td>`;
+      if (k === 'status') return `<td>${X.rodou(x.a) ? badgeStatus(x.st.status) : '<span class="badge badge-vazio">Parado</span>'}</td>`;
       return celInd(k, x.a, x.b);
     };
     const corpo = pagina.length
@@ -2787,7 +2799,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const temA = E.A && X.filtrar(bv.linhas, E.A).length > 0;
     const p = temA ? E.A : { ini: bv.inicio, fim: bv.fim };
     const aviso = temA ? '' : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A planilha de veículos não tem registros em ${E.A ? D.periodoBR(E.A) : 'o período analisado'}; os gráficos abaixo usam todo o período dela (${D.periodoBR(p)}).</span></div></div>`;
-    const vs = bv.motoristas.map((m) => ({ nome: m.nome, a: X.resumo(X.filtrar(m.linhas, p), bv), g: (m.dims.grupo[0] || '') })).filter((v) => v.a.km > 0);
+    const vs = bv.motoristas.map((m) => ({ nome: m.nome, a: X.resumo(X.filtrar(m.linhas, p), bv), g: (m.dims.grupo[0] || '') })).filter((v) => X.rodou(v.a));
     if (!vs.length) return aviso;
     const barras = (arr, val, max, fmtv, cor) => arr.map((v, i) => `<div class="rk-linha" style="grid-template-columns:22px minmax(90px,140px) 1fr 52px" title="${esc(v.nome)}">
       <span class="rk-pos">${i + 1}</span><span class="rk-nome">${v.link ? veicNome(v.nome) : esc(v.nome)}</span>
@@ -2803,7 +2815,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (!por.has(g)) por.set(g, []);
       X.filtrar(m.linhas, p).forEach((l) => por.get(g).push(l));
     });
-    const gs = [...por.entries()].filter(([g]) => g).map(([g, ls]) => ({ nome: g, a: X.resumo(ls, bv), n: new Set(ls.map((l) => l.motorista)).size })).filter((g) => g.a.km > 0);
+    const gs = [...por.entries()].filter(([g]) => g).map(([g, ls]) => ({ nome: g, a: X.resumo(ls, bv), n: new Set(ls.map((l) => l.motorista)).size })).filter((g) => X.rodou(g.a));
     const cartaoGrupos = gs.length ? (() => {
       const gNota = gs.filter((g) => g.a.nota !== null).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
       const gKml = gs.filter((g) => g.a.kml !== null).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
@@ -2828,7 +2840,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     let corpo = '';
     if (E.base) {
       const c = calc();
-      const kpis = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km'].map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
+      const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
       corpo += `${semDadosNoPeriodo(c.la.length)}
         <div class="grade-kpi">${kpis}${kpiEconomia(c.frotaA, c.frotaB)}</div>
         <div class="grade-2">${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Evolução da frota dia a dia')}${cartaoEvolucao(c)}</div>
@@ -3149,12 +3161,20 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (!E.veic) return null;
     const chave = [E.veicVer, E.veic.linhas.length, ckey(E.cliente)].concat(DIMS.map((d) => nrm(E.filtro[d.key]))).join('|');
     if (!baseVeicCache || baseVeicCache.chave !== chave) {
-      const ls = E.veic.linhas.filter(doFiltro);
+      // A planilha de veículos pode trazer a placa só em "motorista" (layout antigo) ou a placa em "veiculo" e o motorista em "motorista" (API):
+      // no segundo caso a placa vira a chave e o motorista fica em "condutor", para a tela de veículos não listar pessoas.
+      const ls = E.veic.linhas.filter(doFiltro).map((l) => (l.veiculo && l.veiculo !== l.motorista ? Object.assign({}, l, { motorista: l.veiculo, condutor: l.motorista }) : l));
       let base = null;
       if (ls.length) {
         try {
           base = X.criarBase(ls, E.veic.colunas, { tipo: 'planilha', nome: E.veic.nome });
           base.idxNome = new Map(base.motoristas.map((m) => [m.nome, m]));
+          const ehPlaca = (t) => /^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(String(t).toUpperCase().replace(/[^A-Z0-9]/g, ''));
+          base.motoristas.forEach((m) => {
+            const c = new Map();
+            m.linhas.forEach((l) => { const n = l.condutor; if (n && !ehPlaca(n)) n.split(' / ').forEach((x) => c.set(x, (c.get(x) || 0) + 1)); });
+            m.condutores = [...c.keys()].sort((a, b) => c.get(b) - c.get(a));
+          });
         } catch (e) { base = null; }
       }
       baseVeicCache = { chave, base };
@@ -3184,7 +3204,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const c = calc();
     const lista = c.mots.slice().sort((p, q) => String(p.m.nome).localeCompare(String(q.m.nome), 'pt-BR', { numeric: true }));
     let id = E.rota.id;
-    if (!id || !E.base.porId[id]) id = (c.mots.slice().sort((p, q) => (q.a.km || 0) - (p.a.km || 0))[0] || lista[0] || { m: { id: '' } }).m.id;
+    if (!id || !E.base.porId[id]) id = (c.mots.slice().sort((p, q) => (q.a.km || 0) - (p.a.km || 0) || (q.a.horas || 0) - (p.a.horas || 0))[0] || lista[0] || { m: { id: '' } }).m.id;
     const salvaRota = E.rota;
     E.rota = Object.assign({}, E.rota, { tela: 'detalhe', id });
     let corpo;
@@ -3194,7 +3214,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (veic) corpo = corpo.replace('Motorista ·', 'Veículo ·');
     const seletor = `<section class="card ind-seletor"><div class="card-corpo" style="flex-direction:row;align-items:flex-end;gap:14px;flex-wrap:wrap">
       <div class="campo-bloco" style="flex:1;min-width:240px;max-width:420px"><label class="campo-rotulo" for="ind-sel">${veic ? 'Escolha o veículo (placa)' : 'Escolha o motorista'}</label>
-        <select class="campo" id="ind-sel" data-campo="ind-sel">${lista.map((x) => `<option value="${esc(x.m.id)}" ${x.m.id === id ? 'selected' : ''}>${esc(x.m.nome)}${veic && x.m.dims.grupo[0] ? ' · ' + esc(x.m.dims.grupo[0]) : ''}${x.a.nota ? ' · nota ' + fmt(x.a.nota, 1) : ''}</option>`).join('')}</select></div>
+        <select class="campo" id="ind-sel" data-campo="ind-sel">${lista.map((x) => `<option value="${esc(x.m.id)}" ${x.m.id === id ? 'selected' : ''}>${esc(x.m.nome)}${veic && x.m.condutores && x.m.condutores.length ? ' · ' + esc(x.m.condutores[0]) + (x.m.condutores.length > 1 ? ' +' + (x.m.condutores.length - 1) : '') : ''}${veic && x.m.dims.grupo[0] ? ' · ' + esc(x.m.dims.grupo[0]) : ''}${x.a.nota ? ' · nota ' + fmt(x.a.nota, 1) : ''}</option>`).join('')}</select></div>
       <span class="apoio">${fmt(lista.length, 0)} ${veic ? 'veículos' : 'motoristas'} com registro no período · use as abas abaixo para ver todos os indicadores, produtividade e o dia a dia.</span>
       ${(() => { const sel = c.mots.find((y) => y.m.id === id); if (!sel) return ''; const partes = DIMS.filter((d) => sel.m.dims[d.key].length).map((d) => `<span class="tag">${d.label}: ${esc(sel.m.dims[d.key].slice(0, 3).join(', '))}</span>`); return partes.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${partes.join('')}</div>` : ''; })()}</div></section>`;
     return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.</span></div></div>${seletor}${corpo}`;
@@ -3707,7 +3727,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     });
     const gs = [...por.values()].filter((g) => g.la.length).map((g) => Object.assign(g, { a: X.resumo(g.la, bv), b: X.resumo(g.lb, bv), n: g.placas.size }));
     if (!gs.length) return '';
-    gs.sort((p, q) => (q.a.km || 0) - (p.a.km || 0));
+    gs.sort((p, q) => (q.a.km || 0) - (p.a.km || 0) || (q.a.horas || 0) - (p.a.horas || 0));
     const tem = (k) => bv.indicadores.some((i) => i.key === k);
     const cols = [['nota', 'Nota Gobrax'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['motor_ocioso', 'Motor ocioso']].filter(([k]) => tem(k));
     const linhas = gs.slice(0, 10).map((g) => `<tr><td><b style="font-weight:600">${esc(g.nome)}</b></td><td class="dir">${g.n}</td>${cols.map(([k]) => celInd(k, g.a, g.b)).join('')}<td class="dir">${fmtInd(IND_MAP.km, g.a.km)}</td></tr>`).join('');
@@ -4090,6 +4110,17 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   const PERF_COLS = [['faixa_verde', 'greenRange'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
     ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
   const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
+  // Mais de um motorista no dia: fica quem dirigiu por mais tempo (somar a linha para todos contaria os km e as horas em dobro)
+  function motoristaPrincipal(p) {
+    const t = new Map();
+    ((p && p.drivers) || []).forEach((d) => {
+      const n = String((d && d.driverName) || '').trim();
+      if (!n) return;
+      const ms = Date.parse(String(d.endDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')) - Date.parse(String(d.startDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+      t.set(n, (t.get(n) || 0) + (Number.isFinite(ms) && ms > 0 ? ms : 1));
+    });
+    return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
+  }
   function diaParaCSV(dia, estat, perf, cli) {
     const temPerf = perf.length > 0;
     const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
@@ -4105,16 +4136,16 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       vistos.add(k);
       const km = numApi(r.totalMileage) || 0, rodou = km > 0;
       const p = rodou ? perfPor.get(k) : null, ind = (p && p.indicators) || {};
-      const nomes = [...new Set(((p && p.drivers) || []).map((d) => String((d && d.driverName) || '').trim()).filter(Boolean))];
+      const nome = motoristaPrincipal(p);
       const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
       const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
       const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
       const mov = ind.movement ? numApi(ind.movement.duration) : null;
-      const lin = [D.br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+      const lin = [D.br(dia), escC(nome || placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
         rodou ? n(r.averageSpeed) : '', n(r.odometer)]
         .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
       linhas.push(lin);
-      if (rodou) linhasMot.push(lin);
+      if (rodou && nome) linhasMot.push(lin);   // sem motorista identificado, a linha fica só na planilha de veículos
     });
     const cab = cols.join(';');
     return { csv: [cab].concat(linhas).join('\n'), n: linhas.length, csvMot: linhasMot.length ? [cab].concat(linhasMot).join('\n') : '' };

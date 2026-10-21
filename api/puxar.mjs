@@ -70,6 +70,17 @@ async function apiGet(caminho, params, token) {
   }
 }
 
+// Mais de um motorista no dia: fica quem dirigiu por mais tempo (somar a linha para todos contaria os km e as horas em dobro)
+function motoristaPrincipal(p) {
+  const t = new Map();
+  ((p && p.drivers) || []).forEach((d) => {
+    const n = String((d && d.driverName) || '').trim();
+    if (!n) return;
+    const ms = Date.parse(String(d.endDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')) - Date.parse(String(d.startDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+    t.set(n, (t.get(n) || 0) + (Number.isFinite(ms) && ms > 0 ? ms : 1));
+  });
+  return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
+}
 const PERF_COLS = [['faixa_verde', 'greenRange'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
 // Um dia de estatísticas + performance → linhas no layout do painel. O CPF dos motoristas é descartado aqui.
@@ -90,16 +101,16 @@ function diaParaLinhas(dia, estat, perf, cli) {
     const pk = perfPor.get(k), movK = pk && pk.indicators && pk.indicators.movement ? numApi(pk.indicators.movement.duration) : null;
     const km = numApi(r.totalMileage) || 0, rodou = soPerf ? (movK || 0) > 0 : km > 0;
     const p = rodou ? pk : null, ind = (p && p.indicators) || {};
-    const nomes = [...new Set(((p && p.drivers) || []).map((d) => String((d && d.driverName) || '').trim()).filter(Boolean))];
+    const nome = motoristaPrincipal(p);
     const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
     const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
     const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);
     const mov = ind.movement ? numApi(ind.movement.duration) : null;
-    const lin = [br(dia), escC(nomes.length ? nomes.join(' / ') : placa), escC(placa), soPerf ? '' : n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+    const lin = [br(dia), escC(nome || placa), escC(placa), soPerf ? '' : n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
       rodou ? n(r.averageSpeed) : '', n(r.odometer)]
       .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
     veic.push(lin);
-    if (rodou) mot.push(lin);
+    if (rodou && nome) mot.push(lin);   // sem motorista identificado, a linha fica só na planilha de veículos
   });
   return { cols, veic, mot };
 }

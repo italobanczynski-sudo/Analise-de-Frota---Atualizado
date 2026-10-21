@@ -1857,6 +1857,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 10, data: '2026-10-21', titulo: 'Tela inicial em branco', texto: 'Sem dados carregados, a Visão geral fica em branco, sem o quadro de instruções.', href: '#/', link: 'Abrir Visão geral' },
     { id: 9, data: '2026-10-21', titulo: 'Erro do token mais claro', texto: 'O token é limpo ao salvar (tira aspas, espaços e "Bearer" colado junto), e quando a API recusa, o painel mostra o motivo que ela deu. A busca também respeita o limite de 1 chamada por segundo da API.', href: '#/config', link: 'Abrir Configurações' },
     { id: 8, data: '2026-10-21', titulo: 'Dados da API entram sozinhos', texto: 'Salvou o token do cliente, a busca começa na hora: últimos 30 dias de estatísticas, performance, motoristas, odômetro e premiação. Com o painel aberto, os dados se atualizam a cada hora. O relatório geral agora também sai da API, sem planilha.', href: '#/config', link: 'Abrir Configurações' },
     { id: 7, data: '2026-10-21', titulo: 'Performance dos veículos pela API', texto: 'A busca pela API agora traz também a performance de cada veículo, dia a dia: faixa verde, embalo, motor ocioso, pressão do pedal, acima do verde, excesso de velocidade, piloto automático, freio motor e o motorista vinculado.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
@@ -3764,16 +3765,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Tela: sem dados ----------
   function telaSemDados() {
     if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">As planilhas que a equipe anexou aparecem aqui em instantes.</span></div></div></section>`;
-    const passos = [['1', 'Abra o perfil do cliente', 'No menu lateral, em Configurações, escolha o cliente (ou cadastre um novo).'],
-      ['2', 'Anexe as planilhas ou busque pela API', 'As planilhas de motoristas e de veículos exportadas da plataforma, ou o token da API Gobrax do cliente.'],
-      ['3', 'Abra o relatório', 'A Visão geral monta o resultado, a evolução e os pontos de ganho da frota.']];
-    return `<section class="hero-geral hero-vazio">
-      <div class="hero-txt"><span class="hero-eyebrow">Relatório de desempenho da frota</span>
-        <h1 class="hero-titulo">${E.semCliente ? 'Sem dados para este filtro' : E.veic ? 'Falta a planilha de motoristas' : 'Ainda não há dados carregados'}</h1>
-        <span class="hero-sub">${E.semCliente ? 'Não há dados de ' + esc(descFiltro() || E.cliente) + ' nas planilhas importadas. Escolha outro filtro ou anexe a planilha no perfil do cliente.' : (E.veic ? 'A planilha de veículos já está carregada. Anexe também a de motoristas, no perfil do cliente (Configurações), para montar o relatório. Enquanto isso, veja Veículos e grupos.' : 'Cadastre o cliente em Configurações e anexe as planilhas no perfil dele para montar o relatório.')}</span>
-        <div class="hero-acoes" style="margin-top:6px"><a class="hero-btn hero-btn-p" href="${hrefDados()}">Anexar planilhas do cliente</a><a class="hero-btn" href="${hrefDados()}">Buscar pela API Gobrax</a>${E.veic && !E.semCliente ? '<a class="hero-btn" href="#/veiculos">Ver veículos e grupos</a>' : ''}</div></div>
-    </section>
-    <div class="passos">${passos.map(([n, t, d]) => `<div class="passo-i"><span class="passo-n">${n}</span><b>${t}</b><span>${d}</span></div>`).join('')}</div>`;
+    return '';   // sem dados: tela em branco
   }
 
   // ---------- Clientes: cadastro compartilhado (db) com cópia local quando o banco não está disponível ----------

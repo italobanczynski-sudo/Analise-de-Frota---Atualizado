@@ -1857,6 +1857,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 9, data: '2026-10-21', titulo: 'Erro do token mais claro', texto: 'O token é limpo ao salvar (tira aspas, espaços e "Bearer" colado junto), e quando a API recusa, o painel mostra o motivo que ela deu. A busca também respeita o limite de 1 chamada por segundo da API.', href: '#/config', link: 'Abrir Configurações' },
     { id: 8, data: '2026-10-21', titulo: 'Dados da API entram sozinhos', texto: 'Salvou o token do cliente, a busca começa na hora: últimos 30 dias de estatísticas, performance, motoristas, odômetro e premiação. Com o painel aberto, os dados se atualizam a cada hora. O relatório geral agora também sai da API, sem planilha.', href: '#/config', link: 'Abrir Configurações' },
     { id: 7, data: '2026-10-21', titulo: 'Performance dos veículos pela API', texto: 'A busca pela API agora traz também a performance de cada veículo, dia a dia: faixa verde, embalo, motor ocioso, pressão do pedal, acima do verde, excesso de velocidade, piloto automático, freio motor e o motorista vinculado.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
     { id: 6, data: '2026-10-21', titulo: 'Dados direto da API Gobrax', texto: 'No perfil do cliente, salve o token da API e busque sem planilha: estatísticas de cada veículo dia a dia (km, litros, km/l, velocidade média, frenagens), odômetro com a última comunicação de cada unidade e a premiação mensal dos motoristas, que ganhou tela própria.', href: '#/premiacao', link: 'Abrir a Premiação' },
@@ -3812,7 +3813,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       if (E.clientesEmDb && dbRef) await dbRef.add(reg);
       else { E.clientes.push(Object.assign({ id: 'l' + Date.now() }, reg)); ordenarClientes(); salvarLocal(); }
     } catch (e) { toast('Não foi possível salvar. Você pode não ter permissão para editar este painel.', 'erro'); return; }
-    const tokEl = document.getElementById('cli-token'), tok = tokEl ? tokEl.value.trim() : '';
+    const tokEl = document.getElementById('cli-token'), tok = tokEl ? limparToken(tokEl.value) : '';
     if (tokEl) tokEl.value = '';
     const tokOk = tok && armazem.gravar(chaveToken(nome), tok);
     E.clienteForm = { nome: '', grupo: '', obs: '' };
@@ -3961,7 +3962,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
   const CHAVE_API_LOCAL = 'gbx-frota-api';
   const chaveToken = (cli) => 'gbx-api-token:' + slugCli(cli);
-  const tokenDe = (cli) => armazem.ler(chaveToken(cli)) || '';
+  // a API recusa o token com aspas, espaços, quebra de linha ou "Bearer " colado junto
+  const limparToken = (t) => String(t || '').replace(/^\s*(authorization\s*:\s*)?/i, '').replace(/^\s*bearer\s+/i, '').replace(/["'\s]/g, '');
+  const tokenDe = (cli) => limparToken(armazem.ler(chaveToken(cli)));
   const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
   const numApi = (v) => { if (v === null || v === undefined || v === '') return null; const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
   const placaApi = (v) => String(v || '').trim().toUpperCase();
@@ -3973,9 +3976,15 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       let r;
       try { r = await fetch(API_BASE + caminho + '?' + qs, { headers: { Authorization: 'Bearer ' + token } }); }
       catch (e) { throw new Error('o navegador não conseguiu chamar a API (sem rede ou chamada bloqueada neste ambiente)'); }
-      if (r.status === 429 && tentativa < 2) { await esperar(1500); continue; }   // limite de 10 chamadas por segundo
-      if (r.status === 401 || r.status === 403) throw new Error('a API recusou o token deste cliente');
-      if (!r.ok) throw new Error('a API respondeu ' + r.status);
+      // limite: rajada de 10 chamadas, depois 1 por segundo; o 429 diz quanto esperar
+      if (r.status === 429 && tentativa < 8) { await esperar(Math.max(1, Number(r.headers.get('Retry-After')) || 1) * 1000 + 100); continue; }
+      if (!r.ok) {
+        let corpo = null; try { corpo = await r.json(); } catch (e) { /* resposta sem JSON */ }
+        const cod = corpo && Number(corpo.code), desc = corpo && corpo.description ? String(corpo.description) : '';
+        if (cod === 61 || r.status === 401) throw new Error('a API não aceitou o token (Token inválido). Copie o token de novo, inteiro, e salve outra vez; se continuar, peça um token novo ao suporte da Gobrax');
+        if (cod === 71 || r.status === 403) throw new Error('o token não tem acesso a este dado (Acesso não permitido para o cliente)');
+        throw new Error('a API respondeu ' + r.status + (desc ? ' (' + desc + ')' : ''));
+      }
       await esperar(120);
       return r.json();
     }
@@ -4930,7 +4939,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'plan-enviar-local': () => enviarLocal(),
     // API Gobrax: o token vai só para o armazenamento deste navegador, nunca para a tela ou para a base
     'api-token-salvar': (el) => {
-      const inp = document.getElementById(el.dataset.inp || 'api-token'), v = inp ? inp.value.trim() : '';
+      const inp = document.getElementById(el.dataset.inp || 'api-token'), v = inp ? limparToken(inp.value) : '';
       if (!v) { toast('Cole o token da API antes de salvar.', 'erro'); return; }
       if (inp) inp.value = '';
       if (!armazem.gravar(chaveToken(el.dataset.cli), v)) { toast('Este navegador não deixou guardar o token (janela privada?).', 'erro'); return; }

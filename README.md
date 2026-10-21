@@ -12,6 +12,14 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 - Para publicar, o leitor de Excel é carregado do cdnjs em vez de `vendor/` (troque o `src` do script ao gerar a cópia publicada).
 - Acesso pelo menu Compartilhar do Artifact: Colaborador (Contributor) anexa e apaga planilhas; Leitor (Viewer) só vê.
 
+## API Gobrax
+No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway-v3.gobrax.com.br:8889/api/`, `Authorization: Bearer <token>`):
+- `v1/vehicle-statistics`: uma chamada por dia (dia de Brasília convertido para UTC), entra como planilha de veículos.
+- `v2/vehicle-odometer`: último odômetro dos últimos 30 dias, card "Odômetro e comunicação" em Veículos e grupos.
+- `v2/driversOverview`: nota, km e bonificação por mês, tela Premiação. O CPF devolvido é descartado antes de gravar.
+- O token de cada cliente fica só no `localStorage` de quem o digitou (`gbx-api-token:<cliente>`), nunca na base compartilhada nem no código.
+- Limites da API: 10 chamadas/s e no máximo 31 dias por consulta.
+
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.
 2. Settings → Pages → Source: "Deploy from a branch" → Branch `main` / pasta `/ (root)`.

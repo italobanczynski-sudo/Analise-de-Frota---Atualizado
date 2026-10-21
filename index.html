@@ -891,6 +891,9 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'excesso_rotacao', rotulo: '% do tempo em excesso de rotação', ex: '3,2', aliases: ['excesso_rotacao', 'excesso_de_rotacao', 'rotacao_excessiva'] },
     { key: 'excesso_velocidade', rotulo: 'Eventos de excesso de velocidade', ex: '2', aliases: ['excesso_velocidade', 'excesso_de_velocidade', 'eventos_velocidade'] },
     { key: 'frenagens', rotulo: 'Frenagens bruscas', ex: '1', aliases: ['frenagens', 'frenagens_bruscas', 'freadas', 'freadas_bruscas', 'frenagem_brusca'] },
+    { key: 'frenagens_alta', rotulo: 'Frenagens em alta velocidade', ex: '0', aliases: ['frenagens_alta', 'frenagens_em_alta_velocidade', 'freadas_alta_velocidade'] },
+    { key: 'velocidade_media', rotulo: 'Velocidade média (km/h)', ex: '62,5', aliases: ['velocidade_media', 'vel_media', 'velocidade_media_km_h'] },
+    { key: 'odometro', rotulo: 'Odômetro no fim do dia (km)', ex: '291862,2', aliases: ['odometro', 'odometer', 'hodometro'] },
     { key: 'nota', rotulo: 'Nota Gobrax do dia (0–100)', ex: '78,4', aliases: ['nota', 'nota_gobrax', 'score', 'pontuacao', 'nota_motorista', 'nota_do_motorista'] },
     { key: 'cliente', rotulo: 'Cliente (Empresa) — permite filtrar por cliente', ex: 'Nome do cliente', aliases: ['cliente', 'empresa', 'razao_social', 'nome_cliente'] }
   ];
@@ -921,6 +924,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { key: 'excesso_rotacao', grupo: 'conducao', label: 'Excesso de rotação', desc: 'Tempo acima da faixa de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
     { key: 'excesso_velocidade', grupo: 'conducao', label: 'Excesso de velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'excesso_velocidade', den: 'km', mult: 100, var: 'pct' },
     { key: 'frenagens', grupo: 'conducao', label: 'Frenagens bruscas', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
+    { key: 'frenagens_alta', grupo: 'conducao', label: 'Frenagens em alta velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens_alta', den: 'km', mult: 100, var: 'pct' },
+    { key: 'velocidade_media', grupo: 'conducao', label: 'Velocidade média', desc: 'Média ponderada pelos km rodados', un: 'km/h', casas: 1, melhor: 0, tipo: 'media', col: 'velocidade_media', peso: 'km', var: 'pct' },
     { key: 'kml', grupo: 'consumo', label: 'Média de consumo', desc: 'Quilômetros por litro', un: 'km/l', casas: 2, melhor: 1, tipo: 'razao', num: 'km', den: 'litros', mult: 1, var: 'pct' },
     { key: 'l100', grupo: 'consumo', label: 'Litros a cada 100 km', desc: 'Consumo relativo à distância', un: 'L', casas: 1, melhor: -1, tipo: 'razao', num: 'litros', den: 'km', mult: 100, var: 'pct' },
     { key: 'litros', grupo: 'consumo', label: 'Diesel consumido', desc: 'Total de litros no período', un: 'L', casas: 0, melhor: 0, tipo: 'soma', col: 'litros', var: 'pct' },
@@ -1813,6 +1818,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     { sec: 'Motoristas' },
     { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'] },
     { tela: 'individual', tipo: 'motorista', href: '#/individual/motorista', icone: 'motorista-ind', rot: 'Motorista individual' },
+    { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
     { sec: 'Retenção do cliente' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
@@ -1849,6 +1855,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const LINK_COMPARTILHADO = 'https://claude.ai/artifact/JtQke6GEAqzz8ohdP653dS';
   const NOVIDADES = [
+    { id: 6, data: '2026-10-21', titulo: 'Dados direto da API Gobrax', texto: 'No perfil do cliente, salve o token da API e busque sem planilha: estatísticas de cada veículo dia a dia (km, litros, km/l, velocidade média, frenagens), odômetro com a última comunicação de cada unidade e a premiação mensal dos motoristas, que ganhou tela própria.', href: '#/premiacao', link: 'Abrir a Premiação' },
     { id: 5, data: '2026-10-21', titulo: 'Dados compartilhados em tempo real', texto: 'No painel do Claude, as planilhas anexadas vão para uma base compartilhada: todos que acessam veem os mesmos clientes e dados, e cada planilha nova aparece na hora, sem recarregar.' },
     { id: 4, data: '2026-10-21', titulo: 'Sino de novidades', texto: 'As atualizações do sistema passam a aparecer aqui. O número vermelho mostra quantas você ainda não viu.' },
     { id: 3, data: '2026-10-21', titulo: 'Evolução dia a dia', texto: 'Nova tabela em Comparativo de períodos: cada dia com planilha comparado ao dia anterior com planilha, com Nota, km/l, km, diesel e indicadores de condução. Vale para a frota ou para um motorista, e exporta em CSV.', href: '#/comparativo', link: 'Abrir o comparativo' },
@@ -2441,7 +2448,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Tela: Análise dos veículos (por veículo e agrupada por grupo, modelo, filial ou tipo) ----------
   // Roda com a base de veículos no lugar da de motoristas (ver comContexto): período, comparação e status usam o mesmo motor do resto do painel.
   const COLS_VEIC = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['litros', 'Consumo (L)'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['embalo', 'Embalo'],
-    ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['frenagens', 'Freadas /100 km']];
+    ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['frenagens', 'Freadas /100 km'],
+    ['frenagens_alta', 'Freadas em alta vel. /100 km'], ['velocidade_media', 'Velocidade média']];
   const DIM_SEM = { grupo: 'Sem grupo', modelo: 'Sem modelo', filial: 'Sem filial', tipo: 'Sem tipo' };
   const ORDEM_ST = { evoluiu: 3, estavel: 2, regrediu: 1, sembase: 0 };
   const dimDoVeic = (x, k) => (x.m.dims && x.m.dims[k] && x.m.dims[k][0]) || '';
@@ -2555,7 +2563,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (!E.veic) {
       return cab('Importe a planilha de veículos para ver o desempenho de cada caminhão e de cada grupo.') +
         `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Nenhuma planilha de veículos importada</span>
-        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Anexar planilhas do cliente</a></div></div></section>`;
+        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Anexar planilhas do cliente</a></div></div></section>${cartaoOdometro()}`;
     }
     const bv = baseVeic();
     if (!bv || E.base !== bv) {
@@ -2627,7 +2635,8 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         </div>
         <div class="tabela-wrap"><table class="tabela" style="min-width:${760 + colunas.length * 60}px"><thead><tr>${cabV}</tr></thead><tbody>${corpo}</tbody></table></div>
         ${X.ui.paginacao(L.pag, arr.length, L.por, 'veículos')}
-      </section>`;
+      </section>
+      ${cartaoOdometro()}`;
   }
   // ---------- Tela: Dashboards (só gráficos) ----------
   function donut(partes, centro, sub) {
@@ -2856,7 +2865,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       const antes = no.nodeValue.slice(0, m.index), depois = no.nodeValue.slice(m.index + m[0].length);
       const t0 = performance.now(), dur = 900 + Math.min(600, alvo > 1000 ? 300 : 0);
       const passo = (agora) => {
-        const p = Math.min(1, (agora - t0) / dur), f = 1 - Math.pow(1 - p, 3);
+        const p = Math.max(0, Math.min(1, (agora - t0) / dur)), f = 1 - Math.pow(1 - p, 3);   // o 1º quadro pode vir com hora anterior a t0
         no.nodeValue = antes + fmt(alvo * f, casas) + depois;
         if (p < 1) requestAnimationFrame(passo); else no.nodeValue = antes + fmt(alvo, casas) + depois;
       };
@@ -3938,6 +3947,216 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       <div class="alerta-acoes"><button type="button" class="btn btn-primario" data-acao="plan-enviar-local">Enviar para a base compartilhada</button><button type="button" class="btn-link peq" data-acao="plan-descartar-local">Descartar deste navegador</button></div></div></div>`;
   }
 
+  // ---------- API Gobrax: estatísticas por veículo (dia a dia), odômetro e premiação ----------
+  // O token de cada cliente fica só no navegador de quem o digitou: nunca vai para a base compartilhada nem para o código.
+  const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
+  const CHAVE_API_LOCAL = 'gbx-frota-api';
+  const chaveToken = (cli) => 'gbx-api-token:' + slugCli(cli);
+  const tokenDe = (cli) => armazem.ler(chaveToken(cli)) || '';
+  const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+  const numApi = (v) => { if (v === null || v === undefined || v === '') return null; const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+  const placaApi = (v) => String(v || '').trim().toUpperCase();
+  const utc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const janelaUTC = (dia) => ({ startDate: dia + ' 03:00:00', endDate: D.somar(dia, 1) + ' 02:59:59' });   // dia de Brasília (UTC−3) em UTC
+  async function apiGet(caminho, params, token) {
+    const qs = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+    for (let tentativa = 0; ; tentativa++) {
+      let r;
+      try { r = await fetch(API_BASE + caminho + '?' + qs, { headers: { Authorization: 'Bearer ' + token } }); }
+      catch (e) { throw new Error('o navegador não conseguiu chamar a API (sem rede ou chamada bloqueada neste ambiente)'); }
+      if (r.status === 429 && tentativa < 2) { await esperar(1500); continue; }   // limite de 10 chamadas por segundo
+      if (r.status === 401 || r.status === 403) throw new Error('a API recusou o token deste cliente');
+      if (!r.ok) throw new Error('a API respondeu ' + r.status);
+      await esperar(120);
+      return r.json();
+    }
+  }
+  const registros = (j) => (Array.isArray(j) ? j : (j && (j.records || j.data)) || []);
+
+  // Documentos de odômetro e premiação: na base compartilhada, ou no navegador quando não há base
+  const docsApi = (alvo, cli) => (planRef ? [...planDocs.values()] : Object.values(E.apiLocal || {}))
+    .filter((d) => d.alvo === alvo && (!cli || ckey(d.cliente) === ckey(cli)));
+  async function gravarDocApi(id, doc) {
+    if (planRef) { await planRef.doc(id).set(doc); return; }
+    E.apiLocal = Object.assign({}, E.apiLocal, { [id]: doc });
+    armazem.gravar(CHAVE_API_LOCAL, JSON.stringify(E.apiLocal));
+  }
+  function apagarApiLocal(alvo, nome) {
+    if (!E.apiLocal) return;
+    Object.keys(E.apiLocal).forEach((id) => { const d = E.apiLocal[id]; if (d.alvo === alvo && ckey(d.cliente) === ckey(nome)) delete E.apiLocal[id]; });
+    armazem.gravar(CHAVE_API_LOCAL, JSON.stringify(E.apiLocal));
+  }
+
+  // Um dia de estatísticas → CSV no layout do painel (uma linha por veículo; parado entra com 0 km)
+  function estatParaCSV(dia, recs, cli) {
+    const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'cliente', 'dias_periodo'];
+    const n = (v) => { const x = numApi(v); return x === null ? '' : String(x).replace('.', ','); };
+    const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
+    const vistos = new Set(), linhas = [];
+    recs.forEach((r) => {
+      const placa = placaApi(r && r.vehicleIdentification);
+      if (!placa || vistos.has(placa)) return;
+      vistos.add(placa);
+      const km = numApi(r.totalMileage) || 0, rodou = km > 0;
+      linhas.push([D.br(dia), escC(placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+        rodou ? n(r.averageSpeed) : '', n(r.odometer), escC(cli), '1'].join(';'));
+    });
+    return { csv: [cols.join(';')].concat(linhas).join('\n'), n: linhas.length };
+  }
+
+  async function buscarApi(cli) {
+    const f = E.apiForm, token = tokenDe(cli);
+    if (!token) { toast('Salve o token da API deste cliente antes de buscar.', 'erro'); return; }
+    if (!f.ini || !f.fim || f.ini > f.fim) { toast('Escolha um período válido.', 'erro'); return; }
+    if (D.dif(f.ini, f.fim) > 92) { toast('Busque no máximo 93 dias por vez.', 'erro'); return; }
+    const st = E.apiStatus = { cli, rodando: true, msg: 'Começando…', feito: [], erro: null };
+    const passo = (msg) => { st.msg = msg; render(); };
+    const fim = f.fim > D.hoje() ? D.hoje() : f.fim;
+    try {
+      if (f.estat) {
+        const dias = [];
+        for (let d = f.ini; d <= fim; d = D.somar(d, 1)) dias.push(d);
+        let veics = 0, comDados = 0;
+        E.importCli = cli; E.silencio = true;
+        try {
+          for (let i = 0; i < dias.length; i++) {
+            passo('Estatísticas por veículo: dia ' + (i + 1) + ' de ' + dias.length + ' (' + D.br(dias[i]) + ')');
+            const recs = registros(await apiGet('v1/vehicle-statistics', Object.assign(janelaUTC(dias[i]), { vehicleIdentification: '' }), token));
+            const { csv, n } = estatParaCSV(dias[i], recs, cli);
+            if (!n) continue;
+            if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
+          }
+        } finally { E.importCli = null; E.silencio = false; E.impVeic = null; }
+        st.feito.push(comDados ? 'estatísticas de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
+      }
+      if (f.odo) {
+        passo('Odômetro dos veículos…');
+        const agora = Date.now();
+        const recs = registros(await apiGet('v2/vehicle-odometer', { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token));
+        const veiculos = recs.filter((r) => r && r.vehicleIdentification).map((r) => ({ placa: placaApi(r.vehicleIdentification), odometro: numApi(r.odometer), coletado: String(r.lastUpdated || '') }));
+        await gravarDocApi(idPlan('odometro', cli, 'atual', 1), { alvo: 'odometro', cliente: cli, data: D.hoje(), veiculos, em: new Date().toISOString() });
+        st.feito.push('odômetro de ' + veiculos.length + ' veículos');
+      }
+      if (f.prem) {
+        passo('Scores e premiação dos motoristas…');
+        const mes = (iso) => iso.slice(5, 7) + '-' + iso.slice(0, 4);
+        const j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(f.ini), endDate: mes(fim) }, token);
+        // só nome, nota, km e bonificação: CPF e id do motorista são descartados aqui, antes de qualquer gravação
+        const porMes = {};
+        registros(j).forEach((m) => {
+          const nome = String((m && (m.Name || m.name)) || '').trim();
+          if (!nome) return;
+          ((m.Overview || m.overview) || []).forEach((o) => {
+            const dt = String(o.Date || o.date || ''), mm = dt.match(/^(\d{2})-(\d{4})$/);
+            if (!mm || o.Err) return;
+            const k = mm[2] + '-' + mm[1];
+            (porMes[k] = porMes[k] || []).push({ nome, nota: numApi(o.Score), km: numApi(o.TotalKM !== undefined ? o.TotalKM : o.TotalKm), premio: numApi(o.Reward) });
+          });
+        });
+        const meses = Object.keys(porMes).sort();
+        for (const k of meses) await gravarDocApi(idPlan('premiacao', cli, k, 1), { alvo: 'premiacao', cliente: cli, data: k, motoristas: porMes[k], em: new Date().toISOString() });
+        st.feito.push(meses.length ? 'premiação de ' + meses.length + (meses.length === 1 ? ' mês' : ' meses') : 'premiação: nenhum motorista com dados no período');
+      }
+    } catch (e) {
+      st.erro = (e && e.code) ? msgErroDb(e) : (e && e.message) || 'erro desconhecido';
+    }
+    st.rodando = false;
+    E.veicVer++; baseVeicCache = null; reaplicarFiltro();
+    render();
+    if (st.erro) toast('API: ' + st.erro + '.', 'erro'); else toast('API: ' + st.feito.join(', ') + '.');
+  }
+
+  function cartaoApi(nome) {
+    if (!E.apiForm || E.apiForm.cli !== nome) E.apiForm = { cli: nome, ini: D.somar(D.hoje(), -6), fim: D.hoje(), estat: true, odo: true, prem: true };
+    const f = E.apiForm, tem = !!tokenDe(nome);
+    const st = E.apiStatus && E.apiStatus.cli === nome ? E.apiStatus : null;
+    const ck = (k, rot, dica) => `<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-campo="api-${k}" ${f[k] ? 'checked' : ''} style="margin-top:2px"><span><b style="font-weight:600">${rot}</b><span class="apoio" style="display:block">${dica}</span></span></label>`;
+    const odo = docsApi('odometro', nome)[0], prem = docsApi('premiacao', nome).map((d) => d.data).sort();
+    return `<section class="card">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Buscar dados pela API Gobrax</h2>
+        <span class="h2-sub">Preenche o painel direto da plataforma, sem planilha: estatísticas de cada veículo dia a dia, odômetro e premiação dos motoristas.</span></div></div>
+      <div class="card-corpo">
+        <div class="campo-bloco"><label class="campo-rotulo" for="api-token">Token da API de ${esc(nome)}</label>
+          ${tem && !E.apiTrocar ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="badge badge-ok">Token salvo neste navegador</span>
+              <button type="button" class="btn-link peq" data-acao="api-token-trocar">Trocar</button><button type="button" class="btn-link peq" data-acao="api-token-esquecer">Esquecer</button></div>`
+            : `<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="password" class="campo" id="api-token" autocomplete="off" spellcheck="false" placeholder="Cole aqui o token da API deste cliente" style="flex:1;min-width:220px">
+              <button type="button" class="btn" data-acao="api-token-salvar" data-cli="${esc(nome)}">Salvar token</button></div>`}
+          <span class="apoio">O token fica só neste navegador: não vai para a base compartilhada nem aparece para outras pessoas. Quem busca precisa ter o token; o resultado da busca fica visível a todos.</span></div>
+        <div class="campo-bloco"><span class="campo-rotulo">Período</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="date" class="campo" style="width:auto" data-campo="api-ini" value="${esc(f.ini)}" aria-label="Início do período da API">
+            <span class="apoio">até</span>
+            <input type="date" class="campo" style="width:auto" data-campo="api-fim" value="${esc(f.fim)}" aria-label="Fim do período da API">
+          </div><span class="apoio">As estatísticas vêm dia a dia (horário de Brasília); o dia de hoje vem parcial e é atualizado a cada nova busca. A premiação vem por mês.</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${ck('estat', 'Estatísticas por veículo', 'Km, litros, km/l, velocidade média e frenagens de cada placa, por dia. Entra como planilha de veículos.')}
+          ${ck('odo', 'Odômetro', 'Último odômetro de cada veículo e quando a unidade comunicou pela última vez.' + (odo ? ' Última busca: ' + D.br(odo.data) + '.' : ''))}
+          ${ck('prem', 'Scores e premiação', 'Nota (0–100), km e bonificação de cada motorista, por mês. O CPF que a API devolve é descartado.' + (prem.length ? ' Meses já buscados: ' + prem.map((k) => k.slice(5) + '/' + k.slice(0, 4)).join(', ') + '.' : ''))}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn btn-primario" data-acao="api-buscar" data-cli="${esc(nome)}" ${!tem || (st && st.rodando) || !(f.estat || f.odo || f.prem) ? 'disabled' : ''}>${st && st.rodando ? '<span class="spinner"></span>Buscando…' : 'Buscar dados da API'}</button>
+          ${st ? `<span class="apoio" role="status">${st.rodando ? esc(st.msg) : st.erro ? '<b class="critico-txt">Parou: ' + esc(st.erro) + '.</b>' + (st.feito.length ? ' Antes disso: ' + esc(st.feito.join(', ')) + '.' : '') : '✓ ' + esc(st.feito.join(', ')) + '.'}</span>` : ''}
+        </div>
+      </div>
+    </section>`;
+  }
+
+  // Odômetro e comunicação de cada veículo (da última busca na API)
+  function cartaoOdometro() {
+    const doc = docsApi('odometro', E.cliente)[0];
+    if (!doc || !doc.veiculos || !doc.veiculos.length) return '';
+    const agora = Date.now();
+    const horas = (s) => { const t = Date.parse(String(s).replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? (agora - t) / 3600000 : null; };
+    const vs = doc.veiculos.map((v) => ({ ...v, h: horas(v.coletado) })).sort((a, b) => (b.h === null ? -1 : a.h === null ? 1 : b.h - a.h));
+    const sit = (h) => (h === null ? '<span class="badge badge-vazio">Sem coleta</span>' : h <= 24 ? '<span class="badge badge-ok">Comunicando</span>' : h <= 72 ? '<span class="badge badge-atencao">Há ' + Math.round(h / 24) + ' dia(s)</span>' : '<span class="badge badge-critico">Há ' + Math.round(h / 24) + ' dias</span>');
+    const atrasados = vs.filter((v) => v.h === null || v.h > 24).length;
+    return `<section class="card">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Odômetro e comunicação</h2>
+        <span class="h2-sub">Da API Gobrax, buscado em ${D.br(doc.data)} · ${vs.length} veículos${atrasados ? ' · ' + atrasados + ' sem comunicar há mais de 24 h' : ' · todos comunicando'}. Veículo parado há dias pode indicar unidade eletrônica sem sinal.</span></div></div>
+      <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:420px;overflow:auto">
+        <table class="tabela"><thead><tr><th>Veículo</th><th class="dir">Odômetro</th><th>Última coleta</th><th>Situação</th></tr></thead>
+        <tbody>${vs.map((v) => `<tr><td>${esc(v.placa)}</td><td class="dir num">${v.odometro === null ? '—' : fmt(v.odometro, 0) + ' km'}</td><td class="num">${esc(v.coletado.slice(0, 16)) || '—'}</td><td>${sit(v.h)}</td></tr>`).join('')}</tbody></table></div></div>
+    </section>`;
+  }
+
+  // Tela: Premiação (scores mensais dos motoristas, da API)
+  function telaPremiacao() {
+    const docs = docsApi('premiacao', E.cliente).sort((a, b) => (a.data < b.data ? -1 : 1));
+    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Premiação</h1><span class="sub">Nota, km e bonificação de cada motorista por mês, da API Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}.</span></div></div>`;
+    if (!docs.length) return cab + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma premiação buscada ainda</span>
+      <span class="apoio">No perfil do cliente, salve o token da API e busque "Scores e premiação".</span><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a></div></div></section>`;
+    const meses = docs.map((d) => d.data);
+    if (!meses.includes(E.premMes)) E.premMes = meses[meses.length - 1];
+    const i = meses.indexOf(E.premMes), atual = docs[i], ant = i > 0 ? docs[i - 1] : null;
+    const antPor = new Map((ant ? ant.motoristas : []).map((m) => [ckey(m.nome), m]));
+    const ls = atual.motoristas.slice().sort((a, b) => (b.nota || 0) - (a.nota || 0));
+    const soma = (arr, k) => arr.reduce((s, m) => s + (m[k] || 0), 0);
+    const notaMedia = (arr) => { const w = soma(arr, 'km'); return w ? arr.reduce((s, m) => s + (m.nota || 0) * (m.km || 0), 0) / w : null; };
+    const indN = IND_MAP.nota, indKm = IND_MAP.km;
+    const rotMes = (k) => D.nomeMes(k + '-01');
+    const kp = (rot, v, vb, ind, txt) => `<div class="kpi"><span class="kpi-titulo">${rot}</span><span class="kpi-valor num">${txt}</span>${ant ? variacao(X.variacao(ind, v, vb), 'vs. ' + rotMes(ant.data)) : '<span class="kpi-ref">sem mês anterior buscado</span>'}</div>`;
+    const indPrem = { var: 'pct', melhor: 0 };
+    return `${cab}
+      <section class="card"><div class="card-corpo" style="gap:10px"><span class="campo-rotulo">Mês</span><div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${meses.map((k) => `<button type="button" class="pilula ${k === E.premMes ? 'ativa' : ''}" data-acao="prem-mes" data-mes="${k}" aria-pressed="${k === E.premMes}">${rotMes(k)}</button>`).join('')}</div></div></section>
+      <div class="grade-kpi">
+        ${kp('Nota média', notaMedia(atual.motoristas), ant && notaMedia(ant.motoristas), indN, fmt(notaMedia(atual.motoristas), 1))}
+        ${kp('Km rodados', soma(atual.motoristas, 'km'), ant && soma(ant.motoristas, 'km'), indKm, fmt(soma(atual.motoristas, 'km'), 0) + '<small>km</small>')}
+        ${kp('Bonificação total', soma(atual.motoristas, 'premio'), ant && soma(ant.motoristas, 'premio'), indPrem, 'R$ ' + fmt(soma(atual.motoristas, 'premio'), 2))}
+        <div class="kpi"><span class="kpi-titulo">Motoristas</span><span class="kpi-valor num">${ls.length}</span><span class="kpi-ref">${ls.filter((m) => (m.premio || 0) > 0).length} com bonificação</span></div>
+      </div>
+      <section class="card">
+        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Motoristas · ${rotMes(atual.data)}</h2><span class="h2-sub">Ordenado pela nota. Variação contra ${ant ? rotMes(ant.data) : 'o mês anterior (não buscado)'}. Buscado em ${D.br(String(atual.em || '').slice(0, 10))}.</span></div>
+          <button type="button" class="btn" data-acao="exportar-premiacao">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
+        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:560px;overflow:auto">
+          <table class="tabela" style="min-width:680px"><thead><tr><th>#</th><th>Motorista</th><th>Nota</th><th class="dir">Variação da nota</th><th class="dir">Km</th><th class="dir">Bonificação</th></tr></thead>
+          <tbody>${ls.map((m, n) => { const b = antPor.get(ckey(m.nome)); return `<tr><td class="num mudo">${n + 1}</td>
+            <td><span class="pessoa">${avatar(m.nome, 28)}<span class="pessoa-nome">${esc(m.nome)}</span></span></td>
+            <td>${badgeNota(m.nota)}</td><td class="dir">${b ? variacao(X.variacao(indN, m.nota, b.nota)) : '<span class="mudo">—</span>'}</td>
+            <td class="dir num">${fmt(m.km, 0)} km</td><td class="dir num">R$ ${fmt(m.premio || 0, 2)}</td></tr>`; }).join('')}</tbody></table></div></div>
+      </section>`;
+  }
+
   function periodoMotPadrao(nome) {
     const cs = coberturas({ linhas: linhasCli('veiculos', nome) });   // inclui planilha de um dia só (importação diária)
     if (cs.length) return { ini: cs[cs.length - 1].ini, fim: cs[cs.length - 1].fim };
@@ -4076,6 +4295,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           </div>
         </section>
       </div>
+      ${cartaoApi(nome)}
       <section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Formato diário (CSV): colunas</h2>
           <span class="h2-sub">Só para CSV feito à mão. As exportações da plataforma (motoristas e veículos) entram direto, sem ajuste. O nome da coluna pode variar; colunas a mais são ignoradas.</span></div></div>
@@ -4088,8 +4308,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // Apaga só os dados de um cliente (o do outro fica) e regrava o que sobrou
   function apagarDadosCliente(nome, alvo, silencioso) {
+    const doApi = alvo === 'veiculos' ? 'odometro' : 'premiacao';   // o que veio da API acompanha o tipo de planilha
+    apagarApiLocal(doApi, nome);
     if (planRef) {   // base compartilhada: some para todos; a tela já reflete e o snapshot confirma
       apagarPlanDb(alvo, nome);
+      apagarPlanDb(doApi, nome);
       if (alvo === 'veiculos') { const resto = (E.veic ? E.veic.linhas : []).filter((l) => ckey(l.cliente) !== ckey(nome)); E.veic = resto.length ? Object.assign({}, E.veic, { linhas: resto }) : null; E.impVeic = null; E.veicVer++; baseVeicCache = null; reaplicarFiltro(); }
       else { const resto = (E.linhasAll || []).filter((l) => ckey(l.cliente) !== ckey(nome)); if (resto.length) { E.linhasAll = resto; aplicarFiltroCliente(); } else limparBase(); E.importacao = null; }
       E.cliApagar = null;
@@ -4144,11 +4367,13 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual'].includes(E.rota.tela);
+    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? painelExportacao() : '');
+    const tokEl = document.getElementById('api-token'), tokDigitado = tokEl ? tokEl.value : '';   // o token digitado nunca vai para o HTML
     document.getElementById('app').innerHTML = html;
+    if (tokDigitado && document.getElementById('api-token')) document.getElementById('api-token').value = tokDigitado;
     const chaveAnim = [E.rota.tela, E.rota.id, E.cliente, E.A && E.A.ini, E.A && E.A.fim, E.base ? E.base.linhas.length : 0].join('|');
     const pag = document.getElementById('pagina');
     if (pag && chaveAnim !== ultimaAnim) { ultimaAnim = chaveAnim; pag.classList.add('anima'); animarNumeros(pag); } else if (pag) pag.classList.add('sem-anima');
@@ -4181,7 +4406,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 
@@ -4631,6 +4856,24 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       armazem.apagar(CHAVE_CSV); apagarPlanDb('motoristas'); E.importacao = null; limparBase(); render(); toast('Planilha removida.');
     },
     'plan-enviar-local': () => enviarLocal(),
+    // API Gobrax: o token vai só para o armazenamento deste navegador, nunca para a tela ou para a base
+    'api-token-salvar': (el) => {
+      const inp = document.getElementById('api-token'), v = inp ? inp.value.trim() : '';
+      if (!v) { toast('Cole o token da API antes de salvar.', 'erro'); return; }
+      if (inp) inp.value = '';
+      if (!armazem.gravar(chaveToken(el.dataset.cli), v)) { toast('Este navegador não deixou guardar o token (janela privada?).', 'erro'); return; }
+      E.apiTrocar = false; render(); toast('Token salvo neste navegador.');
+    },
+    'api-token-trocar': () => { E.apiTrocar = true; render(); const i = document.getElementById('api-token'); if (i) i.focus(); },
+    'api-token-esquecer': () => { const f = focoPorSlug(E.rota.id); if (f) armazem.apagar(chaveToken(f.nome)); E.apiTrocar = false; render(); toast('Token apagado deste navegador.'); },
+    'api-buscar': (el) => buscarApi(el.dataset.cli),
+    'prem-mes': (el) => { E.premMes = el.dataset.mes; render(); },
+    'exportar-premiacao': () => {
+      const d = docsApi('premiacao', E.cliente).find((x) => x.data === E.premMes);
+      if (!d) return;
+      const ls = [csvLinha(['Mês', 'Motorista', 'Nota', 'Km', 'Bonificação (R$)'])].concat(d.motoristas.map((m) => csvLinha([d.data.slice(5) + '/' + d.data.slice(0, 4), m.nome, numCSV(m.nota, 1), numCSV(m.km, 0), numCSV(m.premio || 0, 2)])));
+      baixar('premiacao_' + slugCli(E.cliente) + '_' + d.data + '.csv', ls.join('\n'));
+    },
     'plan-descartar-local': () => { descartarLocal(); toast('Planilhas deste navegador descartadas.'); },
     'export-fechar': () => { E.exportacao = null; render(); },
     'export-fechar-fundo': (el, ev) => { if (ev.target === el) { E.exportacao = null; render(); } },
@@ -4742,6 +4985,11 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   });
   document.addEventListener('change', (ev) => {
     const el = ev.target, k = el.dataset.campo;
+    if (k && k.indexOf('api-') === 0 && E.apiForm) {
+      const c = k.slice(4);
+      if (c === 'ini' || c === 'fim') E.apiForm[c] = el.value; else E.apiForm[c] = el.checked;
+      render(); return;
+    }
     if (k === 'filtro-dim') {
       E.filtro[el.dataset.dim] = el.value;
       reaplicarFiltro();
@@ -4792,6 +5040,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       }
     } catch (e) { /* período salvo inválido: fica o padrão */ }
     E.planCarregando = !!(window.claude && window.claude.use);   // dentro do Claude: espera a base compartilhada
+    try { E.apiLocal = JSON.parse(armazem.ler(CHAVE_API_LOCAL) || '{}') || {}; } catch (e) { E.apiLocal = {}; }
     lerRota();
     render();
     iniciarClientes();

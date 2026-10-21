@@ -450,6 +450,10 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .cal-dia.ref::after {
   content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 0; border-top: 2px dashed var(--dado-ref);
 }
+.cal-abas { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-aba { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; border: 1px solid var(--borda); border-radius: 8px; background: transparent; cursor: pointer; font-size: 13px; color: var(--corpo); text-align: left; }
+.cal-aba b { font-weight: 600; color: var(--tinta); }
+.cal-aba.ativa { border-color: var(--dado); background: var(--dado-fundo); }
 .cal-legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--texto-2); align-items: center; }
 .cal-legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .cal-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--apoio); padding-top: 12px; width: 100%; }
@@ -702,7 +706,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 .pagina.anima .teia-pt { animation: gbx-pop .5s ease 1s both; }
 .cal-mapa { display: flex; gap: 10px; align-items: flex-start; overflow-x: auto; padding-bottom: 4px; }
 .cal-dias { display: grid; grid-template-rows: repeat(7, 22px); gap: 4px; font-size: 11px; color: #80868B; align-items: center; }
-.cal-grade { display: grid; grid-template-rows: repeat(7, 22px); grid-auto-flow: column; grid-auto-columns: 22px; gap: 4px; }
+.cal-mapa .cal-grade { display: grid; grid-template-rows: repeat(7, 22px); grid-auto-flow: column; grid-auto-columns: 22px; gap: 4px; }
 .cal-c, .cal-v { width: 22px; height: 22px; border-radius: 5px; display: block; }
 .cal-c { cursor: default; } .cal-c:hover { outline: 2px solid #2B2B2B; outline-offset: 1px; }
 .pagina.anima .cal-c { animation: gbx-pop .35s ease both; animation-delay: calc(var(--i) * 14ms); }
@@ -1862,6 +1866,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 14, data: '2026-10-21', titulo: 'Calendário para escolher os dias', texto: 'Na barra de período, o botão Calendário abre os meses: escolha um dia, uma semana, um mês ou um intervalo livre, e compare com o dia anterior, a semana anterior, o mês anterior ou qualquer período. Em Todo o período aparece a evolução geral, semana a semana ou mês a mês.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 13, data: '2026-10-21', titulo: 'Dados da Xtsul pela API', texto: 'Os últimos 30 dias da Xtsul Transportes entraram pela API: motoristas, veículos e indicadores de condução da performance. Km, litros, odômetro e premiação ainda não vêm para este token.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 12, data: '2026-10-21', titulo: 'Script para puxar os dados da API', texto: 'No projeto, o token de cada cliente vai em api/.env e o comando node api/puxar.mjs puxa estatísticas, performance, odômetro e premiação. O painel do Claude não deixa a página chamar a API direto; o aviso agora explica isso.', href: '#/api', link: 'Ver na aba API' },
     { id: 11, data: '2026-10-21', titulo: 'Aba API Gobrax', texto: 'Nova aba no menu com a documentação da API: endpoints, parâmetros, campos usados, erros, limites e a situação da busca de cada cliente.', href: '#/api', link: 'Abrir a aba API' },
@@ -1917,7 +1922,79 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   }
 
   // ---------- Barra de período: escolha simples + comparação sempre com o período anterior ----------
-  const RAPIDOS = [['ultimo', 'Último dia'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'], ['mes', 'Mês atual'], ['mesant', 'Mês anterior']];
+  const RAPIDOS = [['ultimo', 'Último dia'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'], ['mes', 'Mês atual'], ['mesant', 'Mês anterior'], ['tudo', 'Todo o período']];
+
+  // ---------- Calendário livre: dia, semana, mês ou intervalo; comparação escolhida pela pessoa ----------
+  const mesInteiro = (p) => p.ini === D.inicioMes(p.ini) && p.fim === D.fimMes(p.ini);
+  function granPeriodo(d, g) {
+    if (g === 'semana') { const ini = D.somar(d, -((D.deISO(d).getUTCDay() + 6) % 7)); return { ini, fim: D.somar(ini, 6) }; }   // segunda a domingo
+    if (g === 'mes') return { ini: D.inicioMes(d), fim: D.fimMes(d) };
+    return { ini: d, fim: d };
+  }
+  function compPara(p, comp) {
+    const mesAnt = () => { const i = D.somarMeses(p.ini, -1); return { ini: i, fim: D.fimMes(i) }; };
+    if (comp === 'semana') return { ini: D.somar(p.ini, -7), fim: D.somar(p.fim, -7) };
+    if (comp === 'mes') return mesInteiro(p) ? mesAnt() : deslocar(p, 1, 0);
+    return mesInteiro(p) ? mesAnt() : anterior(p);   // anterior equivalente: dia anterior com dados, semana anterior, mês anterior
+  }
+  function painelCalendario() {
+    const c = E.cal, base = E.base;
+    if (!c.rascA) c.rascA = { ...E.A };
+    if (!c.rascB) c.rascB = { ...E.B };
+    if (!c.mes) c.mes = D.somarMeses(D.inicioMes(c.rascA.fim), -1);
+    const g = c.gran || 'dia', comp = c.comp || 'auto', edA = c.editando !== 'B';
+    const pil = (acao, attr, rot, ativo) => `<button type="button" class="pilula ${ativo ? 'ativa' : ''}" data-acao="${acao}" ${attr} aria-pressed="${ativo}">${rot}</button>`;
+    const autoRot = { dia: 'Dia anterior com dados', semana: 'Semana anterior', mes: 'Mês anterior', livre: 'Período anterior' }[g];
+    const dica = c.pendente ? 'Agora clique no último dia do intervalo.'
+      : !edA ? 'Clique no primeiro e no último dia do período de comparação.'
+      : g === 'livre' ? 'Clique no primeiro e no último dia.' : g === 'semana' ? 'Clique em qualquer dia: entra a semana inteira, de segunda a domingo.' : g === 'mes' ? 'Clique em qualquer dia: entra o mês inteiro.' : 'Clique no dia que quer analisar.';
+    return `<div class="cal-painel" style="flex-direction:column;align-items:stretch">
+      <div class="cal-abas">
+        <button type="button" class="cal-aba ${edA ? 'ativa' : ''}" data-acao="cal-editar" data-qual="A"><span><span class="marca marca-a" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>Analisar</span><b>${D.periodoBR(c.rascA)}</b></button>
+        <button type="button" class="cal-aba ${!edA ? 'ativa' : ''}" data-acao="cal-editar" data-qual="B"><span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>Comparar com</span><b>${D.periodoBR(c.rascB)}</b></button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:16px 28px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span class="campo-rotulo">Escolher por</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${[['dia', 'Dia'], ['semana', 'Semana'], ['mes', 'Mês'], ['livre', 'Intervalo livre']].map(([k, r]) => pil('cal-gran', `data-g="${k}"`, r, edA && g === k)).join('')}</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px"><span class="campo-rotulo">Comparar com</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${pil('cal-comp', 'data-c="auto"', autoRot, comp === 'auto')}${g !== 'semana' ? pil('cal-comp', 'data-c="semana"', 'Uma semana antes', comp === 'semana') : ''}${g !== 'mes' ? pil('cal-comp', 'data-c="mes"', 'Um mês antes', comp === 'mes') : ''}${pil('cal-comp', 'data-c="livre"', 'Escolher no calendário', comp === 'livre')}</div></div>
+      </div>
+      <span class="apoio" role="status">${dica}</span>
+      <div class="cal-meses">${X.ui.calendarioMes(c.mes, c, base, { esq: true })}${X.ui.calendarioMes(D.somarMeses(c.mes, 1), c, base, { dir: true })}</div>
+      <div class="cal-legenda"><span><span class="marca marca-a" style="display:inline-block;width:10px;height:10px;border-radius:3px"></span>Analisado</span><span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px"></span>Comparação</span><span style="color:var(--borda-hover)">12</span><span style="margin-left:-8px">dia sem dados</span></div>
+      <div class="cal-rodape"><span class="apoio">${D.periodoBR(c.rascA)} comparado a ${D.periodoBR(c.rascB)}</span>
+        <span style="display:flex;gap:8px"><button type="button" class="btn" data-acao="cal-cancelar">Cancelar</button><button type="button" class="btn btn-primario" data-acao="cal-aplicar" ${c.pendente ? 'disabled' : ''}>Aplicar</button></span></div>
+    </div>`;
+  }
+
+  // ---------- Evolução geral: todo o período, semana a semana ou mês a mês ----------
+  function cartaoEvolucaoGeral() {
+    const b = E.base;
+    if (!b || !b.inicio) return '';
+    const g = E.evoGran || (D.dif(b.inicio, b.fim) > 120 ? 'mes' : 'semana');
+    const inds = ['nota', 'kml', 'km', 'faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'excesso_rotacao', 'tempo_excesso_velocidade', 'horas'].filter(temInd).map((k) => IND_MAP[k]).filter(Boolean);
+    const per = [];
+    for (let d = granPeriodo(b.inicio, g).ini; d <= b.fim; d = D.somar(granPeriodo(d, g).fim, 1)) {
+      const p = granPeriodo(d, g), ls = X.filtrar(b.linhas, p);
+      if (ls.length) per.push({ p, v: X.resumo(ls, b), mot: new Set(ls.map((l) => l.motorista)).size });
+    }
+    if (per.length < 2) return '';
+    const comValor = inds.filter((ind) => per.some((r) => r.v[ind.key] !== null && r.v[ind.key] !== undefined && Number.isFinite(r.v[ind.key])));
+    inds.length = 0; inds.push(...comValor);   // indicador sem nenhum valor (ex.: km quando a API só manda a performance) sai da tabela
+    const rot = (p) => (g === 'mes' ? D.nomeMes(p.ini) : 'Semana ' + D.periodoCurto(p));
+    const pri = per[0], ult = per[per.length - 1];
+    const resumoInd = inds.map((ind) => `<div class="kpi"><span class="kpi-titulo">${esc(ind.label)}</span><span class="kpi-valor">${fmtInd(ind, ult.v[ind.key])}</span>${variacao(X.variacao(ind, ult.v[ind.key], pri.v[ind.key]), 'vs. ' + rot(pri.p))}<span class="kpi-ref">No início: ${fmtInd(ind, pri.v[ind.key])}</span></div>`).join('');
+    const linhas = per.slice().reverse().map((r, i, arr) => { const ant = arr[i + 1]; return `<tr><td style="white-space:nowrap"><span style="font-weight:500">${rot(r.p)}</span>${g === 'mes' ? '' : `<span class="linha2">${D.periodoBR(r.p)}</span>`}</td><td class="dir num">${fmt(r.mot, 0)}</td>
+      ${inds.map((ind) => `<td class="dir"><span style="display:block">${fmtInd(ind, r.v[ind.key])}</span>${ant ? variacao(X.variacao(ind, r.v[ind.key], ant.v[ind.key])) : ''}</td>`).join('')}</tr>`; }).join('');
+    return `<section class="card">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução geral</h2><span class="h2-sub">Do início (${rot(pri.p)}) ao fim (${rot(ult.p)}) dos dados. Cada linha comparada à anterior; mais recente no topo.</span></div>
+        <div style="display:flex;gap:6px">${[['semana', 'Por semana'], ['mes', 'Por mês']].map(([k, r]) => `<button type="button" class="pilula ${g === k ? 'ativa' : ''}" data-acao="evo-gran" data-g="${k}" aria-pressed="${g === k}">${r}</button>`).join('')}</div></div>
+      <div class="card-corpo" style="gap:14px"><div class="grade-kpi">${resumoInd}</div></div>
+      <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">
+        <table class="tabela" style="min-width:${260 + inds.length * 110}px"><thead><tr><th>${g === 'mes' ? 'Mês' : 'Semana'}</th><th class="dir">Motoristas</th>${inds.map((ind) => `<th class="dir">${esc(ind.label)}</th>`).join('')}</tr></thead>
+        <tbody>${linhas}</tbody></table></div></div>
+    </section>`;
+  }
   function barraPeriodo() {
     const semBase = E.base && X.filtrar(E.base.linhas, E.B).length === 0;
     return `<section class="card" aria-label="Período">
@@ -1925,19 +2002,21 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         <div style="display:flex;flex-direction:column;gap:8px">
           <span class="campo-rotulo">Período analisado</span>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
-            ${(temTotais(E.base) ? [['ultima', 'Última planilha']].concat(RAPIDOS) : RAPIDOS).map(([k, rot]) => `<button type="button" class="pilula ${E.presetA === k ? 'ativa' : ''}" data-acao="periodo-rapido" data-k="${k}" aria-pressed="${E.presetA === k}">${rot}</button>`).join('')}
+            ${(temTotais(E.base) ? [['ultima', 'Última planilha']].concat(RAPIDOS) : RAPIDOS).map(([k, rot]) => `<button type="button" class="pilula ${E.presetA === k && !E.cal.aberto ? 'ativa' : ''}" data-acao="periodo-rapido" data-k="${k}" aria-pressed="${E.presetA === k}">${rot}</button>`).join('')}
+            <button type="button" class="pilula ${E.cal.aberto || !E.presetA ? 'ativa' : ''}" data-acao="cal-alternar" aria-expanded="${!!E.cal.aberto}">${icone('calendario', 14)} Calendário</button>
           </div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;color:var(--corpo)">
           <span><span class="marca marca-a" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>Analisando <b>${D.periodoBR(E.A)}</b></span>
-          <span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>${E.A.ini === E.A.fim && E.B.ini === E.B.fim ? 'Comparando com o dia anterior com dados' : 'Comparando com o período anterior'}: <b>${D.periodoBR(E.B)}</b></span>
+          <span><span class="marca marca-b" style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px"></span>${E.modoComp !== 'anterior' ? 'Comparando com' : E.A.ini === E.A.fim && E.B.ini === E.B.fim ? 'Comparando com o dia anterior com dados' : 'Comparando com o período anterior'}: <b>${D.periodoBR(E.B)}</b></span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--texto-2)">
           <span><b style="color:var(--ok)">▲ Verde</b> melhorou</span><span><b style="color:var(--critico)">▼ Vermelho</b> piorou</span><span><b style="color:var(--texto-3)">Cinza</b> estável ou sem base de comparação</span>
         </div>
         ${semBase ? '<div class="alerta alerta-atencao" role="status"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Ainda não há dados do período anterior para comparar. Importe planilhas de mais dias para ver se melhorou ou piorou.</span></div></div>' : ''}
       </div>
-    </section>`;
+      ${E.cal.aberto ? painelCalendario() : ''}
+    </section>${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
   }
 
   // ---------- Cartões e tabelas reutilizados ----------
@@ -4889,7 +4968,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'ord-comp': (el) => { E.comp.ord = Number(el.dataset.o); render(); },
 
     // Calendário
-    'cal-alternar': () => { E.cal.aberto = !E.cal.aberto; if (E.cal.aberto) { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; } render(); },
+    'cal-alternar': () => { const c = E.cal; c.aberto = !c.aberto; if (c.aberto) { c.rascA = { ...E.A }; c.rascB = { ...E.B }; c.editando = 'A'; c.pendente = null; c.mes = D.somarMeses(D.inicioMes(E.A.fim), -1); } render(); },
     'cal-editar': (el) => {
       const q = el.dataset.qual;
       if (!E.cal.aberto) { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; }
@@ -4901,11 +4980,16 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'cal-mes': (el) => { E.cal.mes = D.somarMeses(E.cal.mes, Number(el.dataset.passo)); render(); },
     'cal-dia': (el) => {
       const d = el.dataset.dia, c = E.cal;
+      if (c.editando !== 'B' && (c.gran || 'dia') !== 'livre') {
+        c.rascA = granPeriodo(d, c.gran || 'dia'); c.preset = null; c.pendente = null;
+        if ((c.comp || 'auto') !== 'livre') c.rascB = compPara(c.rascA, c.comp || 'auto');
+        render(); return;
+      }
       if (!c.pendente) { c.pendente = d; render(); return; }
       const p = c.pendente < d ? { ini: c.pendente, fim: d } : { ini: d, fim: c.pendente };
       c.pendente = null;
-      if (c.editando === 'A') { c.rascA = p; c.preset = null; if (E.modoComp === 'anterior') c.rascB = anterior(p); }
-      else { c.rascB = p; E.modoComp = 'personalizado'; }
+      if (c.editando === 'A') { c.rascA = p; c.preset = null; if ((c.comp || 'auto') !== 'livre') c.rascB = compPara(p, c.comp || 'auto'); }
+      else { c.rascB = p; c.comp = 'livre'; }
       render();
     },
     'periodo-rapido': (el) => {
@@ -4926,13 +5010,22 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     'cal-comp-anterior': () => { E.modoComp = 'anterior'; E.cal.rascB = anterior(E.cal.rascA); E.cal.pendente = null; render(); },
     'cal-comp-mes': () => { E.modoComp = 'personalizado'; E.cal.rascB = deslocar(E.cal.rascA, 1, 0); E.cal.pendente = null; E.cal.mes = D.somarMeses(D.inicioMes(E.cal.rascB.fim), -1); render(); },
     'cal-comp-ano': () => { E.modoComp = 'personalizado'; E.cal.rascB = deslocar(E.cal.rascA, 0, 1); E.cal.pendente = null; E.cal.mes = D.somarMeses(D.inicioMes(E.cal.rascB.fim), -1); render(); },
-    'cal-cancelar': () => { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.pendente = null; E.cal.preset = E.presetA; render(); },
+    'cal-cancelar': () => { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.pendente = null; E.cal.preset = E.presetA; E.cal.aberto = false; render(); },
+    'cal-gran': (el) => { const c = E.cal; c.gran = el.dataset.g; c.editando = 'A'; c.pendente = null; if (c.gran === c.comp) c.comp = 'auto'; render(); },
+    'cal-comp': (el) => {
+      const c = E.cal; c.comp = el.dataset.c; c.pendente = null;
+      if (c.comp === 'livre') { c.editando = 'B'; c.mes = D.somarMeses(D.inicioMes(c.rascB.fim), -1); } else { c.editando = 'A'; c.rascB = compPara(c.rascA, c.comp); }
+      render();
+    },
+    'evo-gran': (el) => { E.evoGran = el.dataset.g; render(); },
     'cal-aplicar': () => {
       const c = E.cal;
       if (c.pendente) return;
       E.A = { ...c.rascA }; E.presetA = c.preset;
+      // "anterior equivalente" segue o período quando chegam dados novos; as outras comparações ficam fixas
+      E.modoComp = (c.comp || 'auto') === 'auto' && !mesInteiro(E.A) ? 'anterior' : 'personalizado';
       E.B = E.modoComp === 'anterior' ? anterior(E.A) : { ...c.rascB };
-      c.rascB = { ...E.B };
+      c.rascB = { ...E.B }; c.aberto = false;
       E.lista.pag = 1;
       salvarPeriodo();
       render();

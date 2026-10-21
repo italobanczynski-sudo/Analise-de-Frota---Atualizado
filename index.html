@@ -642,8 +642,6 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .radar-ok .radar-ic { background: #1E8E3E; color: #fff; } .radar-ruim .radar-ic { background: #D93025; color: #fff; }
 .radar-atencao .radar-ic { background: #F9AB00; color: #2B2B2B; } .radar-neutro .radar-ic { background: #6B6B6B; color: #fff; }
 @media (prefers-reduced-motion: reduce) { .pagina.anima *, .radar-pulso, .radar-scan, .exec::after, .badge-critico::before { animation: none !important; } }
-.faixa-demo { background: #FFF3C4; color: #5A4300; border-bottom: 1px solid #F3DE7A; padding: 8px 24px; font-size: 12.5px; }
-.faixa-demo b { color: #2B2B2B; }
 
 /* ---------- Tudo branco: sem painéis, dicas ou avisos escuros ---------- */
 :root { --fundo: #FFFFFF; }
@@ -660,7 +658,6 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 .nav-item .dica::before { border-right-color: var(--borda); }
 .dica-graf { background: #FFFFFF; color: #2B2B2B; border: 1px solid var(--borda); box-shadow: 0 4px 14px rgba(43,43,43,.14); }
 .dica-graf .dica-data { color: #5F6368; }
-.faixa-demo { background: #FFFBEA; }
 
 /* ---------- Risco de churn ---------- */
 @keyframes gbx-gauge { from { stroke-dashoffset: var(--len); } }
@@ -766,7 +763,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
 /* ---------- Impressão / PDF ---------- */
 @media print {
-  .sidebar, .topo, .faixa-demo, .btn, .hero-acoes, .toast, section.card[aria-label="Período"], .aprof, .dica-graf { display: none !important; }
+  .sidebar, .topo, .btn, .hero-acoes, .toast, section.card[aria-label="Período"], .aprof, .dica-graf { display: none !important; }
   .app { display: block; }
   main.pagina { padding: 0 !important; gap: 12px; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -1853,7 +1850,6 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
-  const LINK_COMPARTILHADO = 'https://claude.ai/artifact/JtQke6GEAqzz8ohdP653dS';
   const NOVIDADES = [
     { id: 6, data: '2026-10-21', titulo: 'Dados direto da API Gobrax', texto: 'No perfil do cliente, salve o token da API e busque sem planilha: estatísticas de cada veículo dia a dia (km, litros, km/l, velocidade média, frenagens), odômetro com a última comunicação de cada unidade e a premiação mensal dos motoristas, que ganhou tela própria.', href: '#/premiacao', link: 'Abrir a Premiação' },
     { id: 5, data: '2026-10-21', titulo: 'Dados compartilhados em tempo real', texto: 'No painel do Claude, as planilhas anexadas vão para uma base compartilhada: todos que acessam veem os mesmos clientes e dados, e cada planilha nova aparece na hora, sem recarregar.' },
@@ -1897,7 +1893,6 @@ body, .conteudo, .pagina { background: #FFFFFF; }
           <img class="topo-logo" src="${ASSET('logo')}" alt="gobrax">
           <span class="topo-lado dir">${pilulaDiesel()}${seletorCliente()}${seletorGrupo()}</span>
         </header>
-        ${window.claude && window.claude.use ? '' : `<div class="faixa-demo">Esta versão guarda as planilhas só neste navegador. Para ver os dados de toda a equipe em tempo real, <a href="${LINK_COMPARTILHADO}" target="_blank" rel="noopener">abra o painel no Claude</a>.</div>`}
         <main class="pagina" id="pagina">${conteudo}</main>
       </div>
     </div>`;

@@ -15,6 +15,8 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 ## API Gobrax
 Documentação completa em [docs/API.md](docs/API.md) e na aba **API Gobrax** do painel (`#/api`).
 
+Para puxar os dados fora do navegador (o painel no Claude bloqueia a chamada): token em `api/.env`, clientes em `api/clientes.json` e `node api/puxar.mjs`.
+
 No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway-v3.gobrax.com.br:8889/api/`, `Authorization: Bearer <token>`):
 - `v1/vehicle-statistics`: uma chamada por dia (dia de Brasília convertido para UTC), entra como planilha de veículos.
 - `v1/vehicle-performance`: mesma janela diária, juntada às estatísticas pela placa: faixa verde (greenRange), embalo (leverage), motor ocioso (idle), pressão do pedal crítica (pedalPressureOnHigh), acima do verde (powerRange), excesso de velocidade em tempo (speeding), piloto automático (cruiseControl), freio motor (engineBrake), horas em movimento e o nome do motorista vinculado (CPF descartado). Se falhar, as estatísticas entram assim mesmo.

@@ -2,7 +2,7 @@
 
 Como o painel busca os dados direto da plataforma Gobrax, sem planilha. O mesmo conteúdo aparece na aba **API Gobrax** do painel (`#/api`), junto com a situação da busca de cada cliente.
 
-O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `diaParaCSV`, `buscarApi` e `buscarAuto`).
+O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `diaParaCSV`, `buscarApi` e `buscarAuto`). O script `api/puxar.mjs` repete as mesmas regras fora do navegador.
 
 ## Visão geral
 
@@ -26,6 +26,32 @@ O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `di
 - **Automática:** assim que o token é salvo, o painel busca os últimos 30 dias de estatísticas, performance, odômetro e premiação. Com o painel aberto, a busca se repete a cada hora. Ela começa no último dia buscado, que é buscado de novo porque pode ter vindo parcial. A marca de controle fica em `gbx-api-auto:<cliente>` como `{ em, dia }`.
 - **Manual:** no perfil do cliente, o card "Buscar dados pela API Gobrax" busca até 93 dias por vez.
 - Todas as buscas entram numa fila e rodam uma de cada vez. O painel espera 120 ms entre chamadas.
+
+## Puxar pelo script do projeto (`api/puxar.mjs`)
+
+O painel no Claude não deixa a página chamar endereços de fora, então a busca pelo navegador falha lá. A API aceita chamadas de qualquer origem, por isso no GitHub Pages ela funciona. Para alimentar o painel no Claude, use o script do projeto. Ele precisa do Node 18 ou mais novo.
+
+1. Copie `api/.env.example` para `api/.env` e cole o token de cada cliente depois do `=`:
+   ```
+   GOBRAX_TOKEN_XTSUL=<token do cliente>
+   ```
+2. Copie `api/clientes.example.json` para `api/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token:
+   ```json
+   [{ "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL" }]
+   ```
+3. Rode `node api/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Xtsul Transportes LTDA"`.
+
+Os arquivos `api/.env`, `api/clientes.json` e `api/saida/` ficam fora do Git (`.gitignore`). Nunca faça commit deles e nunca cole o token em chat.
+
+O script gera em `api/saida/`:
+- `<cliente>/*.json`: um arquivo por documento, no formato da coleção `planilhas` da base compartilhada (motoristas e veículos por dia, odômetro, premiação por mês). Para carregar no painel do Claude, peça ao Claude Code: "carrega api/saida no painel". Ele grava os arquivos na base, e quem estiver com o painel aberto vê os dados na hora.
+- `<cliente>-veiculos.csv` e `<cliente>-motoristas.csv`: planilhas para importar no perfil do cliente, em qualquer versão do painel.
+
+Para rodar sozinho a cada hora no Windows, crie uma tarefa agendada:
+```
+schtasks /Create /SC HOURLY /TN "Gobrax API" /TR "node \"C:\caminho\do\projeto\api\puxar.mjs\" --dias 2"
+```
+A tarefa atualiza `api/saida/`. Para levar os dados ao painel do Claude, ainda é preciso pedir a carga ao Claude Code.
 
 ## Endpoints
 

@@ -1862,6 +1862,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 12, data: '2026-10-21', titulo: 'Script para puxar os dados da API', texto: 'No projeto, o token de cada cliente vai em api/.env e o comando node api/puxar.mjs puxa estatísticas, performance, odômetro e premiação. O painel do Claude não deixa a página chamar a API direto; o aviso agora explica isso.', href: '#/api', link: 'Ver na aba API' },
     { id: 11, data: '2026-10-21', titulo: 'Aba API Gobrax', texto: 'Nova aba no menu com a documentação da API: endpoints, parâmetros, campos usados, erros, limites e a situação da busca de cada cliente.', href: '#/api', link: 'Abrir a aba API' },
     { id: 10, data: '2026-10-21', titulo: 'Tela inicial em branco', texto: 'Sem dados carregados, a Visão geral fica em branco, sem o quadro de instruções.', href: '#/', link: 'Abrir Visão geral' },
     { id: 9, data: '2026-10-21', titulo: 'Erro do token mais claro', texto: 'O token é limpo ao salvar (tira aspas, espaços e "Bearer" colado junto), e quando a API recusa, o painel mostra o motivo que ela deu. A busca também respeita o limite de 1 chamada por segundo da API.', href: '#/config', link: 'Abrir Configurações' },
@@ -3973,7 +3974,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     for (let tentativa = 0; ; tentativa++) {
       let r;
       try { r = await fetch(API_BASE + caminho + '?' + qs, { headers: { Authorization: 'Bearer ' + token } }); }
-      catch (e) { throw new Error('o navegador não conseguiu chamar a API (sem rede ou chamada bloqueada neste ambiente)'); }
+      catch (e) { if (planRef) apiBloqueada = true; throw new Error(planRef ? 'o painel no Claude não deixa a página chamar a API. Puxe os dados com o script api/puxar.mjs do projeto (veja a aba API Gobrax) ou use o painel pelo GitHub Pages' : 'o navegador não conseguiu chamar a API (sem rede ou chamada bloqueada)'); }
       // limite: rajada de 10 chamadas, depois 1 por segundo; o 429 diz quanto esperar
       if (r.status === 429 && tentativa < 8) { await esperar(Math.max(1, Number(r.headers.get('Retry-After')) || 1) * 1000 + 100); continue; }
       if (!r.ok) {
@@ -4112,7 +4113,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   const lerAuto = (cli) => { try { return JSON.parse(armazem.ler(chaveAuto(cli)) || 'null') || {}; } catch (e) { return {}; } };
   const marcarAuto = (cli, o) => armazem.gravar(chaveAuto(cli), JSON.stringify(Object.assign(lerAuto(cli), o)));
   const DIAS_AUTO = 30, HORA = 3600000;
-  let filaApi = Promise.resolve();
+  let filaApi = Promise.resolve(), apiBloqueada = false;   // no Claude a chamada é bloqueada: a busca automática para depois da primeira falha
   const naFila = new Set();
   function buscarAuto(cli) {
     const k = ckey(cli);
@@ -4126,7 +4127,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     }).catch(() => {}).then(() => { naFila.delete(k); });
   }
   function verificarAuto() {
-    if (!E.clientesPronto || E.planCarregando || document.hidden) return;
+    if (!E.clientesPronto || E.planCarregando || document.hidden || apiBloqueada) return;
     E.clientes.forEach((c) => { const m = lerAuto(c.nome); if (tokenDe(c.nome) && !(m.em && Date.now() - m.em < HORA)) buscarAuto(c.nome); });
   }
   setTimeout(verificarAuto, 1500);
@@ -4179,6 +4180,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         <li><b>Base:</b> <code>${API_BASE}</code></li>
         <li><b>Autenticação:</b> cabeçalho <code>Authorization: Bearer &lt;token&gt;</code>, um token por cliente. Ao salvar, o painel tira aspas, espaços, quebras de linha e um "Bearer" colado junto.</li>
         <li><b>Busca automática:</b> assim que o token é salvo, o painel busca os últimos ${DIAS_AUTO} dias. Com o painel aberto, repete a cada hora, a partir do último dia buscado (refeito, porque pode ter vindo parcial).</li>
+        <li><b>Pelo script do projeto:</b> no painel do Claude a página não pode chamar a API. Nesse caso, coloque o token de cada cliente em <code>api/.env</code>, liste os clientes em <code>api/clientes.json</code> e rode <code>node api/puxar.mjs</code>. O script grava os dados em <code>api/saida/</code>, no formato da base compartilhada, e também gera as planilhas CSV para importar.</li>
         <li><b>Busca manual:</b> no perfil do cliente, card "Buscar dados pela API Gobrax", até 93 dias por vez. As buscas entram numa fila e rodam uma de cada vez.</li>
         <li><b>Fuso:</b> cada dia é o dia de Brasília (UTC−3), convertido para UTC na consulta.</li>
         <li><b>Limites:</b> rajada de 10 chamadas, depois 1 por segundo. O painel espera 120 ms entre chamadas e respeita o <code>Retry-After</code> do 429.</li>

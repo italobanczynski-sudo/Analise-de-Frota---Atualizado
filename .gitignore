@@ -1,0 +1,4 @@
+# Tokens e dados de clientes nunca vão para o repositório
+api/.env
+api/clientes.json
+api/saida/

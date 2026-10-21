@@ -1,0 +1,4 @@
+[
+  { "cliente": "Nome do cliente como está no painel", "token": "GOBRAX_TOKEN_CLIENTE1" },
+  { "cliente": "Outro cliente", "token": "GOBRAX_TOKEN_CLIENTE2" }
+]

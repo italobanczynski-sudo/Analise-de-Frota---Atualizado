@@ -673,6 +673,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 .gauge svg { display: block; width: 100%; height: auto; }
 .gauge-centro { position: absolute; left: 0; right: 0; bottom: 4%; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .gauge-num { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; color: #202124; }
+.gauge-info { text-align: center; font-size: 12px; line-height: 1.4; color: var(--texto-2); margin-top: 4px; }
 .gauge-rot { font-size: 12px; color: #5F6368; text-transform: uppercase; letter-spacing: .06em; }
 .pagina.anima .gauge-arco { animation: gbx-gauge 1.3s cubic-bezier(.2,.7,.2,1) .2s both; }
 .churn-lin { display: flex; align-items: center; gap: 10px; }
@@ -1885,6 +1886,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 20, data: '2026-10-21', titulo: 'Calendário de desempenho colorido', texto: 'Sem nota diária, o Calendário de desempenho do motorista e do veículo passa a colorir cada dia pelo início da faixa verde (ideal 85%+, aceitável 55% a 84%). A nota oficial do mês fica no medidor, com a posição no ranking logo abaixo.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 19, data: '2026-10-21', titulo: 'Nota do condutor no dashboard', texto: 'No Motorista individual, o medidor mostra a Nota Gobrax oficial do mês (da premiação da API) quando a nota diária não vem, com a posição do motorista no ranking do mês. No Veículo individual aparece a nota do motorista que dirigiu.', href: '#/individual/motorista', link: 'Abrir Motorista individual' },
     { id: 18, data: '2026-10-21', titulo: 'Premiação mês a mês', texto: 'A tela de Premiação ganhou a evolução mês a mês: cada motorista com nota, km e bonificação de todos os meses que vieram da API, a variação contra o mês anterior e a bonificação somada no período.', href: '#/premiacao', link: 'Abrir Premiação' },
     { id: 17, data: '2026-10-21', titulo: 'Km, litros, hodômetro e premiação pela API', texto: 'As estatísticas, o hodômetro e a premiação da API Gobrax voltaram a responder: a Xtsul agora tem km, litros e km/l por dia, odômetro de cada veículo e nota e bonificação por mês. A evolução de motoristas e veículos passa a ser medida pela média de km/l.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
@@ -3615,12 +3617,12 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 
   // ---------- Dashboard individual (condutor ou veículo): comportamento detalhado e visual ----------
   const COR_NOTA = { bom: '#1E8E3E', atencao: '#F9AB00', critico: '#D93025' };
-  function gaugeNota(valor, cor, rot, sub, tam) {
+  function gaugeNota(valor, cor, rot, sub, tam, info) {
     const R = 70, L = Math.PI * R, off = L * (1 - clamp(valor || 0, 0, 100) / 100);
     return `<div class="gauge" style="width:${tam || 220}px"><svg viewBox="0 0 180 104" role="img" aria-label="${esc(rot)} ${valor === null ? 'sem dado' : fmt(valor, 1)}">
       <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="#EEF0F2" stroke-width="16" stroke-linecap="round"/>
       <path class="gauge-arco" d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="${cor}" stroke-width="16" stroke-linecap="round" style="stroke-dasharray:${L.toFixed(1)};stroke-dashoffset:${off.toFixed(1)};--len:${L.toFixed(1)}"/></svg>
-      <div class="gauge-centro"><span class="gauge-num num">${valor === null ? '—' : fmt(valor, 1)}</span><span class="gauge-rot">${esc(rot)}</span>${sub ? `<span class="apoio" style="font-size:11.5px;margin-top:2px">${esc(sub)}</span>` : ''}</div></div>`;
+      <div class="gauge-centro"><span class="gauge-num num">${valor === null ? '—' : fmt(valor, 1)}</span><span class="gauge-rot">${esc(rot)}</span>${sub ? `<span class="apoio" style="font-size:11.5px;margin-top:2px">${esc(sub)}</span>` : ''}</div>${info ? `<div class="gauge-info">${esc(info)}</div>` : ''}</div>`;
   }
   // Pontuação 0-100 (quanto maior, melhor) para o gráfico de teia
   const EIXOS = [
@@ -3649,20 +3651,31 @@ body, .conteudo, .pagina { background: #FFFFFF; }
       ${va.map((v, i) => { const [x, y] = pt(i, v); return `<circle class="teia-pt" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#FCB709" stroke="#fff" stroke-width="1.5"><title>${eixos[i].rot}: ${fmtInd(IND_MAP[eixos[i].k], a[eixos[i].k])}</title></circle>`; }).join('')}
       ${rot}</svg>`;
   }
+  // Indicador que pinta o calendário: a nota diária; sem ela (API só traz a nota mensal), o início da faixa verde, com as faixas do treinamento Gobrax
+  const CAL_IND = [
+    { k: 'nota', rot: 'nota', faixas: [70, 40], leg: ['Bom (70+)', 'Atenção (40 a 69)', 'Crítico (abaixo de 40)'] },
+    { k: 'inicio_faixa_verde', rot: 'início da faixa verde', faixas: [85, 55], leg: ['Ideal (85%+)', 'Aceitável (55% a 84%)', 'Abaixo de 55%'] },
+    { k: 'faixa_verde', rot: 'faixa verde', faixas: [85, 55], leg: ['85%+', '55% a 84%', 'Abaixo de 55%'] }
+  ];
+  function indCalendario(linhas) {
+    return CAL_IND.find((c) => temInd(c.k) && linhas.some((l) => l[IND_MAP[c.k].col] !== null && l[IND_MAP[c.k].col] !== undefined)) || CAL_IND[0];
+  }
   function mapaCalor(linhas) {
-    const serie = X.serieDiaria(linhas, IND_MAP.nota, E.A, E.base);
+    const ci = indCalendario(linhas), ind = IND_MAP[ci.k];
+    const serie = X.serieDiaria(linhas, ind, E.A, E.base);
     if (!serie.length) return '';
+    const faixa = (v) => (v === null ? null : v >= ci.faixas[0] ? 'bom' : v >= ci.faixas[1] ? 'atencao' : 'critico');
     const d0 = D.deISO(serie[0].data), seg = (d0.getUTCDay() + 6) % 7;
     const cel = [];
     for (let i = 0; i < seg; i++) cel.push('<span class="cal-v"></span>');
     serie.forEach((p, i) => {
-      const f = p.valor === null ? null : X.faixaNota(p.valor);
+      const f = faixa(p.valor);
       const cor = f ? COR_NOTA[f] : '#EEF0F2';
-      cel.push(`<span class="cal-c ${f ? '' : 'cal-vazio'}" style="background:${cor};--i:${i}" title="${D.br(p.data)} · ${p.valor === null ? 'sem registro' : 'nota ' + fmt(p.valor, 1)}"></span>`);
+      cel.push(`<span class="cal-c ${f ? '' : 'cal-vazio'}" style="background:${cor};--i:${i}" title="${D.br(p.data)} · ${p.valor === null ? 'sem registro' : esc(ind.label) + ' ' + fmtInd(ind, p.valor)}"></span>`);
     });
     const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
     return `<div class="cal-mapa"><div class="cal-dias">${dias.map((d) => `<span>${d}</span>`).join('')}</div><div class="cal-grade">${cel.join('')}</div></div>
-      <div class="graf-legenda" style="margin-top:10px"><span><i class="cal-leg" style="background:#1E8E3E"></i>Bom (70+)</span><span><i class="cal-leg" style="background:#F9AB00"></i>Atenção (40 a 69)</span><span><i class="cal-leg" style="background:#D93025"></i>Crítico (abaixo de 40)</span><span><i class="cal-leg" style="background:#EEF0F2"></i>Sem registro</span></div>`;
+      <div class="graf-legenda" style="margin-top:10px"><span><i class="cal-leg" style="background:#1E8E3E"></i>${ci.leg[0]}</span><span><i class="cal-leg" style="background:#F9AB00"></i>${ci.leg[1]}</span><span><i class="cal-leg" style="background:#D93025"></i>${ci.leg[2]}</span><span><i class="cal-leg" style="background:#EEF0F2"></i>Sem registro</span></div>`;
   }
   // Nota oficial do motorista no mês do fim do período analisado (ou no último mês buscado antes dele), vinda da premiação da API
   function notaPremiacao(nome) {
@@ -3680,16 +3693,17 @@ body, .conteudo, .pagina { background: #FFFFFF; }
     const a = x.a, b = x.b, F = c.frotaA;
     if (!x.la.length) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem registros no período analisado</span><span class="apoio">Escolha outro período acima.</span></div></div></section>`;
     const veic = E.rota.tipo === 'veiculo';
-    let nota = temInd('nota') && a.nota > 0 ? a.nota : null, rotNota = IND_MAP.nota.label, subNota = '';
+    let nota = temInd('nota') && a.nota > 0 ? a.nota : null, rotNota = IND_MAP.nota.label, subNota = '', infoNota = '';
     const ranking = c.mots.filter((y) => y.a.nota > 0).sort((p, q) => q.a.nota - p.a.nota);
     const pos = ranking.findIndex((y) => y.m.id === m.id) + 1;
     if (pos) subNota = pos + 'º de ' + ranking.length + (veic ? ' veículos' : ' motoristas');
     const pm = nota === null ? notaPremiacao(veic ? ((m.condutores || []).length === 1 ? m.condutores[0] : '') : m.nome) : null;
-    if (pm) { nota = pm.nota; rotNota = (veic ? 'Nota do motorista · ' : 'Nota Gobrax · ') + pm.mes; subNota = pm.pos + 'º de ' + pm.total + ' motoristas na premiação'; }
+    // rótulo curto dentro do medidor; mês e posição na premiação vão numa linha abaixo, para não sobrepor o arco
+    if (pm) { nota = pm.nota; rotNota = veic ? 'Nota do motorista' : 'Nota Gobrax'; subNota = ''; infoNota = pm.mes + ' · ' + pm.pos + 'º de ' + pm.total + ' na premiação'; }
     const fx = X.faixaNota(nota);
     const stat = (k, tit) => { const ind = IND_MAP[k]; if (!temInd(k)) return ''; const v = X.variacao(ind, a[k], b[k]); return `<div class="dash-stat"><span class="dash-stat-t">${tit || esc(ind.label)}</span><span class="dash-stat-v num">${fmtInd(ind, a[k])}</span>${variacao(v, refB())}</div>`; };
     const hero = `<section class="card dash-hero"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:20px 34px;align-items:center">
-        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', rotNota, subNota, 230)}
+        ${gaugeNota(nota, fx ? COR_NOTA[fx] : '#BDC1C6', rotNota, subNota, 230, infoNota)}
         <div class="dash-stats">${stat('km', 'Km rodados')}${stat('kml', 'Média de consumo')}${stat('litros', 'Diesel consumido')}${stat('dias', 'Dias trabalhados')}${stat('km_dia', 'Km por dia')}${stat('horas', 'Horas de condução')}</div></div></section>`;
     // Insights do próprio condutor/veículo
     const itens = [];
@@ -3720,7 +3734,7 @@ body, .conteudo, .pagina { background: #FFFFFF; }
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Perfil de condução</h2><span class="h2-sub">Amarelo: ${veic ? 'este veículo' : 'este motorista'}. Cinza tracejado: média da frota. Quanto mais longe do centro, melhor.</span></div></div><div class="card-corpo">${teia(a, F)}</div></section>
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Comparado à frota</h2><span class="h2-sub">A marca vertical é a média da frota. Verde melhor, vermelho pior.</span></div></div><div class="card-corpo">${comp || '<span class="apoio">Sem indicadores de condução na planilha.</span>'}</div></section>
       </div>
-      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Calendário de desempenho</h2><span class="h2-sub">Cada quadrado é um dia do período, colorido pela nota. Passe o mouse para ver o valor.</span></div></div><div class="card-corpo">${mapaCalor(x.la)}</div></section>
+      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Calendário de desempenho</h2><span class="h2-sub">Cada quadrado é um dia do período, colorido pelo ${indCalendario(x.la).rot}. Passe o mouse para ver o valor.</span></div></div><div class="card-corpo">${mapaCalor(x.la)}</div></section>
       <div class="grade-2">
         ${cartaoDiaADia('mot-dia', m.linhas, E.detalhe.indGraf, E.detalhe.verTabela, 'ind-det', 'vista-det', 'Evolução dia a dia')}
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Km rodados por dia</h2><span class="h2-sub">Dias sem barra não têm registro.</span></div></div><div class="card-corpo"><div class="grafico" data-grafico="mot-km" style="height:230px"></div></div></section>

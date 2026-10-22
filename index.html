@@ -2398,13 +2398,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 39, data: '2026-10-22', titulo: 'Revisão geral', texto: 'Todas as telas, abas e períodos foram revisados, sem erros. Por segurança, o HubSpot não traz mais CNPJ, e-mail nem telefone: os contatos mostram nome, cargo e último contato, e e-mails, CPF, CNPJ e telefones escritos em notas, reuniões e ligações aparecem mascarados. Arquivos antigos na base são limpos sozinhos. Os últimos textos de planilha saíram.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 38, data: '2026-10-22', titulo: 'Saúde do cliente sem período anterior', texto: 'Quando o período escolhido não tem um anterior com dados (ex.: 90 dias), a Saúde do cliente compara as duas metades do próprio período em vez de ficar em branco. A nota CHS e o último contato do HubSpot também entram no índice de risco.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 37, data: '2026-10-22', titulo: 'Tudo pela API', texto: 'Se o período escolhido não tiver dados, o painel mostra o último período com dados, do mesmo tamanho, e avisa até quando a API trouxe dados. Os textos de planilha saíram: os dados vêm da API. Os botões Imprimir e Atualizar saíram do cabeçalho da Visão geral.', href: '#/geral', link: 'Abrir a Visão geral' },
     { id: 36, data: '2026-10-22', titulo: 'Tratativas trazidas do HubSpot', texto: 'Em Saúde do cliente → Tratativas registradas, o botão Trazer do HubSpot cria uma tratativa para cada reunião, ligação completada e nota do HubSpot, com data, título e o que foi registrado, já na etapa provável do fluxo. Não duplica: trazer de novo só traz o que é novo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 35, data: '2026-10-22', titulo: 'Aba API HubSpot', texto: 'Na página API, a nova aba API HubSpot explica onde fica o token (no api/.env, nunca na página), como coletar com node api/hubspot.mjs (o script pede o token no terminal na primeira vez) e tem o botão para importar o arquivo gerado.', href: '#/api', link: 'Abrir API' },
     { id: 34, data: '2026-10-22', titulo: 'Estudo do cliente e API do HubSpot', texto: 'Na Saúde do cliente, o Estudo do cliente cruza o HubSpot com a operação: saúde (CHS), relacionamento, suporte, contrato e frota e resultado, cada um com Bom, Atenção ou Crítico, e o que fazer agora. Os dados do HubSpot também podem vir pela API: rode node api/hubspot.mjs e use Importar arquivo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 33, data: '2026-10-22', titulo: 'HubSpot: chamados, e-mails e ligações em detalhe', texto: 'No cartão Cliente no HubSpot, clique em Chamados de suporte para ver a relação dos chamados (abertos, assuntos, categorias, tempo para fechar), em E-mails para ver os temas, e em Ligações para ver quem mais entra em contato.', href: '#/churn', link: 'Abrir Saúde do cliente' },
-    { id: 32, data: '2026-10-22', titulo: 'Cliente no HubSpot na Saúde do cliente', texto: 'Ao abrir um cliente na Saúde do cliente, o painel lê o HubSpot ao vivo: CNPJ, cidade, estados onde opera, contrato, frota contratada, nota CHS com as partes que a compõem, último contato, total de ligações e e-mails, chamados de suporte abertos, últimos contatos e contatos principais. Precisa do conector do HubSpot conectado no claude.ai.', href: '#/churn', link: 'Abrir Saúde do cliente' },
+    { id: 32, data: '2026-10-22', titulo: 'Cliente no HubSpot na Saúde do cliente', texto: 'Ao abrir um cliente na Saúde do cliente, o painel lê o HubSpot ao vivo: cidade, estados onde opera, contrato, frota contratada, nota CHS com as partes que a compõem, último contato, total de ligações e e-mails, chamados de suporte abertos, últimos contatos e contatos principais. Precisa do conector do HubSpot conectado no claude.ai.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 31, data: '2026-10-22', titulo: 'Plano de ação com diagnóstico', texto: 'O Plano de ação ganhou abas. Em Diagnóstico, escolha a comparação (período anterior, último dia, última semana, mês atual ou 1ª × 2ª metade) e veja ganhos, perdas, dicas e os gargalos operacionais com o valor em jogo. Em Evolução, veja o período dia a dia, semana a semana ou mês a mês.', href: '#/plano', link: 'Abrir Plano de ação' },
     { id: 30, data: '2026-10-22', titulo: 'Motoristas organizado em abas', texto: 'A tela Motoristas foi separada em abas: Resumo (ganhos, perdas e onde cada condutor está), Comportamento (gráfico de cada indicador), Comparativo (ranking por indicador) e Lista de motoristas. Visual mais limpo, uma coisa de cada vez.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 29, data: '2026-10-22', titulo: 'Gráficos de comportamento em Motoristas', texto: 'A tela Motoristas ganhou o comportamento dia a dia de cada indicador (período analisado contra o anterior) e o Comparativo entre condutores: escolha um indicador e veja todos do melhor para o pior, com a média da frota e como cada um estava antes.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -2467,7 +2468,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   function shell(conteudo) {
     const fonte = E.fonte.tipo === 'vazio'
       ? '<span class="tag">Sem dados</span>'
-      : `<span class="tag">Planilha</span><span title="${esc(E.fonte.nome)}">${esc(E.fonte.nome)}</span>`;
+      : `<span class="tag">${/^API/.test(E.fonte.nome || '') ? 'API' : 'Dados'}</span><span title="${esc(E.fonte.nome)}">${esc(E.fonte.nome)}</span>`;
     return `<div class="app">
       <nav class="sidebar" aria-label="Menu principal">
         <a class="nav-marca" href="#/geral" aria-label="Análise de frota — Visão geral"><span class="nav-marca-q"></span><span>Análise de frota</span></a>
@@ -3199,13 +3200,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `
       <div class="pag-cab"><div class="pag-cab-texto">
         <h1 class="h1">Comparativo de períodos</h1>
-        <span class="sub">Planilha de comparativos · ${D.periodoBR(E.A)} × ${D.periodoBR(E.B)}</span>
+        <span class="sub">Todos os indicadores · ${D.periodoBR(E.A)} × ${D.periodoBR(E.B)}</span>
       </div></div>
       ${barraPeriodo()}
-      <div class="alerta alerta-info"><span class="alerta-icone">i</span><div class="alerta-corpo">
-        <span class="alerta-titulo">Modelo provisório da planilha de comparativos</span>
-        <span class="alerta-texto">As colunas abaixo seguem o padrão Indicador × Período analisado × Comparação × Variação. Quando a planilha padrão de comparativos for enviada, a ordem e os nomes das colunas são ajustados a ela.</span>
-      </div></div>
       <section class="card">
         <div class="card-cab">
           <div class="card-cab-texto"><h2 class="h2">${esc(alvo.nome)}</h2><span class="h2-sub">Todos os indicadores, um por linha.</span></div>
@@ -3543,7 +3540,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
           <button type="button" class="btn" data-acao="exportar-grupos">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
         <div class="card-corpo" style="gap:12px;padding-bottom:0"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="apoio">Agrupar por</span>
           ${dims.map((d) => `<button type="button" class="pilula ${E.grupoPor === d.key ? 'ativa' : ''}" data-acao="grupo-por" data-dim="${d.key}" aria-pressed="${E.grupoPor === d.key}">${d.label}</button>`).join('')}</div></div>
-        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaGrupos(c, grupos, E.grupoPor)}</div></section>` : `<section class="card"><div class="card-corpo"><div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">A planilha não traz grupo, modelo, filial ou tipo</span><span class="alerta-texto">Para separar a análise por grupo, exporte a planilha de veículos com a coluna de grupo (ou uma aba por grupo) e importe de novo.</span></div></div></div></section>`}
+        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaGrupos(c, grupos, E.grupoPor)}</div></section>` : `<section class="card"><div class="card-corpo"><div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Os veículos ainda não têm grupo</span><span class="alerta-texto">Para separar a análise por grupo, crie os grupos em Veículos → Grupos de veículos (os mesmos Grupos de Bonificação da plataforma Gobrax).</span></div></div></div></section>`}
       <section class="card">
         <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-bottom:1px solid var(--apoio)">
           <div class="barra-filtros">
@@ -3743,11 +3740,11 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   }
 
 
-  // ---------- Cliente no HubSpot: perfil, CNPJ, frota, nota CHS, contatos, histórico e suporte ----------
+  // ---------- Cliente no HubSpot: perfil, frota, nota CHS, contatos, histórico e suporte ----------
   // Lido ao vivo pelo conector do HubSpot de quem abre o painel; nada disso é gravado na base do painel.
   const HUB_PORTAL = '19655000';
   const hubCli = {};   // chave do cliente -> { carregando, erro, id, comp, calls, emails, meets, tickets, abertos, contatos, em }
-  const HUB_PROPS = ['name', 'cnpj_texto', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
+  const HUB_PROPS = ['name', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
     'nota_do_chs', 'chs_score', 'chs_aderencia', 'chs_nota_engajamento', 'chs_nota_adimplencia', 'chs_nota_usuario', 'chs_nota_motorista', 'chs_nota_tickets_positivos', 'tickets_suporte__chs_',
     'notes_last_contacted', 'notes_last_updated', 'hs_last_logged_call_date', 'data_inicio_do_contrato_original', 'data_de_termino_do_contrato', 'ciclo_experiencia', 'status_contrato', 'status_financeiro',
     'lifecyclestage', 'num_associated_contacts', 'num_associated_deals', 'createdate'];
@@ -3757,8 +3754,23 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     if (p && Array.isArray(p.content) && p.content[0] && typeof p.content[0].text === 'string') { try { p = JSON.parse(p.content[0].text); } catch (e) { /* fica como veio */ } }
     return p;
   }
+  // Dados pessoais (CNPJ, e-mail, telefone, CPF) não ficam no painel nem na base compartilhada: Política de Segurança da Gobrax, cláusula 5.1
+  const HUB_TEXTOS = ['hs_note_body', 'hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_email_subject', 'hs_call_title', 'hs_meeting_title', 'subject'];
+  const semPII = (t) => String(t).replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[e-mail]').replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, '[CNPJ]')
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]').replace(/(\+?55\s?)?\(?\b\d{2}\)?\s?9?\d{4}[-\s]?\d{4}\b/g, '[telefone]');
+  function limparHub(o) {
+    if (!o) return o;
+    if (o.comp) delete o.comp.cnpj_texto;
+    ['calls', 'emails', 'meets', 'notas', 'tickets', 'abertos', 'contatos'].forEach((k) => ((o[k] && o[k].results) || []).forEach((r) => {
+      const p = r.properties || {};
+      ['email', 'phone', 'mobilephone', 'cnpj_texto'].forEach((c) => { delete p[c]; });
+      HUB_TEXTOS.forEach((c) => { if (typeof p[c] === 'string') p[c] = semPII(p[c]); });
+    }));
+    return o;
+  }
   // Arquivo gerado pelo script (api/hubspot.mjs): mesmo formato da leitura ao vivo
   function usarHubArquivo(o, salvar) {
+    limparHub(o);
     const k = ckey(o.cliente), v = (hubCli[k] = hubCli[k] || {});
     const em = Date.parse(o.gerado) || Date.now();
     if (v.comp && v.em && v.em >= em && v.fonte !== 'arquivo') return;   // a leitura ao vivo é mais nova
@@ -3802,7 +3814,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         recentes('MEETING', ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome', 'hs_meeting_body', 'hs_internal_meeting_notes'], null, 100).catch(() => null),
         recentes('TICKET', ['subject', 'createdate', 'closed_date', 'hs_ticket_category', 'hs_ticket_priority', 'time_to_close'], 'createdate', 100),
         call({ objectType: 'TICKET', filterGroups: [{ associatedWith: [daEmpresa], filters: [{ propertyName: 'closed_date', operator: 'NOT_HAS_PROPERTY' }] }], properties: ['subject', 'createdate', 'hs_ticket_priority'], sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }], limit: 6 }),
-        call({ objectType: 'CONTACT', filterGroups: assoc, properties: ['firstname', 'lastname', 'jobtitle', 'email', 'phone', 'mobilephone', 'notes_last_contacted'], sorts: [{ propertyName: 'notes_last_contacted', direction: 'DESCENDING' }], limit: 10 })
+        call({ objectType: 'CONTACT', filterGroups: assoc, properties: ['firstname', 'lastname', 'jobtitle', 'notes_last_contacted'], sorts: [{ propertyName: 'notes_last_contacted', direction: 'DESCENDING' }], limit: 10 })
       ]);
       if (!comp || !Array.isArray(comp.results) || !comp.results.length) throw { code: 'upstream_error' };
       // quem mais fala com a Gobrax: total de ligações e de e-mails de cada contato da empresa
@@ -3813,12 +3825,12 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         return Promise.all([total('CALL'), total('EMAIL')]).then(([l, e]) => ({ id: String(o.id), l, e }));
       }));
       Object.assign(v, { comp: comp.results[0].properties || {}, calls, emails, meets, notas, tickets, abertos, contatos, porContato, em: Date.now(), erro: null, fonte: 'conector' });
+      limparHub(v);
     } catch (e) { v.erro = (e && e.code) || 'upstream_error'; }
     v.carregando = false; redesenharRel();
   }
   const hubDia = (t) => { if (!t) return ''; const x = /^\d{11,}$/.test(String(t)) ? new Date(Number(t)).toISOString() : String(t); return x.slice(0, 10); };
   const hubNum = (x) => { const n = Number(x); return x === '' || x === null || x === undefined || !Number.isFinite(n) ? null : n; };
-  const fmtCnpj = (x) => { const d = String(x || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : String(x || ''); };
   const diasDesde = (d) => (d ? Math.max(0, D.dif(d, D.hoje())) : null);
   // Detalhe aberto ao clicar num número: relação dos chamados, temas dos e-mails, quem mais liga
   const temaDe = (t) => String(t || '').replace(/^\s*((re|res|enc|fw|fwd|encaminhado|resposta)\s*:\s*)+/gi, '').replace(/\s+/g, ' ').trim() || '(sem assunto)';
@@ -3966,7 +3978,6 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const estados = String(p.estados_onde_opera || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
     const campo = (rot, val) => (val ? `<div class="hb-campo"><span>${rot}</span><b>${val}</b></div>` : '');
     const perfil = [
-      campo('CNPJ', esc(fmtCnpj(p.cnpj_texto))),
       campo('Nome fantasia', esc(p.nome_fantasia || '')),
       campo('Cidade', esc([p.city, p.state].filter(Boolean).join(' / '))),
       campo('Tipo de veículo', esc(p.tipo_de_veiculo || '')),
@@ -4008,9 +4019,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const histHtml = hist.length ? hist.map((x) => `<div class="hb-ev"><span class="hb-ev-ic" aria-hidden="true">${x.ic}</span><span class="hb-ev-txt"><b>${esc(x.t)}</b><small>${x.tipo}${x.s ? ' · ' + esc(x.s) : ''}</small></span><span class="hb-ev-d">${D.br(hubDia(x.d))}</span></div>`).join('') : '<span class="apoio">Nenhum contato registrado.</span>';
     // contatos principais
     const cts = res(v.contatos);
-    const ctHtml = cts.length ? cts.map((o) => { const c = o.properties || {}, n = [c.firstname, c.lastname].filter(Boolean).join(' ') || 'Contato sem nome', tel = c.mobilephone || c.phone || '';
-      return `<div class="hb-ct">${avatar(n, 30)}<span class="hb-ct-txt"><b>${esc(n)}</b><small>${esc(c.jobtitle || 'cargo não informado')}${c.notes_last_contacted ? ' · último contato ' + D.br(hubDia(c.notes_last_contacted)) : ''}</small>
-        <span class="hb-ct-links">${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}${tel ? `<a href="tel:${esc(String(tel).replace(/[^\d+]/g, ''))}">${esc(tel)}</a>` : ''}</span></span></div>`; }).join('')
+    const ctHtml = cts.length ? cts.map((o) => { const c = o.properties || {}, n = [c.firstname, c.lastname].filter(Boolean).join(' ') || 'Contato sem nome';
+      return `<div class="hb-ct">${avatar(n, 30)}<span class="hb-ct-txt"><b>${esc(n)}</b><small>${esc(c.jobtitle || 'cargo não informado')}${c.notes_last_contacted ? ' · último contato ' + D.br(hubDia(c.notes_last_contacted)) : ''}</small></span></div>`; }).join('')
       : '<span class="apoio">Nenhum contato associado à empresa.</span>';
     const abertos = res(v.abertos);
     return `<section class="card hb-card">${cab}
@@ -5047,7 +5057,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `${hero}${radar}
       <div class="grade-2">
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Perfil de condução</h2><span class="h2-sub">Amarelo: ${veic ? 'este veículo' : 'este motorista'} agora (${D.periodoCurto(E.A)}). Azul pontilhado: como estava (${D.periodoCurto(E.B)}). Cinza tracejado: média da frota. Quanto mais longe do centro, melhor.</span></div></div><div class="card-corpo">${teia(a, F, b)}</div></section>
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Antes, agora e frota</h2><span class="h2-sub">Barra: agora (${D.periodoCurto(E.A)}), verde se melhor que a frota e vermelha se pior. Marca vazada: como estava (${D.periodoCurto(E.B)}). Marca escura: média da frota.</span></div></div><div class="card-corpo">${comp || '<span class="apoio">Sem indicadores de condução na planilha.</span>'}</div></section>
+        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Antes, agora e frota</h2><span class="h2-sub">Barra: agora (${D.periodoCurto(E.A)}), verde se melhor que a frota e vermelha se pior. Marca vazada: como estava (${D.periodoCurto(E.B)}). Marca escura: média da frota.</span></div></div><div class="card-corpo">${comp || '<span class="apoio">Sem indicadores de condução nos dados.</span>'}</div></section>
       </div>
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Calendário de desempenho</h2><span class="h2-sub">Cada quadrado é um dia do período, colorido pelo ${indCalendario(x.la).rot}. Passe o mouse para ver o valor.</span></div></div><div class="card-corpo">${mapaCalor(x.la)}</div></section>
       <div class="grade-2">
@@ -5236,7 +5246,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
 
   // ---------- Tela: sem dados ----------
   function telaSemDados() {
-    if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">As planilhas que a equipe anexou aparecem aqui em instantes.</span></div></div></section>`;
+    if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">Os dados que a equipe buscou aparecem aqui em instantes.</span></div></div></section>`;
     return '';   // sem dados: tela em branco
   }
 
@@ -5253,7 +5263,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       dbRef = db.collection('clientes');
       try {   // leituras do HubSpot importadas por arquivo (script api/hubspot.mjs): valem até o conector trazer uma mais nova
         hubRef = db.collection('hubspot');
-        hubRef.onSnapshot((sn) => { sn.docs.forEach((d) => { try { const o = JSON.parse(d.data().json || 'null'); if (o && o.comp) usarHubArquivo(o, false); } catch (e) { /* documento inválido */ } }); }, () => {});
+        hubRef.onSnapshot((sn) => { sn.docs.forEach((d) => { try { const bruto = d.data().json || 'null', o = JSON.parse(bruto); if (o && o.comp) { usarHubArquivo(o, false); const limpo = JSON.stringify(o); if (limpo !== bruto) hubRef.doc(d.id).set(Object.assign({}, d.data(), { json: limpo })).catch(() => {}); } } catch (e) { /* documento inválido */ } }); }, () => {});   // arquivo antigo com dados pessoais: regrava limpo
       } catch (e) { hubRef = null; }
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
       try { db.collection('config').doc('diesel_uf').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !v.diesel || !v.diesel.br) return; if (!E.dieselUF || String(v.coleta) > String(E.dieselUF.coleta)) { E.dieselUF = v; render(); } }, () => {}); } catch (e) { /* sem preços por estado */ }
@@ -5298,7 +5308,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       if (E.clientesEmDb && dbRef) await dbRef.doc(id).delete();
       else { E.clientes = E.clientes.filter((c) => c.id !== id); salvarLocal(); }
     } catch (e) { toast('Não foi possível remover o cliente.', 'erro'); return; }
-    E.clienteRemover = null; if (cli && ckey(E.cliente) === ckey(cli.nome)) E.cliente = ''; if (E.rota.tela === 'cliente') location.hash = '#/config'; render(); toast('Cliente e planilhas removidos.');
+    E.clienteRemover = null; if (cli && ckey(E.cliente) === ckey(cli.nome)) E.cliente = ''; if (E.rota.tela === 'cliente') location.hash = '#/config'; render(); toast('Cliente e dados removidos.');
   }
   // ---------- Planilhas compartilhadas (db): um documento por tipo, cliente e dia, dividido em partes se passar do limite ----------
   // Quem tem o painel aberto recebe cada planilha nova na hora. Sem banco (fora do Claude), tudo segue no navegador.
@@ -5314,7 +5324,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     }
   }
   const msgErroDb = (e) => (e && e.code === 'quota_exceeded'
-    ? 'A base compartilhada está cheia. Apague planilhas antigas de algum cliente para liberar espaço.'
+    ? 'A base compartilhada está cheia. Apague dados antigos de algum cliente para liberar espaço.'
     : 'Não foi possível gravar na base compartilhada. Você pode não ter permissão para editar este painel.');
   function periodoSalvo() {
     try { const p = JSON.parse(armazem.ler('gbx-frota-periodo') || 'null'); return p && { A: p.A, B: p.B, p: p.preset, m: p.modo }; } catch (e) { return null; }
@@ -5333,7 +5343,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       render();
     }, () => {
       planRef = null; E.planEmDb = false; E.planCarregando = false; render();
-      toast('A base compartilhada de planilhas não respondeu. Mostrando só os dados deste navegador.', 'erro');
+      toast('A base compartilhada não respondeu. Mostrando só os dados deste navegador.', 'erro');
     });
   }
   // Remonta motoristas e veículos a partir da base, mantendo o período escolhido ("Último dia" anda junto quando chega um dia novo)
@@ -5421,7 +5431,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     if (!loc || !E.planEmDb) return '';
     const linhas = Object.values(loc).reduce((s, t) => { try { return s + Math.max(0, JSON.parse(t).texto.split('\n').length - 1); } catch (e) { return s; } }, 0);
     return `<div class="alerta alerta-atencao" role="status"><span class="alerta-icone">!</span><div class="alerta-corpo">
-      <span class="alerta-titulo">Este navegador tem planilhas que só você vê</span>
+      <span class="alerta-titulo">Este navegador tem dados que só você vê</span>
       <span class="alerta-texto">São ${fmt(linhas, 0)} linhas anexadas antes da base compartilhada. Envie para que todos vejam, ou descarte se já foram anexadas de novo.</span>
       <div class="alerta-acoes"><button type="button" class="btn btn-primario" data-acao="plan-enviar-local">Enviar para a base compartilhada</button><button type="button" class="btn-link peq" data-acao="plan-descartar-local">Descartar deste navegador</button></div></div></div>`;
   }
@@ -5664,7 +5674,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <li><b>Base:</b> <code>${API_BASE}</code></li>
         <li><b>Autenticação:</b> cabeçalho <code>Authorization: Bearer &lt;token&gt;</code>, um token por cliente. Ao salvar, o painel tira aspas, espaços, quebras de linha e um "Bearer" colado junto.</li>
         <li><b>Busca automática:</b> assim que o token é salvo, o painel busca os últimos ${DIAS_AUTO} dias. Com o painel aberto, repete a cada hora, a partir do último dia buscado (refeito, porque pode ter vindo parcial).</li>
-        <li><b>Pelo script do projeto:</b> no painel do Claude a página não pode chamar a API. Nesse caso, coloque o token de cada cliente em <code>api/.env</code>, liste os clientes em <code>api/clientes.json</code> e rode <code>node api/puxar.mjs</code>. O script grava os dados em <code>api/saida/</code>, no formato da base compartilhada, e também gera as planilhas CSV para importar.</li>
+        <li><b>Pelo script do projeto:</b> no painel do Claude a página não pode chamar a API. Nesse caso, coloque o token de cada cliente em <code>api/.env</code>, liste os clientes em <code>api/clientes.json</code> e rode <code>node api/puxar.mjs</code>. O script grava os dados em <code>api/saida/</code>, no formato da base compartilhada.</li>
         <li><b>Busca manual:</b> no perfil do cliente, card "Buscar dados pela API Gobrax", até 93 dias por vez. As buscas entram numa fila e rodam uma de cada vez.</li>
         <li><b>Fuso:</b> cada dia é o dia de Brasília (UTC−3), convertido para UTC na consulta.</li>
         <li><b>Limites:</b> rajada de 10 chamadas, depois 1 por segundo. O painel espera 120 ms entre chamadas e respeita o <code>Retry-After</code> do 429.</li>
@@ -5694,12 +5704,12 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       ${card('Coletar e trazer para o painel', '', `<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
         <li>No <code>api/clientes.json</code>, cada cliente pode ter <code>"hubspot_id"</code> (o número no fim do link da empresa no HubSpot). Sem ele, o script procura pelo nome.</li>
         <li>No terminal, na pasta do projeto: <code>node api/hubspot.mjs</code> (ou <code>--cliente "Nome do cliente"</code>).</li>
-        <li>O script gera <code>api/saida/&lt;cliente&gt;/hubspot.json</code> com perfil, CNPJ, frota, nota CHS, contatos, ligações, e-mails, reuniões e chamados.</li>
+        <li>O script gera <code>api/saida/&lt;cliente&gt;/hubspot.json</code> com perfil, frota, nota CHS, contatos, ligações, e-mails, reuniões e chamados.</li>
         <li>Importe o arquivo aqui embaixo (ou em Saúde do cliente → Cliente no HubSpot). Ele fica guardado na base compartilhada e alimenta o cartão e o Estudo do cliente.</li></ol>
         <label class="btn btn-primario" style="align-self:flex-start;margin-top:10px">Importar arquivo hubspot.json<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label>`)}
       ${card('Clientes lidos do HubSpot', 'O painel usa a leitura mais recente: o arquivo importado ou o conector ao vivo (painel aberto no Claude).', tabela)}
       ${card('Endpoints usados (só leitura)', '', `<ul>
-        <li><code>GET /crm/v3/objects/companies/{id}</code>: perfil, CNPJ, frota, nota CHS e partes, contrato, último contato.</li>
+        <li><code>GET /crm/v3/objects/companies/{id}</code>: perfil, frota, nota CHS e partes, contrato, último contato. CNPJ, e-mail e telefone ficam de fora (política de segurança).</li>
         <li><code>POST /crm/v3/objects/companies/search</code>: acha a empresa pelo nome quando não há <code>hubspot_id</code>.</li>
         <li><code>GET /crm/v4/objects/companies/{id}/associations/{calls|emails|meetings|tickets|contacts}</code>: o que está ligado à empresa.</li>
         <li><code>POST /crm/v3/objects/{tipo}/batch/read</code>: os campos de cada ligação, e-mail, reunião, chamado e contato.</li>

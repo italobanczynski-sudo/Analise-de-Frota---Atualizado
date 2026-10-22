@@ -192,4 +192,6 @@ O cartão **Cliente no HubSpot** e o **Estudo do cliente** (Saúde do cliente) u
 
 Endpoints usados (só leitura): `GET /crm/v3/objects/companies/{id}`, `POST /crm/v3/objects/companies/search`, `GET /crm/v4/objects/{tipo}/{id}/associations/{tipo}` e `POST /crm/v3/objects/{tipo}/batch/read`.
 
-Campos da empresa: CNPJ (`cnpj_texto`), frota (`frota_contratada`, `frota_total`), nota CHS (`nota_do_chs`, `chs_score` e as partes `chs_aderencia`, `chs_nota_engajamento`, `chs_nota_adimplencia`, `chs_nota_usuario`, `chs_nota_motorista`, `chs_nota_tickets_positivos`), contrato (`data_inicio_do_contrato_original`, `data_de_termino_do_contrato`, `ciclo_experiencia`), `estados_onde_opera` e último contato (`notes_last_contacted`).
+Campos da empresa: frota (`frota_contratada`, `frota_total`), nota CHS (`nota_do_chs`, `chs_score` e as partes `chs_aderencia`, `chs_nota_engajamento`, `chs_nota_adimplencia`, `chs_nota_usuario`, `chs_nota_motorista`, `chs_nota_tickets_positivos`), contrato (`data_inicio_do_contrato_original`, `data_de_termino_do_contrato`, `ciclo_experiencia`), `estados_onde_opera` e último contato (`notes_last_contacted`).
+
+Dados pessoais ficam de fora (Política de Segurança da Gobrax, cláusula 5.1): o script e o painel não pedem CNPJ, e-mail nem telefone; dos contatos vêm só nome, cargo e último contato. E-mails, CPF, CNPJ e telefones escritos em notas, reuniões, ligações e assuntos saem mascarados (`[e-mail]`, `[CPF]`, `[CNPJ]`, `[telefone]`). Um arquivo antigo que ainda tenha esses dados é limpo e regravado quando o painel o lê.

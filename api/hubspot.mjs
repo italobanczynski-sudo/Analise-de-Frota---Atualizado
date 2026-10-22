@@ -64,7 +64,7 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Mesmos campos que o painel lê pelo conector (index.html, cartão Cliente no HubSpot)
 const PROPS = {
-  companies: ['name', 'cnpj_texto', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
+  companies: ['name', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
     'nota_do_chs', 'chs_score', 'chs_aderencia', 'chs_nota_engajamento', 'chs_nota_adimplencia', 'chs_nota_usuario', 'chs_nota_motorista', 'chs_nota_tickets_positivos', 'tickets_suporte__chs_',
     'notes_last_contacted', 'notes_last_updated', 'hs_last_logged_call_date', 'data_inicio_do_contrato_original', 'data_de_termino_do_contrato', 'ciclo_experiencia', 'status_contrato', 'status_financeiro',
     'lifecyclestage', 'num_associated_contacts', 'num_associated_deals', 'createdate'],
@@ -73,8 +73,21 @@ const PROPS = {
   emails: ['hs_timestamp', 'hs_email_subject', 'hs_email_direction'],
   meetings: ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome', 'hs_meeting_body', 'hs_internal_meeting_notes'],
   tickets: ['subject', 'createdate', 'closed_date', 'hs_ticket_category', 'hs_ticket_priority', 'time_to_close'],
-  contacts: ['firstname', 'lastname', 'jobtitle', 'email', 'phone', 'mobilephone', 'notes_last_contacted']
+  contacts: ['firstname', 'lastname', 'jobtitle', 'notes_last_contacted']
 };
+// Dados pessoais (CNPJ, e-mail, telefone, CPF) não saem do HubSpot: Política de Segurança da Gobrax, cláusula 5.1.
+// Os campos não são pedidos e o texto livre (notas, reuniões, ligações, assuntos) sai mascarado.
+const TEXTOS = ['hs_note_body', 'hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_email_subject', 'hs_call_title', 'hs_meeting_title', 'subject'];
+const semPII = (t) => String(t).replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[e-mail]').replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, '[CNPJ]')
+  .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]').replace(/(\+?55\s?)?\(?\b\d{2}\)?\s?9?\d{4}[-\s]?\d{4}\b/g, '[telefone]');
+function limpar(lista) {
+  lista.forEach((r) => {
+    const p = r.properties || {};
+    ['email', 'phone', 'mobilephone', 'cnpj_texto'].forEach((c) => { delete p[c]; });
+    TEXTOS.forEach((c) => { if (typeof p[c] === 'string') p[c] = semPII(p[c]); });
+  });
+  return lista;
+}
 const MAX = 200;   // registros guardados por tipo (os totais são sempre completos)
 
 // Aceita os dois tipos de chave: token de app privado (pat-...) direto, ou chave de acesso pessoal (a do HubSpot CLI),
@@ -158,11 +171,11 @@ async function puxar(c) {
     const [l, e] = await Promise.all([associados('contacts', o.id, 'calls').catch(() => []), associados('contacts', o.id, 'emails').catch(() => [])]);
     porContato.push({ id: o.id, l: l.length, e: e.length });
   }
-  const bloco = (t) => ({ total: tot(t), results: reg[t].slice(0, MAX), semDetalhe: semDetalhe.includes(t) || undefined });
+  const bloco = (t) => ({ total: tot(t), results: limpar(reg[t].slice(0, MAX)), semDetalhe: semDetalhe.includes(t) || undefined });
   const saida = {
     formato: 'gobrax-hubspot-1', gerado: new Date().toISOString(), cliente: c.cliente, id,
-    comp: comp.properties || {}, calls: bloco('calls'), emails: bloco('emails'), meets: bloco('meetings'), notas: bloco('notes'),
-    tickets: bloco('tickets'), abertos: semDetalhe.includes('tickets') ? null : { total: abertos.length, results: abertos.slice(0, MAX) }, contatos: bloco('contacts'), porContato, semDetalhe
+    comp: limpar([comp])[0].properties || {}, calls: bloco('calls'), emails: bloco('emails'), meets: bloco('meetings'), notas: bloco('notes'),
+    tickets: bloco('tickets'), abertos: semDetalhe.includes('tickets') ? null : { total: abertos.length, results: limpar(abertos.slice(0, MAX)) }, contatos: bloco('contacts'), porContato, semDetalhe
   };
   const dir = path.join(SAIDA, slugCli(c.cliente));
   fs.mkdirSync(dir, { recursive: true });

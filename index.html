@@ -3828,7 +3828,10 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const amostra = (r) => (tot(r) > res(r).length ? `<span class="apoio" style="font-size:12px">Análise dos ${res(r).length} mais recentes de ${fmt(tot(r), 0)}.</span>` : '');
     const linkObj = (tipo, id) => `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/${tipo}/${encodeURIComponent(id)}`;
     let corpo = '';
-    if (k === 'tickets') {
+    const semDet = (r, oque) => `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A chave do HubSpot usada na coleta não tem permissão para ler ${oque}: veio só o total (${fmt(tot(r), 0)}). Para ver o detalhe, gere a chave com o escopo de leitura correspondente${oque.includes('chamados') ? ' (tickets)' : ' (sales-email-read)'} ou abra o painel no Claude com o conector do HubSpot.</span></div></div>`;
+    if (k === 'tickets' && v.tickets && v.tickets.semDetalhe) corpo = semDet(v.tickets, 'os chamados');
+    else if (k === 'emails' && v.emails && v.emails.semDetalhe) corpo = semDet(v.emails, 'os e-mails');
+    else if (k === 'tickets') {
       const ts = res(v.tickets), ab = ts.filter((o) => !o.properties.closed_date), fe = ts.length - ab.length;
       const cats = new Map(); ts.forEach((o) => { const c = rotCat(o.properties.hs_ticket_category); cats.set(c, (cats.get(c) || 0) + 1); });
       const temas = new Map(); ts.forEach((o) => { const t = temaDe(o.properties.subject).replace(/\s+-\s*$/, ''); temas.set(t, (temas.get(t) || 0) + 1); });
@@ -3908,7 +3911,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     if (ab) acSup.push(ab === 1 ? 'Resolver o chamado em aberto antes da próxima reunião com o cliente.' : `Resolver os ${ab} chamados em aberto antes da próxima reunião com o cliente.`);
     if (reab >= 3) acSup.push(`${reab} chamados foram reabertos: entender a causa raiz com o suporte em vez de fechar de novo.`);
     if (t3 > t3ant && t3 >= 3) acSup.push('Os chamados aumentaram nos últimos 3 meses. Ver se é instalação, equipamento ou dúvida de uso.');
-    dims.push({ nome: 'Suporte', nivel: nivel(!ab && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${fmt(ab, 0)} em aberto. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
+    if (v.tickets && v.tickets.semDetalhe) dims.push({ nome: 'Suporte', nivel: 'atencao', texto: `${fmt(tot(v.tickets), 0)} chamados no histórico. A coleta não teve permissão para ler os chamados, então não dá para dizer quantos estão abertos nem os assuntos.`, acoes: ['Conferir no HubSpot os chamados em aberto deste cliente antes da próxima conversa.'] });
+    else dims.push({ nome: 'Suporte', nivel: nivel(!ab && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${fmt(ab, 0)} em aberto. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
     // 4. Contrato e frota
     const fc = hubNum(p.frota_contratada), bv = E.veic ? baseVeic() : null, comDados = bv ? bv.motoristas.length : null;
     const ini = hubDia(p.data_inicio_do_contrato_original), fim = hubDia(p.data_de_termino_do_contrato);
@@ -3986,7 +3990,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       tile('Último contato', ds === null ? '—' : ds === 0 ? 'Hoje' : 'há ' + fmt(ds, 0) + ' d', dUlt ? D.br(dUlt) : 'sem registro', ds !== null && ds > 30 ? 'ruim' : ''),
       tileAbre('ligacoes', 'Ligações', tot(v.calls) === null ? '—' : fmt(tot(v.calls), 0), ultCall ? 'última em ' + D.br(hubDia(ultCall.properties.hs_timestamp)) : 'nenhuma registrada'),
       tileAbre('emails', 'E-mails', tot(v.emails) === null ? '—' : fmt(tot(v.emails), 0), ultEmail ? 'último em ' + D.br(hubDia(ultEmail.properties.hs_timestamp)) : 'nenhum registrado'),
-      tileAbre('tickets', 'Chamados de suporte', tot(v.tickets) === null ? '—' : fmt(tot(v.tickets), 0), tot(v.abertos) === null ? '' : tot(v.abertos) ? `<b class="txt-ruim">${fmt(tot(v.abertos), 0)} em aberto</b>` : 'nenhum em aberto', tot(v.abertos) > 0 ? 'ruim' : '')
+      tileAbre('tickets', 'Chamados de suporte', tot(v.tickets) === null ? '—' : fmt(tot(v.tickets), 0), tot(v.abertos) === null ? 'abertos: sem permissão de leitura' : tot(v.abertos) ? `<b class="txt-ruim">${fmt(tot(v.abertos), 0)} em aberto</b>` : 'nenhum em aberto', tot(v.abertos) > 0 ? 'ruim' : '')
     ].join('');
     const detalheHub = hubDetalhe(v, E.hubDet);
     // histórico: ligações, e-mails, reuniões e chamados juntos, do mais recente

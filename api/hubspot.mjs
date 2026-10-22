@@ -44,7 +44,7 @@ async function pedirToken() {
   });
   const tok = String(t).replace(/^\s*(authorization\s*:\s*)?bearer\s+/i, '').replace(/["'\s]/g, '');
   if (!tok) { console.error('Nenhum token informado.'); process.exit(1); }
-  const r = await fetch(HUB + '/crm/v3/objects/companies?limit=1', { headers: { Authorization: 'Bearer ' + tok } });
+  const r = await fetch(HUB + '/crm/v3/objects/companies?limit=1', { headers: { Authorization: 'Bearer ' + (await tokenAcesso(tok).catch(() => tok)) } });
   if (!r.ok) { console.error(`O HubSpot recusou o token (${r.status}). Confira se é o token do app privado e se ele tem os escopos de leitura.`); process.exit(1); }
   const fEnv = path.join(PASTA, '.env');
   const atual = fs.existsSync(fEnv) ? fs.readFileSync(fEnv, 'utf8') : '';
@@ -76,9 +76,22 @@ const PROPS = {
 };
 const MAX = 200;   // registros guardados por tipo (os totais são sempre completos)
 
+// Aceita os dois tipos de chave: token de app privado (pat-...) direto, ou chave de acesso pessoal (a do HubSpot CLI),
+// trocada por um token de acesso de 30 min no mesmo endpoint que o CLI usa, e renovada sozinha
+let acesso = null, acessoAte = 0;
+async function tokenAcesso(chave) {
+  const k = chave || TOKEN;
+  if (/^pat-/.test(k)) return k;
+  if (!chave && acesso && Date.now() < acessoAte - 120000) return acesso;
+  const r = await fetch(HUB + '/localdevauth/v1/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ encodedOAuthRefreshToken: k }) });
+  if (!r.ok) { const e = new Error('HubSpot ' + r.status + ' ao trocar a chave de acesso pessoal'); e.status = r.status; throw e; }
+  const j = await r.json();
+  if (!chave) { acesso = j.oauthAccessToken; acessoAte = j.expiresAtMillis || Date.now() + 25 * 60000; }
+  return j.oauthAccessToken;
+}
 async function hub(metodo, caminho, corpo) {
   for (let t = 0; ; t++) {
-    const r = await fetch(HUB + caminho, { method: metodo, headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
+    const r = await fetch(HUB + caminho, { method: metodo, headers: { Authorization: 'Bearer ' + (await tokenAcesso()), 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
     if (r.status === 429 && t < 8) { await esperar((Number(r.headers.get('Retry-After')) || 1) * 1000 + 200); continue; }
     if (!r.ok) {
       const txt = await r.text().catch(() => '');
@@ -124,29 +137,34 @@ async function puxar(c) {
   const comp = await hub('GET', `/crm/v3/objects/companies/${id}?properties=${PROPS.companies.join(',')}`);
   const tipos = ['calls', 'emails', 'meetings', 'tickets', 'contacts'];
   const ids = {};
-  for (const t of tipos) { try { ids[t] = await associados('companies', id, t); } catch (e) { ids[t] = []; console.log(`  ${t}: sem acesso (${e.status}). Confira os escopos do app privado.`); } }
-  const reg = {};
-  for (const t of tipos) reg[t] = await lerLote(t, ids[t]);
+  for (const t of tipos) { try { ids[t] = await associados('companies', id, t); } catch (e) { ids[t] = []; console.log(`  ${t}: sem permissão (${e.status}); a chave não tem o escopo de leitura desse tipo.`); } }
+  const reg = {}, semDetalhe = [];
+  for (const t of tipos) {
+    // sem o escopo de leitura do tipo, o total (das associações) continua valendo; só os detalhes ficam de fora
+    reg[t] = await lerLote(t, ids[t]).catch((e) => { if (e.status === 403) { semDetalhe.push(t); return []; } throw e; });
+  }
+  if (semDetalhe.length) console.log(`  sem permissão para ler o detalhe de: ${semDetalhe.join(', ')} (ficam só os totais)`);
   reg.calls.sort(porData('hs_timestamp')); reg.emails.sort(porData('hs_timestamp')); reg.meetings.sort(porData('hs_timestamp'));
   reg.tickets.sort(porData('createdate')); reg.contacts.sort(porData('notes_last_contacted'));
   const abertos = reg.tickets.filter((o) => !o.properties.closed_date);
+  const tot = (t) => Math.max(ids[t].length, reg[t].length);
   // quem mais fala com a Gobrax: ligações e e-mails de cada contato (até 10 contatos)
   const porContato = [];
   for (const o of reg.contacts.slice(0, 10)) {
     const [l, e] = await Promise.all([associados('contacts', o.id, 'calls').catch(() => []), associados('contacts', o.id, 'emails').catch(() => [])]);
     porContato.push({ id: o.id, l: l.length, e: e.length });
   }
-  const bloco = (lista) => ({ total: lista.length, results: lista.slice(0, MAX) });
+  const bloco = (t) => ({ total: tot(t), results: reg[t].slice(0, MAX), semDetalhe: semDetalhe.includes(t) || undefined });
   const saida = {
     formato: 'gobrax-hubspot-1', gerado: new Date().toISOString(), cliente: c.cliente, id,
-    comp: comp.properties || {}, calls: bloco(reg.calls), emails: bloco(reg.emails), meets: bloco(reg.meetings),
-    tickets: bloco(reg.tickets), abertos: bloco(abertos), contatos: bloco(reg.contacts), porContato
+    comp: comp.properties || {}, calls: bloco('calls'), emails: bloco('emails'), meets: bloco('meetings'),
+    tickets: bloco('tickets'), abertos: semDetalhe.includes('tickets') ? null : { total: abertos.length, results: abertos.slice(0, MAX) }, contatos: bloco('contacts'), porContato, semDetalhe
   };
   const dir = path.join(SAIDA, slugCli(c.cliente));
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'hubspot.json'), JSON.stringify(saida));
   // resumo só com números (nada de nomes, e-mails ou telefones no terminal)
-  console.log(`  ${c.cliente}: empresa ${id} · ${reg.calls.length} ligações · ${reg.emails.length} e-mails · ${reg.meetings.length} reuniões · ${reg.tickets.length} chamados (${abertos.length} abertos) · ${reg.contacts.length} contatos`);
+  console.log(`  ${c.cliente}: empresa ${id} · ${tot('calls')} ligações · ${tot('emails')} e-mails · ${tot('meetings')} reuniões · ${tot('tickets')} chamados${semDetalhe.includes('tickets') ? '' : ' (' + abertos.length + ' abertos)'} · ${tot('contacts')} contatos`);
   console.log(`  → ${path.relative(process.cwd(), path.join(dir, 'hubspot.json'))}`);
 }
 

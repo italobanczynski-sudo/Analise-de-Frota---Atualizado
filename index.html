@@ -2286,8 +2286,15 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const ta = document.getElementById('export-texto');
     if (ta) ta.focus();
   }
-  function baixarArquivo(nome, texto) {
+  // No painel do Claude o arquivo sai pela permissão de download (o visualizador pede confirmação); no GitHub Pages, por link comum
+  async function baixarArquivo(nome, texto) {
     const blob = new Blob(['﻿' + texto], { type: 'text/csv;charset=utf-8' });
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
+    if (dl) {
+      try { await dl.save({ filename: nome, data: blob }); toast('Arquivo salvo.'); }
+      catch (e) { if (e && e.code !== 'declined') toast('Não foi possível baixar aqui. Use Copiar e cole no Excel.', 'erro'); }
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
@@ -2398,6 +2405,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 40, data: '2026-10-22', titulo: 'Baixar arquivo no painel do Claude', texto: 'Na janela de exportação, o botão Baixar arquivo agora funciona também no painel do Claude: ele pede sua confirmação e salva o CSV. Copiar continua disponível.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 39, data: '2026-10-22', titulo: 'Revisão geral', texto: 'Todas as telas, abas e períodos foram revisados, sem erros. Por segurança, o HubSpot não traz mais CNPJ, e-mail nem telefone: os contatos mostram nome, cargo e último contato, e e-mails, CPF, CNPJ e telefones escritos em notas, reuniões e ligações aparecem mascarados. Arquivos antigos na base são limpos sozinhos. Os últimos textos de planilha saíram.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 38, data: '2026-10-22', titulo: 'Saúde do cliente sem período anterior', texto: 'Quando o período escolhido não tem um anterior com dados (ex.: 90 dias), a Saúde do cliente compara as duas metades do próprio período em vez de ficar em branco. A nota CHS e o último contato do HubSpot também entram no índice de risco.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 37, data: '2026-10-22', titulo: 'Tudo pela API', texto: 'Se o período escolhido não tiver dados, o painel mostra o último período com dados, do mesmo tamanho, e avisa até quando a API trouxe dados. Os textos de planilha saíram: os dados vêm da API. Os botões Imprimir e Atualizar saíram do cabeçalho da Visão geral.', href: '#/geral', link: 'Abrir a Visão geral' },

@@ -1048,78 +1048,67 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
 .grp-lote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 12px; border-radius: 8px; background: var(--apoio); font-size: 13px; color: var(--texto-2); }
 .grp-lote.ativo { background: var(--creme); color: var(--tinta); }
 /* ---------- Painel dos condutores ---------- */
-.cd-painel { display: flex; flex-direction: column; gap: 12px; }
-.cd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-.cd-tile { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--hairline); overflow: hidden; }
-.cd-tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--dado); }
-.cd-tile.bom::before { background: var(--ok); } .cd-tile.ruim::before { background: var(--critico); }
-.cd-tile.forte.bom { background: var(--ok-fundo); border-color: var(--ok-borda); } .cd-tile.forte.ruim { background: var(--critico-fundo); border-color: var(--critico-borda); }
-.cd-tile-ic { position: absolute; right: 14px; top: 14px; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--dado-fundo); color: var(--amarelo-press); }
-.cd-tile.bom .cd-tile-ic { background: var(--ok-fundo); color: var(--ok-tinta); } .cd-tile.ruim .cd-tile-ic { background: var(--critico-fundo); color: var(--critico-tinta); }
-.cd-tile-t { font-size: 12.5px; color: var(--texto-2); font-weight: 600; }
-.cd-tile-v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--tinta); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.abas + .cd-tiles, .abas + .grade-2, .abas + .card { margin-top: 2px; }
+.cd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.cd-tile { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 18px 20px; border-radius: 12px; background: var(--superficie); border: 1px solid var(--hairline); }
+.cd-tile-ic { position: absolute; right: 16px; top: 16px; color: var(--texto-3); display: flex; }
+.cd-tile-t { font-size: 12px; color: var(--texto-2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.cd-tile-v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--tinta); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .cd-tile.bom .cd-tile-v { color: var(--ok-tinta); } .cd-tile.ruim .cd-tile-v { color: var(--critico-tinta); }
-.cd-tile-s { font-size: 12px; color: var(--texto-2); }
-.cd-dist-box { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: 12px; background: var(--superficie); border: 1px solid var(--hairline); }
-.cd-dist-box .dist { height: 14px; }
-.cd-dist-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; }
-.cd-dist-item { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 2px 0; font-size: 13px; color: var(--corpo); cursor: pointer; }
-.cd-dist-item b { color: var(--tinta); }
-.cd-barras { display: flex; flex-direction: column; gap: 4px; max-height: 460px; overflow: auto; }
-.cd-linha { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 92px; align-items: center; gap: 10px; padding: 4px 6px; border-radius: 8px; text-decoration: none; color: inherit; }
+.cd-tile-s { font-size: 12.5px; color: var(--texto-2); line-height: 1.4; }
+.cd-barras { display: flex; flex-direction: column; gap: 2px; max-height: 440px; overflow-y: auto; overflow-x: hidden; }
+.cd-linha { display: grid; grid-template-columns: minmax(120px, 36%) 1fr 84px; align-items: center; gap: 12px; padding: 6px 4px; border-radius: 6px; text-decoration: none; color: inherit; }
 .cd-linha:hover { background: var(--sup-hover); }
-.cd-nome { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--tinta); }
+.cd-nome { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--tinta); }
 .cd-nome > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cd-trilho { display: grid; grid-template-columns: 1fr 1fr; height: 14px; }
+.cd-trilho { display: grid; grid-template-columns: 1fr 1fr; height: 8px; }
 .cd-lado { display: flex; background: var(--apoio); }
-.cd-lado.neg { justify-content: flex-end; border-radius: 999px 0 0 999px; border-right: 2px solid var(--borda-hover); }
+.cd-lado.neg { justify-content: flex-end; border-radius: 999px 0 0 999px; border-right: 1px solid var(--borda-hover); }
 .cd-lado.pos { border-radius: 0 999px 999px 0; }
 .cd-lado i { display: block; height: 100%; }
 .cd-lado.neg i { background: var(--critico); border-radius: 999px 0 0 999px; }
 .cd-lado.pos i { background: var(--ok); border-radius: 0 999px 999px 0; }
-.pagina.anima .cd-lado i { animation: gbx-cresce .6s var(--ease) both; }
-.pagina.anima .cd-lado.neg i { transform-origin: right; } .pagina.anima .cd-lado.pos i { transform-origin: left; }
-.cd-val { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.cd-val { font-size: 12.5px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .cd-mapa { width: 100%; height: auto; display: block; }
-.cd-q-bom { fill: var(--ok); opacity: .07; } .cd-q-ruim { fill: var(--critico); opacity: .07; }
-.cd-eixo0 { stroke: var(--borda-hover); stroke-width: 1; stroke-dasharray: 4 3; }
-.cd-ponto { stroke: var(--superficie); stroke-width: 2; cursor: pointer; transition: r .12s; }
+.cd-q-bom { fill: var(--ok); opacity: .05; } .cd-q-ruim { fill: var(--critico); opacity: .05; }
+.cd-eixo0 { stroke: var(--borda); stroke-width: 1; stroke-dasharray: 4 3; }
+.cd-ponto { stroke: var(--superficie); stroke-width: 2; cursor: pointer; }
 .cd-ponto:hover { r: 9; }
 .cd-ponto.fora { stroke: var(--tinta); stroke-dasharray: 2 2; }
-.cd-quads { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px; }
-.cd-quad { font-size: 12.5px; color: var(--texto-2); padding: 6px 10px; border-radius: 8px; background: var(--apoio); }
+.cd-quads { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; }
+.cd-quad { font-size: 12px; color: var(--texto-2); padding: 8px 10px; background: var(--superficie); }
 .cd-quad b { color: var(--tinta); font-size: 15px; margin-right: 4px; }
-.cd-quad.bom { background: var(--ok-fundo); } .cd-quad.bom b { color: var(--ok-tinta); }
-.cd-quad.ruim { background: var(--critico-fundo); } .cd-quad.ruim b { color: var(--critico-tinta); }
-.cd-ind { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 120px; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.cd-quad.bom b { color: var(--ok-tinta); } .cd-quad.ruim b { color: var(--critico-tinta); }
+.cd-ind { display: grid; grid-template-columns: minmax(160px, 230px) 1fr 110px; align-items: center; gap: 16px; padding: 9px 4px; border-bottom: 1px solid var(--apoio); cursor: pointer; }
+.cd-ind:last-child { border-bottom: 0; }
 .cd-ind:hover { background: var(--sup-hover); }
 .cd-ind-nome { display: flex; flex-direction: column; font-size: 13px; font-weight: 500; color: var(--tinta); }
 .cd-ind-nome small { font-size: 11.5px; font-weight: 400; color: var(--texto-2); }
-.cd-pilha { display: flex; height: 22px; border-radius: 6px; overflow: hidden; gap: 2px; }
-.cd-pilha i { display: grid; place-items: center; font-style: normal; font-size: 11.5px; font-weight: 700; color: #fff; min-width: 22px; }
-.cd-pilha i.m { background: var(--ok); } .cd-pilha i.e { background: var(--borda-hover); color: var(--tinta); } .cd-pilha i.p { background: var(--critico); }
+.cd-pilha { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 1px; }
+.cd-pilha i { display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 600; color: #fff; min-width: 20px; }
+.cd-pilha i.m { background: var(--ok); } .cd-pilha i.e { background: var(--borda); color: var(--texto-2); } .cd-pilha i.p { background: var(--critico); }
 .cd-ind-var { text-align: right; }
-@media (max-width: 640px) { .cd-ind { grid-template-columns: 1fr; gap: 4px; } .cd-ind-var { text-align: left; } .cd-linha { grid-template-columns: 1fr 80px; } .cd-trilho { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 640px) { .cd-ind { grid-template-columns: 1fr; gap: 4px; } .cd-ind-var { text-align: left; } .cd-linha { grid-template-columns: 1fr 80px; } .cd-trilho { grid-column: 1 / -1; grid-row: 2; } .cd-quads { grid-template-columns: 1fr; } }
 /* ---------- Motoristas: gráficos por indicador e comparativo entre condutores ---------- */
 .mm-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.mm-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 12px 6px; border: 1px solid var(--hairline); border-top: 3px solid var(--borda); border-radius: 12px; cursor: pointer; background: var(--superficie); transition: box-shadow 120ms, transform 120ms; min-width: 0; }
-.mm-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
-.mm-card.bom { border-top-color: var(--ok); } .mm-card.ruim { border-top-color: var(--critico); }
+.mm-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 14px 6px; border: 1px solid var(--hairline); border-radius: 10px; cursor: pointer; background: var(--superficie); transition: border-color 120ms; min-width: 0; }
+.mm-card:hover { border-color: var(--borda-hover); }
 .mm-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.mm-tit { font-size: 13px; font-weight: 600; color: var(--tinta); }
-.mm-val { font-size: 20px; font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mm-tit { font-size: 12.5px; font-weight: 600; color: var(--texto-2); }
+.mm-val { font-size: 19px; font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mm-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
 .cc-lista { display: flex; flex-direction: column; gap: 2px; max-height: 520px; overflow-y: auto; overflow-x: hidden; }
-.cc-linha { display: grid; grid-template-columns: 34px minmax(130px, 26%) 1fr 90px 110px; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 8px; text-decoration: none; color: inherit; }
+.cc-linha { display: grid; grid-template-columns: 30px minmax(130px, 26%) 1fr 84px 100px; align-items: center; gap: 12px; padding: 7px 4px; border-bottom: 1px solid var(--apoio); text-decoration: none; color: inherit; }
+.cc-linha:last-child { border-bottom: 0; }
 .cc-linha:hover { background: var(--sup-hover); }
 .cc-pos { font-size: 12px; color: var(--texto-3); font-weight: 600; text-align: right; }
-.cc-trilho { position: relative; height: 14px; border-radius: 999px; background: var(--apoio); }
+.cc-trilho { position: relative; height: 8px; border-radius: 999px; background: var(--apoio); }
 .cc-trilho i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--dado); }
 .cc-trilho i.bom { background: var(--ok); } .cc-trilho i.ruim { background: var(--critico); }
 .pagina.anima .cc-trilho i { transform-origin: left; animation: gbx-cresce .6s var(--ease) both; }
-.cc-antes { position: absolute; top: -3px; width: 8px; height: 20px; margin-left: -4px; border-radius: 3px; background: var(--superficie); border: 2px solid #1A73E8; }
-.cc-frota { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 2px dashed var(--tinta); opacity: .55; }
-.cc-val { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--tinta); }
+.cc-antes { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: #1A73E8; }
+.cc-frota { position: absolute; top: -7px; bottom: -7px; width: 0; border-left: 1px dashed var(--tinta); opacity: .5; }
+.cc-val { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; color: var(--tinta); }
 .cc-var { text-align: right; }
 @media (max-width: 640px) { .cc-linha { grid-template-columns: 28px 1fr 80px; } .cc-trilho { grid-column: 1 / -1; grid-row: 2; } .cc-var { display: none; } }
 </style></head><body>
@@ -1949,7 +1938,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     cal: { aberto: false, editando: 'A', rascA: null, rascB: null, mes: null, pendente: null, preset: '30' },
     rota: { tela: 'visao', id: null, aba: 'resumo' },
     lista: { busca: '', status: 'todos', ord: { col: 'delta', dir: -1 }, pag: 1, por: 10 },
-    indGraf: 'nota', verTabela: false, motComp: 'kml',
+    indGraf: 'nota', verTabela: false, motComp: 'kml', motAba: (() => { try { return localStorage.getItem('gbx-mot-aba') || 'resumo'; } catch (e) { return 'resumo'; } })(),
     detalhe: { indGraf: 'nota', verTabela: false },
     comp: { escopo: 'frota', ind: 'nota', ord: -1 },
     preco: 6.1,
@@ -2297,6 +2286,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 30, data: '2026-10-22', titulo: 'Motoristas organizado em abas', texto: 'A tela Motoristas foi separada em abas: Resumo (ganhos, perdas e onde cada condutor está), Comportamento (gráfico de cada indicador), Comparativo (ranking por indicador) e Lista de motoristas. Visual mais limpo, uma coisa de cada vez.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 29, data: '2026-10-22', titulo: 'Gráficos de comportamento em Motoristas', texto: 'A tela Motoristas ganhou o comportamento dia a dia de cada indicador (período analisado contra o anterior) e o Comparativo entre condutores: escolha um indicador e veja todos do melhor para o pior, com a média da frota e como cada um estava antes.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 28, data: '2026-10-22', titulo: 'Painel dos condutores', texto: 'A tela Motoristas abre com um painel: quantos condutores evoluíram e regrediram, ganhos e perdas em diesel (em reais) e o saldo, as barras de ganho e perda de cada condutor, o mapa de quem está acima ou abaixo da média e melhorando ou piorando, e em quais indicadores os condutores melhoraram.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 27, data: '2026-10-22', titulo: 'Grupos de veículos', texto: 'Em Veículos e grupos, use Montar grupos para criar os grupos e escolher o grupo de cada placa (uma por uma ou várias de uma vez). Clique num grupo para ver só os veículos dele; o filtro de grupo também aparece no topo e vale para o painel inteiro. No Calendário de desempenho, clique num dia para ver só aquele dia.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
@@ -2799,8 +2789,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       </div></div>
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      ${painelCondutores(c)}
-      <section class="card">
+      ${(() => {
+        const P = painelCondutores(c);
+        const abas = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['lista', 'Lista de motoristas', c.mots.length]].filter(([k]) => k === 'lista' || P[k]);
+        if (!abas.some(([k]) => k === E.motAba)) E.motAba = abas[0][0];
+        return `<div class="abas" role="tablist" aria-label="Seções de Motoristas">${abas.map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.motAba === k ? 'ativa' : ''}" aria-selected="${E.motAba === k}" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}</div>
+          ${E.motAba !== 'lista' ? P[E.motAba] : ''}`;
+      })()}
+      ${E.motAba === 'lista' ? `<section class="card">
         <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-bottom:1px solid var(--apoio)">
           <div class="barra-filtros">
             <label class="campo campo-icone busca">${icone('busca', 14, '#5F6368')}
@@ -2815,13 +2811,13 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         </div>
         <div class="tabela-wrap"><table class="tabela" style="min-width:1060px"><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>
         ${X.ui.paginacao(E.lista.pag, arr.length, E.lista.por, 'motoristas')}
-      </section>`;
+      </section>` : ''}`;
   }
 
   // ---------- Painel dos condutores: situação geral, ganhos e perdas em diesel, quem está onde e em quê melhoraram ----------
   function painelCondutores(c) {
     const ativos = c.mots.filter((x) => x.la.length);
-    if (!ativos.length) return '';
+    if (!ativos.length) return {};
     const num = (v) => v !== null && v !== undefined && Number.isFinite(v);
     // ganhos e perdas: diesel de cada condutor no ritmo de consumo anterior dele (mesmos km)
     const eco = ativos.map((x) => ({ x, e: economia(x.a, x.b) })).filter((o) => o.e && num(o.e.reais));
@@ -2830,14 +2826,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const lG = eco.filter((o) => o.e.reais > 0).reduce((t, o) => t + o.e.litros, 0), lP = eco.filter((o) => o.e.reais < 0).reduce((t, o) => t - o.e.litros, 0);
     const nG = eco.filter((o) => o.e.reais > 0).length, nP = eco.filter((o) => o.e.reais < 0).length;
     const saldo = ganho - perda;
-    const tile = (cls, ic, tit, val, sub) => `<div class="cd-tile ${cls}"><span class="cd-tile-ic">${icone(ic, 18)}</span><span class="cd-tile-t">${tit}</span><span class="cd-tile-v">${val}</span><span class="cd-tile-s">${sub}</span></div>`;
+    const tile = (cls, ic, tit, val, sub) => `<div class="cd-tile ${cls}"><span class="cd-tile-ic">${icone(ic, 16)}</span><span class="cd-tile-t">${tit}</span><span class="cd-tile-v">${val}</span><span class="cd-tile-s">${sub}</span></div>`;
     const total = c.mots.length, pct = (n) => (total ? (n / total) * 100 : 0);
     const dist = ['evoluiu', 'estavel', 'regrediu', 'sembase'].filter((k) => c.cont[k]);
     const tiles = [
-      tile('', 'pessoas', 'Condutores no período', fmt(ativos.length, 0), `<b class="txt-bom">${c.cont.evoluiu} evoluíram</b> · <b class="txt-ruim">${c.cont.regrediu} regrediram</b>`),
-      eco.length ? tile('bom', 'subir', 'Ganhos em diesel', 'R$ ' + fmt(ganho, 0), `${nG} condutor(es) gastaram ${fmt(lG, 0)} L a menos`) : '',
-      eco.length ? tile('ruim', 'baixar', 'Perdas em diesel', 'R$ ' + fmt(perda, 0), `${nP} condutor(es) gastaram ${fmt(lP, 0)} L a mais`) : '',
-      eco.length ? tile(saldo >= 0 ? 'bom forte' : 'ruim forte', 'gota', 'Saldo do período', (saldo >= 0 ? '+' : '−') + ' R$ ' + fmt(Math.abs(saldo), 0), `ganhos menos perdas · diesel a R$ ${fmt(E.preco, 2)}/L`) : ''
+      tile('', 'pessoas', 'Condutores', fmt(ativos.length, 0), `<span class="txt-bom">${c.cont.evoluiu} evoluíram</span> · <span class="txt-ruim">${c.cont.regrediu} regrediram</span>${c.cont.estavel ? ' · ' + c.cont.estavel + ' estáveis' : ''}`),
+      eco.length ? tile('bom', 'subir', 'Ganhos', 'R$ ' + fmt(ganho, 0), `${nG} condutor(es) gastaram ${fmt(lG, 0)} L a menos`) : '',
+      eco.length ? tile('ruim', 'baixar', 'Perdas', 'R$ ' + fmt(perda, 0), `${nP} condutor(es) gastaram ${fmt(lP, 0)} L a mais`) : '',
+      eco.length ? tile(saldo >= 0 ? 'bom' : 'ruim', 'gota', 'Saldo do período', (saldo >= 0 ? '+' : '−') + ' R$ ' + fmt(Math.abs(saldo), 0), `ganhos menos perdas · diesel a R$ ${fmt(E.preco, 2)}/L`) : ''
     ].join('');
 
     // barras divergentes: quem ganhou (verde, à direita) e quem perdeu (vermelho, à esquerda)
@@ -2966,28 +2962,17 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <div class="card-corpo"><div class="cc-lista">${linhas || '<span class="apoio">Sem valores neste indicador no período.</span>'}</div></div></section>`;
     }
 
-    return `<section class="cd-painel">
-      <div class="cd-tiles">${tiles}</div>
-      <div class="cd-dist-box"><div class="dist" role="img" aria-label="${dist.map((k) => c.cont[k] + ' ' + nomeStatus(k)).join(', ')}">${dist.map((k) => `<span style="width:${pct(c.cont[k])}%;background:${STATUS[k].cor}"></span>`).join('')}</div>
-        <div class="cd-dist-leg">${dist.map((k) => `<button type="button" class="cd-dist-item" data-acao="filtro-status" data-status="${k}"><span class="ponto" style="background:${STATUS[k].cor}"></span>${nomeStatus(k)} <b>${c.cont[k]}</b> <span class="mudo">${fmt(pct(c.cont[k]), 0)}%</span></button>`).join('')}</div></div>
-    </section>
-    ${minis ? `<section class="card">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Comportamento dos condutores dia a dia</h2>
-        <span class="h2-sub">Média de todos os condutores em cada indicador: linha amarela é o período analisado, tracejada é o anterior. Clique num quadro para abrir o gráfico completo.</span></div>
-        <div class="graf-legenda"><span><span class="leg-linha-a"></span>${D.periodoCurto(E.A)}</span><span><span class="leg-linha-b"></span>${D.periodoCurto(E.B)}</span></div></div>
-      <div class="card-corpo"><div class="mm-grade">${minis}</div></div></section>` : ''}
-    <div class="grade-2">
-      ${eco.length ? `<section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ganhos e perdas por condutor</h2>
-          <span class="h2-sub">Diesel que cada um economizou (verde) ou gastou a mais (vermelho) para rodar os mesmos km no ritmo de consumo do período anterior.</span></div></div>
-        <div class="card-corpo"><div class="cd-barras">${barras}</div></div></section>` : ''}
-      ${mapa}
-    </div>
-    ${comp}
-    ${linhasInd ? `<section class="card">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Em que os condutores melhoraram</h2>
-        <span class="h2-sub">Para cada indicador, quantos condutores <b class="txt-bom">melhoraram</b>, ficaram <b>estáveis</b> ou <b class="txt-ruim">pioraram</b>. À direita, a variação da frota. Clique para ver o gráfico.</span></div></div>
-      <div class="card-corpo" style="gap:6px">${linhasInd}</div></section>` : ''}`;
+    const card = (tit, sub, corpo, extra) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${tit}</h2><span class="h2-sub">${sub}</span></div>${extra || ''}</div>${corpo}</section>`;
+    return {
+      resumo: `<div class="cd-tiles">${tiles}</div>
+        <div class="grade-2">
+          ${eco.length ? card('Ganhos e perdas por condutor', 'Diesel economizado (verde) ou gasto a mais (vermelho) nos mesmos km, pelo consumo do período anterior.', `<div class="card-corpo"><div class="cd-barras">${barras}</div></div>`) : ''}
+          ${mapa}
+        </div>`,
+      comportamento: minis ? card('Comportamento dia a dia', 'Média dos condutores em cada indicador. Clique num quadro para abrir o gráfico completo.', `<div class="card-corpo"><div class="mm-grade">${minis}</div></div>`,
+        `<div class="graf-legenda"><span><span class="leg-linha-a"></span>${D.periodoCurto(E.A)}</span><span><span class="leg-linha-b"></span>${D.periodoCurto(E.B)}</span></div>`) : '',
+      comparativo: comp + (linhasInd ? card('Em que os condutores melhoraram', 'Quantos condutores <b class="txt-bom">melhoraram</b>, ficaram estáveis ou <b class="txt-ruim">pioraram</b> em cada indicador. À direita, a variação da frota.', `<div class="card-corpo" style="gap:2px">${linhasInd}</div>`) : '')
+    };
   }
 
   // ---------- Tela: Detalhe do motorista ----------
@@ -5883,8 +5868,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     'ind-det': (el) => { E.detalhe.indGraf = el.dataset.ind; render(); },
     'vista-frota': (el) => { E.verTabela = el.dataset.v === 'tabela'; render(); },
     'vista-det': (el) => { E.detalhe.verTabela = el.dataset.v === 'tabela'; render(); },
-    'ver-status': (el) => { E.lista.status = el.dataset.status; E.lista.pag = 1; location.hash = '#/motoristas'; },
-    'filtro-status': (el) => { E.lista.status = el.dataset.status; E.lista.pag = 1; render(); },
+    'ver-status': (el) => { E.lista.status = el.dataset.status; E.lista.pag = 1; E.motAba = 'lista'; location.hash = '#/motoristas'; },
+    'filtro-status': (el) => { E.lista.status = el.dataset.status; E.lista.pag = 1; if (E.rota.tela === 'motoristas') E.motAba = 'lista'; render(); },
     'limpar-filtros': () => { E.lista.status = 'todos'; E.lista.busca = ''; E.lista.pag = 1; render(); },
     'ordenar': (el) => {
       const col = el.dataset.col;
@@ -6041,6 +6026,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     },
     'plan-descartar-local': () => { descartarLocal(); toast('Planilhas deste navegador descartadas.'); },
     'export-fechar': () => { E.exportacao = null; render(); },
+    'mot-aba': (el) => { E.motAba = el.dataset.aba; armazem.gravar('gbx-mot-aba', E.motAba); render(); },
     'grp-alternar': () => { const el = document.querySelector('[data-acao="grp-alternar"]'); E.gruposAberto = !(el && el.getAttribute('aria-expanded') === 'true'); render(); },
     'grp-criar': () => {
       const i = document.getElementById('grp-novo'), nome = i ? i.value.trim().replace(/\s+/g, ' ') : '';

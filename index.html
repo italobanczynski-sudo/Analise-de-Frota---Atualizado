@@ -4493,13 +4493,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return baseTodosCache.base;
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const CHURN_PESOS = { uso: 25, engaj: 20, perf: 20, consumo: 15, criticos: 10, relac: 10 };
+  const CHURN_PESOS = { uso: 25, engaj: 20, perf: 20, consumo: 15, criticos: 10, relac: 10, chs: 15 };
   const CHURN_ACAO = {
     uso: ['Entender a queda de rodagem', 'Ligar para o gestor e descobrir a causa: rota trocada, veículos parados ou saída de operação.'],
     engaj: ['Reativar os motoristas', 'Reforçar o uso do app e alinhar uma rotina semanal de acompanhamento com o gestor.'],
     perf: ['Treinar quem tem a menor nota', 'Agendar treinamento com os motoristas de menor nota e combinar a meta de evolução.'],
     consumo: ['Mostrar o diesel que se perde', 'Apresentar o gasto extra de combustível e revisar faixa verde e motor ocioso.'],
     criticos: ['Plano individual dos críticos', 'Abrir plano com o instrutor para cada motorista com nota abaixo de 40 e reavaliar em 7 dias.'],
+    chs: ['Atacar as partes fracas da nota CHS', 'Ver no Estudo do cliente quais partes da nota CHS estão abaixo de 50 e combinar com o cliente o plano para cada uma.'],
     relac: ['Retomar o contato', 'Marcar reunião de resultados com a diretoria e registrar o próximo passo no HubSpot.']
   };
   function relDoCliente(nome) {
@@ -4508,32 +4509,48 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return r ? (vivoParaRel(r) || r) : null;
   }
   function churnCliente(nome, ls, bt) {
-    const la = X.filtrar(ls, E.A), lb = X.filtrar(ls, E.B);
+    const la = X.filtrar(ls, E.A);
+    let lb = X.filtrar(ls, E.B), ca = la, ref = 'período anterior';
+    // sem dados no período anterior: a referência é a 1ª metade do próprio período (a última referência com dados)
+    if (la.length && !lb.length && D.dias(E.A) >= 2) {
+      const meio = D.somar(E.A.ini, Math.floor(D.dias(E.A) / 2) - 1);
+      lb = X.filtrar(ls, { ini: E.A.ini, fim: meio }); ca = X.filtrar(ls, { ini: D.somar(meio, 1), fim: E.A.fim });
+      ref = '1ª metade do período (' + D.periodoCurto({ ini: E.A.ini, fim: meio }) + ')';
+    }
     if (!la.length && !lb.length) return null;
-    const a = X.resumo(la, bt), b = X.resumo(lb, bt);
-    const ativos = new Set(la.map((l) => l.motorista)), antes = new Set(lb.map((l) => l.motorista));
+    const a = X.resumo(la, bt), b = X.resumo(lb, bt), aC = ca === la ? a : X.resumo(ca, bt);
+    const ativos = new Set(la.map((l) => l.motorista)), ativosC = new Set(ca.map((l) => l.motorista)), antes = new Set(lb.map((l) => l.motorista));
     const porMot = new Map();
     la.forEach((l) => { if (!porMot.has(l.motorista)) porMot.set(l.motorista, []); porMot.get(l.motorista).push(l); });
     const notas = [...porMot.values()].map((m) => X.resumo(m, bt).nota).filter((n) => n > 0);
     const crit = notas.filter((n) => n < 40).length;
     const f = [];
     const rel = (x, y) => (y > 0 ? (x - y) / y : null);
-    const dKm = rel(a.km, b.km);
-    if (dKm !== null) f.push({ k: 'uso', nome: 'Uso da frota', risco: clamp(-dKm * 300, 0, 100), det: `Km rodados ${dKm >= 0 ? '+' : ''}${fmt(dKm * 100, 1)}% vs. período anterior` });
-    const dD = rel(a.dias, b.dias), dM = antes.size ? (ativos.size - antes.size) / antes.size : null;
+    const porDia = (r, l) => (r.km && l.length ? r.km / Math.max(1, new Set(l.map((x) => x.data)).size) : 0);   // halves podem ter tamanhos diferentes: compara km por dia
+    const dKm = ca === la ? rel(a.km, b.km) : rel(porDia(aC, ca), porDia(b, lb));
+    if (dKm !== null) f.push({ k: 'uso', nome: 'Uso da frota', risco: clamp(-dKm * 300, 0, 100), det: `Km rodados ${dKm >= 0 ? '+' : ''}${fmt(dKm * 100, 1)}% vs. ${ref}` });
+    const dD = ca === la ? rel(a.dias, b.dias) : null, dM = antes.size ? (ativosC.size - antes.size) / antes.size : null;
     if (dD !== null || dM !== null) {
       const rs = [dD, dM].filter((v) => v !== null).map((v) => clamp(-v * 280, 0, 100));
       f.push({ k: 'engaj', nome: 'Engajamento dos motoristas', risco: rs.reduce((t, v) => t + v, 0) / rs.length, det: `${fmt(ativos.size, 0)} motoristas ativos${antes.size ? ' (antes ' + fmt(antes.size, 0) + ')' : ''} · ${fmt(a.dias, 0)} dias trabalhados` });
     }
     if (a.nota > 0) {
-      const nivel = clamp((70 - a.nota) * 2.5, 0, 100), dn = b.nota > 0 ? a.nota - b.nota : null;
+      const nivel = clamp((70 - a.nota) * 2.5, 0, 100), dn = b.nota > 0 && aC.nota > 0 ? aC.nota - b.nota : null;
       const tend = dn === null ? null : clamp(-dn * 8, 0, 100);
       f.push({ k: 'perf', nome: 'Performance (Nota Gobrax)', risco: tend === null ? nivel : nivel * 0.6 + tend * 0.4, det: `Nota ${fmt(a.nota, 1)}${dn === null ? '' : ' (' + (dn >= 0 ? '+' : '') + fmt(dn, 1) + ' pts)'}` });
     }
-    const dK = b.kml > 0 && a.kml > 0 ? (a.kml - b.kml) / b.kml : null;
+    const dK = b.kml > 0 && aC.kml > 0 ? (aC.kml - b.kml) / b.kml : null;
     if (dK !== null) f.push({ k: 'consumo', nome: 'Resultado de consumo', risco: dK < 0 ? clamp(-dK * 500, 0, 100) : 0, det: `Média ${fmt(a.kml, 2)} km/l (${dK >= 0 ? '+' : ''}${fmt(dK * 100, 1)}%)` });
     if (notas.length) f.push({ k: 'criticos', nome: 'Motoristas com nota crítica', risco: clamp((crit / notas.length) * 250, 0, 100), det: `${fmt(crit, 0)} de ${fmt(notas.length, 0)} motoristas com nota abaixo de 40` });
-    const r = relDoCliente(nome);
+    // HubSpot (conector ou arquivo da API): nota CHS e último contato
+    const hv = hubCli[ckey(nome)];
+    if (hv && hv.comp) {
+      const chs = hubNum(hv.comp.nota_do_chs) !== null ? hubNum(hv.comp.nota_do_chs) : hubNum(hv.comp.chs_score);
+      if (chs !== null) f.push({ k: 'chs', nome: 'Nota CHS (HubSpot)', risco: clamp((80 - chs) * 2.5, 0, 100), det: `Nota CHS ${fmt(chs, 0)} de 100` });
+      const ult = hubDia(hv.comp.notes_last_contacted);
+      if (ult) { const dias = D.dif(ult, D.hoje()); f.push({ k: 'relac', nome: 'Relacionamento (HubSpot)', risco: clamp((dias - 30) * 1.2, 0, 100), det: `Último contato há ${fmt(dias, 0)} ${dias === 1 ? 'dia' : 'dias'}` }); }
+    }
+    const r = f.some((x) => x.k === 'relac') ? null : relDoCliente(nome);
     if (r) {
       const ult = [r.ligacoes && r.ligacoes.ultima, r.emails && r.emails.ultimo].filter(Boolean).sort().pop();
       const churn = /churn/i.test(r.situacao || '');
@@ -4597,7 +4614,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   const ETAPA_MAP = Object.fromEntries(ETAPAS.map((e) => [e.k, e]));
   const STATUS_TRAT = { combinado: 'Combinado', andamento: 'Em andamento', entregue: 'Entregue' };
   const BADGE_STATUS_TRAT = { combinado: 'badge-neutro', andamento: 'badge-atencao', entregue: 'badge-ok' };
-  const ETAPA_DO_SINAL = { uso: 'estudo', engaj: 'plataforma', perf: 'plataforma', consumo: 'plataforma', criticos: 'plataforma', relac: 'estudo' };
+  const ETAPA_DO_SINAL = { uso: 'estudo', engaj: 'plataforma', perf: 'plataforma', consumo: 'plataforma', criticos: 'plataforma', relac: 'estudo', chs: 'estudo' };
   const EFEITO_IND = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km_dia'];
   const EFEITO_CONTEXTO = ['km_dia'];
   const VEREDITO = { melhorou: ['Melhorou', 'badge-ok'], regrediu: ['Regrediu', 'badge-critico'], misto: ['Resultado misto', 'badge-atencao'], estavel: ['Estável', 'badge-neutro'] };

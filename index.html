@@ -350,6 +350,7 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tabela tbody tr.clicavel { cursor: pointer; }
 .tabela tbody tr:hover { background: var(--sup-hover); }
 .tabela td .linha2 { display: block; color: var(--texto-3); font-size: 11.5px; margin-top: 1px; }
+.tabela tr.linha-deriv td { background: var(--sup-hover); }
 .tabela td.grupo { background: var(--apoio); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-2); padding: 8px 14px; }
 .seta-ord { font-size: 10px; color: var(--tinta); margin-left: 4px; }
 .pessoa { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -1199,6 +1200,8 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
   // ---------- Base: índices e agregação ----------
   function criarBase(linhas, colunas, fonte) {
     linhas.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+    // Velocidade média acima de 150 km/h é falha de leitura (ex.: 1.908 km em 0,55 h): fica fora da média
+    linhas.forEach((l) => { if (l.velocidade_media > 150) l.velocidade_media = null; });
     const porMotorista = new Map();
     const datas = new Set();
     linhas.forEach((l) => {
@@ -2044,6 +2047,7 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 25, data: '2026-10-22', titulo: 'Diesel do motor ocioso e peso do embalo', texto: 'Em Todos os indicadores da frota, abaixo do Motor ocioso aparecem as horas paradas com motor ligado e os litros gastos nelas (5 L por hora), com o custo em reais. Abaixo do Aproveitamento de embalo aparecem os km rodados no embalo e quanto o embalo puxa a média de km/l para cima.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
     { id: 24, data: '2026-10-22', titulo: 'Fundo preto', texto: 'No topo, ao lado do sino, o botão da lua deixa o painel com fundo preto. O sol volta para o fundo claro. A escolha fica salva neste navegador. O "Próximo passo" do plano de ação agora fica branco e pisca como alerta.', href: '#/geral', link: 'Abrir a Visão geral' },
     { id: 23, data: '2026-10-22', titulo: 'Novo seletor de período', texto: 'O período agora fica em um único campo. Clique nele para escolher um atalho (último dia, 7, 30 ou 90 dias, mês atual, mês anterior, todo o período) ou marcar o primeiro e o último dia no calendário, e depois em Aplicar. A comparação é sempre com o período anterior do mesmo tamanho.', href: '#/geral', link: 'Abrir a Visão geral' },
     { id: 22, data: '2026-10-21', titulo: 'Diesel pelo estado onde o cliente opera', texto: 'No perfil do cliente, escolha o estado onde ele opera e, se quiser, um estado para cada grupo de veículos. O preço do diesel da Petrobras daquele estado passa a valer nas contas de economia; filtrando um grupo, vale o estado do grupo. O preço se atualiza sozinho.', href: '#/config', link: 'Abrir Configurações' },
@@ -2274,8 +2278,31 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
   }
 
   // Tabela com todos os indicadores agrupados: analisado × comparação × variação (+ coluna extra opcional)
+  // Contas extras mostradas logo abaixo do indicador: diesel gasto com motor ocioso e o peso do embalo nos km e na média
+  const LITROS_HORA_OCIOSO = 5;
+  const DERIV = {
+    motor_ocioso: [
+      { key: 'ocioso_h', label: 'Horas com motor ocioso', desc: 'Estimadas pelo % ocioso sobre as horas de condução', un: 'h', casas: 1, melhor: -1, var: 'pct' },
+      { key: 'ocioso_l', label: 'Diesel gasto com motor ocioso', desc: 'Horas com motor ocioso × ' + LITROS_HORA_OCIOSO + ' L por hora', un: 'L', casas: 0, melhor: -1, var: 'pct' }
+    ],
+    embalo: [
+      { key: 'embalo_km', label: 'Km rodados no embalo', desc: '% de embalo sobre os km rodados', un: 'km', casas: 0, melhor: 1, var: 'pct' },
+      { key: 'embalo_kml', label: 'Influência do embalo na média', desc: 'Quanto a média de consumo cairia sem o embalo (km sem acelerar quase não gastam diesel)', un: 'km/l', casas: 2, melhor: 1, var: 'pct' }
+    ]
+  };
+  function derivados(r) {
+    const n = (v) => (v === null || v === undefined || !Number.isFinite(v) ? null : v);
+    const o = n(r.motor_ocioso), h = n(r.horas), e = n(r.embalo), km = n(r.km), kml = n(r.kml);
+    const oh = o !== null && h !== null && o < 100 ? (h * o) / (100 - o) : null;   // o % ocioso é do tempo ligado: parado = rodando × o / (100 − o)
+    return {
+      ocioso_h: oh, ocioso_l: oh === null ? null : oh * LITROS_HORA_OCIOSO,
+      embalo_km: e !== null && km ? (km * e) / 100 : null,
+      embalo_kml: e !== null && kml ? (kml * e) / 100 : null
+    };
+  }
   function tabelaIndicadores(a, b, extra) {
     let rows = '';
+    const da = derivados(a), db = derivados(b);
     GRUPOS.forEach((g) => {
       const inds = E.base.indicadores.filter((i) => i.grupo === g.key);
       if (!inds.length) return;
@@ -2290,6 +2317,19 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
           <td>${resultado(v, ind)}</td>
           ${extra ? `<td class="dir">${extra(ind)}</td>` : ''}
         </tr>`;
+        (DERIV[ind.key] || []).forEach((d) => {
+          if (da[d.key] === null && db[d.key] === null) return;
+          const vd = X.variacao(d, da[d.key], db[d.key]);
+          const custo = d.key === 'ocioso_l' && da[d.key] !== null && E.preco ? ' · ≈ R$ ' + fmt(da[d.key] * E.preco, 0) + ' a R$ ' + fmt(E.preco, 2) + '/L' : '';
+          rows += `<tr class="linha-deriv">
+          <td><span style="font-weight:500;padding-left:14px;display:block">↳ ${esc(d.label)}</span><span class="linha2" style="padding-left:28px">${esc(d.desc + custo)}</span></td>
+          <td class="dir">${fmtInd(d, da[d.key])}</td>
+          <td class="dir" style="color:var(--texto-2)">${fmtInd(d, db[d.key])}</td>
+          <td class="dir">${variacao(vd)}</td>
+          <td>${resultado(vd, d)}</td>
+          ${extra ? '<td class="dir"></td>' : ''}
+        </tr>`;
+        });
       });
     });
     return `<div class="tabela-wrap"><table class="tabela" style="min-width:720px">

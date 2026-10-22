@@ -177,3 +177,19 @@ Detalhes da resposta da performance:
 - **Painel no Claude:** os dados ficam na base compartilhada, coleção `planilhas`, com um documento por tipo, cliente e dia (ou mês, na premiação).
 - **GitHub Pages:** os dados ficam só no navegador (`localStorage`).
 - O CPF e o id dos motoristas são descartados antes de qualquer gravação. Só o nome segue.
+
+## HubSpot (perfil e relacionamento do cliente)
+
+O cartão **Cliente no HubSpot** e o **Estudo do cliente** (Saúde do cliente) usam duas fontes, a que for mais recente:
+
+1. **Conector do HubSpot no claude.ai** (painel aberto dentro do Claude): lido ao vivo com a autorização de quem abre o painel. Não há token no painel.
+2. **API do HubSpot por script** (`api/hubspot.mjs`): para usar fora do Claude ou guardar uma leitura.
+   - Crie um app privado no HubSpot (Configurações → Integrações → Apps privados) só com escopos de leitura: empresas, contatos, tickets, e-mails, ligações e reuniões.
+   - Coloque o token no `api/.env` como `HUBSPOT_TOKEN=...` (o arquivo fica fora do Git; nunca cole o token em chat).
+   - No `api/clientes.json`, `hubspot_id` é o id da empresa no HubSpot (opcional; sem ele, busca pelo nome).
+   - Rode `node api/hubspot.mjs` (ou `--cliente "Nome"`). Gera `api/saida/<cliente>/hubspot.json`.
+   - No painel, em Saúde do cliente → Cliente no HubSpot → **Importar arquivo**. A leitura fica guardada na base compartilhada (coleção `hubspot`) e vale até o conector trazer uma mais nova.
+
+Endpoints usados (só leitura): `GET /crm/v3/objects/companies/{id}`, `POST /crm/v3/objects/companies/search`, `GET /crm/v4/objects/{tipo}/{id}/associations/{tipo}` e `POST /crm/v3/objects/{tipo}/batch/read`.
+
+Campos da empresa: CNPJ (`cnpj_texto`), frota (`frota_contratada`, `frota_total`), nota CHS (`nota_do_chs`, `chs_score` e as partes `chs_aderencia`, `chs_nota_engajamento`, `chs_nota_adimplencia`, `chs_nota_usuario`, `chs_nota_motorista`, `chs_nota_tickets_positivos`), contrato (`data_inicio_do_contrato_original`, `data_de_termino_do_contrato`, `ciclo_experiencia`), `estados_onde_opera` e último contato (`notes_last_contacted`).

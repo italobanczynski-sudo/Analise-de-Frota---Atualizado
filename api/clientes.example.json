@@ -1,4 +1,11 @@
 [
-  { "cliente": "Nome do cliente como está no painel", "token": "GOBRAX_TOKEN_CLIENTE1" },
-  { "cliente": "Outro cliente", "token": "GOBRAX_TOKEN_CLIENTE2" }
+  {
+    "cliente": "Nome do cliente como está no painel",
+    "token": "GOBRAX_TOKEN_CLIENTE1",
+    "hubspot_id": "ID da empresa no HubSpot (opcional; sem ele, busca pelo nome)"
+  },
+  {
+    "cliente": "Outro cliente",
+    "token": "GOBRAX_TOKEN_CLIENTE2"
+  }
 ]

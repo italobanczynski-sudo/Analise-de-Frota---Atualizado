@@ -2041,7 +2041,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
 
   const E = {
     base: null,
-    fonte: { tipo: 'vazio', nome: 'Nenhuma planilha' },
+    fonte: { tipo: 'vazio', nome: 'Sem dados' },
     cliente: '', linhasAll: null, colunasAll: null, semCliente: false,
     veic: null, impVeic: null, confirmarRemocaoVeic: false, veicOrd: { col: 'nota', dir: -1 },
     churnVista: 'cliente', trat: [], tratForm: null, tratRemover: null, tratInd: 'nota', tratEmDb: false,
@@ -2191,7 +2191,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     E.clientes.forEach((c) => add(c.nome));
     return [...mapa.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
-  function limparBase() { E.arquivos = null; E.linhasAll = null; E.colunasAll = null; E.semCliente = false; E.base = null; E.fonte = { tipo: 'vazio', nome: 'Nenhuma planilha' }; memo = null; }
+  function limparBase() { E.arquivos = null; E.linhasAll = null; E.colunasAll = null; E.semCliente = false; E.base = null; E.fonte = { tipo: 'vazio', nome: 'Sem dados' }; memo = null; }
   function temInd(k) { return !!(E.base && E.base.indicadores.some((i) => i.key === k)); }
 
   // Períodos que cada planilha cobre (data final e quantos dias). Linha de um dia só cobre a si mesma.
@@ -2398,6 +2398,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 37, data: '2026-10-22', titulo: 'Tudo pela API', texto: 'Se o período escolhido não tiver dados, o painel mostra o último período com dados, do mesmo tamanho, e avisa até quando a API trouxe dados. Os textos de planilha saíram: os dados vêm da API. Os botões Imprimir e Atualizar saíram do cabeçalho da Visão geral.', href: '#/geral', link: 'Abrir a Visão geral' },
     { id: 36, data: '2026-10-22', titulo: 'Tratativas trazidas do HubSpot', texto: 'Em Saúde do cliente → Tratativas registradas, o botão Trazer do HubSpot cria uma tratativa para cada reunião, ligação completada e nota do HubSpot, com data, título e o que foi registrado, já na etapa provável do fluxo. Não duplica: trazer de novo só traz o que é novo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 35, data: '2026-10-22', titulo: 'Aba API HubSpot', texto: 'Na página API, a nova aba API HubSpot explica onde fica o token (no api/.env, nunca na página), como coletar com node api/hubspot.mjs (o script pede o token no terminal na primeira vez) e tem o botão para importar o arquivo gerado.', href: '#/api', link: 'Abrir API' },
     { id: 34, data: '2026-10-22', titulo: 'Estudo do cliente e API do HubSpot', texto: 'Na Saúde do cliente, o Estudo do cliente cruza o HubSpot com a operação: saúde (CHS), relacionamento, suporte, contrato e frota e resultado, cada um com Bom, Atenção ou Crítico, e o que fazer agora. Os dados do HubSpot também podem vir pela API: rode node api/hubspot.mjs e use Importar arquivo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
@@ -2558,6 +2559,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         </div>
         <span class="dp-info"><b>${at ? at[1] : 'Personalizado'}</b> · ${semBase ? 'sem dados anteriores para comparar' : 'comparado com ' + D.periodoBR(E.B)}</span>
       </div>
+      ${E.periodoAjustado && E.periodoAjustado.usado.ini === E.A.ini && E.periodoAjustado.usado.fim === E.A.fim ? `<div class="alerta alerta-atencao" style="margin-top:10px"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Não há dados de ${D.periodoBR(E.periodoAjustado.pedido)}. Mostrando o último período com dados: <b>${D.periodoBR(E.A)}</b>. Os dados da API vão até ${D.br(E.base.fim)}.</span></div></div>` : ''}
     </section>${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
   }
 
@@ -2716,7 +2718,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     if (qtd) return '';
     return `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo">
       <span class="alerta-titulo">Nenhum registro no período analisado</span>
-      <span class="alerta-texto">A planilha tem dados de ${D.br(E.base.inicio)} a ${D.br(E.base.fim)}. Escolha dias dentro desse intervalo no calendário.</span>
+      <span class="alerta-texto">Os dados da API vão de ${D.br(E.base.inicio)} a ${D.br(E.base.fim)}. Escolha dias dentro desse intervalo no calendário.</span>
       <div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="cal-preset-aplicar" data-k="${temTotais(E.base) ? 'ultima' : '30'}">${temTotais(E.base) ? 'Usar o período da última planilha' : 'Usar os últimos 30 dias com dados'}</button></div>
     </div></div>`;
   }
@@ -3099,7 +3101,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const m = E.base.porId[E.rota.id];
     if (!m) {
       return `<button type="button" class="voltar" data-acao="ir" data-href="#/motoristas">‹ Motoristas</button>
-        <section class="card"><div class="vazio"><span class="vazio-titulo">Motorista não encontrado</span><span class="apoio">Ele pode não estar na planilha carregada.</span></div></section>`;
+        <section class="card"><div class="vazio"><span class="vazio-titulo">Motorista não encontrado</span><span class="apoio">Ele pode não ter registros nos dados da API.</span></div></section>`;
     }
     const x = c.mots.find((y) => y.m.id === m.id) || { m, la: [], lb: [], a: X.resumo([], E.base), b: X.resumo([], E.base), st: { status: 'sembase' } };
     const aba = E.rota.aba;
@@ -3137,7 +3139,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       const serie = X.serieDiaria(m.linhas, IND_MAP.km, E.A, E.base);
       E.graficos['mot-km'] = { tipo: 'barras', serie, ind: IND_MAP.km, ref: x.b.km_dia, titulo: 'Km rodados por dia' };
       corpo = `<div class="grade-kpi">${['km', 'horas', 'viagens', 'dias', 'km_dia'].map((k) => kpi(k, x.a, x.b)).join('')}</div>
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Km rodados por dia</h2><span class="h2-sub">Dias sem barra não têm registro na planilha.</span></div></div>
+        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Km rodados por dia</h2><span class="h2-sub">Dias sem barra não têm registro.</span></div></div>
           <div class="card-corpo">
             <div class="graf-legenda"><span><span style="width:10px;height:10px;border-radius:3px;background:var(--dado);display:inline-block"></span>Km no dia · ${D.periodoCurto(E.A)}</span>
               ${x.b.km_dia ? `<span><span class="leg-linha-b"></span>Média por dia trabalhado na comparação · ${fmtInd(IND_MAP.km_dia, x.b.km_dia)}</span>` : ''}</div>
@@ -3266,14 +3268,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   function cartaoEvolucaoDiaria(linhas, nome) {
     const { inds, lista } = evolucaoDiaria(linhas);
     const cab = `<div class="card-cab">
-          <div class="card-cab-texto"><h2 class="h2">Evolução dia a dia · ${esc(nome)}</h2><span class="h2-sub">Cada dia comparado ao dia anterior com planilha. Mais recente no topo.</span></div>
+          <div class="card-cab-texto"><h2 class="h2">Evolução dia a dia · ${esc(nome)}</h2><span class="h2-sub">Cada dia comparado ao dia anterior com dados. Mais recente no topo.</span></div>
           ${lista.length ? `<button type="button" class="btn" data-acao="exportar-evolucao">${icone('baixar', 14, '#5F6368')}Exportar CSV</button>` : ''}
         </div>`;
     if (!lista.length) {
       return `<section class="card">${cab}<div class="card-corpo"><div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo">
         <span class="alerta-titulo">Ainda não há planilhas diárias</span>
         <span class="alerta-texto">As planilhas anexadas são totais de um período. Para comparar dia a dia, anexe uma planilha por dia no perfil do cliente (na de motoristas, início e fim no mesmo dia).</span>
-        <div class="alerta-acoes"><a class="btn-link peq" href="${hrefDados()}">Anexar planilhas do cliente</a></div></div></div></div></section>`;
+        <div class="alerta-acoes"><a class="btn-link peq" href="${hrefDados()}">Buscar dados pela API</a></div></div></div></div></section>`;
     }
     const rows = lista.map((r) => `<tr>
         <td style="white-space:nowrap"><span style="font-weight:500">${D.br(r.data)}</span> <span class="mudo">${D.semana(r.data)}</span><span class="linha2">${r.ant ? 'vs. ' + D.br(r.ant.data) + ' ' + D.semana(r.ant.data) : 'primeiro dia com dados'}</span></td>
@@ -3479,9 +3481,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   function telaVeiculos() {
     const cab = (sub) => `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Veículos e grupos</h1><span class="sub">${sub}</span></div></div>`;
     if (!E.veic) {
-      return cab('Importe a planilha de veículos para ver o desempenho de cada caminhão e de cada grupo.') +
-        `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Nenhuma planilha de veículos importada</span>
-        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Anexar planilhas do cliente</a></div></div></section>${cartaoOdometro()}`;
+      return cab('Busque os dados pela API Gobrax para ver o desempenho de cada caminhão e de cada grupo.') +
+        `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Nenhum dado de veículos importada</span>
+        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Buscar dados pela API</a></div></div></section>${cartaoOdometro()}`;
     }
     const bv = baseVeic();
     if (!bv || E.base !== bv) {
@@ -3606,13 +3608,13 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       <div class="card-corpo"><div class="grafico" data-grafico="dash-km" style="height:220px"></div></div></section>`;
   }
   function cartoesVeiculos() {
-    if (!E.veic) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Sem planilha de veículos</span>
-      <span class="apoio">Importe a planilha de veículos para ver os gráficos por caminhão e por grupo.</span><a class="btn" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Anexar planilhas do cliente</a></div></div></section>`;
+    if (!E.veic) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Sem dados de veículos</span>
+      <span class="apoio">Busque os dados pela API Gobrax para ver os gráficos por caminhão e por grupo.</span><a class="btn" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Buscar dados pela API</a></div></div></section>`;
     const bv = baseVeic();
     if (!bv) return '';
     const temA = E.A && X.filtrar(bv.linhas, E.A).length > 0;
     const p = temA ? E.A : { ini: bv.inicio, fim: bv.fim };
-    const aviso = temA ? '' : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A planilha de veículos não tem registros em ${E.A ? D.periodoBR(E.A) : 'o período analisado'}; os gráficos abaixo usam todo o período dela (${D.periodoBR(p)}).</span></div></div>`;
+    const aviso = temA ? '' : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Os dados de veículos não têm registros em ${E.A ? D.periodoBR(E.A) : 'o período analisado'}; os gráficos abaixo usam todo o período dela (${D.periodoBR(p)}).</span></div></div>`;
     const vs = bv.motoristas.map((m) => ({ nome: m.nome, a: X.resumo(X.filtrar(m.linhas, p), bv), g: (m.dims.grupo[0] || '') })).filter((v) => X.rodou(v.a));
     if (!vs.length) return aviso;
     const barras = (arr, val, max, fmtv, cor) => arr.map((v, i) => `<div class="rk-linha" style="grid-template-columns:22px minmax(90px,140px) 1fr 52px" title="${esc(v.nome)}">
@@ -3663,7 +3665,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     }
     corpo += cartoesVeiculos();
     return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Dashboards</h1>
-        <span class="sub">${E.base ? D.periodoBR(E.A) + ' comparado a ' + D.periodoBR(E.B) : 'Importe a planilha de motoristas para ver os gráficos da frota.'}</span></div></div>
+        <span class="sub">${E.base ? D.periodoBR(E.A) + ' comparado a ' + D.periodoBR(E.B) : 'Busque os dados pela API Gobrax para ver os gráficos da frota.'}</span></div></div>
       ${E.base ? barraPeriodo() : ''}
       ${corpo}`;
   }
@@ -4456,9 +4458,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const veic = E.rota.tipo === 'veiculo';
     const rotulo = veic ? 'veículo' : 'motorista', titulo = veic ? 'Veículo individual' : 'Motorista individual';
     if (!E.base) {
-      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">${veic ? 'Importe a planilha de veículos para analisar cada caminhão.' : 'Importe a planilha de motoristas para analisar cada motorista.'}</span></div></div>
+      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">${veic ? 'Busque os dados pela API Gobrax para analisar cada caminhão.' : 'Busque os dados pela API Gobrax para analisar cada motorista.'}</span></div></div>
         <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Sem dados de ${rotulo}</span>
-        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Anexar planilhas do cliente</a></div></div></section>`;
+        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Buscar dados pela API</a></div></div></section>`;
     }
     const c = calc();
     const lista = c.mots.slice().sort((p, q) => String(p.m.nome).localeCompare(String(q.m.nome), 'pt-BR', { numeric: true }));
@@ -4835,9 +4837,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const bt = baseTodos();
     const cart = churnCarteira();
     if (!cart.length) {
-      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Saúde do cliente</h1><span class="sub">Importe a planilha de motoristas (com a coluna Empresa) para calcular o risco de cada cliente.</span></div></div>
+      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Saúde do cliente</h1><span class="sub">Sem dados da API para calcular o risco de cada cliente.</span></div></div>
         <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa rodagem, engajamento, nota, consumo e contato com o cliente.</span>
-        <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Anexar planilhas do cliente</a></div></div></div></section>`;
+        <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div></div></section>`;
     }
     const cont = (f) => cart.filter((c) => c.faixa === f).length;
     const media = cart.reduce((t, c) => t + c.score, 0) / cart.length;
@@ -5039,7 +5041,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Configurações: clientes e anexo de planilhas (no perfil de cada cliente) ----------
   function abasConfig() {
     return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Configurações</h1>
-      <span class="sub">Clientes e planilhas. Para anexar dados, abra o perfil do cliente.</span></div></div>`;
+      <span class="sub">Clientes e dados da API. Para buscar os dados, abra o perfil do cliente.</span></div></div>`;
   }
 
   // ---------- Tela: Visão geral — o relatório padrão para mostrar ao cliente ----------
@@ -5073,7 +5075,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const linhas = gs.slice(0, 10).map((g) => `<tr><td><b style="font-weight:600">${esc(g.nome)}</b></td><td class="dir">${g.n}</td>${cols.map(([k]) => celInd(k, g.a, g.b)).join('')}<td class="dir">${fmtInd(IND_MAP.km, g.a.km)}</td></tr>`).join('');
     return `<section class="card">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Desempenho por grupo de veículos</h2>
-        <span class="h2-sub">Planilha de veículos · ${D.periodoBR(P.A)}${P.B ? ' comparado a ' + D.periodoBR(P.B) : ' · sem planilha anterior para comparar'}${gs.length > 10 ? ' · 10 maiores de ' + gs.length + ' por km' : ''}.</span></div>
+        <span class="h2-sub">Veículos · ${D.periodoBR(P.A)}${P.B ? ' comparado a ' + D.periodoBR(P.B) : ' · sem período anterior para comparar'}${gs.length > 10 ? ' · 10 maiores de ' + gs.length + ' por km' : ''}.</span></div>
         <a class="btn" href="#/veiculos" style="text-decoration:none">Ver veículos e grupos</a></div>
       <div class="tabela-wrap"><table class="tabela" style="min-width:640px"><thead><tr><th>Grupo</th><th class="dir">Veículos</th>${cols.map(([, r]) => `<th class="dir">${r}</th>`).join('')}<th class="dir">Km rodados</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
   }
@@ -5110,7 +5112,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <div class="hv-txt"><span class="hv-eyebrow"><i></i>Relatório de desempenho da frota</span>
           <h1 class="hv-titulo">${esc(cliente)}</h1>
           <span class="hv-periodo">${icone('calendario', 15)}<b>${D.periodoBR(E.A)}</b><span>${c.lb.length ? 'comparado a ' + D.periodoBR(E.B) : 'sem período anterior para comparar'}</span></span></div>
-        <div class="hv-acoes hero-acoes"><button type="button" class="hv-btn hv-btn-p" data-acao="imprimir">${icone('imprimir', 16)}Imprimir ou salvar em PDF</button><a class="hv-btn" href="${hrefDados()}">${icone('atualizar', 16)}Atualizar dados</a></div>
+
       </div>
       <div class="hv-stats">${stats}</div>
     </section>
@@ -6135,7 +6137,20 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   }
 
   // ---------- Render ----------
+  // Período escolhido sem nenhum dado (ex.: além do último dia que a API trouxe): usa o último período com dados, do mesmo tamanho
+  function ajustarPeriodoSemDados() {
+    const b = E.base;
+    if (!b || !b.fim || !E.A || E.cal.aberto) return;
+    if (X.filtrar(b.linhas, E.A).length) return;
+    const n = Math.max(1, D.dias(E.A)), pedido = { ...E.A };
+    const fim = b.fim, ini = D.somar(fim, -(n - 1)) < b.inicio ? b.inicio : D.somar(fim, -(n - 1));
+    E.A = { ini, fim }; E.B = anterior(E.A); E.modoComp = 'anterior';
+    E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B };
+    E.periodoAjustado = { pedido, usado: { ...E.A } };
+    memo = null;
+  }
   function render() {
+    ajustarPeriodoSemDados();
     garantirCliente();
     if (!E.precoManual) { const p = precoAutomatico(); if (p) E.preco = p; }
     const ativo = document.activeElement;

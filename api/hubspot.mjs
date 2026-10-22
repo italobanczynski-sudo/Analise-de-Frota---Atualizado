@@ -1,7 +1,8 @@
 // Puxa do HubSpot (API oficial, app privado) o perfil e o relacionamento de cada cliente listado em api/clientes.json.
 // O token fica em api/.env como HUBSPOT_TOKEN (nunca no código nem em chat). Só leitura.
 // Gera api/saida/<cliente>/hubspot.json, que o painel importa na Saúde do cliente (botão "Importar arquivo do HubSpot").
-// Uso: node api/hubspot.mjs [--cliente "Nome do cliente"]
+// Uso: node api/hubspot.mjs [--cliente "Nome do cliente"] [--trocar-token]
+// Na primeira vez (ou com --trocar-token) o script pede o token no terminal, sem mostrá-lo, testa e guarda no api/.env.
 // Escopos do app privado: crm.objects.companies.read, crm.objects.contacts.read, tickets, e-mails/ligações/reuniões (sales-email-read e crm.objects.*.read).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,8 +25,34 @@ function lerEnv() {
   return env;
 }
 const ENV = Object.assign(lerEnv(), process.env);
-const TOKEN = String(ENV.HUBSPOT_TOKEN || '').replace(/^\s*bearer\s+/i, '').trim();
-if (!TOKEN) { console.error('Falta HUBSPOT_TOKEN no api/.env (token do app privado do HubSpot).'); process.exit(1); }
+let TOKEN = String(ENV.HUBSPOT_TOKEN || '').replace(/^\s*bearer\s+/i, '').trim();
+// Sem token no api/.env: pede no terminal (sem mostrar o que é digitado), testa e guarda no api/.env
+async function pedirToken() {
+  if (!process.stdin.isTTY) { console.error('Falta HUBSPOT_TOKEN no api/.env (token do app privado do HubSpot).'); process.exit(1); }
+  process.stdout.write('Cole o token do app privado do HubSpot e aperte Enter (ele não aparece na tela): ');
+  const t = await new Promise((ok) => {
+    let buf = '';
+    process.stdin.setRawMode(true); process.stdin.resume(); process.stdin.setEncoding('utf8');
+    const ler = (ch) => {
+      for (const c of ch) {
+        if (c === '\r' || c === '\n') { process.stdin.setRawMode(false); process.stdin.pause(); process.stdin.removeListener('data', ler); process.stdout.write('\n'); ok(buf); return; }
+        if (c === '\u0003') { process.stdout.write('\n'); process.exit(1); }   // Ctrl+C
+        if (c === '\u007f' || c === '\b') buf = buf.slice(0, -1); else buf += c;
+      }
+    };
+    process.stdin.on('data', ler);
+  });
+  const tok = String(t).replace(/^\s*(authorization\s*:\s*)?bearer\s+/i, '').replace(/["'\s]/g, '');
+  if (!tok) { console.error('Nenhum token informado.'); process.exit(1); }
+  const r = await fetch(HUB + '/crm/v3/objects/companies?limit=1', { headers: { Authorization: 'Bearer ' + tok } });
+  if (!r.ok) { console.error(`O HubSpot recusou o token (${r.status}). Confira se é o token do app privado e se ele tem os escopos de leitura.`); process.exit(1); }
+  const fEnv = path.join(PASTA, '.env');
+  const atual = fs.existsSync(fEnv) ? fs.readFileSync(fEnv, 'utf8') : '';
+  const novo = /^\s*HUBSPOT_TOKEN\s*=.*$/m.test(atual) ? atual.replace(/^\s*HUBSPOT_TOKEN\s*=.*$/m, 'HUBSPOT_TOKEN=' + tok) : atual.replace(/\s*$/, '') + (atual ? '\n' : '') + 'HUBSPOT_TOKEN=' + tok + '\n';
+  fs.writeFileSync(fEnv, novo);
+  console.log('Token válido e guardado em api/.env (fora do Git).');
+  return tok;
+}
 const fClientes = path.join(PASTA, 'clientes.json');
 if (!fs.existsSync(fClientes)) { console.error('Falta api/clientes.json.'); process.exit(1); }
 const CLIENTES = JSON.parse(fs.readFileSync(fClientes, 'utf8'));
@@ -124,6 +151,7 @@ async function puxar(c) {
 }
 
 (async () => {
+  if (!TOKEN || process.argv.includes('--trocar-token')) TOKEN = await pedirToken();
   const lista = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));
   if (!lista.length) { console.error('Nenhum cliente no api/clientes.json com esse nome.'); process.exit(1); }
   console.log('HubSpot: ' + lista.length + ' cliente(s)');

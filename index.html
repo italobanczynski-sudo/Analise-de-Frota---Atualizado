@@ -2327,7 +2327,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
     { tela: 'comparativo', href: '#/comparativo', icone: 'documento', rot: 'Comparativo de períodos' },
-    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
+    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'APIs (Gobrax e HubSpot)' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente'] }
   ];
   const navAtivo = (n) => (n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo);
@@ -2398,6 +2398,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 35, data: '2026-10-22', titulo: 'Aba API HubSpot', texto: 'Na página API, a nova aba API HubSpot explica onde fica o token (no api/.env, nunca na página), como coletar com node api/hubspot.mjs (o script pede o token no terminal na primeira vez) e tem o botão para importar o arquivo gerado.', href: '#/api', link: 'Abrir API' },
     { id: 34, data: '2026-10-22', titulo: 'Estudo do cliente e API do HubSpot', texto: 'Na Saúde do cliente, o Estudo do cliente cruza o HubSpot com a operação: saúde (CHS), relacionamento, suporte, contrato e frota e resultado, cada um com Bom, Atenção ou Crítico, e o que fazer agora. Os dados do HubSpot também podem vir pela API: rode node api/hubspot.mjs e use Importar arquivo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 33, data: '2026-10-22', titulo: 'HubSpot: chamados, e-mails e ligações em detalhe', texto: 'No cartão Cliente no HubSpot, clique em Chamados de suporte para ver a relação dos chamados (abertos, assuntos, categorias, tempo para fechar), em E-mails para ver os temas, e em Ligações para ver quem mais entra em contato.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 32, data: '2026-10-22', titulo: 'Cliente no HubSpot na Saúde do cliente', texto: 'Ao abrir um cliente na Saúde do cliente, o painel lê o HubSpot ao vivo: CNPJ, cidade, estados onde opera, contrato, frota contratada, nota CHS com as partes que a compõem, último contato, total de ligações e e-mails, chamados de suporte abertos, últimos contatos e contatos principais. Precisa do conector do HubSpot conectado no claude.ai.', href: '#/churn', link: 'Abrir Saúde do cliente' },
@@ -5582,8 +5583,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       return [`<b style="font-weight:600">${esc(c.nome)}</b>`, tem ? '<span class="badge badge-ok">Salvo</span>' : '<span class="badge badge-vazio">Sem token</span>', quando, sit, `<a class="btn-link peq" href="#/cliente/${encodeURIComponent(c.id)}">${tem ? 'Abrir perfil' : 'Salvar token'}</a>`];
     })) : '<p>Nenhum cliente cadastrado. Cadastre em <a class="btn-link" href="#/config">Configurações</a> e informe o token da API.</p>';
     const card = (titulo, sub, corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${titulo}</h2>${sub ? `<span class="h2-sub">${sub}</span>` : ''}</div></div><div class="card-corpo" style="gap:12px">${corpo}</div></section>`;
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">API Gobrax</h1><span class="sub">Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em docs/API.md.</span></div></div>
-      <div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
+    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${E.apiAba === 'hubspot' ? 'API HubSpot' : 'API Gobrax'}</h1><span class="sub">Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em docs/API.md.</span></div></div>
+      <div class="abas" role="tablist" aria-label="APIs">${[['gobrax', 'API Gobrax'], ['hubspot', 'API HubSpot']].map(([k, r]) => `<button type="button" role="tab" class="aba ${(E.apiAba || 'gobrax') === k ? 'ativa' : ''}" aria-selected="${(E.apiAba || 'gobrax') === k}" data-acao="api-aba" data-aba="${k}"><span>${r}</span></button>`).join('')}</div>
+      ${E.apiAba === 'hubspot' ? abaHubspot(card) : `<div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
       ${card('Situação por cliente', 'O token fica só neste navegador e nunca aparece na tela.', status)}
       ${card('Como funciona', '', `<ul>
         <li><b>Base:</b> <code>${API_BASE}</code></li>
@@ -5601,7 +5603,35 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
          <span class="campo-rotulo">Campos usados</span>${tab(['Campo da API', 'No painel'], e.campos.map(([p, v]) => [`<code>${p}</code>`, esc(v)]))}
          <p><b>Aparece em:</b> ${e.onde}.</p>`)).join('')}
       ${card('Respostas e erros', '', tab(['Resposta', 'Significado', 'O que o painel faz'], API_ERROS))}
-      </div>`;
+      </div>`}`;
+  }
+  // Aba API HubSpot: onde fica o token, como coletar e onde importar
+  function abaHubspot(card) {
+    const lidos = Object.keys(hubCli).map((k) => ({ k, v: hubCli[k] })).filter((x) => x.v && x.v.comp);
+    const tabela = lidos.length ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Fonte</th><th>Lido em</th><th class="dir">Nota CHS</th><th class="dir">Ligações</th><th class="dir">E-mails</th><th class="dir">Chamados abertos</th></tr></thead><tbody>
+      ${lidos.map(({ v }) => `<tr><td><b style="font-weight:600">${esc(v.comp.name || '')}</b></td><td>${v.fonte === 'arquivo' ? '<span class="badge badge-neutro">API (arquivo)</span>' : '<span class="badge badge-ok">Conector ao vivo</span>'}</td><td class="num">${v.em ? new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td><td class="dir num">${esc(v.comp.nota_do_chs || '—')}</td><td class="dir num">${v.calls ? fmt(Number(v.calls.total) || 0, 0) : '—'}</td><td class="dir num">${v.emails ? fmt(Number(v.emails.total) || 0, 0) : '—'}</td><td class="dir num">${v.abertos ? fmt(Number(v.abertos.total) || 0, 0) : '—'}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="apoio">Nenhum cliente lido do HubSpot ainda.</p>';
+    return `<div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
+      ${card('Onde fica o token do HubSpot', 'Não existe campo de token nesta página, de propósito.', `<ul>
+        <li><b>Por que não aqui:</b> a API do HubSpot recusa chamadas feitas de dentro do navegador (sem CORS), e um token salvo numa página fica visível para quem a abre. Por isso a coleta roda no seu computador.</li>
+        <li><b>Onde fica:</b> no arquivo <code>api/.env</code> do projeto, na linha <code>HUBSPOT_TOKEN=</code>. Esse arquivo fica fora do Git e nunca vai para o GitHub nem para o painel.</li>
+        <li><b>Como colocar:</b> rode <code>node api/hubspot.mjs</code>. Na primeira vez ele pede o token no terminal (sem mostrar o que você cola), testa no HubSpot e guarda no <code>api/.env</code>. Para trocar depois: <code>node api/hubspot.mjs --trocar-token</code>.</li>
+        <li><b>Token certo:</b> do <b>app privado</b> do HubSpot (Configurações → Integrações → Apps privados), só com escopos de leitura: empresas, contatos, tickets, e-mails, ligações e reuniões.</li>
+        <li><b>Nunca</b> cole o token em chat, e-mail ou planilha.</li></ul>`)}
+      ${card('Coletar e trazer para o painel', '', `<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+        <li>No <code>api/clientes.json</code>, cada cliente pode ter <code>"hubspot_id"</code> (o número no fim do link da empresa no HubSpot). Sem ele, o script procura pelo nome.</li>
+        <li>No terminal, na pasta do projeto: <code>node api/hubspot.mjs</code> (ou <code>--cliente "Nome do cliente"</code>).</li>
+        <li>O script gera <code>api/saida/&lt;cliente&gt;/hubspot.json</code> com perfil, CNPJ, frota, nota CHS, contatos, ligações, e-mails, reuniões e chamados.</li>
+        <li>Importe o arquivo aqui embaixo (ou em Saúde do cliente → Cliente no HubSpot). Ele fica guardado na base compartilhada e alimenta o cartão e o Estudo do cliente.</li></ol>
+        <label class="btn btn-primario" style="align-self:flex-start;margin-top:10px">Importar arquivo hubspot.json<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label>`)}
+      ${card('Clientes lidos do HubSpot', 'O painel usa a leitura mais recente: o arquivo importado ou o conector ao vivo (painel aberto no Claude).', tabela)}
+      ${card('Endpoints usados (só leitura)', '', `<ul>
+        <li><code>GET /crm/v3/objects/companies/{id}</code>: perfil, CNPJ, frota, nota CHS e partes, contrato, último contato.</li>
+        <li><code>POST /crm/v3/objects/companies/search</code>: acha a empresa pelo nome quando não há <code>hubspot_id</code>.</li>
+        <li><code>GET /crm/v4/objects/companies/{id}/associations/{calls|emails|meetings|tickets|contacts}</code>: o que está ligado à empresa.</li>
+        <li><code>POST /crm/v3/objects/{tipo}/batch/read</code>: os campos de cada ligação, e-mail, reunião, chamado e contato.</li>
+        <li><code>GET /crm/v4/objects/contacts/{id}/associations/{calls|emails}</code>: quem mais entra em contato.</li></ul>`)}
+    </div>`;
   }
 
   function cartaoEstado(fc) {
@@ -6670,6 +6700,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       baixar('analise_por_' + E.grupoPor + '_' + sufixoArquivo() + '.csv', ls.join('\n'));
     },
     'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli); },
+    'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
     'hub-atualizar': (el) => { const r = (E.rel || []).find((x) => x.chave === el.dataset.id); if (r) atualizarHub(r); },
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },

@@ -68,9 +68,10 @@ const PROPS = {
     'nota_do_chs', 'chs_score', 'chs_aderencia', 'chs_nota_engajamento', 'chs_nota_adimplencia', 'chs_nota_usuario', 'chs_nota_motorista', 'chs_nota_tickets_positivos', 'tickets_suporte__chs_',
     'notes_last_contacted', 'notes_last_updated', 'hs_last_logged_call_date', 'data_inicio_do_contrato_original', 'data_de_termino_do_contrato', 'ciclo_experiencia', 'status_contrato', 'status_financeiro',
     'lifecyclestage', 'num_associated_contacts', 'num_associated_deals', 'createdate'],
-  calls: ['hs_timestamp', 'hs_call_title', 'hs_call_status', 'hs_call_direction', 'hs_call_duration'],
+  calls: ['hs_timestamp', 'hs_call_title', 'hs_call_status', 'hs_call_direction', 'hs_call_duration', 'hs_call_body'],
+  notes: ['hs_timestamp', 'hs_note_body'],
   emails: ['hs_timestamp', 'hs_email_subject', 'hs_email_direction'],
-  meetings: ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome'],
+  meetings: ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome', 'hs_meeting_body', 'hs_internal_meeting_notes'],
   tickets: ['subject', 'createdate', 'closed_date', 'hs_ticket_category', 'hs_ticket_priority', 'time_to_close'],
   contacts: ['firstname', 'lastname', 'jobtitle', 'email', 'phone', 'mobilephone', 'notes_last_contacted']
 };
@@ -135,7 +136,7 @@ async function puxar(c) {
   const id = await empresaId(c);
   if (!id) { console.log(`  ${c.cliente}: não encontrado no HubSpot (preencha "hubspot_id" no api/clientes.json).`); return; }
   const comp = await hub('GET', `/crm/v3/objects/companies/${id}?properties=${PROPS.companies.join(',')}`);
-  const tipos = ['calls', 'emails', 'meetings', 'tickets', 'contacts'];
+  const tipos = ['calls', 'emails', 'meetings', 'notes', 'tickets', 'contacts'];
   const ids = {};
   for (const t of tipos) { try { ids[t] = await associados('companies', id, t); } catch (e) { ids[t] = []; console.log(`  ${t}: sem permissão (${e.status}); a chave não tem o escopo de leitura desse tipo.`); } }
   const reg = {}, semDetalhe = [];
@@ -144,7 +145,10 @@ async function puxar(c) {
     reg[t] = await lerLote(t, ids[t]).catch((e) => { if (e.status === 403) { semDetalhe.push(t); return []; } throw e; });
   }
   if (semDetalhe.length) console.log(`  sem permissão para ler o detalhe de: ${semDetalhe.join(', ')} (ficam só os totais)`);
-  reg.calls.sort(porData('hs_timestamp')); reg.emails.sort(porData('hs_timestamp')); reg.meetings.sort(porData('hs_timestamp'));
+  reg.calls.sort(porData('hs_timestamp')); reg.emails.sort(porData('hs_timestamp')); reg.meetings.sort(porData('hs_timestamp')); reg.notes.sort(porData('hs_timestamp'));
+  // texto das reuniões, ligações e notas: sem HTML e curto (vira o "o que foi combinado" das tratativas no painel)
+  const limpar = (h) => String(h || '').replace(/<br\s*\/?>|<\/p>|<\/li>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim().slice(0, 800);
+  ['hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_note_body'].forEach((k) => ['calls', 'meetings', 'notes'].forEach((t) => reg[t].forEach((o) => { if (o.properties[k]) o.properties[k] = limpar(o.properties[k]); })));
   reg.tickets.sort(porData('createdate')); reg.contacts.sort(porData('notes_last_contacted'));
   const abertos = reg.tickets.filter((o) => !o.properties.closed_date);
   const tot = (t) => Math.max(ids[t].length, reg[t].length);
@@ -157,14 +161,14 @@ async function puxar(c) {
   const bloco = (t) => ({ total: tot(t), results: reg[t].slice(0, MAX), semDetalhe: semDetalhe.includes(t) || undefined });
   const saida = {
     formato: 'gobrax-hubspot-1', gerado: new Date().toISOString(), cliente: c.cliente, id,
-    comp: comp.properties || {}, calls: bloco('calls'), emails: bloco('emails'), meets: bloco('meetings'),
+    comp: comp.properties || {}, calls: bloco('calls'), emails: bloco('emails'), meets: bloco('meetings'), notas: bloco('notes'),
     tickets: bloco('tickets'), abertos: semDetalhe.includes('tickets') ? null : { total: abertos.length, results: abertos.slice(0, MAX) }, contatos: bloco('contacts'), porContato, semDetalhe
   };
   const dir = path.join(SAIDA, slugCli(c.cliente));
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'hubspot.json'), JSON.stringify(saida));
   // resumo só com números (nada de nomes, e-mails ou telefones no terminal)
-  console.log(`  ${c.cliente}: empresa ${id} · ${tot('calls')} ligações · ${tot('emails')} e-mails · ${tot('meetings')} reuniões · ${tot('tickets')} chamados${semDetalhe.includes('tickets') ? '' : ' (' + abertos.length + ' abertos)'} · ${tot('contacts')} contatos`);
+  console.log(`  ${c.cliente}: empresa ${id} · ${tot('calls')} ligações · ${tot('emails')} e-mails · ${tot('meetings')} reuniões · ${tot('notes')} notas · ${tot('tickets')} chamados${semDetalhe.includes('tickets') ? '' : ' (' + abertos.length + ' abertos)'} · ${tot('contacts')} contatos`);
   console.log(`  → ${path.relative(process.cwd(), path.join(dir, 'hubspot.json'))}`);
 }
 

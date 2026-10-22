@@ -2398,6 +2398,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 36, data: '2026-10-22', titulo: 'Tratativas trazidas do HubSpot', texto: 'Em Saúde do cliente → Tratativas registradas, o botão Trazer do HubSpot cria uma tratativa para cada reunião, ligação completada e nota do HubSpot, com data, título e o que foi registrado, já na etapa provável do fluxo. Não duplica: trazer de novo só traz o que é novo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 35, data: '2026-10-22', titulo: 'Aba API HubSpot', texto: 'Na página API, a nova aba API HubSpot explica onde fica o token (no api/.env, nunca na página), como coletar com node api/hubspot.mjs (o script pede o token no terminal na primeira vez) e tem o botão para importar o arquivo gerado.', href: '#/api', link: 'Abrir API' },
     { id: 34, data: '2026-10-22', titulo: 'Estudo do cliente e API do HubSpot', texto: 'Na Saúde do cliente, o Estudo do cliente cruza o HubSpot com a operação: saúde (CHS), relacionamento, suporte, contrato e frota e resultado, cada um com Bom, Atenção ou Crítico, e o que fazer agora. Os dados do HubSpot também podem vir pela API: rode node api/hubspot.mjs e use Importar arquivo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 33, data: '2026-10-22', titulo: 'HubSpot: chamados, e-mails e ligações em detalhe', texto: 'No cartão Cliente no HubSpot, clique em Chamados de suporte para ver a relação dos chamados (abertos, assuntos, categorias, tempo para fechar), em E-mails para ver os temas, e em Ligações para ver quem mais entra em contato.', href: '#/churn', link: 'Abrir Saúde do cliente' },
@@ -3758,7 +3759,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const k = ckey(o.cliente), v = (hubCli[k] = hubCli[k] || {});
     const em = Date.parse(o.gerado) || Date.now();
     if (v.comp && v.em && v.em >= em && v.fonte !== 'arquivo') return;   // a leitura ao vivo é mais nova
-    Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, tickets: o.tickets, abertos: o.abertos, contatos: o.contatos, porContato: o.porContato || [], em, fonte: 'arquivo', erro: null });
+    Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos, contatos: o.contatos, porContato: o.porContato || [], em, fonte: 'arquivo', erro: null });
     if (salvar) {
       const slug = ckey(o.cliente).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       if (hubRef) hubRef.doc(slug).set({ cliente: o.cliente, gerado: o.gerado, json: JSON.stringify(o) }).catch(() => toast('Não foi possível guardar o arquivo do HubSpot na base compartilhada.', 'erro'));
@@ -3790,11 +3791,12 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       const daEmpresa = { objectType: 'companies', operator: 'EQUAL', objectIdValues: [Number(id)] };
       const assoc = [{ associatedWith: [daEmpresa] }];
       const recentes = (tipo, props, campo, lim) => call({ objectType: tipo, filterGroups: assoc, properties: props, sorts: [{ propertyName: campo || 'hs_timestamp', direction: 'DESCENDING' }], limit: lim || 6 });
+      const notas = await recentes('NOTE', ['hs_timestamp', 'hs_note_body'], null, 100).catch(() => null);
       const [comp, calls, emails, meets, tickets, abertos, contatos] = await Promise.all([
         call({ objectType: 'COMPANY', filterGroups: [{ filters: [{ propertyName: 'hs_object_id', operator: 'EQ', value: String(id) }] }], properties: HUB_PROPS, limit: 1 }),
-        recentes('CALL', ['hs_timestamp', 'hs_call_title', 'hs_call_status', 'hs_call_direction', 'hs_call_duration'], null, 100),
+        recentes('CALL', ['hs_timestamp', 'hs_call_title', 'hs_call_status', 'hs_call_direction', 'hs_call_duration', 'hs_call_body'], null, 100),
         recentes('EMAIL', ['hs_timestamp', 'hs_email_subject', 'hs_email_direction'], null, 100),
-        recentes('MEETING', ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome']).catch(() => null),
+        recentes('MEETING', ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome', 'hs_meeting_body', 'hs_internal_meeting_notes'], null, 100).catch(() => null),
         recentes('TICKET', ['subject', 'createdate', 'closed_date', 'hs_ticket_category', 'hs_ticket_priority', 'time_to_close'], 'createdate', 100),
         call({ objectType: 'TICKET', filterGroups: [{ associatedWith: [daEmpresa], filters: [{ propertyName: 'closed_date', operator: 'NOT_HAS_PROPERTY' }] }], properties: ['subject', 'createdate', 'hs_ticket_priority'], sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }], limit: 6 }),
         call({ objectType: 'CONTACT', filterGroups: assoc, properties: ['firstname', 'lastname', 'jobtitle', 'email', 'phone', 'mobilephone', 'notes_last_contacted'], sorts: [{ propertyName: 'notes_last_contacted', direction: 'DESCENDING' }], limit: 10 })
@@ -3807,7 +3809,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         const total = (tipo) => call({ objectType: tipo, filterGroups: doContato, properties: ['hs_timestamp'], limit: 1 }).then((r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : 0)).catch(() => 0);
         return Promise.all([total('CALL'), total('EMAIL')]).then(([l, e]) => ({ id: String(o.id), l, e }));
       }));
-      Object.assign(v, { comp: comp.results[0].properties || {}, calls, emails, meets, tickets, abertos, contatos, porContato, em: Date.now(), erro: null, fonte: 'conector' });
+      Object.assign(v, { comp: comp.results[0].properties || {}, calls, emails, meets, notas, tickets, abertos, contatos, porContato, em: Date.now(), erro: null, fonte: 'conector' });
     } catch (e) { v.erro = (e && e.code) || 'upstream_error'; }
     v.carregando = false; redesenharRel();
   }
@@ -4662,7 +4664,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         : ` <button type="button" class="btn-link peq" data-acao="trat-remover" data-id="${esc(t.id)}">Remover</button>`);
     return `<article class="trat">
       <div class="trat-cab"><span class="trat-pin" style="background:${et.cor};color:${t.etapa === 'plataforma' ? '#2B2B2B' : '#fff'}">${n}</span>
-        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}</span></div>
+        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}${t.origem === 'HubSpot' ? ' · <span class="badge badge-neutro" style="font-size:11px">HubSpot</span>' : ''}</span></div>
         <span class="trat-sel"><span class="badge ${BADGE_STATUS_TRAT[t.status] || 'badge-neutro'}">${STATUS_TRAT[t.status] || 'Combinado'}</span>${atrasada ? '<span class="badge badge-critico">Prazo vencido</span>' : ''}</span></div>
       ${t.combinado ? `<p class="trat-comb"><b>O que foi combinado:</b> ${esc(t.combinado)}</p>` : ''}
       ${t.prazo ? `<span class="apoio" style="font-size:12px">Prazo combinado: ${D.br(t.prazo)}</span>` : ''}
@@ -4739,7 +4741,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Linha do tempo da retenção</h2><span class="h2-sub">${esc(ind.label)} de ${esc(sel.nome)}, com cada tratativa marcada no dia em que aconteceu.</span></div>${seg}</div>
         <div class="card-corpo">${graficoTrat(ls, bt, ind, trs)}${leg}</div></section>
       <section class="card" id="trat-lista"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Tratativas registradas</h2><span class="h2-sub">O que foi combinado com o cliente e o que mudou nos números depois. ${esc(guarda)}</span></div>
-        ${E.tratForm ? '' : `<button type="button" class="btn btn-primario" data-acao="trat-novo" data-cli="${esc(sel.nome)}">Registrar tratativa</button>`}</div>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">${(() => { const n = tratativasDoHub(sel.nome).length; return n ? `<button type="button" class="btn" data-acao="trat-hub" data-cli="${esc(sel.nome)}" title="Reuniões, ligações completadas e notas do HubSpot que ainda não estão aqui">Trazer do HubSpot (${n})</button>` : ''; })()}${E.tratForm ? '' : `<button type="button" class="btn btn-primario" data-acao="trat-novo" data-cli="${esc(sel.nome)}">Registrar tratativa</button>`}</span></div>
         <div class="card-corpo">${E.tratForm ? formTrat(sel.nome) : ''}
           ${lista.length ? `<div class="trat-lista">${lista.map((x) => cartaoTrat(x.t, x.n, ls, bt)).join('')}</div>`
             : (E.tratForm ? '' : '<div class="vazio"><span class="vazio-titulo">Nenhuma tratativa registrada</span><span class="apoio">Registre a primeira para acompanhar o que mudou nos números depois de cada conversa e de cada ajuste.</span></div>')}</div></section>`;
@@ -4753,6 +4755,53 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     for (let i = trs.length - 1; i >= 0 && !med; i--) { const ef = efeitoTrat(ls, bt, trs[i].data); if (ef.estado === 'ok') med = { ef, t: trs[i], n: i + 1 }; }
     const res = med ? `<span class="badge ${VEREDITO[med.ef.veredito][1]}">${VEREDITO[med.ef.veredito][0]}</span><span class="linha2">tratativa ${med.n}, de ${D.br(med.t.data)}</span>` : '<span class="badge badge-vazio">Aguardando dados</span>';
     return `<td>${trs.length} ${trs.length === 1 ? 'registro' : 'registros'}<span class="linha2">última em ${D.br(u.data)}${ab ? ' · ' + ab + ' em aberto' : ''}</span></td><td>${res}</td>`;
+  }
+  // Tratativas a partir do HubSpot: reuniões, ligações completadas e notas viram registros (sem duplicar: campo "hubspot")
+  const textoHub = (h) => String(h || '').replace(/<br\s*\/?>|<\/p>|<\/li>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  const codigoMeet = (t) => /^[a-z]{3}-[a-z]{4}-[a-z]{3}\b/i.test(String(t || '').trim());
+  function etapaHub(txt) {
+    const t = nrm(txt);
+    if (/resultado|apresenta|renova|qbr|economia|indicador|relatorio|fechamento/.test(t)) return 'resultado';
+    if (/treina|onboard|implanta|instala|configur|ajuste|plataforma|liberac|acesso|usuario|tela/.test(t)) return 'plataforma';
+    return 'estudo';
+  }
+  function tratativasDoHub(nome) {
+    const v = hubCli[ckey(nome)];
+    if (!v || !v.comp) return [];
+    const res = (r) => (r && r.results) || [], out = [];
+    const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trim() + '…' : t);
+    res(v.meets).forEach((o) => {
+      const p = o.properties || {}, corpo = textoHub(p.hs_meeting_body || p.hs_internal_meeting_notes || '');
+      const tit = p.hs_meeting_title && !codigoMeet(p.hs_meeting_title) ? p.hs_meeting_title : 'Reunião com o cliente';
+      out.push({ hubspot: 'meeting:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Reunião: ' + tit, 140), combinado: curto(corpo || (p.hs_meeting_outcome ? 'Resultado: ' + String(p.hs_meeting_outcome).toLowerCase() : ''), 600), etapa: etapaHub(tit + ' ' + corpo) });
+    });
+    res(v.calls).filter((o) => (o.properties || {}).hs_call_status === 'COMPLETED').forEach((o) => {
+      const p = o.properties || {}, corpo = textoHub(p.hs_call_body || '');
+      const tit = p.hs_call_title && !codigoMeet(p.hs_call_title) ? p.hs_call_title : 'Ligação com o cliente';
+      out.push({ hubspot: 'call:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Ligação: ' + tit, 140), combinado: curto(corpo, 600), etapa: etapaHub(tit + ' ' + corpo) });
+    });
+    res(v.notas).forEach((o) => {
+      const p = o.properties || {}, corpo = textoHub(p.hs_note_body || '');
+      if (!corpo) return;
+      out.push({ hubspot: 'note:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Nota: ' + corpo.split('\n')[0], 140), combinado: curto(corpo, 600), etapa: etapaHub(corpo) });
+    });
+    const ja = new Set((E.trat || []).filter((t) => t.hubspot).map((t) => t.hubspot));
+    return out.filter((t) => t.data && !ja.has(t.hubspot)).sort((a, b) => (a.data < b.data ? -1 : 1));
+  }
+  async function trazerTratHub(nome) {
+    const novas = tratativasDoHub(nome);
+    if (!novas.length) { toast('Nada novo no HubSpot para trazer.'); return; }
+    let ok = 0;
+    for (const t of novas) {
+      const reg = { cliente: nome, data: t.data, etapa: t.etapa, titulo: t.titulo, combinado: t.combinado, prazo: '', status: 'entregue', criado: D.hoje(), origem: 'HubSpot', hubspot: t.hubspot };
+      try {
+        if (E.tratEmDb && tratRef && !E.demo) await tratRef.add(reg);
+        else E.trat.push(Object.assign({ id: 't' + Date.now() + '-' + ok }, reg));
+        ok++;
+      } catch (e) { toast('Parou depois de ' + ok + ' registro(s): sem permissão para gravar neste painel.', 'erro'); break; }
+    }
+    if (!(E.tratEmDb && tratRef && !E.demo)) salvarTratLocal();
+    render(); if (ok) toast(ok + ' tratativa(s) trazida(s) do HubSpot.');
   }
   async function salvarTrat() {
     const f = E.tratForm; if (!f) return;
@@ -6704,6 +6753,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       baixar('analise_por_' + E.grupoPor + '_' + sufixoArquivo() + '.csv', ls.join('\n'));
     },
     'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli); },
+    'trat-hub': (el) => { trazerTratHub(el.dataset.cli); },
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
     'hub-atualizar': (el) => { const r = (E.rel || []).find((x) => x.chave === el.dataset.id); if (r) atualizarHub(r); },

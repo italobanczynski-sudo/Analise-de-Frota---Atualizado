@@ -837,7 +837,6 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   .card, .exec, .hero-geral, .plano-card { break-inside: avoid; box-shadow: none !important; }
   .hero-geral { padding: 18px 20px; }
 }
-.hero-clientes { align-items: center; gap: 8px 10px; }
 .churn-leitura { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--corpo); max-width: 62ch; padding: 10px 12px; border-left: 3px solid var(--amarelo); background: var(--creme); border-radius: 0 8px 8px 0; }
 
 
@@ -2405,6 +2404,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 42, data: '2026-10-23', titulo: 'Troca de cliente só no topo', texto: 'Os botões "Cliente do relatório" saíram da Visão geral. Para trocar de empresa, use o seletor de cliente na barra do canto superior direito.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 41, data: '2026-10-23', titulo: 'Caju Transportes no painel', texto: 'A Caju Transportes entrou como cliente, já ligada ao HubSpot (perfil, nota CHS, ligações, reuniões, notas, chamados e contatos) e com o diesel de Mato Grosso do Sul. Os últimos 30 dias de motoristas, veículos, odômetro (41 veículos) e premiação já entraram pela API, separados dos dados da Xtsul.', href: '#/clientes', link: 'Abrir Clientes' },
     { id: 40, data: '2026-10-22', titulo: 'Baixar arquivo no painel do Claude', texto: 'Na janela de exportação, o botão Baixar arquivo agora funciona também no painel do Claude: ele pede sua confirmação e salva o CSV. Copiar continua disponível.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 39, data: '2026-10-22', titulo: 'Revisão geral', texto: 'Todas as telas, abas e períodos foram revisados, sem erros. Por segurança, o HubSpot não traz mais CNPJ, e-mail nem telefone: os contatos mostram nome, cargo e último contato, e e-mails, CPF, CNPJ e telefones escritos em notas, reuniões e ligações aparecem mascarados. Arquivos antigos na base são limpos sozinhos. Os últimos textos de planilha saíram.', href: '#/churn', link: 'Abrir Saúde do cliente' },
@@ -5117,17 +5117,6 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       <div class="tabela-wrap"><table class="tabela" style="min-width:640px"><thead><tr><th>Grupo</th><th class="dir">Veículos</th>${cols.map(([, r]) => `<th class="dir">${r}</th>`).join('')}<th class="dir">Km rodados</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
   }
 
-  // O painel mostra um cliente por vez; os clientes nunca são somados
-  function seletorClienteHero() {
-    if (E.demo) return '';
-    const ops = opcoesClientes();
-    const comDados = ops.filter((n) => (E.linhasAll || []).some((l) => ckey(l.cliente) === ckey(n)));
-    const quase = comDados.length > 1;
-    const pil = (rot, cli, ativa) => `<button type="button" class="pilula ${ativa ? 'ativa' : ''}" data-acao="cliente-hero" data-cli="${esc(cli)}" aria-pressed="${ativa}">${esc(rot)}</button>`;
-    if (!quase) return '';
-    return `<div class="barra-filtros hero-clientes" aria-label="Cliente do relatório"><span class="campo-rotulo">Cliente do relatório</span>
-      ${ops.map((n) => pil(n, n, ckey(E.cliente) === ckey(n))).join('')}</div>`;
-  }
   // Critério usado para evoluiu / regrediu (segue X.statusEvolucao: nota, km/l, início da faixa verde ou faixa verde)
   const critEvolucao = (c) => ({ nota: 'pela Nota Gobrax (±2 pts)', kml: 'pela média de km/l (±2%)', inicio_faixa_verde: 'pelo início da faixa verde (±2 p.p.)', faixa_verde: 'pela faixa verde (±2 p.p.)' }[((c.mots.find((x) => x.st && x.st.ind) || {}).st || {}).ind] || 'pela Nota Gobrax (±2 pts)');
   function telaGeral() {
@@ -5152,8 +5141,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
 
       </div>
       <div class="hv-stats">${stats}</div>
-    </section>
-    ${seletorClienteHero()}`;
+    </section>`;
 
     // ---- resultados entregues ----
     const dif = (k) => X.variacao(IND_MAP[k], A[k], B[k]);
@@ -6813,7 +6801,6 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     'churn-cliente': (el) => { E.churnVista = 'cliente'; trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'churn-vista': (el) => { E.churnVista = el.dataset.v === 'carteira' ? 'carteira' : 'cliente'; render(); window.scrollTo(0, 0); },
     'churn-todos': () => { E.churnVista = 'carteira'; render(); window.scrollTo(0, 0); },
-    'cliente-hero': (el) => { trocarCliente(el.dataset.cli || ''); if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; } render(); },
     'trat-novo': (el) => {
       E.tratForm = { cliente: el.dataset.cli, data: D.hoje(), etapa: el.dataset.etapa || 'plataforma', status: 'combinado', prazo: '', titulo: el.dataset.titulo || '', combinado: '' };
       render(); const e = document.getElementById('trat-titulo'); if (e) { try { e.scrollIntoView({ block: 'center' }); } catch (x) { /* sem rolagem */ } e.focus(); }
@@ -6857,7 +6844,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     if (!el || el.disabled) return;
     const f = acoes[el.dataset.acao];
     if (!f) return;
-    if (['filtrar-dim', 'limpar-dim', 'remover-veic-confirmar', 'remover-confirmar', 'churn-cliente', 'churn-todos', 'cliente-hero', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
+    if (['filtrar-dim', 'limpar-dim', 'remover-veic-confirmar', 'remover-confirmar', 'churn-cliente', 'churn-todos', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
     else comContexto(() => f(el, ev));
   });
   document.addEventListener('keydown', (ev) => {

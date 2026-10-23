@@ -752,6 +752,17 @@ body, .conteudo, .pagina { background: #FFFFFF; }
 .pilula-diesel { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--borda); background: #fff; color: #2B2B2B; font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pilula-diesel small { font-weight: 400; color: #5F6368; font-size: 11px; }
 .pilula-diesel.auto { border-color: #F3DE7A; background: #FFFBEA; }
+button.pilula-diesel { cursor: pointer; font-family: inherit; }
+button.pilula-diesel:hover, button.pilula-diesel[aria-expanded="true"] { border-color: var(--amarelo); }
+.dm { position: relative; }
+.dm-painel { left: auto; right: 0; width: min(340px, calc(100vw - 24px)); }
+.dm-op { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 9px 16px; border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; font: inherit; font-size: 13px; color: var(--tinta); cursor: pointer; }
+.dm-op:hover { background: var(--apoio); }
+.dm-op.ativo { background: var(--creme); border-left-color: var(--amarelo); font-weight: 600; }
+.dm-op b { font-weight: 600; white-space: nowrap; }
+.dm-nome { display: flex; flex-direction: column; min-width: 0; }
+.dm-nome small { font-size: 11px; font-weight: 400; color: var(--texto-2); }
+.dm-sec { display: block; padding: 10px 16px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-3); border-top: 1px solid var(--hairline); }
 .pd-pulso { width: 8px; height: 8px; border-radius: 50%; background: #1E8E3E; animation: gbx-pulso 2s infinite; }
 .link-nome { color: inherit; text-decoration: none; border-bottom: 1px dashed #BDC1C6; } .link-nome:hover { border-bottom-color: #FCB709; color: #2B2B2B; background: #FFFBEA; }
 
@@ -990,6 +1001,7 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
 .hero-geral.hero-v2 { overflow: visible; z-index: 20; }
 .hero-v2::before { border-radius: 16px 16px 0 0; }
 .hv-per { flex: 0 1 auto; max-width: 100%; }
+.hero-v2 .hv-topo { z-index: 5; }
 .hv-per .dp-linha { flex-direction: column; align-items: flex-end; gap: 6px; }
 .hv-per .dp-info { text-align: right; }
 .hv-per .dp-pop { left: auto; right: 0; }
@@ -2409,25 +2421,30 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return precoUF(uf) || precoUF('br') || (E.diesel && Number(E.diesel.preco_br)) || null;
   }
   function pilulaDiesel() {
-    if (!E.precoManual && E.dieselUF) {
+    if (E.dieselUF) {
       const { uf, de } = ufAtual(), p = precoUF(uf), usado = p ? uf : 'br';
-      return `<a class="pilula-diesel auto" href="${hrefDados()}" title="Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${usado.toUpperCase()}</small></a>`;
+      return `<div class="dm"><button type="button" class="pilula-diesel auto" data-acao="diesel-menu" aria-haspopup="listbox" aria-expanded="${!!E.dieselMenu}" title="Clique para escolher o preço · Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${E.precoManual ? 'manual' : usado.toUpperCase()}</small><span class="dp-seta">▾</span></button>${E.dieselMenu ? menuDiesel() : ''}</div>`;
     }
     const d = E.diesel;
     if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel R$ ${fmt(E.preco, 2)}/L</a>`;
     const auto = !E.precoManual;
     return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/comparativo" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: R$ ${fmt(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
   }
-  // Estado do diesel ao lado do preço: automático (grupo/cliente), média Brasil ou um estado
-  function seletorUF() {
+  // Clique na pílula do diesel: lista para escolher o preço (automático, média Brasil ou um estado)
+  function menuDiesel() {
     if (!E.dieselUF) return '';
     const auto = (() => { const s = E.ufDiesel; E.ufDiesel = ''; const u = ufAtual().uf; E.ufDiesel = s; return u; })();
-    const p = (uf) => precoUF(uf), rot = (uf) => (uf === 'br' ? 'Média Brasil (geral)' : uf.toUpperCase() + ' · ' + nomeUF(uf)) + (p(uf) ? ' · R$ ' + fmt(p(uf), 2) : ' · sem preço (usa média Brasil)');
-    const ops = [['', 'Automático · ' + (auto === 'br' ? 'Média Brasil' : auto.toUpperCase())], ['br', rot('br')]].concat(UFS.map(([uf]) => [uf, rot(uf)]));
-    return `<label class="sr-only" for="diesel-uf" style="position:absolute;left:-9999px">Estado do preço do diesel</label>
-      <select class="campo" id="diesel-uf" data-campo="diesel-uf" style="height:32px;max-width:200px;min-width:110px" title="Estado do preço do diesel (Petrobras, coleta ${esc(E.dieselUF.coleta)}). Automático segue o estado do grupo ou do cliente.">
-        ${ops.map(([v, r]) => `<option value="${v}" ${v === E.ufDiesel ? 'selected' : ''}>${esc(r)}</option>`).join('')}
-      </select>`;
+    const sel = E.precoManual ? 'manual' : E.ufDiesel;
+    const op = (v, nome, preco, apoio) => `<button type="button" class="dm-op ${v === sel ? 'ativo' : ''}" data-acao="diesel-uf" data-uf="${v}" role="option" aria-selected="${v === sel}"><span class="dm-nome">${nome}${apoio ? `<small>${apoio}</small>` : ''}</span><b class="num">${preco ? 'R$ ' + fmt(preco, 2) : 'sem preço'}</b></button>`;
+    const pa = precoUF(auto) || precoUF('br');
+    return `<div class="sino-painel dm-painel" role="listbox" aria-label="Preço do diesel">
+      <div class="sino-cab"><b>Preço do diesel</b><span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.dieselUF.coleta)}</span></div>
+      ${E.precoManual ? op('manual', 'Preço digitado', E.preco, 'clique numa opção abaixo para voltar à Petrobras') : ''}
+      ${op('', 'Automático', pa, 'segue o estado do grupo ou do cliente (' + (auto === 'br' ? 'média Brasil' : auto.toUpperCase()) + ')')}
+      ${op('br', 'Média Brasil (geral)', precoUF('br'))}
+      <span class="dm-sec">Por estado</span>
+      ${UFS.map(([uf]) => op(uf, uf.toUpperCase() + ' · ' + esc(nomeUF(uf)), precoUF(uf), precoUF(uf) ? '' : 'usa a média Brasil')).join('')}
+    </div>`;
   }
   function seletorCliente() {
     const ops = opcoesClientes();
@@ -2435,6 +2452,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    { id: 46, data: '2026-10-23', titulo: 'Preço do diesel na pílula verde', texto: 'Clique na pílula verde do diesel, no topo, para escolher o preço: Automático (estado do grupo ou do cliente), Média Brasil (geral) ou um estado, cada um com o valor da Petrobras. O seletor separado saiu.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 45, data: '2026-10-23', titulo: 'Menu lateral flutuante', texto: 'O menu da esquerda agora flutua e mostra só os ícones (passe o mouse para ver o nome). Clique no botão de menu no topo dele para abrir as opções com os nomes; clique fora, escolha uma página ou aperte Esc para fechar.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -2538,7 +2556,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <header class="topo">
           <span class="topo-lado">${sino()}${botaoTema()}</span>
           <img class="topo-logo claro" src="${ASSET('logo')}" alt="gobrax"><img class="topo-logo escuro" src="${ASSET('logo-escuro') || ASSET('logo')}" alt="gobrax">
-          <span class="topo-lado dir">${pilulaDiesel()}${seletorUF()}${seletorCliente()}${seletorGrupo()}</span>
+          <span class="topo-lado dir">${pilulaDiesel()}${seletorCliente()}${seletorGrupo()}</span>
         </header>
         <main class="pagina" id="pagina">${conteudo}</main>
       </div>
@@ -6883,6 +6901,14 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       render();
     },
     'sino-fechar': () => { E.sino = false; render(); },
+    'diesel-menu': () => { E.dieselMenu = !E.dieselMenu; render(); },
+    'diesel-uf': (el) => {
+      const v = el.dataset.uf; E.dieselMenu = false;
+      if (v === 'manual') { render(); return; }
+      E.ufDiesel = v; if (v) armazem.gravar(CHAVE_UF_DIESEL, v); else armazem.apagar(CHAVE_UF_DIESEL);
+      if (E.precoManual) { armazem.apagar(CHAVE_PRECO); E.precoManual = false; }
+      render(); toast(v ? 'Diesel pelo preço de ' + nomeUF(v) + '.' : 'Diesel pelo estado do cliente ou do grupo.');
+    },
     'nav-alternar': () => { E.navAberto = !E.navAberto; render(); },
     'tema': () => { armazem.gravar('gbx-tema', temaAtual() === 'escuro' ? 'claro' : 'escuro'); aplicarTema(); render(); }
   };
@@ -6895,6 +6921,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   document.addEventListener('pointerdown', (ev) => { if (E.cal.aberto && !ev.target.closest('.dp-ancora')) acoes['cal-cancelar'](); }, true);
   document.addEventListener('click', (ev) => {
     if (E.sino && !ev.target.closest('.sino')) { E.sino = false; render(); }   // clique fora fecha o sino
+    if (E.dieselMenu && !ev.target.closest('.dm')) { E.dieselMenu = false; render(); }
     const el = ev.target.closest('[data-acao]');
     if (!el || el.disabled) return;
     const f = acoes[el.dataset.acao];
@@ -6905,7 +6932,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('input[data-campo^="cli-"]')) { ev.preventDefault(); salvarCliente(); return; }
     if (ev.key === 'Enter' && ev.target.matches('tr[data-acao], .cal-clic, .cd-ind, .mm-card, .pd-garg') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
-    if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.navAberto) { E.navAberto = false; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
+    if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.navAberto) { E.navAberto = false; render(); } if (E.dieselMenu) { E.dieselMenu = false; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
   });
   document.addEventListener('input', (ev) => {
     const k = ev.target.dataset.campo;
@@ -6963,11 +6990,6 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     else if (k === 'ind-det') { E.detalhe.indGraf = el.value; render(); }
     else if (k === 'ind-comp') { E.comp.ind = el.value; render(); }
     else if (k === 'escopo') { E.comp.escopo = el.value; render(); }
-    else if (k === 'diesel-uf') {
-      E.ufDiesel = el.value; if (el.value) armazem.gravar(CHAVE_UF_DIESEL, el.value); else armazem.apagar(CHAVE_UF_DIESEL);
-      if (E.precoManual) { armazem.apagar(CHAVE_PRECO); E.precoManual = false; }
-      render(); toast(el.value ? 'Diesel pelo preço de ' + nomeUF(el.value) + '.' : 'Diesel pelo estado do cliente ou do grupo.');
-    }
     else if (k === 'uf-cliente') salvarEstado(el.dataset.cli, { uf: el.value });
     else if (k === 'uf-grupo') {
       const c = E.clientes.find((x) => x.id === el.dataset.cli);

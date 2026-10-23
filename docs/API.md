@@ -165,7 +165,7 @@ Detalhes da resposta da performance:
 
 - Fonte: `GET https://combustivelapi.com.br/api/precos/` (preços da Petrobras, aceita chamada do navegador). O painel usa `precos.diesel` (`br` e a sigla de cada estado, em reais com vírgula).
 - No perfil do cliente, o cartão "Onde o cliente opera" guarda o estado do cliente (`uf`) e, se quiser, um estado por grupo de veículos (`ufGrupos`, chave = nome do grupo normalizado).
-- Na barra do topo, ao lado do preço, um seletor escolhe o estado: "Automático" (o padrão, regra abaixo), "Média Brasil (geral)" ou qualquer estado. A escolha vale só no navegador de quem escolheu (`gbx-diesel-uf`).
+- Na barra do topo, um clique na pílula verde do preço abre a lista para escolher: "Automático" (o padrão, regra abaixo), "Média Brasil (geral)" ou qualquer estado. A escolha vale só no navegador de quem escolheu (`gbx-diesel-uf`).
 - Preço usado nas contas no automático: o do estado do grupo filtrado; senão o do cliente; senão a média Brasil. Estado sem preço na fonte usa a média Brasil. Um preço digitado à mão continua valendo até voltar para o automático.
 - No GitHub Pages o painel busca ao abrir e a cada 6 horas. No Claude a página não chama fora: o script `api/puxar.mjs` grava `api/saida/diesel_uf.json`, carregado na base em `config/diesel_uf`.
 

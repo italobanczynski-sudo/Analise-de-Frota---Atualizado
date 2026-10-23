@@ -799,6 +799,29 @@ body, .conteudo, .pagina { background: #FFFFFF; }
   .nav-item { width: 56px; justify-content: center; padding: 0; }
   .nav-item .dica { display: block; }
 }
+/* ---------- Menu lateral flutuante: só ícones; o botão do topo abre os nomes por cima do conteúdo ---------- */
+.sidebar {
+  position: fixed; left: 10px; top: 10px; bottom: 10px; height: auto; z-index: 60; width: 68px;
+  align-items: center; padding: 8px 0 10px; overflow: visible; border: 1px solid var(--hairline); border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(32,33,36,.12); transition: width 180ms var(--ease);
+}
+.conteudo { margin-left: 88px; }
+.nav-marca { width: 100%; justify-content: center; padding: 6px 0 10px; background: none; border: 0; border-bottom: 1px solid var(--hairline); cursor: pointer; font: inherit; font-size: 15px; font-weight: 700; color: var(--tinta); }
+.nav-marca svg { flex: none; }
+.nav-marca span, .nav-secao, .nav-item .nome { display: none; }
+.nav-item { width: 52px; justify-content: center; padding: 0; }
+.nav-item .dica { display: block; }
+.nav-rodape { width: 100%; align-items: center; }
+.app.nav-aberta .sidebar { width: 248px; align-items: stretch; padding: 12px 12px 16px; overflow-y: auto; }
+.app.nav-aberta .nav-marca { justify-content: flex-start; gap: 10px; padding: 8px 10px 12px; }
+.app.nav-aberta .nav-marca span, .app.nav-aberta .nav-item .nome { display: block; }
+.app.nav-aberta .nav-secao { display: block; }
+.app.nav-aberta .nav-item { width: auto; justify-content: flex-start; padding: 0 10px; }
+.app.nav-aberta .nav-item .dica { display: none; }
+.app.nav-aberta .nav-rodape { align-items: stretch; }
+.nav-fundo { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.28); }
+@media (max-width: 640px) { .sidebar { left: 6px; top: 6px; bottom: 6px; width: 60px; } .conteudo { margin-left: 72px; } .nav-item { width: 46px; } }
+@media print { .conteudo { margin-left: 0; } .nav-fundo { display: none; } }
 
 /* ---------- Visão geral: relatório padrão ---------- */
 .hero-geral { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 28px; padding: 26px 28px; border-radius: 14px; color: #fff;
@@ -1708,6 +1731,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     baixar: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"></path>',
     subir: '<path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 19h14"></path>',
     fechar: '<path d="M6 6l12 12M18 6L6 18"></path>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"></path>',
     filtro: '<path d="M4 5h16l-6 7v6l-4 2v-8z"></path>',
     tabela: '<path d="M4 7h16M4 12h16M4 17h16"></path>',
     grafico: '<path d="M4 18V8m5 10V5m5 13v-7m5 7V9"></path>',
@@ -2411,6 +2435,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    { id: 45, data: '2026-10-23', titulo: 'Menu lateral flutuante', texto: 'O menu da esquerda agora flutua e mostra só os ícones (passe o mouse para ver o nome). Clique no botão de menu no topo dele para abrir as opções com os nomes; clique fora, escolha uma página ou aperte Esc para fechar.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
       </select>`;
@@ -2502,9 +2527,10 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const fonte = E.fonte.tipo === 'vazio'
       ? '<span class="tag">Sem dados</span>'
       : `<span class="tag">${/^API/.test(E.fonte.nome || '') ? 'API' : 'Dados'}</span><span title="${esc(E.fonte.nome)}">${esc(E.fonte.nome)}</span>`;
-    return `<div class="app">
+    return `<div class="app ${E.navAberto ? 'nav-aberta' : ''}">
+      ${E.navAberto ? '<div class="nav-fundo" data-acao="nav-alternar" aria-hidden="true"></div>' : ''}
       <nav class="sidebar" aria-label="Menu principal">
-        <a class="nav-marca" href="#/geral" aria-label="Análise de frota — Visão geral"><span class="nav-marca-q"></span><span>Análise de frota</span></a>
+        <button type="button" class="nav-marca" data-acao="nav-alternar" aria-expanded="${!!E.navAberto}" aria-label="${E.navAberto ? 'Fechar o menu' : 'Abrir o menu'}">${icone(E.navAberto ? 'fechar' : 'menu', 20)}<span>Análise de frota</span></button>
         ${NAV.filter((n) => !n.rodape).map((n) => (n.sec ? `<span class="nav-secao">${n.sec}</span>` : navItem(n))).join('')}
         <div class="nav-rodape">${NAV.filter((n) => n.rodape).map(navItem).join('')}</div>
       </nav>
@@ -6857,6 +6883,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       render();
     },
     'sino-fechar': () => { E.sino = false; render(); },
+    'nav-alternar': () => { E.navAberto = !E.navAberto; render(); },
     'tema': () => { armazem.gravar('gbx-tema', temaAtual() === 'escuro' ? 'claro' : 'escuro'); aplicarTema(); render(); }
   };
   function deslocar(p, meses, anos) {
@@ -6878,7 +6905,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('input[data-campo^="cli-"]')) { ev.preventDefault(); salvarCliente(); return; }
     if (ev.key === 'Enter' && ev.target.matches('tr[data-acao], .cal-clic, .cd-ind, .mm-card, .pd-garg') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
-    if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
+    if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.navAberto) { E.navAberto = false; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
   });
   document.addEventListener('input', (ev) => {
     const k = ev.target.dataset.campo;
@@ -6955,7 +6982,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   });
   let tRedim;
   window.addEventListener('resize', () => { clearTimeout(tRedim); tRedim = setTimeout(desenharGraficos, 120); });
-  window.addEventListener('hashchange', () => { lerRota(); render(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => { E.navAberto = false; lerRota(); render(); window.scrollTo(0, 0); });
 
   // ---------- Início ----------
   function iniciar() {

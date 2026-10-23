@@ -120,6 +120,7 @@ a:hover { color: var(--amarelo-press); text-decoration-color: var(--amarelo-hove
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--superficie); }
 .topo-lado { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .topo-lado.dir { justify-content: flex-end; }
+.topo-lado select.campo { border-radius: 999px; padding-left: 14px; }
 .topo-logo { height: 24px; width: auto; display: block; margin: 0 12px; }
 .sino { position: relative; }
 .sino-btn { position: relative; width: 36px; height: 36px; border: none; border-radius: 999px; background: transparent; color: var(--texto-2); display: grid; place-items: center; cursor: pointer; }
@@ -2452,6 +2453,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    { id: 47, data: '2026-10-23', titulo: 'Seletor de cliente arredondado', texto: 'O seletor de cliente (e o de grupo) no topo ganhou cantos redondos, igual à pílula do diesel.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 46, data: '2026-10-23', titulo: 'Preço do diesel na pílula verde', texto: 'Clique na pílula verde do diesel, no topo, para escolher o preço: Automático (estado do grupo ou do cliente), Média Brasil (geral) ou um estado, cada um com o valor da Petrobras. O seletor separado saiu.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 45, data: '2026-10-23', titulo: 'Menu lateral flutuante', texto: 'O menu da esquerda agora flutua e mostra só os ícones (passe o mouse para ver o nome). Clique no botão de menu no topo dele para abrir as opções com os nomes; clique fora, escolha uma página ou aperte Esc para fechar.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },

@@ -160,8 +160,8 @@ async function puxar(c) {
   if (semDetalhe.length) console.log(`  sem permissão para ler o detalhe de: ${semDetalhe.join(', ')} (ficam só os totais)`);
   reg.calls.sort(porData('hs_timestamp')); reg.emails.sort(porData('hs_timestamp')); reg.meetings.sort(porData('hs_timestamp')); reg.notes.sort(porData('hs_timestamp'));
   // texto das reuniões, ligações e notas: sem HTML e curto (vira o "o que foi combinado" das tratativas no painel)
-  const limpar = (h) => String(h || '').replace(/<br\s*\/?>|<\/p>|<\/li>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim().slice(0, 800);
-  ['hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_note_body'].forEach((k) => ['calls', 'meetings', 'notes'].forEach((t) => reg[t].forEach((o) => { if (o.properties[k]) o.properties[k] = limpar(o.properties[k]); })));
+  const semHtml = (h) => String(h || '').replace(/<br\s*\/?>|<\/p>|<\/li>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim().slice(0, 800);
+  ['hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_note_body'].forEach((k) => ['calls', 'meetings', 'notes'].forEach((t) => reg[t].forEach((o) => { if (o.properties[k]) o.properties[k] = semHtml(o.properties[k]); })));
   reg.tickets.sort(porData('createdate')); reg.contacts.sort(porData('notes_last_contacted'));
   const abertos = reg.tickets.filter((o) => !o.properties.closed_date);
   const tot = (t) => Math.max(ids[t].length, reg[t].length);

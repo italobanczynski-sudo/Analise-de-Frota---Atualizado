@@ -33,13 +33,19 @@ O painel no Claude não deixa a página chamar endereços de fora, então a busc
 
 1. Copie `api/.env.example` para `api/.env` e cole o token de cada cliente depois do `=`:
    ```
-   GOBRAX_TOKEN_XTSUL=<token do cliente>
+   GOBRAX_TOKEN_XTSUL=<token da Xtsul>
+   GOBRAX_TOKEN_CAJU=<token da Caju>
    ```
-2. Copie `api/clientes.example.json` para `api/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token:
+2. Copie `api/clientes.example.json` para `api/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token e o ID da empresa no HubSpot (o número no fim do link da empresa):
    ```json
-   [{ "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL" }]
+   [
+     { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL", "hubspot_id": "<ID no HubSpot>" },
+     { "cliente": "Caju Transportes", "token": "GOBRAX_TOKEN_CAJU", "hubspot_id": "<ID no HubSpot>" }
+   ]
    ```
-3. Rode `node api/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Xtsul Transportes LTDA"`.
+3. Rode `node api/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente). O HubSpot segue o mesmo arquivo: `node api/hubspot.mjs --cliente "Caju Transportes"`.
+
+Para incluir um cliente novo: uma linha `GOBRAX_TOKEN_<NOME>=` no `api/.env` e uma entrada no `api/clientes.json`. O cliente precisa existir no painel com o mesmo nome.
 
 Os arquivos `api/.env`, `api/clientes.json` e `api/saida/` ficam fora do Git (`.gitignore`). Nunca faça commit deles e nunca cole o token em chat.
 

@@ -2360,8 +2360,12 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   setTimeout(buscarPrecosUF, 800);
   setInterval(buscarPrecosUF, 6 * 3600000);
   const cliAtual = () => E.clientes.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
-  // Estado usado agora: o do grupo filtrado (se tiver), senão o do cliente, senão a média Brasil
+  // Estado escolhido na barra do topo (só neste navegador): vazio = automático, 'br' = média Brasil
+  const CHAVE_UF_DIESEL = 'gbx-diesel-uf';
+  E.ufDiesel = armazem.ler(CHAVE_UF_DIESEL) || '';
+  // Estado usado agora: o escolhido na barra, senão o do grupo filtrado, senão o do cliente, senão a média Brasil
   function ufAtual() {
+    if (E.ufDiesel) return { uf: E.ufDiesel, de: 'barra' };
     const c = cliAtual(); if (!c) return { uf: 'br', de: '' };
     const g = E.filtro.grupo && c.ufGrupos ? c.ufGrupos[nrm(E.filtro.grupo)] : '';
     if (g) return { uf: g, de: 'grupo ' + E.filtro.grupo };
@@ -2376,12 +2380,23 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   function pilulaDiesel() {
     if (!E.precoManual && E.dieselUF) {
       const { uf, de } = ufAtual(), p = precoUF(uf), usado = p ? uf : 'br';
-      return `<a class="pilula-diesel auto" href="${hrefDados()}" title="Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${usado.toUpperCase()}</small></a>`;
+      return `<a class="pilula-diesel auto" href="${hrefDados()}" title="Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${usado.toUpperCase()}</small></a>`;
     }
     const d = E.diesel;
     if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel R$ ${fmt(E.preco, 2)}/L</a>`;
     const auto = !E.precoManual;
     return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/comparativo" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: R$ ${fmt(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
+  }
+  // Estado do diesel ao lado do preço: automático (grupo/cliente), média Brasil ou um estado
+  function seletorUF() {
+    if (!E.dieselUF) return '';
+    const auto = (() => { const s = E.ufDiesel; E.ufDiesel = ''; const u = ufAtual().uf; E.ufDiesel = s; return u; })();
+    const p = (uf) => precoUF(uf), rot = (uf) => (uf === 'br' ? 'Média Brasil (geral)' : uf.toUpperCase() + ' · ' + nomeUF(uf)) + (p(uf) ? ' · R$ ' + fmt(p(uf), 2) : ' · sem preço (usa média Brasil)');
+    const ops = [['', 'Automático · ' + (auto === 'br' ? 'Média Brasil' : auto.toUpperCase())], ['br', rot('br')]].concat(UFS.map(([uf]) => [uf, rot(uf)]));
+    return `<label class="sr-only" for="diesel-uf" style="position:absolute;left:-9999px">Estado do preço do diesel</label>
+      <select class="campo" id="diesel-uf" data-campo="diesel-uf" style="height:32px;max-width:200px;min-width:110px" title="Estado do preço do diesel (Petrobras, coleta ${esc(E.dieselUF.coleta)}). Automático segue o estado do grupo ou do cliente.">
+        ${ops.map(([v, r]) => `<option value="${v}" ${v === E.ufDiesel ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+      </select>`;
   }
   function seletorCliente() {
     const ops = opcoesClientes();
@@ -2389,6 +2404,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
       </select>`;
   }
   function seletorGrupo() {
@@ -2488,7 +2504,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <header class="topo">
           <span class="topo-lado">${sino()}${botaoTema()}</span>
           <img class="topo-logo claro" src="${ASSET('logo')}" alt="gobrax"><img class="topo-logo escuro" src="${ASSET('logo-escuro') || ASSET('logo')}" alt="gobrax">
-          <span class="topo-lado dir">${pilulaDiesel()}${seletorCliente()}${seletorGrupo()}</span>
+          <span class="topo-lado dir">${pilulaDiesel()}${seletorUF()}${seletorCliente()}${seletorGrupo()}</span>
         </header>
         <main class="pagina" id="pagina">${conteudo}</main>
       </div>
@@ -6908,6 +6924,11 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     else if (k === 'ind-det') { E.detalhe.indGraf = el.value; render(); }
     else if (k === 'ind-comp') { E.comp.ind = el.value; render(); }
     else if (k === 'escopo') { E.comp.escopo = el.value; render(); }
+    else if (k === 'diesel-uf') {
+      E.ufDiesel = el.value; if (el.value) armazem.gravar(CHAVE_UF_DIESEL, el.value); else armazem.apagar(CHAVE_UF_DIESEL);
+      if (E.precoManual) { armazem.apagar(CHAVE_PRECO); E.precoManual = false; }
+      render(); toast(el.value ? 'Diesel pelo preço de ' + nomeUF(el.value) + '.' : 'Diesel pelo estado do cliente ou do grupo.');
+    }
     else if (k === 'uf-cliente') salvarEstado(el.dataset.cli, { uf: el.value });
     else if (k === 'uf-grupo') {
       const c = E.clientes.find((x) => x.id === el.dataset.cli);

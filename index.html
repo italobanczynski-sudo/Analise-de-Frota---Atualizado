@@ -964,6 +964,13 @@ html[data-tema="escuro"] [style*="color:#5F6368"] { color: var(--texto-2) !impor
 }
 .hero-v2::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--amarelo) 0%, var(--dado) 55%, rgba(252,183,9,0) 100%); }
 .hv-topo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; position: relative; z-index: 1; }
+.hero-geral.hero-v2 { overflow: visible; z-index: 20; }
+.hero-v2::before { border-radius: 16px 16px 0 0; }
+.hv-per { flex: 0 1 auto; max-width: 100%; }
+.hv-per .dp-linha { flex-direction: column; align-items: flex-end; gap: 6px; }
+.hv-per .dp-info { text-align: right; }
+.hv-per .dp-pop { left: auto; right: 0; }
+@media (max-width: 640px) { .hv-per .dp-linha { align-items: flex-start; } .hv-per .dp-info { text-align: left; } .hv-per .dp-pop { left: 0; right: auto; } }
 .hv-txt { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1 1 360px; }
 .hv-eyebrow {
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; padding: 5px 12px 5px 10px; border-radius: 999px;
@@ -2404,6 +2411,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
       </select>`;
   }
@@ -2575,19 +2583,23 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
         <tbody>${linhas}</tbody></table></div></div>
     </section>`;
   }
-  function barraPeriodo() {
+  function campoPeriodo() {
     const semBase = E.base && X.filtrar(E.base.linhas, E.B).length === 0;
     const at = atalhosPeriodo().find(([k]) => k === E.presetA);
-    return `<section class="card dp-barra" aria-label="Período">
-      <div class="dp-linha">
+    return `<div class="dp-linha">
         <div class="dp-ancora">
           <button type="button" class="dp-campo ${E.cal.aberto ? 'ativo' : ''}" data-acao="cal-alternar" aria-haspopup="dialog" aria-expanded="${!!E.cal.aberto}">${icone('calendario', 16)}<span>${D.periodoBR(E.A)}</span><span class="dp-seta">▾</span></button>
           ${E.cal.aberto ? painelCalendario() : ''}
         </div>
         <span class="dp-info"><b>${at ? at[1] : 'Personalizado'}</b> · ${semBase ? 'sem dados anteriores para comparar' : 'comparado com ' + D.periodoBR(E.B)}</span>
-      </div>
-      ${E.periodoAjustado && E.periodoAjustado.usado.ini === E.A.ini && E.periodoAjustado.usado.fim === E.A.fim ? `<div class="alerta alerta-atencao" style="margin-top:10px"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Não há dados de ${D.periodoBR(E.periodoAjustado.pedido)}. Mostrando o último período com dados: <b>${D.periodoBR(E.A)}</b>. Os dados da API vão até ${D.br(E.base.fim)}.</span></div></div>` : ''}
-    </section>${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
+      </div>`;
+  }
+  // Aviso de período ajustado e o cartão de evolução do "tudo", que ficam abaixo do seletor.
+  function avisosPeriodo() {
+    return `${E.periodoAjustado && E.periodoAjustado.usado.ini === E.A.ini && E.periodoAjustado.usado.fim === E.A.fim ? `<div class="alerta alerta-atencao" style="margin-top:10px"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Não há dados de ${D.periodoBR(E.periodoAjustado.pedido)}. Mostrando o último período com dados: <b>${D.periodoBR(E.A)}</b>. Os dados da API vão até ${D.br(E.base.fim)}.</span></div></div>` : ''}${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
+  }
+  function barraPeriodo() {
+    return `<section class="card dp-barra" aria-label="Período">${campoPeriodo()}</section>${avisosPeriodo()}`;
   }
 
   // ---------- Cartões e tabelas reutilizados ----------
@@ -5153,8 +5165,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       <div class="hv-topo">
         <div class="hv-txt"><span class="hv-eyebrow"><i></i>Relatório de desempenho da frota</span>
           <h1 class="hv-titulo">${esc(cliente)}</h1>
-          <span class="hv-periodo">${icone('calendario', 15)}<b>${D.periodoBR(E.A)}</b><span>${c.lb.length ? 'comparado a ' + D.periodoBR(E.B) : 'sem período anterior para comparar'}</span></span></div>
-
+</div>
+        <div class="hv-per" aria-label="Período">${campoPeriodo()}</div>
       </div>
       <div class="hv-stats">${stats}</div>
     </section>`;
@@ -5245,7 +5257,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       </div></div></section>`;
 
     return `${hero}
-      ${barraPeriodo()}
+      ${avisosPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
       ${faixa}
       ${leitura}

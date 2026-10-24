@@ -117,6 +117,28 @@ Busca o último odômetro de cada veículo nos últimos 30 dias. O painel guarda
 
 Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles aparecem em Veículos e grupos, no card Odômetro e comunicação.
 
+### `GET v2/vehicle-position`: última posição (Mapa ao vivo)
+
+> O caminho `v2/vehicle-position` ainda precisa ser confirmado com o time da API. Ele fica na constante `API_POSICAO` do `index.html` e do `api/puxar.mjs`.
+
+Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o painel busca de novo a cada minuto (no GitHub Pages). O painel guarda um documento por cliente (`alvo: 'posicao'`) e o substitui a cada busca. No painel do Claude, a posição chega pelo script `api/puxar.mjs`.
+
+| Parâmetro | Valor enviado |
+|---|---|
+| `startDate` / `endDate` | agora − 30 dias até agora, em UTC (`AAAA-MM-DD HH:MM:SS`) |
+| `vehicleIdentification` | vazio = todos |
+
+| Campo da API | No painel |
+|---|---|
+| `vehicleIdentification` | placa |
+| `lastPosition.date` | horário da posição (lido como o `lastUpdated` do odômetro) |
+| `lastPosition.lat` | latitude |
+| `lastPosition.lon` | longitude (aceita também `lng` ou `longitude`) |
+
+Coordenada 0,0 ou fora do mapa é descartada. No mapa, verde é posição dos últimos 15 minutos, amarelo é sem atualizar hoje (até 24 h) e vermelho é sem sinal há mais de um dia. O motorista mostrado é o do último dia nas estatísticas e na performance.
+
+Modelo da resposta: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","lastPosition":{"date":"","lat":0,"lon":0}}]}`.
+
 ### `GET v2/driversOverview`: scores e premiação
 
 Traz a nota, o km e a bonificação de cada motorista por mês. O painel guarda um documento por cliente e mês (`alvo: 'premiacao'`).

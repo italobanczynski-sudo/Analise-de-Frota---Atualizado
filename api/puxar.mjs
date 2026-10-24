@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const PASTA = path.dirname(fileURLToPath(import.meta.url));
 const SAIDA = path.join(PASTA, 'saida');
 const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
+const API_POSICAO = 'v2/vehicle-position';   // a confirmar com o time da API; resposta: records[].lastPosition { date, lat, lon }
 
 const arg = (nome, padrao) => { const i = process.argv.indexOf('--' + nome); return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : padrao; };
 const DIAS = Math.min(93, Math.max(1, Number(arg('dias', 30)) || 30));
@@ -50,6 +51,11 @@ const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
 const utc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 const janelaUTC = (dia) => ({ startDate: dia + ' 03:00:00', endDate: somar(dia, 1) + ' 02:59:59' });
 const registros = (j) => (Array.isArray(j) ? j : (j && (j.records || j.data)) || []);
+// mesma regra do index.html: só coordenada válida (fora de 0,0) entra no mapa
+const posicaoDosRegistros = (recs) => recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map((r) => {
+  const p = r.lastPosition;
+  return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || '') };
+}).filter((v) => v.lat !== null && v.lon !== null && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180 && !(v.lat === 0 && v.lon === 0));
 const bytes = (t) => Buffer.byteLength(t, 'utf8');
 
 async function apiGet(caminho, params, token) {
@@ -171,6 +177,11 @@ async function puxar(c) {
   try { odo = registros(await apiGet('v2/vehicle-odometer', { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token)); } catch (e) { avisos.push('odômetro não veio: ' + e.message); }
   const veiculos = odo.filter((r) => r && r.vehicleIdentification).map((r) => ({ placa: placaApi(r.vehicleIdentification), odometro: numApi(r.odometer), coletado: String(r.lastUpdated || '') }));
   if (veiculos.length) gravar(idPlan('odometro', cli, 'atual', 1), { alvo: 'odometro', cliente: cli, data: fim, veiculos, em });
+  // última posição de cada veículo (Mapa ao vivo do painel); o caminho fica igual ao API_POSICAO do index.html
+  let pos = [];
+  try { pos = registros(await apiGet(API_POSICAO, { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token)); } catch (e) { avisos.push('posição não veio: ' + e.message); }
+  const posicoes = posicaoDosRegistros(pos);
+  if (posicoes.length) gravar(idPlan('posicao', cli, 'atual', 1), { alvo: 'posicao', cliente: cli, data: fim, veiculos: posicoes, em });
   const mes = (s) => s.slice(5, 7) + '-' + s.slice(0, 4);
   let j = [];
   try { j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(ini), endDate: mes(fim) }, token); } catch (e) { avisos.push('premiação não veio: ' + e.message); }
@@ -190,7 +201,7 @@ async function puxar(c) {
   // planilhas para importar no painel (GitHub Pages ou Configurações → perfil do cliente)
   ['veiculos', 'motoristas'].forEach((alvo) => { if (csv[alvo].length) fs.writeFileSync(path.join(SAIDA, slugCli(cli) + '-' + alvo + '.csv'), '﻿' + [cab].concat(csv[alvo]).join('\n')); });
   ['estat', 'perf'].forEach((t) => { if (perdidos[t].length && falhas[t] < 3) avisos.push((t === 'estat' ? 'estatísticas' : 'performance') + ' falharam em ' + perdidos[t].length + ' dia(s): ' + perdidos[t].join(', ') + ' (rode de novo para completar)'); });
-  return { dias, veiculos: veiculos.length, meses: Object.keys(porMes).length, perfOk: veio.perf, estatOk: veio.estat, avisos };
+  return { dias, veiculos: veiculos.length, posicoes: posicoes.length, meses: Object.keys(porMes).length, perfOk: veio.perf, estatOk: veio.estat, avisos };
 }
 
 const alvos = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));
@@ -200,7 +211,7 @@ for (const c of alvos) {
   console.log(c.cliente + ': últimos ' + DIAS + ' dias…');
   try {
     const r = await puxar(c);
-    console.log('\r  ok: ' + r.dias + ' dias com dados' + (r.estatOk ? '' : ' (só performance, sem km e litros)') + (r.perfOk ? '' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, premiação de ' + r.meses + ' meses.');
+    console.log('\r  ok: ' + r.dias + ' dias com dados' + (r.estatOk ? '' : ' (só performance, sem km e litros)') + (r.perfOk ? '' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, posição de ' + r.posicoes + ', premiação de ' + r.meses + ' meses.');
     r.avisos.forEach((a) => console.warn('  aviso: ' + a));
   } catch (e) { falhas++; console.error('\r  erro: ' + e.message); }
 }

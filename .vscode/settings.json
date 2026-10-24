@@ -41,7 +41,7 @@
     "Dockerfile": ".dockerignore, docker-compose.yml",
     ".env": ".env.example",
     "clientes.json": "clientes.example.json",
-    ".gitignore": ".gitattributes, .editorconfig, .nojekyll",
+    ".gitignore": ".gitattributes, .editorconfig, .nojekyll, *.code-workspace",
     "*.go": "${capture}_test.go"
   },
 

@@ -1,0 +1,13 @@
+{
+  // Abra este arquivo no VS Code (Arquivo → Abrir Workspace a partir do Arquivo) para ver o projeto como "Retenção Gobrax".
+  // As configurações do projeto continuam em .vscode/settings.json.
+  "folders": [
+    {
+      "name": "Retenção Gobrax",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "window.title": "Retenção Gobrax${separator}${activeEditorShort}"
+  }
+}

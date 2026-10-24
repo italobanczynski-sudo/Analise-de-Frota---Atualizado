@@ -1,0 +1,9 @@
+{
+  // O VS Code sugere estas extensões a quem abrir o projeto
+  "recommendations": [
+    "PKief.material-icon-theme",
+    "EditorConfig.EditorConfig",
+    "golang.go",
+    "ms-azuretools.vscode-docker"
+  ]
+}

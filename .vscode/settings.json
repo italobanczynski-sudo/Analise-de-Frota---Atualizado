@@ -1,0 +1,65 @@
+{
+  // Ícones coloridos por tipo de pasta e arquivo (extensão Material Icon Theme)
+  "workbench.iconTheme": "material-icon-theme",
+  "material-icon-theme.folders.associations": {
+    "servidor": "server",
+    "api": "api",
+    "scripts": "scripts",
+    "docs": "docs",
+    "vendor": "lib",
+    "adapters": "connection",
+    "dbPostgres": "database",
+    "migrations": "migrations",
+    "gobraxapi": "api",
+    "modules": "core",
+    "cliente": "client",
+    "cliente_repo": "repository",
+    "coleta": "job",
+    "coleta_repo": "repository",
+    "diario": "log",
+    "diario_repo": "repository",
+    "odometro": "helper",
+    "odometro_repo": "repository",
+    "premiacao": "resource",
+    "premiacao_repo": "repository",
+    "controller": "controller",
+    "middleware": "middleware",
+    "frota": "app",
+    "background": "job",
+    "common": "shared",
+    "cripto": "secure",
+    "utils": "utils",
+    "environment": "environment",
+    "log": "log"
+  },
+
+  // Esconde no explorador os arquivos que acompanham outro (abra a setinha ao lado para vê-los)
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "go.mod": "go.sum",
+    "Dockerfile": ".dockerignore, docker-compose.yml",
+    ".env": ".env.example",
+    "clientes.json": "clientes.example.json",
+    ".gitignore": ".gitattributes, .editorconfig, .nojekyll",
+    "*.go": "${capture}_test.go"
+  },
+
+  // Mesmo padrão para todos: fim de linha LF, sem espaço sobrando, linha final
+  "files.eol": "\n",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "[go]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[markdown]": {
+    "files.trimTrailingWhitespace": false
+  },
+
+  // Fora da busca: biblioteca de terceiros e dados gerados
+  "search.exclude": {
+    "vendor/**": true,
+    "api/saida/**": true
+  }
+}

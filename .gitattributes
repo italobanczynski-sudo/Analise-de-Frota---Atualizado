@@ -1,0 +1,6 @@
+# Fim de linha LF no repositório e no computador (acaba com os avisos "LF will be replaced by CRLF")
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

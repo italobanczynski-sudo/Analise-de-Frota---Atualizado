@@ -7,6 +7,17 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 | **Painel no Claude** (Artifact): https://claude.ai/artifact/JtQke6GEAqzz8ohdP653dS | Base compartilhada: todos que têm acesso veem os mesmos dados, ao vivo. |
 | GitHub Pages | Só no navegador de cada pessoa (localStorage). A página mostra um aviso com o link do painel no Claude. |
 
+## Estrutura do projeto
+
+| Pasta ou arquivo | O que é |
+|---|---|
+| `index.html` | O painel (telas, gráficos e regras), publicado no GitHub Pages e no Claude |
+| `vendor/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
+| `docs/` | Documentação da API Gobrax usada pelo painel |
+| `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `api/.env` e lista em `api/clientes.json`, ambos fora do Git |
+| `servidor/` | Novo servidor em Go (fase 1): busca, banco e API. Veja [servidor/README.md](servidor/README.md) |
+| `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
+
 ## Painel no Claude
 - As planilhas ficam na coleção `planilhas` do banco do Artifact: um documento por tipo (motoristas/veículos), cliente e dia, dividido em partes (`~p1`, `~p2`…) quando passa de 200 KB.
 - Para publicar, o leitor de Excel é carregado do cdnjs em vez de `vendor/` (troque o `src` do script ao gerar a cópia publicada).

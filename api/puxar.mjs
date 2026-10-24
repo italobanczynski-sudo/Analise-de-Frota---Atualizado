@@ -64,6 +64,25 @@ const posicaoDosRegistros = (recs) => recs.filter((r) => r && r.vehicleIdentific
   return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || ''),
     ign: ligadoApi(campoPos(r, p, ['ignition', 'ignitionOn', 'ignitionStatus', 'ignicao', 'engineOn', 'engineStatus'])), vel: numApi(campoPos(r, p, ['speed', 'velocity', 'velocidade'])) };
 }).filter((v) => v.lat !== null && v.lon !== null && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180 && !(v.lat === 0 && v.lon === 0));
+// trajeto (mesma regra do index.html): cada rodada acrescenta o ponto novo; últimas 12 h, só se andou 300 m, até 150 pontos
+const TRILHA_H = 12, TRILHA_MAX = 150;
+const msPos = (s) => { const t = Date.parse(String(s || '').replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
+const distKm = (a, b) => { const r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+function comTrilha(ant, veiculos) {
+  const antes = new Map(((ant && ant.veiculos) || []).map((v) => [nrm(v.placa), Array.isArray(v.tr) ? v.tr : []]));
+  const desde = (Date.now() - TRILHA_H * 3600000) / 60000;
+  veiculos.forEach((v) => {
+    let tr = (antes.get(nrm(v.placa)) || []).filter((p) => Array.isArray(p) && p[2] >= desde);
+    const t = msPos(v.data);
+    if (t !== null) {
+      const novo = [Math.round(v.lat * 1e5) / 1e5, Math.round(v.lon * 1e5) / 1e5, Math.round(t / 60000)], ult = tr[tr.length - 1];
+      if (novo[2] >= desde && (!ult || (novo[2] > ult[2] && distKm(ult, novo) >= 0.3))) tr.push(novo);
+    }
+    while (tr.length > TRILHA_MAX) tr = tr.filter((p, i) => i % 2 === 0 || i === tr.length - 1);
+    v.tr = tr;
+  });
+  return veiculos;
+}
 const bytes = (t) => Buffer.byteLength(t, 'utf8');
 
 async function apiGet(caminho, params, token) {
@@ -142,6 +161,9 @@ async function puxar(c) {
   const token = limparToken(ENV[varToken]);
   if (!token) throw new Error('sem token: preencha ' + varToken + ' em api/.env');
   const dir = path.join(SAIDA, slugCli(cli));
+  // o trajeto continua o da rodada anterior: lê a posição gravada antes de limpar a pasta
+  let posAnterior = null;
+  try { posAnterior = JSON.parse(fs.readFileSync(path.join(dir, idPlan('posicao', cli, 'atual', 1) + '.json'), 'utf8')); } catch (e) { /* primeira rodada */ }
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   const em = new Date().toISOString(), arquivo = 'API Gobrax';
@@ -188,7 +210,7 @@ async function puxar(c) {
   // última posição de cada veículo (Mapa ao vivo do painel); o caminho fica igual ao API_POSICAO do index.html
   let pos = [];
   try { pos = registros(await apiGet(API_POSICAO, { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token)); } catch (e) { avisos.push('posição não veio: ' + e.message); }
-  const posicoes = posicaoDosRegistros(pos);
+  const posicoes = comTrilha(posAnterior, posicaoDosRegistros(pos));
   if (posicoes.length) gravar(idPlan('posicao', cli, 'atual', 1), { alvo: 'posicao', cliente: cli, data: fim, veiculos: posicoes, em });
   const mes = (s) => s.slice(5, 7) + '-' + s.slice(0, 4);
   let j = [];

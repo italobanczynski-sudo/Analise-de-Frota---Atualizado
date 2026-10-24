@@ -139,6 +139,8 @@ Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o
 
 Coordenada 0,0 ou fora do mapa é descartada. O mapa abre só com os caminhões **ligados agora**: ignição ligada e posição dos últimos 15 minutos. Sem o campo de ignição na resposta, conta só a posição dos últimos 15 minutos, e a tela avisa. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje (amarelo, até 24 h) e os sem sinal (vermelho, mais de um dia). O motorista mostrado é o do último dia nas estatísticas e na performance.
 
+**Trajeto:** a API só devolve a última posição, então o painel guarda em cada veículo do documento o campo `tr`, com os pontos das buscas anteriores (`[lat, lon, minutos desde 1970]`). Vale para as últimas 12 h. Um ponto só entra se o caminhão andou pelo menos 300 m, e acima de 150 pontos a lista é afinada (sai um ponto a cada dois, o último fica). O `api/puxar.mjs` continua o trajeto da rodada anterior. A linha liga os pontos em reta, sem seguir a estrada, e o balão mostra os km desse trajeto.
+
 Modelo da resposta: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","lastPosition":{"date":"","lat":0,"lon":0}}]}`.
 
 ### `GET v2/driversOverview`: scores e premiação

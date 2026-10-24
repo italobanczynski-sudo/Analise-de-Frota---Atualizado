@@ -953,6 +953,8 @@ button.pilula-diesel:hover, button.pilula-diesel[aria-expanded="true"] { border-
 .leaflet-interactive { cursor: pointer; } .leaflet-grab { cursor: grab; } .leaflet-dragging .leaflet-grab { cursor: grabbing; }
 .leaflet-marker-icon, .leaflet-tile-container { pointer-events: none; }
 .leaflet-marker-icon.leaflet-interactive { pointer-events: auto; }
+.leaflet-pane > svg path { pointer-events: none; }
+.leaflet-pane > svg path.leaflet-interactive { pointer-events: auto; cursor: pointer; }
 .leaflet-bar { box-shadow: var(--sombra-2); border-radius: 8px; border: 1px solid var(--borda); }
 .leaflet-bar a { background: var(--superficie); border-bottom: 1px solid var(--hairline); width: 32px; height: 32px; line-height: 32px; display: block; text-align: center; text-decoration: none; color: var(--tinta); font-size: 18px; font-weight: 600; }
 .leaflet-bar a:hover { background: var(--apoio); }
@@ -2544,6 +2546,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 45, data: '2026-10-23', titulo: 'Trajeto de cada caminhão no mapa', texto: 'O Mapa ao vivo agora desenha o caminho de cada caminhão nas últimas 12 horas, da cor da situação dele. No balão aparecem os km rodados nesse trajeto. O trajeto é montado com as posições que o painel vai buscando, então começa a aparecer a partir da primeira busca e liga os pontos em linha reta, sem seguir a estrada. O botão Trajetos liga e desliga as linhas.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 44, data: '2026-10-23', titulo: 'Mapa mostra quem está ligado agora', texto: 'O Mapa ao vivo abre só com os caminhões ligados agora e se atualiza a cada 30 segundos. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje e os sem sinal. Quando a API de posições informar a ignição e a velocidade, elas aparecem na lista e no balão de cada caminhão; até lá, "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 minutos.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 43, data: '2026-10-23', titulo: 'Mapa ao vivo da frota', texto: 'Nova tela no menu Frota: cada caminhão aparece no mapa na última posição informada pela API Gobrax, com o motorista do último dia. Verde é posição dos últimos 15 minutos, amarelo é sem atualizar hoje e vermelho é sem sinal há mais de um dia. Clique numa placa da lista para ir até ela. Com a tela aberta, o mapa se atualiza a cada minuto.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 42, data: '2026-10-23', titulo: 'Troca de cliente só no topo', texto: 'Os botões "Cliente do relatório" saíram da Visão geral. Para trocar de empresa, use o seletor de cliente na barra do canto superior direito.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -5956,9 +5959,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // chamar a API: o mapa mostra o documento "posicao" da base compartilhada, gravado pelo script api/puxar.mjs.
   const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
   const MAPA_CICLO = 30000;
-  const mapaSt = { em: 0, rodando: false, erro: '', sel: '', vs: [], soLigados: true };
+  const mapaSt = { em: 0, rodando: false, erro: '', sel: '', vs: [], soLigados: true, trajetos: true };
   let leafletPronto = null, mapa = null, mapaEl = null, mapaFundo = null, mapaCamada = null, mapaEnquadrado = '';
-  const mapaMarcas = new Map();
+  const mapaMarcas = new Map(), mapaLinhas = new Map();
   function carregarLeaflet() {
     if (window.L) return Promise.resolve(window.L);
     if (!leafletPronto) leafletPronto = new Promise((ok, falha) => {
@@ -5984,10 +5987,30 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || ''),
       ign: ligadoApi(campoPos(r, p, ['ignition', 'ignitionOn', 'ignitionStatus', 'ignicao', 'engineOn', 'engineStatus'])), vel: numApi(campoPos(r, p, ['speed', 'velocity', 'velocidade'])) };
   };
+  // Trajeto: a API só dá a última posição, então cada busca acrescenta o ponto novo ao trajeto guardado do veículo.
+  // Ponto = [lat, lon, minutos desde 1970]; vale as últimas 12 h, só entra se andou 300 m, e é afinado acima de 150 pontos.
+  const TRILHA_H = 12, TRILHA_MAX = 150;
+  const distKm = (a, b) => { const r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+  const kmTrilha = (tr) => tr.reduce((s, p, i) => (i ? s + distKm(tr[i - 1], p) : 0), 0);
+  function comTrilha(ant, veiculos) {
+    const antes = new Map(((ant && ant.veiculos) || []).map((v) => [nrm(v.placa), Array.isArray(v.tr) ? v.tr : []]));
+    const desde = (Date.now() - TRILHA_H * 3600000) / 60000;
+    veiculos.forEach((v) => {
+      let tr = (antes.get(nrm(v.placa)) || []).filter((p) => Array.isArray(p) && p[2] >= desde);
+      const t = msPos(v.data);
+      if (t !== null) {
+        const novo = [Math.round(v.lat * 1e5) / 1e5, Math.round(v.lon * 1e5) / 1e5, Math.round(t / 60000)], ult = tr[tr.length - 1];
+        if (novo[2] >= desde && (!ult || (novo[2] > ult[2] && distKm(ult, novo) >= 0.3))) tr.push(novo);
+      }
+      while (tr.length > TRILHA_MAX) tr = tr.filter((p, i) => i % 2 === 0 || i === tr.length - 1);
+      v.tr = tr;
+    });
+    return veiculos;
+  }
   async function buscarPosicao(cli) {
     const token = tokenDe(cli), agora = Date.now();
     const recs = registros(await apiGet(API_POSICAO, { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token));
-    const veiculos = recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map(posDoRegistro).filter((v) => posValida(v.lat, v.lon));
+    const veiculos = comTrilha(docsApi('posicao', cli)[0], recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map(posDoRegistro).filter((v) => posValida(v.lat, v.lon)));
     await gravarDocApi(idPlan('posicao', cli, 'atual', 1), { alvo: 'posicao', cliente: cli, data: D.hoje(), veiculos, em: new Date().toISOString() });
   }
   async function atualizarPosicoes(forcar) {
@@ -6034,7 +6057,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       vistos.add(k);
       const t = msPos(v.data), min = t === null ? null : Math.max(0, (agora - t) / 60000);
       const ign = v.ign === true || v.ign === false ? v.ign : null;
-      vs.push({ placa: v.placa, lat: numApi(v.lat), lon: numApi(v.lon), data: v.data, cliente: d.cliente, min, ign, vel: numApi(v.vel), sit: sitPos(min, ign), mot: (mots.get(nrm(v.placa)) || {}).nome || '' });
+      const tr = (Array.isArray(v.tr) ? v.tr : []).filter((p) => Array.isArray(p) && posValida(numApi(p[0]), numApi(p[1])));
+      vs.push({ placa: v.placa, lat: numApi(v.lat), lon: numApi(v.lon), data: v.data, cliente: d.cliente, min, ign, vel: numApi(v.vel), sit: sitPos(min, ign), mot: (mots.get(nrm(v.placa)) || {}).nome || '', tr });
     }));
     return vs.sort((a, b) => (a.min === null ? 1 : b.min === null ? -1 : a.min - b.min));
   }
@@ -6064,13 +6088,15 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const pil = (so, rot) => `<button type="button" class="pilula ${mapaSt.soLigados === so ? 'ativa' : ''}" data-acao="mapa-filtro" data-so="${so ? '1' : ''}" aria-pressed="${mapaSt.soLigados === so}">${rot}</button>`;
     return cab + erro + `<section class="card" style="padding:0">
       <div class="mapa-grade"><div class="mapa-slot" id="mapa-slot"></div>
-        <div class="mapa-lista"><div class="mapa-lista-cab"><div style="display:flex;gap:6px;width:100%">${pil(true, 'Ligados agora (' + n.ok + ')')}${pil(false, 'Todos (' + todos.length + ')')}</div>
+        <div class="mapa-lista"><div class="mapa-lista-cab"><div style="display:flex;gap:6px;width:100%;flex-wrap:wrap">${pil(true, 'Ligados agora (' + n.ok + ')')}${pil(false, 'Todos (' + todos.length + ')')}
+            <button type="button" class="pilula ${mapaSt.trajetos ? 'ativa' : ''}" data-acao="mapa-trajetos" aria-pressed="${mapaSt.trajetos}" title="Linha com o caminho de cada caminhão nas últimas ${TRILHA_H} h">Trajetos</button></div>
           ${['ok', 'parado', 'atencao', 'critico'].filter((s) => n[s]).map((s) => `<span class="badge badge-${SIT_BADGE[s]}">${n[s]} ${SIT_POS[s].toLowerCase()}</span>`).join('')}
           <span class="apoio" style="width:100%;font-size:12px">${ult ? 'Buscado ' + haQuanto((Date.now() - Date.parse(ult)) / 60000) + '. ' : ''}${comIgn ? 'Ligado agora: ignição ligada e posição dos últimos 15 min.' : 'A API não informou a ignição: "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 min.'}</span></div>
           <div class="mapa-lista-itens">${itens}</div></div></div></section>`;
   }
   const popupPos = (v) => `<div class="mapa-pop"><b>${esc(v.placa)}</b><span>${esc(v.mot || 'Sem motorista vinculado')}</span>
     <span>${v.ign === true ? 'Ignição ligada' : v.ign === false ? 'Ignição desligada' : SIT_POS[v.sit]}${v.vel !== null ? ' · ' + fmt(v.vel, 0) + ' km/h' : ''} · ${v.data ? esc(D.br(v.data.slice(0, 10)) + ' ' + v.data.slice(11, 16)) : 'sem horário'} (${haQuanto(v.min)})</span>
+    ${v.tr.length >= 2 ? `<span>Trajeto das últimas ${TRILHA_H} h: ${fmt(kmTrilha(v.tr), 0)} km desde ${new Date(v.tr[0][2] * 60000).toTimeString().slice(0, 5)}</span>` : ''}
     <a href="#/individual/veiculo/${encodeURIComponent(v.placa)}">Abrir o veículo</a></div>`;
   // O elemento do mapa sobrevive ao render (que troca o HTML da página): é recolocado no espaço reservado a cada desenho
   function montarMapa() {
@@ -6117,12 +6143,30 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       if (m.isPopupOpen()) m.setPopupContent(popupPos(v)); else m.bindPopup(popupPos(v));
     });
     [...mapaMarcas.keys()].forEach((k) => { if (!agora.has(k)) { mapaMarcas.get(k).remove(); mapaMarcas.delete(k); } });
+    // trajetos: uma linha por veículo, da cor da situação; o selecionado fica por cima e mais grosso
+    const cor = (s) => getComputedStyle(document.documentElement).getPropertyValue({ ok: '--ok', atencao: '--atencao', critico: '--critico' }[s] || '--texto-2').trim() || '#5F6368';
+    const comLinha = new Set();
+    if (mapaSt.trajetos) vs.forEach((v) => {
+      if (v.tr.length < 2) return;
+      const k = ckey(v.cliente) + '|' + v.placa, sel = v.placa === mapaSt.sel;
+      const pts = v.tr.map((p) => [p[0], p[1]]);
+      const ult = pts[pts.length - 1];
+      if (ult[0] !== v.lat || ult[1] !== v.lon) pts.push([v.lat, v.lon]);
+      const estilo = { color: cor(v.sit), weight: sel ? 5 : 3, opacity: sel ? 0.95 : 0.55, lineJoin: 'round' };
+      comLinha.add(k);
+      let ln = mapaLinhas.get(k);
+      if (!ln) { ln = L.polyline(pts, estilo).addTo(mapaCamada); ln.on('click', () => verNoMapa(v.placa)); mapaLinhas.set(k, ln); }
+      else { ln.setLatLngs(pts); ln.setStyle(estilo); }
+      if (sel) ln.bringToFront();
+    });
+    [...mapaLinhas.keys()].forEach((k) => { if (!comLinha.has(k)) { mapaLinhas.get(k).remove(); mapaLinhas.delete(k); } });
     // enquadra a frota só quando o conjunto de veículos muda, para não desfazer o zoom de quem está olhando
     const chave = [...agora].sort().join(',');
     if (chave && chave !== mapaEnquadrado) {
       mapaEnquadrado = chave;
-      const b = L.latLngBounds(vs.map((v) => [v.lat, v.lon]));
-      if (vs.length === 1) mapa.setView(b.getCenter(), 12); else mapa.fitBounds(b, { padding: [40, 40], maxZoom: 12 });
+      const pts = vs.map((v) => [v.lat, v.lon]).concat(mapaSt.trajetos ? vs.flatMap((v) => v.tr.map((p) => [p[0], p[1]])) : []);
+      const b = L.latLngBounds(pts);
+      if (pts.length === 1) mapa.setView(b.getCenter(), 12); else mapa.fitBounds(b, { padding: [40, 40], maxZoom: 12 });
     }
   }
   function verNoMapa(placa) {
@@ -7066,6 +7110,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     'mapa-ver': (el) => verNoMapa(el.dataset.p),
     'mapa-atualizar': () => { atualizarPosicoes(true); render(); },
     'mapa-filtro': (el) => { mapaSt.soLigados = !!el.dataset.so; render(); },
+    'mapa-trajetos': () => { mapaSt.trajetos = !mapaSt.trajetos; render(); },
     'grp-limpar-sel': () => { E.gruposSel = {}; render(); },
     'grp-lote': () => {
       const sel = document.getElementById('grp-lote'), g = sel ? sel.value : '', c = cliAtual();

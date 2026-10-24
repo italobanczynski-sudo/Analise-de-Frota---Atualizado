@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: frota
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?preencha POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: frota
+    volumes:
+      - dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U frota -d frota"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://frota:${POSTGRES_PASSWORD}@db:5432/frota?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      # só leitura: para importar os clientes do script antigo (-importar-clientes /importar/clientes.json -tokens /importar/.env)
+      - ../api:/importar:ro
+
+  # docker compose --profile testes run --rm testes
+  testes:
+    image: golang:1.23-alpine
+    working_dir: /src
+    volumes:
+      - .:/src
+      - gomod:/go/pkg/mod
+    command: go test ./...
+    profiles: ["testes"]
+
+volumes:
+  dados:
+  gomod:

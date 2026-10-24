@@ -2,3 +2,6 @@
 api/.env
 api/clientes.json
 api/saida/
+
+# Servidor (Go): configuração local com segredos
+servidor/.env

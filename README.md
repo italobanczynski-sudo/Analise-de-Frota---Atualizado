@@ -25,6 +25,9 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 - O token de cada cliente fica só no `localStorage` de quem o digitou (`gbx-api-token:<cliente>`), nunca na base compartilhada nem no código.
 - Limites da API: 10 chamadas/s e no máximo 31 dias por consulta.
 
+## Servidor (em construção)
+A pasta [servidor/](servidor/README.md) tem o servidor em Go (padrão Gobrax) que busca a API Gobrax sozinho a cada hora, guarda tudo no Postgres com os tokens cifrados e entrega pela API HTTP. Roda com Docker no computador. Na fase 1 ele substitui o `api/puxar.mjs`; o painel ainda lê os dados como antes até a fase 2.
+
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.
 2. Settings → Pages → Source: "Deploy from a branch" → Branch `main` / pasta `/ (root)`.

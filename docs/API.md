@@ -117,38 +117,6 @@ Busca o último odômetro de cada veículo nos últimos 30 dias. O painel guarda
 
 Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles aparecem em Veículos e grupos, no card Odômetro e comunicação.
 
-### `GET v1/vehicle-last-position`: última posição (Mapa ao vivo)
-
-> Testado em 23/10/2026 com os tokens da Xtsul (15 veículos) e da Caju (41). O caminho fica na constante `API_POSICAO` do `index.html` e do `api/puxar.mjs`. A resposta traz só `lat`, `lon` e `date`, sem ignição nem velocidade. O `date` vem na hora de Brasília, sem fuso, diferente do `startDate`/`endDate` do registro, que vêm em UTC (`+0000`). Existe também `v2/positions`, que pode ser o histórico, mas o token dos clientes responde 403 ("Acesso nao permitido para o cliente").
-
-Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o painel busca de novo a cada 30 segundos (no GitHub Pages). O painel guarda um documento por cliente (`alvo: 'posicao'`) e o substitui a cada busca. No painel do Claude, a posição chega pelo script `api/puxar.mjs`.
-
-| Parâmetro | Valor enviado |
-|---|---|
-| `startDate` / `endDate` | agora − 30 dias até agora, em UTC (`AAAA-MM-DD HH:MM:SS`) |
-| `vehicleIdentification` | vazio = todos |
-
-| Campo da API | No painel |
-|---|---|
-| `vehicleIdentification` | placa |
-| `lastPosition.date` | horário da posição (lido como o `lastUpdated` do odômetro) |
-| `lastPosition.lat` | latitude |
-| `lastPosition.lon` | longitude (aceita também `lng` ou `longitude`) |
-| `ignition` (ainda não vem) | ignição: aceita também `ignitionOn`, `ignitionStatus`, `ignicao`, `engineOn`, `engineStatus`; valores true/false, 1/0, on/off, ligada/desligada |
-| `speed` (ainda não vem) | velocidade em km/h: aceita também `velocity`, `velocidade` |
-
-Coordenada 0,0 ou fora do mapa é descartada. O mapa abre só com os caminhões **ligados agora**: ignição ligada e posição dos últimos 15 minutos. Sem o campo de ignição na resposta, conta só a posição dos últimos 15 minutos, e a tela avisa. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje (amarelo, até 24 h) e os sem sinal (vermelho, mais de um dia). O motorista mostrado é o do último dia nas estatísticas e na performance.
-
-**Percurso do dia:** não existe endpoint de histórico (`v2/positions` responde 403 para os tokens dos clientes), mas a última posição respeita a janela pedida. Por isso o painel pergunta de 5 em 5 minutos desde a meia-noite (dia de Brasília) e junta as posições em um percurso por veículo; depois disso, cada busca (a cada 30 s) acrescenta o ponto novo e o antigo fica. A primeira busca do dia faz até 288 chamadas (cerca de 3 a 5 minutos por cliente); a tela mostra o andamento.
-
-- **Quando zera:** à meia-noite e quando o motorista desvincula ou vincula. Os horários vêm de `v1/vehicle-performance` (`drivers[].startDate`/`endDate`, consultada a cada 5 min com a janela até agora; com o fim do dia a API responde 404). O percurso começa no último vínculo ou desvínculo do dia.
-- **Pontos:** `[lat, lon, minutos desde 1970]` no campo `tr` de cada veículo; só entra se o caminhão andou 200 m; acima de 600 pontos a lista é afinada.
-- **Base:** um documento por veículo (`posicao~cliente~PLACA~p1`) e um de controle por cliente (`posmeta~cliente~atual~p1`, com até onde já perguntou e os vínculos do dia).
-- **Script:** `node api/puxar.mjs --mapa` faz só isso, guardando o estado em `api/saida/mapa/<cliente>/` entre as rodadas (`mudaram.json` lista o que carregar na base).
-- **Fundo do mapa:** no Claude a página não carrega imagens de fora, então o mapa-base vem embutido: estados, municípios e nomes do IBGE (`vendor/mapa-br.js`) e rodovias do Natural Earth (`vendor/estradas-br.js`, domínio público). No GitHub Pages o OpenStreetMap fica por cima.
-
-Modelo da resposta: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","lastPosition":{"date":"","lat":0,"lon":0}}]}`.
-
 ### `GET v2/driversOverview`: scores e premiação
 
 Traz a nota, o km e a bonificação de cada motorista por mês. O painel guarda um documento por cliente e mês (`alvo: 'premiacao'`).

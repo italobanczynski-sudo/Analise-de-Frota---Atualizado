@@ -1,8 +1,7 @@
 // Puxa os dados da API Gobrax de cada cliente listado em api/clientes.json, com o token lido de api/.env.
 // Gera em api/saida/ os documentos no formato da base compartilhada do painel (coleção "planilhas")
 // e as planilhas CSV de motoristas e veículos, que também podem ser importadas no painel.
-// Uso: node api/puxar.mjs [--dias 30] [--cliente "Nome do cliente"] [--mapa]
-// --mapa: só a posição e o percurso do dia de cada veículo, em api/saida/mapa/ (o resto não é buscado)
+// Uso: node api/puxar.mjs [--dias 30] [--cliente "Nome do cliente"]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +9,10 @@ import { fileURLToPath } from 'node:url';
 const PASTA = path.dirname(fileURLToPath(import.meta.url));
 const SAIDA = path.join(PASTA, 'saida');
 const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
-const API_POSICAO = 'v1/vehicle-last-position';   // resposta: records[].lastPosition { date (hora de Brasília), lat, lon }
 
 const arg = (nome, padrao) => { const i = process.argv.indexOf('--' + nome); return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : padrao; };
 const DIAS = Math.min(93, Math.max(1, Number(arg('dias', 30)) || 30));
 const SO_CLIENTE = arg('cliente', '');
-const SO_MAPA = process.argv.includes('--mapa');   // só posição e percurso do dia (rápido, para rodar a cada minuto)
 
 // ---------- Configuração: api/.env (tokens) e api/clientes.json (quem buscar) ----------
 function lerEnv() {
@@ -53,53 +50,6 @@ const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
 const utc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 const janelaUTC = (dia) => ({ startDate: dia + ' 03:00:00', endDate: somar(dia, 1) + ' 02:59:59' });
 const registros = (j) => (Array.isArray(j) ? j : (j && (j.records || j.data)) || []);
-// mesma regra do index.html: só coordenada válida (fora de 0,0) entra no mapa; ignição e velocidade aceitam os nomes mais comuns
-const ligadoApi = (v) => {
-  if (v === true || v === 1) return true;
-  if (v === false || v === 0) return false;
-  const s = String(v === null || v === undefined ? '' : v).trim().toLowerCase();
-  return ['true', '1', 'on', 'ligada', 'ligado'].includes(s) ? true : ['false', '0', 'off', 'desligada', 'desligado'].includes(s) ? false : null;
-};
-const campoPos = (r, p, nomes) => { for (const k of nomes) { if (p[k] !== undefined) return p[k]; if (r[k] !== undefined) return r[k]; } return undefined; };
-const posicaoDosRegistros = (recs) => recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map((r) => {
-  const p = r.lastPosition;
-  return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || ''),
-    ign: ligadoApi(campoPos(r, p, ['ignition', 'ignitionOn', 'ignitionStatus', 'ignicao', 'engineOn', 'engineStatus'])), vel: numApi(campoPos(r, p, ['speed', 'velocity', 'velocidade'])) };
-}).filter((v) => v.lat !== null && v.lon !== null && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180 && !(v.lat === 0 && v.lon === 0));
-// percurso do dia (mesma regra do index.html): de 5 em 5 minutos desde a meia-noite, depois o ponto novo de cada rodada.
-// Zera à meia-noite (Brasília) e quando o motorista desvincula ou vincula; só entra ponto se andou 200 m; até 600 pontos.
-const PASSO_MIN = 5, TRILHA_MAX = 600, PERF_CICLO = 5 * 60000;
-const msPos = (s) => { const x = String(s || '').trim().replace(' ', 'T'); const t = Date.parse(/(Z|[+-]\d{2}:?\d{2})$/.test(x) ? x.replace(/([+-]\d{2})(\d{2})$/, '$1:$2') : x + '-03:00'); return Number.isFinite(t) ? t : null; };   // a posição vem na hora de Brasília, sem fuso
-const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };   // datas da performance: ISO com +0000
-const diaBR = (ms) => new Date(ms - 3 * 3600000).toISOString().slice(0, 10);
-const inicioDiaBR = (dia) => Date.parse(dia + 'T00:00:00-03:00');
-const distKm = (a, b) => { const r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
-const pontoPos = (v) => { const t = msPos(v.data); return t === null ? null : [Math.round(v.lat * 1e5) / 1e5, Math.round(v.lon * 1e5) / 1e5, Math.round(t / 60000)]; };
-function juntarPontos(tr, pts, desdeMin) {
-  pts.filter((p) => p && p[2] >= desdeMin).sort((a, b) => a[2] - b[2]).forEach((p) => {
-    const ult = tr[tr.length - 1];
-    if (!ult || (p[2] > ult[2] && distKm(ult, p) >= 0.2)) tr.push(p);
-  });
-  while (tr.length > TRILHA_MAX) tr = tr.filter((p, i) => i % 2 === 0 || i === tr.length - 1);
-  return tr;
-}
-function sessoesDoDia(perf, dia, agora) {
-  const ini = inicioDiaBR(dia), m = {};
-  perf.forEach((r) => {
-    const k = chavePlaca(r && r.vehicleIdentification);
-    if (!k) return;
-    let desde = ini, mot = '', fimUlt = 0;
-    ((r && r.drivers) || []).forEach((d) => {
-      const a = msApi(d.startDate), b = msApi(d.endDate);
-      if (a !== null && a > ini + 60000 && a <= agora) desde = Math.max(desde, a);
-      if (b !== null && b < agora - 15 * 60000) desde = Math.max(desde, b);
-      if (b !== null && b >= fimUlt) { fimUlt = b; mot = String(d.driverName || '').trim(); }   // só o nome; o CPF não é guardado
-    });
-    if (fimUlt && fimUlt < agora - 15 * 60000) mot = '';
-    m[k] = { desde, mot };
-  });
-  return m;
-}
 const bytes = (t) => Buffer.byteLength(t, 'utf8');
 
 async function apiGet(caminho, params, token) {
@@ -171,56 +121,6 @@ function partes(cab, ls) {
     for (let i = 0; i < ls.length; i += tam) out.push([cab].concat(ls.slice(i, i + tam)).join('\n'));
     if (tam <= 1 || out.every((t) => bytes(t) < 200000)) return out;
   }
-}
-
-// Mapa ao vivo: posição atual e percurso do dia de cada veículo, em api/saida/mapa/<cliente>/ (a pasta fica entre as rodadas,
-// porque o percurso continua o da rodada anterior). Um arquivo por veículo ("posicao~cliente~placa~p1") e um de controle ("posmeta").
-// Devolve os arquivos que mudaram nesta rodada, para carregar na base do painel.
-async function puxarMapa(c) {
-  const cli = c.cliente, token = limparToken(ENV[c.token]);
-  if (!token) throw new Error('sem token: preencha ' + c.token + ' em api/.env');
-  const dir = path.join(SAIDA, 'mapa', slugCli(cli));
-  fs.mkdirSync(dir, { recursive: true });
-  const ler = (id) => { try { return JSON.parse(fs.readFileSync(path.join(dir, id + '.json'), 'utf8')); } catch (e) { return null; } };
-  const agora = Date.now(), dia = diaBR(agora), ini = inicioDiaBR(dia);
-  const idMeta = idPlan('posmeta', cli, 'atual', 1);
-  let meta = ler(idMeta) || {};
-  if (meta.dia !== dia) meta = { dia, ate: ini };
-  const antes = new Map(fs.readdirSync(dir).filter((f) => f.startsWith('posicao~')).map((f) => ler(f.replace(/\.json$/, ''))).filter(Boolean)
-    .flatMap((d) => d.veiculos || []).map((v) => [chavePlaca(v.placa), v]));
-  if (!meta.sess || agora - (meta.perfEm || 0) > PERF_CICLO) {
-    try { meta.sess = sessoesDoDia(registros(await apiGet('v1/vehicle-performance', { startDate: utc(ini), endDate: utc(agora), vehicleIdentification: '' }, token)), dia, agora); meta.perfEm = agora; }
-    catch (e) { meta.sess = meta.sess || {}; }
-  }
-  const novos = new Map();
-  const somarPts = (recs) => posicaoDosRegistros(recs).forEach((v) => { const k = chavePlaca(v.placa), p = pontoPos(v); if (p) (novos.get(k) || novos.set(k, []).get(k)).push(p); });
-  let n = 0;
-  for (let t = Math.max(meta.ate || ini, ini); t < agora - 60000; t += PASSO_MIN * 60000) {
-    const fimJ = Math.min(t + PASSO_MIN * 60000, agora);
-    if (++n % 12 === 0) process.stdout.write('  percurso: ' + new Date(fimJ - 3 * 3600000).toISOString().slice(11, 16) + '\r');
-    try { somarPts(registros(await apiGet(API_POSICAO, { startDate: utc(t), endDate: utc(fimJ), vehicleIdentification: '' }, token))); }
-    catch (e) { if (!/respondeu 404/.test(e.message)) throw e; }
-    meta.ate = fimJ;
-  }
-  const recs = registros(await apiGet(API_POSICAO, { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token));
-  somarPts(recs);
-  const em = new Date().toISOString(), mudaram = [];
-  posicaoDosRegistros(recs).forEach((v) => {
-    const k = chavePlaca(v.placa), s = meta.sess[k] || { desde: ini, mot: '' }, desdeMin = Math.floor(s.desde / 60000), ant = antes.get(k);
-    const trAnt = ant && ant.dia === dia && Array.isArray(ant.tr) ? ant.tr.filter((p) => Array.isArray(p) && p[2] >= desdeMin) : [];
-    v.tr = juntarPontos(trAnt, novos.get(k) || [], desdeMin);
-    v.desde = s.desde; v.mot = s.mot; v.dia = dia;
-    const id = idPlan('posicao', cli, k || 'sem-placa', 1);
-    // só regrava o veículo quando a posição, o percurso ou o vínculo mudaram
-    if (!ant || ant.data !== v.data || (ant.tr || []).length !== v.tr.length || ant.desde !== v.desde || ant.mot !== v.mot || ant.dia !== dia) {
-      fs.writeFileSync(path.join(dir, id + '.json'), JSON.stringify({ alvo: 'posicao', cliente: cli, data: dia, veiculos: [v], em }));
-      mudaram.push(id);
-    }
-  });
-  fs.writeFileSync(path.join(dir, idMeta + '.json'), JSON.stringify({ alvo: 'posmeta', cliente: cli, dia, ate: meta.ate, perfEm: meta.perfEm || 0, sess: meta.sess, em }));
-  mudaram.push(idMeta);
-  fs.writeFileSync(path.join(dir, 'mudaram.json'), JSON.stringify(mudaram));
-  return { veiculos: recs.length, mudaram: mudaram.length - 1, comPercurso: [...novos.keys()].length };
 }
 
 async function puxar(c) {
@@ -297,20 +197,13 @@ const alvos = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_
 if (!alvos.length) { console.error('Nenhum cliente em api/clientes.json' + (SO_CLIENTE ? ' com o nome ' + SO_CLIENTE : '') + '.'); process.exit(1); }
 let falhas = 0;
 for (const c of alvos) {
-  if (!SO_MAPA) {
-    console.log(c.cliente + ': últimos ' + DIAS + ' dias…');
-    try {
-      const r = await puxar(c);
-      console.log('\r  ok: ' + r.dias + ' dias com dados' + (r.estatOk ? '' : ' (só performance, sem km e litros)') + (r.perfOk ? '' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, premiação de ' + r.meses + ' meses.');
-      r.avisos.forEach((a) => console.warn('  aviso: ' + a));
-    } catch (e) { falhas++; console.error('\r  erro: ' + e.message); }
-  }
+  console.log(c.cliente + ': últimos ' + DIAS + ' dias…');
   try {
-    const m = await puxarMapa(c);
-    console.log('\r  ' + c.cliente + ' · mapa: ' + m.veiculos + ' veículos, ' + m.mudaram + ' atualizados (api/saida/mapa/' + slugCli(c.cliente) + '/).');
-  } catch (e) { falhas++; console.error('\r  ' + c.cliente + ' · mapa: erro: ' + e.message); }
+    const r = await puxar(c);
+    console.log('\r  ok: ' + r.dias + ' dias com dados' + (r.estatOk ? '' : ' (só performance, sem km e litros)') + (r.perfOk ? '' : ' (sem performance)') + ', odômetro de ' + r.veiculos + ' veículos, premiação de ' + r.meses + ' meses.');
+    r.avisos.forEach((a) => console.warn('  aviso: ' + a));
+  } catch (e) { falhas++; console.error('\r  erro: ' + e.message); }
 }
-if (SO_MAPA) process.exit(falhas ? 1 : 0);
 // Preço do diesel por estado (Petrobras, via combustivelapi.com.br): vai para config/diesel_uf na base do painel
 try {
   const r = await fetch('https://combustivelapi.com.br/api/precos/');

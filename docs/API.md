@@ -139,7 +139,13 @@ Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o
 
 Coordenada 0,0 ou fora do mapa é descartada. O mapa abre só com os caminhões **ligados agora**: ignição ligada e posição dos últimos 15 minutos. Sem o campo de ignição na resposta, conta só a posição dos últimos 15 minutos, e a tela avisa. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje (amarelo, até 24 h) e os sem sinal (vermelho, mais de um dia). O motorista mostrado é o do último dia nas estatísticas e na performance.
 
-**Trajeto:** a API só devolve a última posição, então o painel guarda em cada veículo do documento o campo `tr`, com os pontos das buscas anteriores (`[lat, lon, minutos desde 1970]`). Vale para as últimas 12 h. Um ponto só entra se o caminhão andou pelo menos 300 m, e acima de 150 pontos a lista é afinada (sai um ponto a cada dois, o último fica). O `api/puxar.mjs` continua o trajeto da rodada anterior. A linha liga os pontos em reta, sem seguir a estrada, e o balão mostra os km desse trajeto.
+**Percurso do dia:** não existe endpoint de histórico (`v2/positions` responde 403 para os tokens dos clientes), mas a última posição respeita a janela pedida. Por isso o painel pergunta de 5 em 5 minutos desde a meia-noite (dia de Brasília) e junta as posições em um percurso por veículo; depois disso, cada busca (a cada 30 s) acrescenta o ponto novo e o antigo fica. A primeira busca do dia faz até 288 chamadas (cerca de 3 a 5 minutos por cliente); a tela mostra o andamento.
+
+- **Quando zera:** à meia-noite e quando o motorista desvincula ou vincula. Os horários vêm de `v1/vehicle-performance` (`drivers[].startDate`/`endDate`, consultada a cada 5 min com a janela até agora; com o fim do dia a API responde 404). O percurso começa no último vínculo ou desvínculo do dia.
+- **Pontos:** `[lat, lon, minutos desde 1970]` no campo `tr` de cada veículo; só entra se o caminhão andou 200 m; acima de 600 pontos a lista é afinada.
+- **Base:** um documento por veículo (`posicao~cliente~PLACA~p1`) e um de controle por cliente (`posmeta~cliente~atual~p1`, com até onde já perguntou e os vínculos do dia).
+- **Script:** `node api/puxar.mjs --mapa` faz só isso, guardando o estado em `api/saida/mapa/<cliente>/` entre as rodadas (`mudaram.json` lista o que carregar na base).
+- **Fundo do mapa:** no Claude a página não carrega imagens de fora, então o mapa-base vem embutido: estados, municípios e nomes do IBGE (`vendor/mapa-br.js`) e rodovias do Natural Earth (`vendor/estradas-br.js`, domínio público). No GitHub Pages o OpenStreetMap fica por cima.
 
 Modelo da resposta: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","lastPosition":{"date":"","lat":0,"lon":0}}]}`.
 

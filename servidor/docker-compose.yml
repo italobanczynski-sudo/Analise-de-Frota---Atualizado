@@ -21,11 +21,33 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # Porta exposta só internamente para o nginx; não abre para a internet
+    expose:
+      - "8080"
     volumes:
       # só leitura: para importar os clientes do script antigo (-importar-clientes /importar/clientes.json -tokens /importar/.env)
       - ../api:/importar:ro
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - certbot-www:/var/www/certbot:ro
+      - certbot-certs:/etc/letsencrypt:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    # Roda manualmente ou via cron para renovar; não fica up o tempo todo
+    profiles: ["certbot"]
 
   # docker compose --profile testes run --rm testes
   testes:
@@ -40,3 +62,5 @@ services:
 volumes:
   dados:
   gomod:
+  certbot-www:
+  certbot-certs:

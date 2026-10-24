@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const PASTA = path.dirname(fileURLToPath(import.meta.url));
 const SAIDA = path.join(PASTA, 'saida');
 const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
-const API_POSICAO = 'v2/vehicle-position';   // a confirmar com o time da API; resposta: records[].lastPosition { date, lat, lon }
+const API_POSICAO = 'v1/vehicle-last-position';   // resposta: records[].lastPosition { date (hora de Brasília), lat, lon }
 
 const arg = (nome, padrao) => { const i = process.argv.indexOf('--' + nome); return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : padrao; };
 const DIAS = Math.min(93, Math.max(1, Number(arg('dias', 30)) || 30));

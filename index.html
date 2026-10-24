@@ -2546,6 +2546,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 46, data: '2026-10-23', titulo: 'Mapa com as posições reais', texto: 'O Mapa ao vivo passou a usar a API de última posição da Gobrax: a Xtsul tem 12 caminhões no mapa e a Caju tem 40. A API não informa a ignição, então "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 minutos. No painel do Claude, a posição é a da última vez que o script do projeto rodou.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 45, data: '2026-10-23', titulo: 'Trajeto de cada caminhão no mapa', texto: 'O Mapa ao vivo agora desenha o caminho de cada caminhão nas últimas 12 horas, da cor da situação dele. No balão aparecem os km rodados nesse trajeto. O trajeto é montado com as posições que o painel vai buscando, então começa a aparecer a partir da primeira busca e liga os pontos em linha reta, sem seguir a estrada. O botão Trajetos liga e desliga as linhas.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 44, data: '2026-10-23', titulo: 'Mapa mostra quem está ligado agora', texto: 'O Mapa ao vivo abre só com os caminhões ligados agora e se atualiza a cada 30 segundos. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje e os sem sinal. Quando a API de posições informar a ignição e a velocidade, elas aparecem na lista e no balão de cada caminhão; até lá, "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 minutos.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 43, data: '2026-10-23', titulo: 'Mapa ao vivo da frota', texto: 'Nova tela no menu Frota: cada caminhão aparece no mapa na última posição informada pela API Gobrax, com o motorista do último dia. Verde é posição dos últimos 15 minutos, amarelo é sem atualizar hoje e vermelho é sem sinal há mais de um dia. Clique numa placa da lista para ir até ela. Com a tela aberta, o mapa se atualiza a cada minuto.', href: '#/mapa', link: 'Abrir o mapa' },
@@ -5586,7 +5587,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- API Gobrax: estatísticas por veículo (dia a dia), odômetro e premiação ----------
   // O token de cada cliente fica só no navegador de quem o digitou: nunca vai para a base compartilhada nem para o código.
   const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
-  const API_POSICAO = 'v2/vehicle-position';   // Mapa ao vivo; a confirmar com o time da API. Resposta: records[].lastPosition { date, lat, lon }
+  const API_POSICAO = 'v1/vehicle-last-position';   // Mapa ao vivo. Resposta: records[].lastPosition { date (hora de Brasília), lat, lon }
   const CHAVE_API_LOCAL = 'gbx-frota-api';
   const chaveToken = (cli) => 'gbx-api-token:' + slugCli(cli);
   // a API recusa o token com aspas, espaços, quebra de linha ou "Bearer " colado junto
@@ -5792,9 +5793,9 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       campos: [['vehicleIdentification', 'placa'], ['odometer', 'odômetro'], ['lastUpdated', 'última comunicação']],
       onde: 'Veículos e grupos → Odômetro e comunicação' },
     { metodo: 'GET', caminho: API_POSICAO, titulo: 'Última posição',
-      uso: 'Última posição de cada veículo. Com a tela Mapa ao vivo aberta, o painel busca de novo a cada minuto. Guarda um documento por cliente, substituído a cada busca. Coordenada 0,0 ou fora do mapa é descartada. O caminho do endpoint ainda precisa ser confirmado com o time da API.',
+      uso: 'Última posição de cada veículo. Com a tela Mapa ao vivo aberta, o painel busca de novo a cada minuto. Guarda um documento por cliente, substituído a cada busca. Coordenada 0,0 ou fora do mapa é descartada. A resposta não traz ignição nem velocidade: "ligado agora" é a posição dos últimos 15 min. O <code>v2/positions</code> existe, mas o token dos clientes não tem acesso (403).',
       params: [['startDate / endDate', 'Agora − 30 dias até agora, em UTC'], ['vehicleIdentification', 'Vazio = todos']],
-      campos: [['vehicleIdentification', 'placa'], ['lastPosition.date', 'horário da posição'], ['lastPosition.lat', 'latitude'], ['lastPosition.lon', 'longitude'], ['ignition (a confirmar)', 'ignição ligada/desligada'], ['speed (a confirmar)', 'velocidade (km/h)']],
+      campos: [['vehicleIdentification', 'placa'], ['lastPosition.date', 'horário da posição'], ['lastPosition.lat', 'latitude'], ['lastPosition.lon', 'longitude'], ['ignition / speed', 'ainda não vêm; o painel já lê se a API passar a mandar']],
       onde: 'Mapa ao vivo' },
     { metodo: 'GET', caminho: 'v2/driversOverview', titulo: 'Scores e premiação',
       uso: 'Nota, km e bonificação de cada motorista por mês. Guarda um documento por cliente e mês.',
@@ -6073,10 +6074,11 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     const erro = mapaSt.erro ? `<div class="alerta alerta-erro" style="margin-bottom:14px"><span class="alerta-icone" style="background:var(--critico)">!</span><span class="alerta-texto">A posição não veio: ${esc(mapaSt.erro)}.${/404/.test(mapaSt.erro) ? ' O caminho do endpoint de posição pode estar errado.' : ''}</span></div>` : '';
     if (!todos.length) {
       const msg = docs.length ? 'Nenhum veículo com posição válida' + (descFiltro() ? ' para ' + esc(descFiltro()) : '') + '.'
-        : !comToken ? 'Salve o token da API do cliente no perfil dele para ver os caminhões no mapa.' + (planRef ? ' No painel do Claude, a posição entra pelo script <code>node api/puxar.mjs</code> (veja a aba API).' : '')
+        : planRef ? 'No painel do Claude a página não pode chamar a API: a posição entra na base pelo script <code>node api/puxar.mjs</code> (veja a aba API). Este cliente ainda não tem posição gravada.'
+        : !comToken ? 'Salve o token da API do cliente no perfil dele para ver os caminhões no mapa.'
         : mapaSt.rodando ? 'Buscando a posição dos veículos…' : 'A API ainda não trouxe posições para este cliente.';
       return cab + erro + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhum caminhão no mapa ainda</span><span class="apoio">${msg}</span>
-        ${comToken ? '' : `<a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a>`}</div></div></section>`;
+        ${comToken || planRef ? '' : `<a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a>`}</div></div></section>`;
     }
     const n = { ok: 0, parado: 0, atencao: 0, critico: 0 };
     todos.forEach((v) => n[v.sit]++);

@@ -117,9 +117,9 @@ Busca o último odômetro de cada veículo nos últimos 30 dias. O painel guarda
 
 Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles aparecem em Veículos e grupos, no card Odômetro e comunicação.
 
-### `GET v2/vehicle-position`: última posição (Mapa ao vivo)
+### `GET v1/vehicle-last-position`: última posição (Mapa ao vivo)
 
-> O caminho `v2/vehicle-position` ainda precisa ser confirmado com o time da API. Ele fica na constante `API_POSICAO` do `index.html` e do `api/puxar.mjs`.
+> Testado em 23/10/2026 com os tokens da Xtsul (15 veículos) e da Caju (41). O caminho fica na constante `API_POSICAO` do `index.html` e do `api/puxar.mjs`. A resposta traz só `lat`, `lon` e `date`, sem ignição nem velocidade. O `date` vem na hora de Brasília, sem fuso, diferente do `startDate`/`endDate` do registro, que vêm em UTC (`+0000`). Existe também `v2/positions`, que pode ser o histórico, mas o token dos clientes responde 403 ("Acesso nao permitido para o cliente").
 
 Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o painel busca de novo a cada 30 segundos (no GitHub Pages). O painel guarda um documento por cliente (`alvo: 'posicao'`) e o substitui a cada busca. No painel do Claude, a posição chega pelo script `api/puxar.mjs`.
 
@@ -134,8 +134,8 @@ Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o
 | `lastPosition.date` | horário da posição (lido como o `lastUpdated` do odômetro) |
 | `lastPosition.lat` | latitude |
 | `lastPosition.lon` | longitude (aceita também `lng` ou `longitude`) |
-| `ignition` (a confirmar) | ignição: aceita também `ignitionOn`, `ignitionStatus`, `ignicao`, `engineOn`, `engineStatus`; valores true/false, 1/0, on/off, ligada/desligada |
-| `speed` (a confirmar) | velocidade em km/h: aceita também `velocity`, `velocidade` |
+| `ignition` (ainda não vem) | ignição: aceita também `ignitionOn`, `ignitionStatus`, `ignicao`, `engineOn`, `engineStatus`; valores true/false, 1/0, on/off, ligada/desligada |
+| `speed` (ainda não vem) | velocidade em km/h: aceita também `velocity`, `velocidade` |
 
 Coordenada 0,0 ou fora do mapa é descartada. O mapa abre só com os caminhões **ligados agora**: ignição ligada e posição dos últimos 15 minutos. Sem o campo de ignição na resposta, conta só a posição dos últimos 15 minutos, e a tela avisa. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje (amarelo, até 24 h) e os sem sinal (vermelho, mais de um dia). O motorista mostrado é o do último dia nas estatísticas e na performance.
 

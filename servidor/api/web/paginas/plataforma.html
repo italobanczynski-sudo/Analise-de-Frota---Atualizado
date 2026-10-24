@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Retenção Gobrax</title>
+  <link rel="icon" href="/estatico/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/estatico/estilo.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-int">
+      <a class="topo-marca" href="/plataforma" aria-label="Retenção Gobrax, início">
+        <img class="logo-claro" src="/estatico/logo.png" alt="Gobrax">
+        <img class="logo-escuro" src="/estatico/logo-escuro.png" alt="Gobrax">
+        <span class="produto">Retenção Gobrax</span>
+      </a>
+      <div class="topo-usuario">
+        <span id="avatar" class="avatar" aria-hidden="true"></span>
+        <div class="quem"><b id="quem-nome"></b><span id="quem-papel"></span></div>
+        <button id="sair" class="btn btn-peq" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pagina">
+    <nav class="abas" role="tablist" aria-label="Seções">
+      <button class="aba" role="tab" id="aba-clientes" aria-controls="sec-clientes" aria-selected="true" type="button">Clientes</button>
+      <button class="aba" role="tab" id="aba-usuarios" aria-controls="sec-usuarios" aria-selected="false" type="button" hidden>Usuários</button>
+    </nav>
+
+    <section id="sec-clientes" role="tabpanel" aria-labelledby="aba-clientes">
+      <div class="cab">
+        <div>
+          <h1>Clientes</h1>
+          <p>Frotas acompanhadas e a última busca de dados na API Gobrax. A busca roda sozinha a cada hora.</p>
+        </div>
+      </div>
+      <div class="cartao" id="cartao-clientes">
+        <div class="tabela-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Busca de dados</th><th>Dados até</th><th>Última busca</th><th></th></tr></thead>
+            <tbody id="lista-clientes"><tr><td colspan="5" class="vazio">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-usuarios" role="tabpanel" aria-labelledby="aba-usuarios" hidden>
+      <div class="cab">
+        <div>
+          <h1>Usuários</h1>
+          <p>Quem pode entrar na plataforma e o que cada um pode fazer.</p>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <div class="cartao-cab">
+          <h2>Convidar pessoa</h2>
+          <p>Depois de cadastrada, a pessoa entra por <b>Primeiro acesso</b> na tela de entrada: digita o e-mail, recebe um código e cria a senha. Se preferir, envie o link de convite que aparece abaixo (vale uma vez só, por 72 horas).</p>
+        </div>
+        <div class="cartao-corpo">
+          <form id="form-convidar" class="form-convite" novalidate>
+            <div class="campo"><label for="novo-nome">Nome</label><input id="novo-nome" autocomplete="off" required maxlength="120"></div>
+            <div class="campo"><label for="novo-email">E-mail</label><input id="novo-email" type="email" autocomplete="off" required maxlength="200"></div>
+            <div class="campo">
+              <label for="novo-papel">Perfil</label>
+              <select id="novo-papel">
+                <option value="leitor">Leitor: só vê</option>
+                <option value="colaborador">Colaborador: vê e pede buscas</option>
+                <option value="admin">Administrador: tudo, inclusive usuários</option>
+              </select>
+            </div>
+            <button id="botao-convidar" class="btn btn-primario" type="submit">Gerar convite</button>
+          </form>
+          <p id="erro-convite" class="alerta alerta-erro" role="alert" hidden></p>
+          <div id="link-convite" class="link-convite" hidden>
+            <p id="link-texto"></p>
+            <div class="link-linha"><code id="link-valor"></code><button id="copiar" class="btn btn-peq" type="button">Copiar link</button></div>
+            <p class="ajuda">Envie este link só para a pessoa (por e-mail ou mensagem direta). Ele não aparece de novo: se perder, gere outro na lista abaixo.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <div class="cartao-cab"><h2>Pessoas com acesso</h2><p>Trocar o perfil ou desativar encerra os logins abertos da pessoa.</p></div>
+        <div class="tabela-wrap">
+          <table>
+            <thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead>
+            <tbody id="lista-usuarios"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/estatico/comum.js"></script>
+  <script src="/estatico/plataforma.js"></script>
+</body>
+</html>

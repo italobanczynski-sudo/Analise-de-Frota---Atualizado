@@ -15,6 +15,7 @@ type Config_t struct {
 	Gobrax    GobraxConfig_t
 	Seguranca SegurancaConfig_t
 	Coleta    ColetaConfig_t
+	Email     EmailConfig_t
 }
 
 // Cfg é carregado uma vez por Load(), no início do main.
@@ -29,6 +30,7 @@ func Load() {
 		"gobrax":    &Cfg.Gobrax,
 		"seguranca": &Cfg.Seguranca,
 		"coleta":    &Cfg.Coleta,
+		"email":     &Cfg.Email,
 	} {
 		if err := envconfig.Process("", alvo); err != nil {
 			log.Fatalf("environment: configuração de %s inválida: %v", nome, err)

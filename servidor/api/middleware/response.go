@@ -11,6 +11,8 @@ import (
 	"analisefrota/modules/coleta"
 	"analisefrota/modules/diario"
 	"analisefrota/modules/premiacao"
+	"analisefrota/modules/sessao"
+	"analisefrota/modules/usuario"
 )
 
 type Response_t struct {
@@ -32,9 +34,16 @@ var (
 	errosDeEntrada = []error{
 		cliente.ErrNomeVazio, cliente.ErrNomeLongo, cliente.ErrHubspotID, cliente.ErrTokenVazio, cliente.ErrTokenEstranho, cliente.ErrSemToken,
 		diario.ErrDiaInvalido, diario.ErrPeriodoInvertido, diario.ErrPeriodoLongo, premiacao.ErrMesInvalido, coleta.ErrDiasColeta,
+		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
+		usuario.ErrCodigoInvalido,
 	}
-	errosNaoEncontrado = []error{cliente.ErrNaoEncontrado}
-	errosConflito      = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento}
+	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
+	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}
+	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado}
+	errosConflito       = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
+
+	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")
+	ErrMuitasTentativas = errors.New("muitas tentativas de entrar; espere 15 minutos e tente de novo")
 )
 
 // RetErro traduz o erro de um módulo na resposta certa; erro inesperado vai para o log e não para o usuário
@@ -42,7 +51,8 @@ func RetErro(err error) *Response_t {
 	for _, grupo := range []struct {
 		lista  []error
 		status int
-	}{{errosDeEntrada, http.StatusBadRequest}, {errosNaoEncontrado, http.StatusNotFound}, {errosConflito, http.StatusConflict}} {
+	}{{errosDeEntrada, http.StatusBadRequest}, {errosNaoAutenticado, http.StatusUnauthorized}, {errosProibido, http.StatusForbidden},
+		{errosNaoEncontrado, http.StatusNotFound}, {errosConflito, http.StatusConflict}} {
 		for _, e := range grupo.lista {
 			if errors.Is(err, e) {
 				return RetFail(grupo.status, err.Error())

@@ -42,4 +42,14 @@ func (s *CriptoSuite) TestChaveCurtaRecusada() {
 	s.ErrorIs(err, cripto.ErrChave)
 }
 
+func (s *CriptoSuite) TestTokenAleatorioEHash() {
+	a, err := cripto.TokenAleatorio()
+	s.Require().NoError(err)
+	b, _ := cripto.TokenAleatorio()
+	s.NotEqual(a, b)
+	s.Len(a, 43)
+	s.Len(cripto.HashToken(a), 32)
+	s.Equal(cripto.HashToken(a), cripto.HashToken(a))
+}
+
 func TestCriptoSuite(t *testing.T) { suite.Run(t, new(CriptoSuite)) }

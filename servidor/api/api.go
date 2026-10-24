@@ -22,7 +22,8 @@ func NewService() *Service_t {
 func (s *Service_t) Start() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.Use(gin.Recovery(), gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/saude"}}), cors())
+	_ = r.SetTrustedProxies(nil) // o IP vem da conexão, não de cabeçalho (ninguém forja o IP para fugir da trava)
+	r.Use(gin.Recovery(), gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/saude"}}), cabecalhosSeguranca(), cors())
 	GetRoutes(r)
 	srv := &http.Server{
 		Addr:              ":" + s.porta,

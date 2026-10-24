@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gobrax | Criar senha</title>
+  <link rel="icon" href="/estatico/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/estatico/login.css">
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <canvas id="fx"></canvas>
+    <div class="shade"></div>
+  </div>
+
+  <main>
+    <section class="hero">
+      <h1 class="brand" aria-label="gobrax"><span>g</span><span>o</span><span>b</span><span>r</span><span>a</span><span>x</span></h1>
+      <span class="produto">Retenção Gobrax</span>
+      <p class="tag"><b>Você foi convidado.</b> Crie sua senha para acessar a plataforma.</p>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <h2>Crie sua senha</h2>
+      <p class="sub">O link do convite vale uma vez só. Se ele não funcionar, use "Primeiro acesso" na tela de entrada.</p>
+      <form id="form-convite" novalidate>
+        <div class="field" id="fs">
+          <label for="senha">Senha</label>
+          <input id="senha" type="password" autocomplete="new-password" placeholder="Pelo menos 10 caracteres" autofocus>
+          <button type="button" class="eye" data-alvo="senha" aria-label="Mostrar senha">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <span class="ajuda">Pelo menos 10 caracteres, com letras e números.</span>
+        </div>
+        <div class="field" id="fs2">
+          <label for="senha2">Repita a senha</label>
+          <input id="senha2" type="password" autocomplete="new-password" placeholder="Digite a senha de novo">
+        </div>
+        <div class="msg" id="erro" role="alert"></div>
+        <button id="botao" class="btn" type="submit"><span>Criar senha e entrar</span></button>
+      </form>
+      <a class="link voltar" href="/">Ir para a tela de entrada</a>
+      <div class="foot">© Gobrax. Todos os direitos reservados.</div>
+    </section>
+  </main>
+
+  <script src="/estatico/comum.js"></script>
+  <script src="/estatico/fundo.js"></script>
+  <script src="/estatico/convite.js"></script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import (
 	"analisefrota/adapters/migrations"
 	"analisefrota/api"
 	mwcliente "analisefrota/api/middleware/cliente"
+	mwusuario "analisefrota/api/middleware/usuario"
 	"analisefrota/background"
 	"analisefrota/environment"
 )
@@ -20,6 +21,8 @@ import (
 func main() {
 	importar := flag.String("importar-clientes", "", "caminho do api/clientes.json do script antigo: cadastra os clientes e sai")
 	tokens := flag.String("tokens", "", "caminho do api/.env com os GOBRAX_TOKEN_* (usado com -importar-clientes)")
+	adminNome := flag.String("criar-admin", "", "nome do administrador a criar (com -email): mostra o link de convite e sai")
+	adminEmail := flag.String("email", "", "e-mail do administrador (usado com -criar-admin)")
 	flag.Parse()
 
 	environment.Load()
@@ -36,6 +39,16 @@ func main() {
 		for _, f := range feito {
 			fmt.Println(f)
 		}
+		return
+	}
+
+	if *adminNome != "" {
+		link, err := mwusuario.CriarAdmin(context.Background(), *adminNome, *adminEmail)
+		if err != nil {
+			logrus.Fatalf("criar administrador: %v", err)
+		}
+		fmt.Println("Administrador criado. Abra este link para criar a senha (vale uma vez só):")
+		fmt.Println(link)
 		return
 	}
 

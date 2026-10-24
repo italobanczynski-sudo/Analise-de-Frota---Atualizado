@@ -121,7 +121,7 @@ Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles 
 
 > O caminho `v2/vehicle-position` ainda precisa ser confirmado com o time da API. Ele fica na constante `API_POSICAO` do `index.html` e do `api/puxar.mjs`.
 
-Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o painel busca de novo a cada minuto (no GitHub Pages). O painel guarda um documento por cliente (`alvo: 'posicao'`) e o substitui a cada busca. No painel do Claude, a posição chega pelo script `api/puxar.mjs`.
+Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o painel busca de novo a cada 30 segundos (no GitHub Pages). O painel guarda um documento por cliente (`alvo: 'posicao'`) e o substitui a cada busca. No painel do Claude, a posição chega pelo script `api/puxar.mjs`.
 
 | Parâmetro | Valor enviado |
 |---|---|
@@ -134,8 +134,10 @@ Traz a última posição de cada veículo. Com a tela **Mapa ao vivo** aberta, o
 | `lastPosition.date` | horário da posição (lido como o `lastUpdated` do odômetro) |
 | `lastPosition.lat` | latitude |
 | `lastPosition.lon` | longitude (aceita também `lng` ou `longitude`) |
+| `ignition` (a confirmar) | ignição: aceita também `ignitionOn`, `ignitionStatus`, `ignicao`, `engineOn`, `engineStatus`; valores true/false, 1/0, on/off, ligada/desligada |
+| `speed` (a confirmar) | velocidade em km/h: aceita também `velocity`, `velocidade` |
 
-Coordenada 0,0 ou fora do mapa é descartada. No mapa, verde é posição dos últimos 15 minutos, amarelo é sem atualizar hoje (até 24 h) e vermelho é sem sinal há mais de um dia. O motorista mostrado é o do último dia nas estatísticas e na performance.
+Coordenada 0,0 ou fora do mapa é descartada. O mapa abre só com os caminhões **ligados agora**: ignição ligada e posição dos últimos 15 minutos. Sem o campo de ignição na resposta, conta só a posição dos últimos 15 minutos, e a tela avisa. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje (amarelo, até 24 h) e os sem sinal (vermelho, mais de um dia). O motorista mostrado é o do último dia nas estatísticas e na performance.
 
 Modelo da resposta: `{"records":[{"vehicleIdentification":"","startDate":"","endDate":"","lastPosition":{"date":"","lat":0,"lon":0}}]}`.
 

@@ -51,10 +51,18 @@ const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
 const utc = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
 const janelaUTC = (dia) => ({ startDate: dia + ' 03:00:00', endDate: somar(dia, 1) + ' 02:59:59' });
 const registros = (j) => (Array.isArray(j) ? j : (j && (j.records || j.data)) || []);
-// mesma regra do index.html: só coordenada válida (fora de 0,0) entra no mapa
+// mesma regra do index.html: só coordenada válida (fora de 0,0) entra no mapa; ignição e velocidade aceitam os nomes mais comuns
+const ligadoApi = (v) => {
+  if (v === true || v === 1) return true;
+  if (v === false || v === 0) return false;
+  const s = String(v === null || v === undefined ? '' : v).trim().toLowerCase();
+  return ['true', '1', 'on', 'ligada', 'ligado'].includes(s) ? true : ['false', '0', 'off', 'desligada', 'desligado'].includes(s) ? false : null;
+};
+const campoPos = (r, p, nomes) => { for (const k of nomes) { if (p[k] !== undefined) return p[k]; if (r[k] !== undefined) return r[k]; } return undefined; };
 const posicaoDosRegistros = (recs) => recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map((r) => {
   const p = r.lastPosition;
-  return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || '') };
+  return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || ''),
+    ign: ligadoApi(campoPos(r, p, ['ignition', 'ignitionOn', 'ignitionStatus', 'ignicao', 'engineOn', 'engineStatus'])), vel: numApi(campoPos(r, p, ['speed', 'velocity', 'velocidade'])) };
 }).filter((v) => v.lat !== null && v.lon !== null && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180 && !(v.lat === 0 && v.lon === 0));
 const bytes = (t) => Buffer.byteLength(t, 'utf8');
 

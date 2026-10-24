@@ -983,6 +983,7 @@ html[data-tema="escuro"] .mapa-el .leaflet-tile-pane { filter: invert(1) hue-rot
 .s-ok .mapa-ponto, .mapa-ponto.s-ok, .mapa-pino.s-ok i { background: var(--ok); }
 .s-atencao .mapa-ponto, .mapa-ponto.s-atencao, .mapa-pino.s-atencao i { background: var(--atencao); }
 .s-critico .mapa-ponto, .mapa-ponto.s-critico, .mapa-pino.s-critico i { background: var(--critico); }
+.s-parado .mapa-ponto, .mapa-pino.s-parado i { background: #9AA0A6; }
 .mapa-pino { position: relative; display: block; width: 18px; height: 18px; }
 .mapa-pino i { position: absolute; inset: 2px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
 .mapa-pino.s-ok i::after { content: ""; position: absolute; inset: -6px; border-radius: 999px; border: 2px solid var(--ok); opacity: 0; animation: mapa-pulso 2.4s ease-out infinite; }
@@ -2543,6 +2544,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 44, data: '2026-10-23', titulo: 'Mapa mostra quem está ligado agora', texto: 'O Mapa ao vivo abre só com os caminhões ligados agora e se atualiza a cada 30 segundos. Em "Todos" aparecem também os desligados (cinza), os sem atualizar hoje e os sem sinal. Quando a API de posições informar a ignição e a velocidade, elas aparecem na lista e no balão de cada caminhão; até lá, "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 minutos.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 43, data: '2026-10-23', titulo: 'Mapa ao vivo da frota', texto: 'Nova tela no menu Frota: cada caminhão aparece no mapa na última posição informada pela API Gobrax, com o motorista do último dia. Verde é posição dos últimos 15 minutos, amarelo é sem atualizar hoje e vermelho é sem sinal há mais de um dia. Clique numa placa da lista para ir até ela. Com a tela aberta, o mapa se atualiza a cada minuto.', href: '#/mapa', link: 'Abrir o mapa' },
     { id: 42, data: '2026-10-23', titulo: 'Troca de cliente só no topo', texto: 'Os botões "Cliente do relatório" saíram da Visão geral. Para trocar de empresa, use o seletor de cliente na barra do canto superior direito.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 41, data: '2026-10-23', titulo: 'Caju Transportes no painel', texto: 'A Caju Transportes entrou como cliente, já ligada ao HubSpot (perfil, nota CHS, ligações, reuniões, notas, chamados e contatos) e com o diesel de Mato Grosso do Sul. Os últimos 30 dias de motoristas, veículos, odômetro (41 veículos) e premiação já entraram pela API, separados dos dados da Xtsul.', href: '#/clientes', link: 'Abrir Clientes' },
@@ -5789,7 +5791,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     { metodo: 'GET', caminho: API_POSICAO, titulo: 'Última posição',
       uso: 'Última posição de cada veículo. Com a tela Mapa ao vivo aberta, o painel busca de novo a cada minuto. Guarda um documento por cliente, substituído a cada busca. Coordenada 0,0 ou fora do mapa é descartada. O caminho do endpoint ainda precisa ser confirmado com o time da API.',
       params: [['startDate / endDate', 'Agora − 30 dias até agora, em UTC'], ['vehicleIdentification', 'Vazio = todos']],
-      campos: [['vehicleIdentification', 'placa'], ['lastPosition.date', 'horário da posição'], ['lastPosition.lat', 'latitude'], ['lastPosition.lon', 'longitude']],
+      campos: [['vehicleIdentification', 'placa'], ['lastPosition.date', 'horário da posição'], ['lastPosition.lat', 'latitude'], ['lastPosition.lon', 'longitude'], ['ignition (a confirmar)', 'ignição ligada/desligada'], ['speed (a confirmar)', 'velocidade (km/h)']],
       onde: 'Mapa ao vivo' },
     { metodo: 'GET', caminho: 'v2/driversOverview', titulo: 'Scores e premiação',
       uso: 'Nota, km e bonificação de cada motorista por mês. Guarda um documento por cliente e mês.',
@@ -5953,8 +5955,8 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // No GitHub Pages o painel busca a posição a cada minuto enquanto a tela está aberta. No Claude a página não pode
   // chamar a API: o mapa mostra o documento "posicao" da base compartilhada, gravado pelo script api/puxar.mjs.
   const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-  const MAPA_CICLO = 60000;
-  const mapaSt = { em: 0, rodando: false, erro: '', sel: '', vs: [] };
+  const MAPA_CICLO = 30000;
+  const mapaSt = { em: 0, rodando: false, erro: '', sel: '', vs: [], soLigados: true };
   let leafletPronto = null, mapa = null, mapaEl = null, mapaFundo = null, mapaCamada = null, mapaEnquadrado = '';
   const mapaMarcas = new Map();
   function carregarLeaflet() {
@@ -5969,13 +5971,23 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     return leafletPronto;
   }
   const posValida = (lat, lon) => lat !== null && lon !== null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && !(lat === 0 && lon === 0);
+  // Ignição e velocidade: o exemplo da API ainda não traz esses campos; quando vierem, o painel aceita os nomes mais comuns
+  const ligadoApi = (v) => {
+    if (v === true || v === 1) return true;
+    if (v === false || v === 0) return false;
+    const s = String(v === null || v === undefined ? '' : v).trim().toLowerCase();
+    return ['true', '1', 'on', 'ligada', 'ligado'].includes(s) ? true : ['false', '0', 'off', 'desligada', 'desligado'].includes(s) ? false : null;
+  };
+  const campoPos = (r, p, nomes) => { for (const k of nomes) { if (p[k] !== undefined) return p[k]; if (r[k] !== undefined) return r[k]; } return undefined; };
+  const posDoRegistro = (r) => {
+    const p = r.lastPosition;
+    return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || ''),
+      ign: ligadoApi(campoPos(r, p, ['ignition', 'ignitionOn', 'ignitionStatus', 'ignicao', 'engineOn', 'engineStatus'])), vel: numApi(campoPos(r, p, ['speed', 'velocity', 'velocidade'])) };
+  };
   async function buscarPosicao(cli) {
     const token = tokenDe(cli), agora = Date.now();
     const recs = registros(await apiGet(API_POSICAO, { startDate: utc(agora - 30 * 86400000), endDate: utc(agora), vehicleIdentification: '' }, token));
-    const veiculos = recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map((r) => {
-      const p = r.lastPosition;
-      return { placa: placaApi(r.vehicleIdentification), lat: numApi(p.lat !== undefined ? p.lat : p.latitude), lon: numApi(p.lon !== undefined ? p.lon : p.lng !== undefined ? p.lng : p.longitude), data: String(p.date || '') };
-    }).filter((v) => posValida(v.lat, v.lon));
+    const veiculos = recs.filter((r) => r && r.vehicleIdentification && r.lastPosition).map(posDoRegistro).filter((v) => posValida(v.lat, v.lon));
     await gravarDocApi(idPlan('posicao', cli, 'atual', 1), { alvo: 'posicao', cliente: cli, data: D.hoje(), veiculos, em: new Date().toISOString() });
   }
   async function atualizarPosicoes(forcar) {
@@ -5993,8 +6005,10 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
   // Data da API ("AAAA-MM-DD HH:MM:SS"): mesma leitura do odômetro
   const msPos = (s) => { const t = Date.parse(String(s || '').replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
   const haQuanto = (min) => (min === null ? 'sem horário' : min < 1 ? 'agora' : min < 60 ? 'há ' + Math.round(min) + ' min' : min < 1440 ? 'há ' + Math.round(min / 60) + ' h' : 'há ' + Math.round(min / 1440) + (Math.round(min / 1440) === 1 ? ' dia' : ' dias'));
-  const SIT_POS = { ok: 'Ao vivo', atencao: 'Sem atualizar hoje', critico: 'Sem sinal' };
-  const sitPos = (min) => (min !== null && min <= 15 ? 'ok' : min !== null && min <= 1440 ? 'atencao' : 'critico');
+  // Ligado agora: ignição ligada (ou, sem o campo de ignição, posição dos últimos 15 min) com posição recente
+  const SIT_POS = { ok: 'Ligado agora', parado: 'Desligado', atencao: 'Sem atualizar hoje', critico: 'Sem sinal' };
+  const SIT_BADGE = { ok: 'ok', parado: 'vazio', atencao: 'atencao', critico: 'critico' };
+  const sitPos = (min, ign) => (min === null || min > 1440 ? 'critico' : ign === false ? 'parado' : min <= 15 ? 'ok' : 'atencao');
   // Motorista do último dia de cada placa, das estatísticas e performance já buscadas
   let motPlacaCache = null;
   function motoristaPorPlaca() {
@@ -6019,38 +6033,44 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
       if (vistos.has(k) || !posValida(numApi(v.lat), numApi(v.lon)) || !passaFiltro({ veiculo: v.placa })) return;
       vistos.add(k);
       const t = msPos(v.data), min = t === null ? null : Math.max(0, (agora - t) / 60000);
-      vs.push({ placa: v.placa, lat: numApi(v.lat), lon: numApi(v.lon), data: v.data, cliente: d.cliente, min, sit: sitPos(min), mot: (mots.get(nrm(v.placa)) || {}).nome || '' });
+      const ign = v.ign === true || v.ign === false ? v.ign : null;
+      vs.push({ placa: v.placa, lat: numApi(v.lat), lon: numApi(v.lon), data: v.data, cliente: d.cliente, min, ign, vel: numApi(v.vel), sit: sitPos(min, ign), mot: (mots.get(nrm(v.placa)) || {}).nome || '' });
     }));
     return vs.sort((a, b) => (a.min === null ? 1 : b.min === null ? -1 : a.min - b.min));
   }
   function telaMapa() {
-    const vs = mapaSt.vs = posicoesMapa();
+    const todos = posicoesMapa();
+    const vs = mapaSt.vs = mapaSt.soLigados ? todos.filter((v) => v.sit === 'ok') : todos;
     const docs = docsApi('posicao', E.cliente), ult = docs.map((d) => String(d.em || '')).sort().pop();
     const comToken = (E.cliente ? [E.cliente] : E.clientes.map((c) => c.nome)).some((c) => tokenDe(c));
-    const ao = planRef && !comToken ? 'No painel do Claude a posição chega pela base compartilhada, gravada pelo script do projeto.' : 'Atualiza sozinho a cada minuto com esta tela aberta.';
-    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Mapa ao vivo</h1><span class="sub">Última posição de cada caminhão, da API Gobrax${descFiltro() ? ' · ' + esc(descFiltro()) : ''}. ${ao}</span></div>
+    const ao = planRef && !comToken ? 'No painel do Claude a posição chega pela base compartilhada, gravada pelo script do projeto.' : 'Atualiza sozinho a cada 30 segundos com esta tela aberta.';
+    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Mapa ao vivo</h1><span class="sub">Onde está cada caminhão agora e se a ignição está ligada, da API Gobrax${descFiltro() ? ' · ' + esc(descFiltro()) : ''}. ${ao}</span></div>
       ${comToken && !apiBloqueada ? `<button type="button" class="btn" data-acao="mapa-atualizar" ${mapaSt.rodando ? 'disabled' : ''}>${mapaSt.rodando ? 'Atualizando…' : 'Atualizar agora'}</button>` : ''}</div>`;
     const erro = mapaSt.erro ? `<div class="alerta alerta-erro" style="margin-bottom:14px"><span class="alerta-icone" style="background:var(--critico)">!</span><span class="alerta-texto">A posição não veio: ${esc(mapaSt.erro)}.${/404/.test(mapaSt.erro) ? ' O caminho do endpoint de posição pode estar errado.' : ''}</span></div>` : '';
-    if (!vs.length) {
+    if (!todos.length) {
       const msg = docs.length ? 'Nenhum veículo com posição válida' + (descFiltro() ? ' para ' + esc(descFiltro()) : '') + '.'
         : !comToken ? 'Salve o token da API do cliente no perfil dele para ver os caminhões no mapa.' + (planRef ? ' No painel do Claude, a posição entra pelo script <code>node api/puxar.mjs</code> (veja a aba API).' : '')
         : mapaSt.rodando ? 'Buscando a posição dos veículos…' : 'A API ainda não trouxe posições para este cliente.';
       return cab + erro + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhum caminhão no mapa ainda</span><span class="apoio">${msg}</span>
         ${comToken ? '' : `<a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a>`}</div></div></section>`;
     }
-    const n = { ok: 0, atencao: 0, critico: 0 };
-    vs.forEach((v) => n[v.sit]++);
-    const varios = new Set(vs.map((v) => ckey(v.cliente))).size > 1;
+    const n = { ok: 0, parado: 0, atencao: 0, critico: 0 };
+    todos.forEach((v) => n[v.sit]++);
+    const varios = new Set(todos.map((v) => ckey(v.cliente))).size > 1;
+    const comIgn = todos.some((v) => v.ign !== null);
     const itens = vs.map((v) => `<button type="button" class="mapa-item s-${v.sit} ${v.placa === mapaSt.sel ? 'sel' : ''}" data-acao="mapa-ver" data-p="${esc(v.placa)}" title="${SIT_POS[v.sit]}">
-        <span class="mapa-ponto"></span><span style="min-width:0"><b>${esc(v.placa)}</b><span class="linha2">${esc(v.mot || (varios ? v.cliente : 'Sem motorista vinculado'))}</span></span><span class="mapa-ha">${haQuanto(v.min)}</span></button>`).join('');
+        <span class="mapa-ponto"></span><span style="min-width:0"><b>${esc(v.placa)}</b><span class="linha2">${esc(v.mot || (varios ? v.cliente : 'Sem motorista vinculado'))}</span></span><span class="mapa-ha">${v.vel !== null && v.sit === 'ok' ? fmt(v.vel, 0) + ' km/h · ' : ''}${haQuanto(v.min)}</span></button>`).join('')
+      || `<div class="vazio" style="padding:24px 14px"><span class="vazio-titulo">Nenhum caminhão ligado agora</span><span class="apoio">${todos.length} com posição na frota. Veja todos para saber onde pararam.</span></div>`;
+    const pil = (so, rot) => `<button type="button" class="pilula ${mapaSt.soLigados === so ? 'ativa' : ''}" data-acao="mapa-filtro" data-so="${so ? '1' : ''}" aria-pressed="${mapaSt.soLigados === so}">${rot}</button>`;
     return cab + erro + `<section class="card" style="padding:0">
       <div class="mapa-grade"><div class="mapa-slot" id="mapa-slot"></div>
-        <div class="mapa-lista"><div class="mapa-lista-cab">${['ok', 'atencao', 'critico'].map((s) => `<span class="badge badge-${s}">${n[s]} ${SIT_POS[s].toLowerCase()}</span>`).join('')}
-          <span class="apoio" style="width:100%;font-size:12px">${vs.length} veículos${ult ? ' · buscado ' + haQuanto((Date.now() - Date.parse(ult)) / 60000) : ''}. Ao vivo: posição dos últimos 15 min.</span></div>
+        <div class="mapa-lista"><div class="mapa-lista-cab"><div style="display:flex;gap:6px;width:100%">${pil(true, 'Ligados agora (' + n.ok + ')')}${pil(false, 'Todos (' + todos.length + ')')}</div>
+          ${['ok', 'parado', 'atencao', 'critico'].filter((s) => n[s]).map((s) => `<span class="badge badge-${SIT_BADGE[s]}">${n[s]} ${SIT_POS[s].toLowerCase()}</span>`).join('')}
+          <span class="apoio" style="width:100%;font-size:12px">${ult ? 'Buscado ' + haQuanto((Date.now() - Date.parse(ult)) / 60000) + '. ' : ''}${comIgn ? 'Ligado agora: ignição ligada e posição dos últimos 15 min.' : 'A API não informou a ignição: "ligado agora" quer dizer que o caminhão mandou posição nos últimos 15 min.'}</span></div>
           <div class="mapa-lista-itens">${itens}</div></div></div></section>`;
   }
   const popupPos = (v) => `<div class="mapa-pop"><b>${esc(v.placa)}</b><span>${esc(v.mot || 'Sem motorista vinculado')}</span>
-    <span>${SIT_POS[v.sit]} · ${v.data ? esc(D.br(v.data.slice(0, 10)) + ' ' + v.data.slice(11, 16)) : 'sem horário'} (${haQuanto(v.min)})</span>
+    <span>${v.ign === true ? 'Ignição ligada' : v.ign === false ? 'Ignição desligada' : SIT_POS[v.sit]}${v.vel !== null ? ' · ' + fmt(v.vel, 0) + ' km/h' : ''} · ${v.data ? esc(D.br(v.data.slice(0, 10)) + ' ' + v.data.slice(11, 16)) : 'sem horário'} (${haQuanto(v.min)})</span>
     <a href="#/individual/veiculo/${encodeURIComponent(v.placa)}">Abrir o veículo</a></div>`;
   // O elemento do mapa sobrevive ao render (que troca o HTML da página): é recolocado no espaço reservado a cada desenho
   function montarMapa() {
@@ -7045,6 +7065,7 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
     'grp-ver': (el) => { E.filtro.grupo = el.dataset.g; reaplicarFiltro(); render(); },
     'mapa-ver': (el) => verNoMapa(el.dataset.p),
     'mapa-atualizar': () => { atualizarPosicoes(true); render(); },
+    'mapa-filtro': (el) => { mapaSt.soLigados = !!el.dataset.so; render(); },
     'grp-limpar-sel': () => { E.gruposSel = {}; render(); },
     'grp-lote': () => {
       const sel = document.getElementById('grp-lote'), g = sel ? sel.value : '', c = cliAtual();

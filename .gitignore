@@ -5,3 +5,7 @@ api/saida/
 
 # Servidor (Go): configuração local com segredos
 servidor/.env
+
+# Cópias do painel embutidas no servidor na construção da imagem (a fonte é o index.html da raiz)
+servidor/api/web/painel/index.html
+servidor/api/web/painel/xlsx.full.min.js

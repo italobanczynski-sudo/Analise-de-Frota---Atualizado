@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"analisefrota/modules/base"
 	"analisefrota/modules/cliente"
 	"analisefrota/modules/coleta"
 	"analisefrota/modules/diario"
@@ -35,7 +36,7 @@ var (
 		cliente.ErrNomeVazio, cliente.ErrNomeLongo, cliente.ErrHubspotID, cliente.ErrTokenVazio, cliente.ErrTokenEstranho, cliente.ErrSemToken,
 		diario.ErrDiaInvalido, diario.ErrPeriodoInvertido, diario.ErrPeriodoLongo, premiacao.ErrMesInvalido, coleta.ErrDiasColeta,
 		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
-		usuario.ErrCodigoInvalido,
+		usuario.ErrCodigoInvalido, base.ErrColecao, base.ErrID, base.ErrDados, base.ErrGrande,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}

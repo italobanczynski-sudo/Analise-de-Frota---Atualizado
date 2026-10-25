@@ -1,0 +1,3 @@
+Na construção da imagem (Dockerfile), o index.html e o vendor/xlsx.full.min.js da raiz do repositório
+são copiados para esta pasta e embutidos no binário: o painel servido em /painel é sempre o mesmo do GitHub Pages.
+As cópias ficam fora do Git (.gitignore). Sem elas (go test, go build fora do Docker), /painel responde 503.

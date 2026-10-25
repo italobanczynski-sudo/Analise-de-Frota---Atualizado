@@ -33,6 +33,20 @@ func autenticar() gin.HandlerFunc {
 	}
 }
 
+// paginaLogada serve a tela só para quem tem login válido; sem login, volta para a tela de entrada
+func paginaLogada() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, _ := c.Cookie(controller.CookieSessao)
+		if _, err := (mwauth.Auth_t{Token: token}).Identificar(c.Request.Context()); err != nil {
+			controller.LimparCookieSessao(c)
+			c.Redirect(http.StatusFound, "/")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 // exigirPapel deixa passar só os perfis listados (vem depois de autenticar)
 func exigirPapel(papeis ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -81,7 +95,7 @@ func cors() gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Credentials", "true")
 			c.Header("Vary", "Origin")
 			c.Header("Access-Control-Allow-Headers", "Content-Type, X-Requisicao")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		}
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ctauth "analisefrota/api/controller/auth"
+	ctbase "analisefrota/api/controller/base"
 	ctcliente "analisefrota/api/controller/cliente"
 	ctcoleta "analisefrota/api/controller/coleta"
 	ctfrota "analisefrota/api/controller/frota"
@@ -23,6 +24,9 @@ func GetRoutes(r *gin.Engine) {
 	r.GET("/convite", web.Pagina("convite.html"))
 	r.GET("/plataforma", web.Pagina("plataforma.html"))
 	r.StaticFS("/estatico", web.Estatico())
+	// painel completo (index.html): só com login; sem sessão volta para a tela de entrada
+	r.GET("/painel", paginaLogada(), web.Painel())
+	r.GET("/painel/xlsx.full.min.js", web.PainelXLSX())
 
 	// login (sem sessão)
 	pub := r.Group("/api/v1/auth", exigirCabecalhoApp())
@@ -40,10 +44,16 @@ func GetRoutes(r *gin.Engine) {
 	v1.GET("/clientes/:id/registros", ctfrota.Registros)
 	v1.GET("/clientes/:id/odometros", ctfrota.Odometros)
 	v1.GET("/clientes/:id/premiacoes", ctfrota.Premiacoes)
+	v1.GET("/painel/dados", ctbase.Dados)
+	v1.GET("/base/:colecao", ctbase.Listar)
 
 	// colaborador e administrador
 	colab := v1.Group("", exigirPapel(usuario.PapelAdmin, usuario.PapelColaborador))
 	colab.POST("/clientes/:id/coleta", ctcoleta.Iniciar)
+	// base do painel: o leitor só lê (como o Leitor do Artifact); colaborador e admin gravam
+	colab.PUT("/base/:colecao/:doc", ctbase.Gravar)
+	colab.POST("/base/:colecao", ctbase.Criar)
+	colab.DELETE("/base/:colecao/:doc", ctbase.Apagar)
 
 	// só administrador
 	adm := v1.Group("", exigirPapel(usuario.PapelAdmin))

@@ -1,0 +1,10 @@
+# Contexto = raiz do repositório: só vai para a construção o que o Dockerfile usa (nunca segredos nem o .git)
+*
+!servidor/
+!index.html
+!vendor/xlsx.full.min.js
+servidor/.env
+servidor/testes/
+servidor/**/*.md
+servidor/api/web/painel/index.html
+servidor/api/web/painel/xlsx.full.min.js

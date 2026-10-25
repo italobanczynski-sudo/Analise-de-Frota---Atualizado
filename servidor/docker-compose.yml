@@ -19,7 +19,10 @@ services:
     restart: unless-stopped
 
   app:
-    build: .
+    # contexto na raiz do repositório: a imagem embute o painel index.html
+    build:
+      context: ..
+      dockerfile: servidor/Dockerfile
     env_file: .env
     environment:
       DATABASE_URL: postgres://frota:${POSTGRES_PASSWORD}@db:5432/frota?sslmode=disable

@@ -24,7 +24,7 @@ adapters/      Postgres (Singleton), migrações SQL, cliente da API Gobrax, e-m
 common/        datas de Brasília, placas, limpeza de token, validação, criptografia
 modules/       usuario, sessao, cliente, diario, odometro, premiacao, coleta (regras + repositórios)
 api/           route.go (rotas e perfis), auth.go (filtros HTTP), controller (entrada), middleware (casos de uso)
-api/web/       telas: paginas/*.html e estatico/ (CSS, JS, imagens)
+api/web/       telas: paginas/*.html, estatico/ (CSS, JS, imagens) e painel/ (cópia do index.html feita pelo Dockerfile)
 background/    tarefas automáticas
 nginx/         analisefrota.conf (HTTPS) e http-somente.conf (só para gerar o certificado)
 testes/        teste ponta a ponta (e2e.sh) e o ambiente descartável dele
@@ -78,7 +78,8 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 - **Clientes**: lista com a situação da última busca; administrador cadastra e troca o token; colaborador e administrador pedem uma busca na hora.
 - **Usuários** (só administrador): convidar, trocar perfil, desativar/reativar, gerar novo link de convite ou de senha.
 - **Busca automática** (`v1/vehicle-statistics`, `v1/vehicle-performance`, `v2/vehicle-odometer`, `v2/driversOverview`): logo que sobe e a cada `COLETA_INTERVALO_MIN`. Na primeira vez, os últimos `COLETA_DIAS`; depois, do último dia buscado (refeito) até hoje. 404 é dia sem dado; falha pontual pula o dia sem apagar o que já havia; três falhas seguidas desligam aquele tipo na rodada.
-- **Dados pela API** (registros, odômetros, premiações). As telas da plataforma ainda não mostram esses dados: o painel `index.html` continua lendo do Artifact (fase 2).
+- **Painel completo em `/painel`** (o mesmo `index.html` do GitHub Pages, com todas as telas): depois do login a pessoa cai nele. A ponte `api/web/estatico/painel-base.js` oferece ao painel a mesma "base compartilhada" do Artifact, guardada no Postgres (`base_documentos`: clientes, tratativas, HubSpot, configurações e planilhas importadas). Os dados que o servidor busca na API Gobrax chegam ao painel montados como as planilhas de veículos e motoristas, o odômetro e a premiação (último ano). O que alguém importou à mão para o mesmo cliente e dia vale mais. O leitor só lê; colaborador e admin gravam.
+- Em 25/10/2026 os 447 documentos da base do Artifact (2 clientes, 194 tratativas, HubSpot, diesel e 248 planilhas) foram copiados para o banco local.
 
 ## Login, sessões e perfis
 
@@ -119,6 +120,10 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/registros?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` | logado | Dia a dia de cada veículo |
 | `GET /api/v1/clientes/:id/odometros` | logado | Último odômetro de cada veículo |
 | `GET /api/v1/clientes/:id/premiacoes?mes=AAAA-MM` | logado | Premiação (sem `mes`: todos) |
+| `GET /painel` | logado (senão volta para `/`) | Painel completo |
+| `GET /api/v1/painel/dados` | logado | Dados da API de cada cliente (último ano), para o painel |
+| `GET /api/v1/base/:colecao` | logado | Documentos da base do painel |
+| `PUT /api/v1/base/:colecao/:doc`, `POST /api/v1/base/:colecao`, `DELETE /api/v1/base/:colecao/:doc` | colaborador, admin | Grava, cria e apaga documentos da base do painel |
 | `POST /api/v1/clientes/:id/coleta` | colaborador, admin | Busca agora, em segundo plano (202; 409 se já estiver buscando) |
 | `POST /api/v1/clientes` `{nome, hubspot_id, token}` | admin | Cadastra cliente (token opcional) |
 | `PUT /api/v1/clientes/:id/token` `{token}` | admin | Troca o token |
@@ -188,6 +193,9 @@ Guarde a `CHAVE_TOKENS` junto do plano de backup, em um cofre de senhas e nunca 
 - A sessão tem duração fixa (`SESSAO_HORAS`), sem renovação automática enquanto a pessoa usa.
 - Não há registro de auditoria em tabela: só no log (`usuarios: X alterou Y`).
 - As telas da plataforma mostram clientes e usuários, mas ainda não os gráficos e indicadores (estes continuam no painel `index.html`).
+- O painel em `/painel` usa scripts dentro do HTML, então a CSP dele libera `'unsafe-inline'`; as demais telas continuam com a CSP estrita.
+- Apagar no painel um dado que veio da API (não importado à mão) não tem efeito: ele volta na próxima atualização.
+- A imagem é construída a partir da raiz do repositório (`docker build -f servidor/Dockerfile .`); no Railway, a pasta raiz do serviço precisa ser a raiz do repositório.
 - A fonte Inter vem do Google Fonts (liberado na CSP); sem internet, cai para a fonte do sistema.
 
 ## Próximas fases

@@ -109,6 +109,22 @@ confere "leitor não cria usuário" 403 "$(req leitor POST /api/v1/usuarios '{"n
 confere "leitor não vira admin" 403 "$(req leitor PUT /api/v1/usuarios/$ID_LEITOR '{"papel":"admin","ativo":true}')"
 confere "leitor não gera convite" 403 "$(req leitor POST /api/v1/usuarios/$ID_COLAB/convite)"
 
+echo "== painel e base do painel"
+confere "painel sem login volta para a entrada" 302 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/painel")"
+confere "painel com login" 200 "$(req admin GET /painel)"
+contem "painel ligado à base do servidor" "/estatico/painel-base.js"
+confere "dados da API para o painel" 200 "$(req leitor GET /api/v1/painel/dados)"
+contem "clientes nos dados do painel" "Cliente E2E"
+confere "admin grava documento" 200 "$(req admin PUT /api/v1/base/tratativas/t1 '{"cliente":"Cliente E2E","etapa":"aberta"}')"
+confere "leitor lê a base" 200 "$(req leitor GET /api/v1/base/tratativas)"
+contem "documento gravado volta" '"etapa":"aberta"'
+confere "leitor não grava na base" 403 "$(req leitor PUT /api/v1/base/tratativas/t2 '{"x":1}')"
+confere "leitor não apaga da base" 403 "$(req leitor DELETE /api/v1/base/tratativas/t1)"
+confere "coleção fora da lista" 400 "$(req admin PUT /api/v1/base/usuarios/x '{"x":1}')"
+confere "documento que não é objeto" 400 "$(req admin PUT /api/v1/base/tratativas/t3 '[1,2]')"
+confere "colaborador cria documento" 201 "$(req colab POST /api/v1/base/tratativas '{"cliente":"Cliente E2E"}')"
+confere "colaborador apaga documento" 200 "$(req colab DELETE /api/v1/base/tratativas/t1)"
+
 echo "== permissões do colaborador"
 confere "colaborador não lista usuários" 403 "$(req colab GET /api/v1/usuarios)"
 confere "colaborador não cadastra cliente" 403 "$(req colab POST /api/v1/clientes '{"nome":"Invasor"}')"

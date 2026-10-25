@@ -37,7 +37,7 @@ async function irParaPlataforma() {
       ? 'A senha foi aceita, mas o navegador não guardou o login porque esta página foi aberta sem conexão segura (http://). Abra o endereço com https:// e entre de novo.'
       : 'A senha foi aceita, mas o navegador não guardou o login. Libere os cookies deste site e entre de novo.');
   }
-  location.replace('/plataforma');
+  location.replace('/painel');
 }
 
 function toast(texto, erro) {

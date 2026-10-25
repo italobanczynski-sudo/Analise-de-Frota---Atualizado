@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const emailValido = (e) => /^\S+@\S+\.\S+$/.test(e);
 
 // já logado: vai direto para a plataforma
-api('GET', '/api/v1/auth/eu').then(() => location.replace('/plataforma')).catch(() => {});
+api('GET', '/api/v1/auth/eu').then(() => location.replace('/painel')).catch(() => {});
 
 function aviso(id, texto, ok) {
   const m = $(id);

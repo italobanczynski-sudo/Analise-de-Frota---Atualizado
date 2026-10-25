@@ -16,6 +16,7 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 | `docs/` | Documentação da API Gobrax usada pelo painel |
 | `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `api/.env` e lista em `api/clientes.json`, ambos fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
+| `render.yaml`, `railway.json` | Implantação na nuvem: Render (em uso, plano grátis: https://analise-de-frota.onrender.com) e Railway |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
 
 ## Painel no Claude

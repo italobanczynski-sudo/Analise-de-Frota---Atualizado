@@ -30,7 +30,31 @@
     "cripto": "secure",
     "utils": "utils",
     "environment": "environment",
-    "log": "log"
+    "log": "log",
+    "email": "mail",
+    "auth": "secure",
+    "usuario": "admin",
+    "usuario_repo": "repository",
+    "sessao": "keys",
+    "sessao_repo": "repository",
+    "base": "database",
+    "base_repo": "repository",
+    "web": "views",
+    "paginas": "views",
+    "estatico": "public",
+    "painel": "app",
+    "testes": "test",
+    "nginx": "nginx"
+  },
+
+  // Ícones dos arquivos de implantação e de dados (o tema não tem ícone próprio para eles)
+  "material-icon-theme.files.associations": {
+    "render.yaml": "settings",
+    "railway.json": "settings",
+    ".banco-nuvem": "lock",
+    "copiar-dados-nuvem.sh": "database",
+    "rodar-e2e.sh": "console",
+    "e2e.sh": "console"
   },
 
   // Esconde no explorador os arquivos que acompanham outro (abra a setinha ao lado para vê-los)
@@ -38,8 +62,9 @@
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
     "go.mod": "go.sum",
-    "Dockerfile": ".dockerignore, docker-compose.yml",
-    ".env": ".env.example",
+    "Dockerfile": "Dockerfile.dockerignore, .dockerignore, docker-compose.yml, docker-compose.*.yml",
+    ".env": ".env.example, .banco-nuvem",
+    "render.yaml": "railway.json",
     "clientes.json": "clientes.example.json",
     ".gitignore": ".gitattributes, .editorconfig, .nojekyll, *.code-workspace",
     "*.go": "${capture}_test.go"

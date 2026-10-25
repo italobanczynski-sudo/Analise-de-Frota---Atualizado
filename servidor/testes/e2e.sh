@@ -113,6 +113,8 @@ echo "== painel e base do painel"
 confere "painel sem login volta para a entrada" 302 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/painel")"
 confere "painel com login" 200 "$(req admin GET /painel)"
 contem "painel ligado à base do servidor" "/estatico/painel-base.js"
+contem "painel com o ícone da Gobrax na aba" 'rel="icon" href="/estatico/icone.svg"'
+confere "favicon.ico vai para o ícone" 301 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/favicon.ico")"
 confere "dados da API para o painel" 200 "$(req leitor GET /api/v1/painel/dados)"
 contem "clientes nos dados do painel" "Cliente E2E"
 confere "admin grava documento" 200 "$(req admin PUT /api/v1/base/tratativas/t1 '{"cliente":"Cliente E2E","etapa":"aberta"}')"

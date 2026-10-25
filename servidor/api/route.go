@@ -24,6 +24,8 @@ func GetRoutes(r *gin.Engine) {
 	r.GET("/convite", web.Pagina("convite.html"))
 	r.GET("/plataforma", web.Pagina("plataforma.html"))
 	r.StaticFS("/estatico", web.Estatico())
+	// navegadores pedem /favicon.ico por conta própria: vai para o ícone da Gobrax
+	r.GET("/favicon.ico", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/estatico/icone.svg") })
 	// painel completo (index.html): só com login; sem sessão volta para a tela de entrada
 	r.GET("/painel", paginaLogada(), web.Painel())
 	r.GET("/painel/xlsx.full.min.js", web.PainelXLSX())

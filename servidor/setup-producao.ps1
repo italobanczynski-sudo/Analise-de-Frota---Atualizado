@@ -1,10 +1,13 @@
 # ============================================================
 # setup-producao.ps1
-# Roda tudo para colocar a plataforma no ar com SSL e email
+# Coloca a plataforma no ar com HTTPS (Let's Encrypt) e e-mail.
+# Pré-requisitos: Docker, DNS do domínio apontando para esta máquina, portas 80 e 443 abertas, .env preenchido.
 # ============================================================
 
+$ErrorActionPreference = "Stop"
 $dominio = "analisefrota.gobrax.com.br"
 $envFile = Join-Path $PSScriptRoot ".env"
+Set-Location $PSScriptRoot
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -12,39 +15,32 @@ Write-Host "  Setup de Producao - Analise de Frota  " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── 1. Checar se o .env tem email preenchido ──────────────────
-$envContent = Get-Content $envFile -Raw
-if ($envContent -match "SEU_EMAIL@gmail.com" -or $envContent -match "SENHA_DE_APP_16_CHARS") {
-    Write-Host "ATENCAO: O arquivo .env ainda tem placeholders nao preenchidos!" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Abra o arquivo .env e substitua:" -ForegroundColor Yellow
-    Write-Host "  SMTP_USUARIO=SEU_EMAIL@gmail.com   -> seu email real" -ForegroundColor Yellow
-    Write-Host "  SMTP_SENHA=SENHA_DE_APP_16_CHARS   -> a senha de app gerada" -ForegroundColor Yellow
-    Write-Host "  SMTP_REMETENTE=SEU_EMAIL@gmail.com -> seu email real" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Depois rode este script novamente." -ForegroundColor Yellow
+# ── 1. O .env existe e não tem mais os marcadores <...> do .env.example ──
+if (-not (Test-Path $envFile)) {
+    Write-Host "ERRO: copie .env.example para .env e preencha antes de rodar este script." -ForegroundColor Red
+    exit 1
+}
+$pendentes = Select-String -Path $envFile -Pattern "^[A-Z_]+=.*<[^>]+>" | ForEach-Object { ($_.Line -split "=")[0] }
+if ($pendentes) {
+    Write-Host "ATENCAO: o .env ainda tem campos com <marcador>: $($pendentes -join ', ')" -ForegroundColor Red
+    Write-Host "Preencha esses campos e rode o script de novo." -ForegroundColor Yellow
+    exit 1
+}
+if (-not (Select-String -Path $envFile -Pattern "^URL_PUBLICA=https://$dominio" -Quiet)) {
+    Write-Host "ATENCAO: URL_PUBLICA no .env precisa ser https://$dominio" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[1/5] Subindo banco + app + nginx (HTTP)..." -ForegroundColor Green
-
-# Usa configuracao HTTP-only temporariamente para o Certbot validar
-# Remove a conf SSL se existir para nao travar o nginx sem certificado ainda
-if (Test-Path "$PSScriptRoot\nginx\analisefrota.conf") {
-    Rename-Item "$PSScriptRoot\nginx\analisefrota.conf" "$PSScriptRoot\nginx\analisefrota.conf.bak" -Force
-}
-
-docker compose up -d
-
-Write-Host "[2/5] Aguardando nginx ficar pronto..." -ForegroundColor Green
+# ── 2. Sobe banco + app + nginx só em HTTP (o Certbot valida o domínio pela porta 80) ──
+Write-Host "[1/4] Subindo banco, app e nginx em HTTP..." -ForegroundColor Green
+$env:NGINX_SITE = "http-somente"
+docker compose --profile producao up -d --build
+if ($LASTEXITCODE -ne 0) { exit 1 }
 Start-Sleep -Seconds 5
 
-# ── 2. Gerar certificado SSL com Certbot ─────────────────────
-Write-Host "[3/5] Gerando certificado SSL para $dominio..." -ForegroundColor Green
-Write-Host "      (Certbot vai validar pelo dominio — precisa que o DNS aponte para este servidor)" -ForegroundColor DarkGray
-
-$emailCertbot = (Select-String -Path $envFile -Pattern "SMTP_USUARIO=(.+)").Matches[0].Groups[1].Value.Trim()
-
+# ── 3. Certificado SSL ──
+Write-Host "[2/4] Gerando certificado SSL para $dominio..." -ForegroundColor Green
+$emailCertbot = (Select-String -Path $envFile -Pattern "^SMTP_USUARIO=(.+)").Matches[0].Groups[1].Value.Trim()
 docker compose --profile certbot run --rm certbot certonly `
     --webroot -w /var/www/certbot `
     -d $dominio `
@@ -56,21 +52,24 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "ERRO: Certbot falhou. Verifique se:" -ForegroundColor Red
     Write-Host "  - O DNS de $dominio aponta para o IP deste servidor" -ForegroundColor Yellow
     Write-Host "  - As portas 80 e 443 estao abertas no firewall" -ForegroundColor Yellow
+    Write-Host "Enquanto isso o nginx fica em HTTP e o LOGIN NAO FUNCIONA (o cookie de sessao exige HTTPS)." -ForegroundColor Yellow
     exit 1
 }
 
-# ── 3. Ativar config HTTPS no nginx ──────────────────────────
-Write-Host "[4/5] Ativando HTTPS no nginx..." -ForegroundColor Green
+# ── 4. Troca o nginx para o site com HTTPS (o padrão do docker-compose) ──
+Write-Host "[3/4] Ativando HTTPS no nginx..." -ForegroundColor Green
+Remove-Item Env:NGINX_SITE
+docker compose --profile producao up -d --force-recreate nginx
+if ($LASTEXITCODE -ne 0) { exit 1 }
 
-if (Test-Path "$PSScriptRoot\nginx\analisefrota.conf.bak") {
-    Rename-Item "$PSScriptRoot\nginx\analisefrota.conf.bak" "$PSScriptRoot\nginx\analisefrota.conf" -Force
+Write-Host "[4/4] Conferindo..." -ForegroundColor Green
+Start-Sleep -Seconds 3
+try {
+    $r = Invoke-WebRequest -UseBasicParsing "https://$dominio/saude" -TimeoutSec 15
+    Write-Host "  /saude respondeu $($r.StatusCode)" -ForegroundColor Green
+} catch {
+    Write-Host "  /saude nao respondeu por HTTPS: veja 'docker compose --profile producao logs nginx'" -ForegroundColor Yellow
 }
-
-# Restart nginx para carregar a config HTTPS
-docker compose restart nginx
-
-Write-Host "[5/5] Rebuild do app com configuracoes de producao..." -ForegroundColor Green
-docker compose up -d --build app
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
@@ -78,7 +77,7 @@ Write-Host "  PRONTO! Plataforma no ar!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  URL: https://$dominio" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Verifique os logs com:" -ForegroundColor DarkGray
-Write-Host "  docker compose logs -f app" -ForegroundColor DarkGray
+Write-Host "  Primeiro administrador (se ainda nao existir):" -ForegroundColor DarkGray
+Write-Host "  docker compose run --rm app -criar-admin `"Nome`" -email pessoa@gobrax.com" -ForegroundColor DarkGray
+Write-Host "  Logs: docker compose logs -f app" -ForegroundColor DarkGray
 Write-Host ""

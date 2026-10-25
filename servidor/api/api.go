@@ -19,12 +19,28 @@ func NewService() *Service_t {
 	return &Service_t{porta: environment.Cfg.Servidor.Porta}
 }
 
-func (s *Service_t) Start() {
+// NewRouter monta o Gin com os cabeçalhos de segurança, o CORS e todas as rotas (os testes de HTTP usam o mesmo)
+func NewRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	_ = r.SetTrustedProxies(nil) // o IP vem da conexão, não de cabeçalho (ninguém forja o IP para fugir da trava)
+	// o IP só vem de X-Forwarded-For quando a conexão chega de um proxy configurado (ninguém forja o IP para fugir da trava)
+	proxies := environment.Cfg.Servidor.ProxiesConfiaveis
+	if len(proxies) == 0 {
+		proxies = nil
+	}
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		logrus.Fatalf("PROXIES_CONFIAVEIS inválido: %v", err)
+	}
 	r.Use(gin.Recovery(), gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/saude"}}), cabecalhosSeguranca(), cors())
 	GetRoutes(r)
+	return r
+}
+
+func (s *Service_t) Start() {
+	if environment.Cfg.Servidor.HTTPS() {
+		logrus.Infof("login só por HTTPS (URL_PUBLICA=%s): aberta por http://, a plataforma não consegue manter ninguém logado", environment.Cfg.Servidor.URLPublica)
+	}
+	r := NewRouter()
 	srv := &http.Server{
 		Addr:              ":" + s.porta,
 		Handler:           r,

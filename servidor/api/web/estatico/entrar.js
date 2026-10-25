@@ -59,7 +59,7 @@ $('form-entrar').addEventListener('submit', async (ev) => {
   carregando('go', true);
   try {
     await api('POST', '/api/v1/auth/entrar', { email, senha });
-    location.replace('/plataforma');
+    await irParaPlataforma();
   } catch (e) {
     carregando('go', false);
     erroCampo('fp', true);
@@ -135,7 +135,7 @@ $('form-codigo').addEventListener('submit', async (ev) => {
   carregando('go-codigo', true);
   try {
     await api('POST', '/api/v1/auth/codigo/confirmar', { email: emailCodigo, codigo, senha });
-    location.replace('/plataforma');
+    await irParaPlataforma();
   } catch (e) {
     carregando('go-codigo', false);
     erroCampo('fc', true);

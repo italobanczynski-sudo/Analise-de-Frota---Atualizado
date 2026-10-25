@@ -23,6 +23,7 @@ func main() {
 	tokens := flag.String("tokens", "", "caminho do api/.env com os GOBRAX_TOKEN_* (usado com -importar-clientes)")
 	adminNome := flag.String("criar-admin", "", "nome do administrador a criar (com -email): mostra o link de convite e sai")
 	adminEmail := flag.String("email", "", "e-mail do administrador (usado com -criar-admin)")
+	novoConvite := flag.String("novo-convite", "", "e-mail de quem já está cadastrado: mostra um link novo para criar a senha e sai")
 	flag.Parse()
 
 	environment.Load()
@@ -48,6 +49,16 @@ func main() {
 			logrus.Fatalf("criar administrador: %v", err)
 		}
 		fmt.Println("Administrador criado. Abra este link para criar a senha (vale uma vez só):")
+		fmt.Println(link)
+		return
+	}
+
+	if *novoConvite != "" {
+		link, err := mwusuario.NovoConvitePorEmail(context.Background(), *novoConvite)
+		if err != nil {
+			logrus.Fatalf("novo convite: %v", err)
+		}
+		fmt.Println("Link novo para criar a senha (vale uma vez só; o anterior deixou de valer):")
 		fmt.Println(link)
 		return
 	}

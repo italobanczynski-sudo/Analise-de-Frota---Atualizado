@@ -27,6 +27,14 @@ func (m Auth_t) Entrar(ctx context.Context) (*middleware.Response_t, *Entrada_t)
 	return abrirSessao(ctx, u)
 }
 
+// abrirSessaoComSenhaNova derruba os logins antigos da pessoa (alguém que tinha a senha velha perde o acesso) e abre o novo
+func abrirSessaoComSenhaNova(ctx context.Context, u usuario.Usuario_t) (*middleware.Response_t, *Entrada_t) {
+	if err := sessao.NewSessao().EncerrarDoUsuario(ctx, u.ID); err != nil {
+		return middleware.RetErro(err), nil
+	}
+	return abrirSessao(ctx, u)
+}
+
 func abrirSessao(ctx context.Context, u usuario.Usuario_t) (*middleware.Response_t, *Entrada_t) {
 	ses, err := sessao.NewSessao().Criar(ctx, u.ID)
 	if err != nil {

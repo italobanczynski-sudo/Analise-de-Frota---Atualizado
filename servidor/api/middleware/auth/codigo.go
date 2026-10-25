@@ -51,7 +51,7 @@ func (m Auth_t) ConfirmarCodigo(ctx context.Context) (*middleware.Response_t, *E
 		return middleware.RetErro(err), nil
 	}
 	limparErros(m.Email, m.Origem)
-	return abrirSessao(ctx, u)
+	return abrirSessaoComSenhaNova(ctx, u)
 }
 
 func textoCodigo(c usuario.Codigo_t) string {

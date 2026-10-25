@@ -26,6 +26,20 @@ async function api(metodo, caminho, corpo) {
   return j.dados;
 }
 
+// irParaPlataforma vai para a área logada só depois de conferir que o navegador guardou o login.
+// Com URL_PUBLICA em https, o cookie é "Secure": numa página aberta por http:// o navegador o descarta e a
+// pessoa voltaria para a tela de entrada sem nenhum aviso.
+async function irParaPlataforma() {
+  try {
+    await api('GET', '/api/v1/auth/eu');
+  } catch (e) {
+    throw new Error(location.protocol === 'http:'
+      ? 'A senha foi aceita, mas o navegador não guardou o login porque esta página foi aberta sem conexão segura (http://). Abra o endereço com https:// e entre de novo.'
+      : 'A senha foi aceita, mas o navegador não guardou o login. Libere os cookies deste site e entre de novo.');
+  }
+  location.replace('/plataforma');
+}
+
 function toast(texto, erro) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const t = document.createElement('div');

@@ -18,6 +18,7 @@ import (
 type Service_I interface {
 	Listar(ctx context.Context) ([]Usuario_t, error)
 	Buscar(ctx context.Context, id int64) (Usuario_t, error)
+	BuscarPorEmail(ctx context.Context, email string) (Usuario_t, error)
 	// Criar cadastra a pessoa e já gera o convite para ela criar a senha
 	Criar(ctx context.Context, nome, email, papel string) (Usuario_t, Convite_t, error)
 	// NovoConvite gera outro link (o anterior deixa de valer); serve também para trocar a senha esquecida
@@ -142,6 +143,11 @@ func (u *usuario_t) Listar(ctx context.Context) ([]Usuario_t, error) {
 
 func (u *usuario_t) Buscar(ctx context.Context, id int64) (Usuario_t, error) {
 	r, err := u.repo.BuscarPorID(ctx, id)
+	return deRow(r), traduzir(err)
+}
+
+func (u *usuario_t) BuscarPorEmail(ctx context.Context, email string) (Usuario_t, error) {
+	r, err := u.repo.BuscarPorEmail(ctx, normalizarEmail(email))
 	return deRow(r), traduzir(err)
 }
 

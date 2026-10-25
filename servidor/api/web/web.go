@@ -27,8 +27,22 @@ func Pagina(nome string) gin.HandlerFunc {
 	}
 }
 
-// Estatico serve CSS, JS e imagens
+// Estatico serve CSS, JS e imagens (só arquivos: pasta dá 404, sem listar o conteúdo)
 func Estatico() http.FileSystem {
 	sub, _ := fs.Sub(estatico, "estatico")
-	return http.FS(sub)
+	return semPastas{http.FS(sub)}
+}
+
+type semPastas struct{ http.FileSystem }
+
+func (s semPastas) Open(nome string) (http.File, error) {
+	f, err := s.FileSystem.Open(nome)
+	if err != nil {
+		return nil, err
+	}
+	if info, err := f.Stat(); err != nil || info.IsDir() {
+		f.Close()
+		return nil, fs.ErrNotExist
+	}
+	return f, nil
 }

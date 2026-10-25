@@ -1,3 +1,7 @@
+# No computador:  docker compose up -d --build                     → banco + servidor em http://localhost:8080
+# No servidor:    docker compose --profile producao up -d --build   → + nginx com HTTPS (veja setup-producao.ps1)
+# Testes:         docker compose --profile testes run --rm testes   (unitários)
+#                 bash testes/rodar-e2e.sh                          (ponta a ponta, em banco descartável)
 services:
   db:
     image: postgres:16-alpine
@@ -12,21 +16,25 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
 
   app:
     build: .
     env_file: .env
     environment:
       DATABASE_URL: postgres://frota:${POSTGRES_PASSWORD}@db:5432/frota?sslmode=disable
+      # o nginx chega pela rede interna do Docker: só dele o servidor aceita o IP real em X-Forwarded-For
+      PROXIES_CONFIAVEIS: ${PROXIES_CONFIAVEIS:-172.16.0.0/12,192.168.0.0/16,10.0.0.0/8}
     depends_on:
       db:
         condition: service_healthy
-    # Porta exposta só internamente para o nginx; não abre para a internet
-    expose:
-      - "8080"
+    # só neste computador (127.0.0.1): para a internet, quem atende é o nginx
+    ports:
+      - "127.0.0.1:${PORTA_LOCAL:-8080}:8080"
     volumes:
       # só leitura: para importar os clientes do script antigo (-importar-clientes /importar/clientes.json -tokens /importar/.env)
       - ../api:/importar:ro
+    restart: unless-stopped
 
   nginx:
     image: nginx:1.27-alpine
@@ -34,24 +42,25 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx:/etc/nginx/conf.d:ro
+      # um site só: analisefrota (HTTPS, padrão) ou http-somente (antes de existir o certificado)
+      - ./nginx/${NGINX_SITE:-analisefrota}.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot-www:/var/www/certbot:ro
       - certbot-certs:/etc/letsencrypt:ro
     depends_on:
       - app
     restart: unless-stopped
+    profiles: ["producao"]
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot:v2.11.0
     volumes:
       - certbot-www:/var/www/certbot
       - certbot-certs:/etc/letsencrypt
-    # Roda manualmente ou via cron para renovar; não fica up o tempo todo
+    # roda só sob demanda (gerar e renovar o certificado)
     profiles: ["certbot"]
 
-  # docker compose --profile testes run --rm testes
   testes:
-    image: golang:1.23-alpine
+    image: golang:1.27-alpine
     working_dir: /src
     volumes:
       - .:/src

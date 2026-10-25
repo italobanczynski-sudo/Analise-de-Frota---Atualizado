@@ -13,5 +13,5 @@ func (m Auth_t) AceitarConvite(ctx context.Context) (*middleware.Response_t, *En
 	if err != nil {
 		return middleware.RetErro(err), nil
 	}
-	return abrirSessao(ctx, u)
+	return abrirSessaoComSenhaNova(ctx, u)
 }

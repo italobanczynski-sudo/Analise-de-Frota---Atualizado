@@ -34,7 +34,7 @@ $('form-convite').addEventListener('submit', async (ev) => {
   carregando(true);
   try {
     await api('POST', '/api/v1/auth/convite', { token, senha });
-    location.replace('/plataforma');
+    await irParaPlataforma();
   } catch (e) {
     carregando(false);
     aviso(e.message);

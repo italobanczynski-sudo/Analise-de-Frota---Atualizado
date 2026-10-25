@@ -15,7 +15,7 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 | `vendor/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
 | `docs/` | Documentação da API Gobrax usada pelo painel |
 | `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `api/.env` e lista em `api/clientes.json`, ambos fora do Git |
-| `servidor/` | Novo servidor em Go (fase 1): busca, banco e API. Veja [servidor/README.md](servidor/README.md) |
+| `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
 
 ## Painel no Claude
@@ -36,8 +36,10 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 - O token de cada cliente fica só no `localStorage` de quem o digitou (`gbx-api-token:<cliente>`), nunca na base compartilhada nem no código.
 - Limites da API: 10 chamadas/s e no máximo 31 dias por consulta.
 
-## Servidor (em construção)
-A pasta [servidor/](servidor/README.md) tem o servidor em Go (padrão Gobrax) que busca a API Gobrax sozinho a cada hora, guarda tudo no Postgres com os tokens cifrados e entrega pela API HTTP. Roda com Docker no computador. Na fase 1 ele substitui o `api/puxar.mjs`; o painel ainda lê os dados como antes até a fase 2.
+## Plataforma com login (servidor em Go)
+A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `api/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
+
+Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
 
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.

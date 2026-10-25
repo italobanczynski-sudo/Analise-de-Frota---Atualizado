@@ -21,3 +21,18 @@ func (m Usuario_t) NovoConvite(ctx context.Context) *middleware.Response_t {
 	}
 	return middleware.RetOkData(ComConvite_t{Usuario: u, Link: linkConvite(conv.Token), ExpiraEm: conv.ExpiraEm})
 }
+
+// NovoConvitePorEmail gera, pela linha de comando, outro link para quem já está cadastrado
+// (recuperação quando ninguém consegue entrar e o e-mail não sai)
+func NovoConvitePorEmail(ctx context.Context, email string) (string, error) {
+	svc := modusuario.NewUsuario()
+	u, err := svc.BuscarPorEmail(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	conv, err := svc.NovoConvite(ctx, u.ID)
+	if err != nil {
+		return "", err
+	}
+	return linkConvite(conv.Token), nil
+}

@@ -47,6 +47,14 @@ func bloqueado(email, origem string, agora time.Time) bool {
 func registrarErro(email, origem string, agora time.Time) {
 	travaMu.Lock()
 	defer travaMu.Unlock()
+	// tira as janelas já vencidas antes de crescer (muitos e-mails diferentes não enchem a memória)
+	if len(trava) >= 1000 {
+		for k, t := range trava {
+			if agora.Sub(t.primeira) > janelaTrava {
+				delete(trava, k)
+			}
+		}
+	}
 	for _, c := range chavesTrava(email, origem) {
 		t, ok := trava[c.k]
 		if !ok || agora.Sub(t.primeira) > janelaTrava {

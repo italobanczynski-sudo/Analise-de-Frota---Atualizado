@@ -1,0 +1,11 @@
+# Ajustes do ambiente de teste ponta a ponta (usado por testes/rodar-e2e.sh, projeto Docker separado e banco descartável)
+services:
+  app:
+    environment:
+      # http: o teste fala com o servidor sem HTTPS, então o cookie não pode ser Secure
+      URL_PUBLICA: http://localhost:18080
+      ORIGENS_PERMITIDAS: http://localhost:18080
+      COLETA_AUTOMATICA: "false"
+      # sem SMTP: nenhum e-mail sai; o código de acesso aparece só no log (o teste o lê de lá)
+      SMTP_HOST: ""
+      SMTP_REMETENTE: ""

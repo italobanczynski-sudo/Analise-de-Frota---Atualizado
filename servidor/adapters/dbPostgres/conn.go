@@ -2,6 +2,7 @@
 package dbPostgres
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -21,10 +22,17 @@ var (
 func GetPgConn() *sqlx.DB {
 	connOnce.Do(func() {
 		var err error
+		url := environment.Cfg.Database.URL
 		for tentativa := 1; tentativa <= 15; tentativa++ {
-			conn, err = sqlx.Connect("postgres", environment.Cfg.Database.URL)
+			conn, err = sqlx.Connect("postgres", url)
 			if err == nil {
 				break
+			}
+			// banco da rede interna da hospedagem sem SSL (o driver tenta SSL quando a URL não diz nada)
+			if strings.Contains(err.Error(), "SSL is not enabled") && !strings.Contains(url, "sslmode=") {
+				url += map[bool]string{true: "&", false: "?"}[strings.Contains(url, "?")] + "sslmode=disable"
+				tentativa--
+				continue
 			}
 			logrus.Warnf("postgres: tentativa %d sem conexão: %v", tentativa, err)
 			time.Sleep(2 * time.Second)

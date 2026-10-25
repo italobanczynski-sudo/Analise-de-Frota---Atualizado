@@ -1,6 +1,9 @@
 package environment
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 type ServidorConfig_t struct {
 	Porta string `envconfig:"PORTA" default:"8080"`
@@ -12,6 +15,22 @@ type ServidorConfig_t struct {
 	// aceita X-Forwarded-For: sem isso, atrás de um proxy todo mundo parece vir do mesmo IP e a trava de
 	// tentativas de login bloquearia todos juntos. Vazio = o IP vem direto da conexão.
 	ProxiesConfiaveis []string `envconfig:"PROXIES_CONFIAVEIS"`
+}
+
+// hospedagem completa o que a hospedagem já informa sozinha, quando não veio nas variáveis do servidor:
+// porta em PORT (Render, Railway) e endereço público em RENDER_EXTERNAL_URL (Render)
+func hospedagem(s *ServidorConfig_t) {
+	if os.Getenv("PORTA") == "" && os.Getenv("PORT") != "" {
+		s.Porta = os.Getenv("PORT")
+	}
+	if ext := strings.TrimRight(os.Getenv("RENDER_EXTERNAL_URL"), "/"); ext != "" {
+		if os.Getenv("URL_PUBLICA") == "" {
+			s.URLPublica = ext
+		}
+		if os.Getenv("ORIGENS_PERMITIDAS") == "" {
+			s.OrigensPermitidas = []string{ext}
+		}
+	}
 }
 
 // HTTPS indica se o cookie de login deve ir só por conexão segura

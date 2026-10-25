@@ -36,6 +36,7 @@ func Load() {
 			log.Fatalf("environment: configuração de %s inválida: %v", nome, err)
 		}
 	}
+	hospedagem(&Cfg.Servidor)
 	if err := Cfg.Seguranca.validar(); err != nil {
 		log.Fatalf("environment: %v", err)
 	}

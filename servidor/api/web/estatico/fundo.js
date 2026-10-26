@@ -6,7 +6,7 @@
   const x = c.getContext('2d');
   const parado = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W, H, dpr, hubs, routes, trucks, tower;
-  const Y = '254,219,0', O = '255,154,60';
+  const Y = '252,183,9', O = '217,48,37';
 
   function size() {
     dpr = Math.min(devicePixelRatio || 1, 2); W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr;
@@ -55,7 +55,7 @@
   let t = 0;
   function frame() {
     t += 0.016;
-    x.fillStyle = '#121212'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#F1F1EC'; x.fillRect(0, 0, W, H);
     let g = x.createRadialGradient(tower.x, tower.y, 0, tower.x, tower.y, W * 0.5);
     g.addColorStop(0, `rgba(${Y},.14)`); g.addColorStop(1, 'transparent');
     x.fillStyle = g; x.fillRect(0, 0, W, H);
@@ -86,7 +86,7 @@
         x.fillStyle = `rgba(${Y},${0.6 * (1 - j / 8)})`; x.beginPath(); x.arc(q.x, q.y, (3 - j * 0.25) * dpr, 0, 7); x.fill();
       }
       const q = bez(k.r, k.p);
-      x.shadowColor = `rgb(${Y})`; x.shadowBlur = 12 * dpr; x.fillStyle = '#FFFFFD'; x.beginPath(); x.arc(q.x, q.y, 2.4 * dpr, 0, 7); x.fill(); x.shadowBlur = 0;
+      x.shadowColor = `rgb(${Y})`; x.shadowBlur = 12 * dpr; x.fillStyle = '#2B2B2B'; x.beginPath(); x.arc(q.x, q.y, 2.4 * dpr, 0, 7); x.fill(); x.shadowBlur = 0;
     });
     // polos
     hubs.forEach((h) => {

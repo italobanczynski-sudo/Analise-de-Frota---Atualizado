@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════
    Análise de Frota · Gobrax — Telas de acesso (login, convite)
-   Visual escuro premium com glassmorphism e identidade Gobrax.
+   Visual claro com vidro e cápsulas, igual ao painel (identidade v3).
    ═══════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   --amarelo:      #FEDB00;
@@ -27,7 +27,7 @@
 html, body { height: 100%; }
 
 body {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--texto);
   overflow: hidden;
@@ -238,7 +238,7 @@ main {
   border: 1px solid var(--vidro-borda);
   background: rgba(255,255,255,.06);
   color: var(--texto);
-  font: 15px 'Inter', sans-serif;
+  font: 15px 'Montserrat', sans-serif;
   outline: none;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
@@ -293,7 +293,7 @@ main {
 .row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 22px; font-size: 13px; flex-wrap: wrap; align-items: center; }
 .row.direita { justify-content: flex-end; }
 
-.link { color: var(--amarelo); text-decoration: none; background: none; border: 0; font: 13px 'Inter', sans-serif; cursor: pointer; padding: 0; transition: opacity .2s; }
+.link { color: var(--amarelo); text-decoration: none; background: none; border: 0; font: 13px 'Montserrat', sans-serif; cursor: pointer; padding: 0; transition: opacity .2s; }
 .link:hover { opacity: .75; text-decoration: underline; }
 .link:disabled { color: var(--muted2); cursor: default; text-decoration: none; opacity: 1; }
 
@@ -307,7 +307,7 @@ main {
   height: 54px;
   border: 0;
   border-radius: 14px;
-  font: 700 15px 'Inter', sans-serif;
+  font: 700 15px 'Montserrat', sans-serif;
   letter-spacing: .02em;
   color: #1A1A1A;
   cursor: pointer;
@@ -386,3 +386,52 @@ main {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .01s !important; animation-delay: 0s !important; }
 }
+
+/* ══════════════════════════════════════════
+   Identidade v3: claro, vidro e cápsulas (igual ao painel)
+══════════════════════════════════════════ */
+:root {
+  --bg:           #F1F1EC;
+  --vidro:        rgba(255, 255, 255, 0.74);
+  --vidro-borda:  rgba(255, 255, 255, 0.95);
+  --vidro-borda2: rgba(252, 183, 9, 0.45);
+  --texto:        #202124;
+  --muted:        #5F6368;
+  --muted2:       #80868B;
+  --erro:         #C5221F;
+  --erro-borda:   #D93025;
+  --sucesso:      #137333;
+  color-scheme: light;
+}
+.bg::before {
+  background:
+    radial-gradient(ellipse 70% 60% at 100% 0%, rgba(254,219,0,.30) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 0% 100%, rgba(252,183,9,.16) 0%, transparent 60%);
+}
+.shade {
+  background:
+    radial-gradient(ellipse at 72% 50%, rgba(241,241,236,0) 0%, rgba(241,241,236,.55) 75%),
+    linear-gradient(90deg, rgba(241,241,236,.75) 0%, rgba(241,241,236,0) 50%, rgba(241,241,236,.4) 100%);
+}
+.brand { letter-spacing: -.06em; }
+.brand span:nth-child(n+3) { color: #2B2B2B; }
+.produto { color: #2B2B2B; }
+.produto::before { background: var(--amarelo); height: 4px; }
+.ev { background: rgba(255,255,255,.7); border-color: var(--vidro-borda); box-shadow: 0 8px 20px -12px rgba(31,31,26,.25); border-radius: 999px; }
+.ev:hover { background: rgba(255,255,255,.9); }
+.ev i { background: #D93025; box-shadow: 0 0 8px rgba(217,48,37,.6); }
+.ev.ok i { background: var(--amarelo-2); box-shadow: 0 0 10px rgba(252,183,9,.8); }
+.ev.ok em { color: #6B5200; font-weight: 600; }
+.card {
+  border-radius: 30px;
+  box-shadow: 0 2px 4px rgba(31,31,26,.04), 0 40px 80px -28px rgba(31,31,26,.35);
+}
+.field label { text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--texto); }
+.field input { background: #FFFFFF; border-color: #E3E6E8; border-radius: 16px; }
+.field input:focus { background: #FFFFFF; box-shadow: 0 0 0 4px rgba(254,219,0,.35); }
+.eye:hover { background: #F1F3F4; }
+.link { color: #2B2B2B; font-weight: 600; text-decoration: underline; text-decoration-color: var(--amarelo); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.link:hover { opacity: 1; color: #6B5200; }
+.btn { border-radius: 999px; color: #2B2B2B; box-shadow: 0 14px 30px -12px rgba(252,183,9,.9); }
+.btn:hover { box-shadow: 0 18px 36px -12px rgba(252,183,9,1); }
+:focus-visible { outline-color: #2B2B2B; }

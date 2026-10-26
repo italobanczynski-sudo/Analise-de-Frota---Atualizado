@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════
    Análise de Frota · Gobrax — Área logada
-   Padrão visual: topo amarelo, cartões brancos/escuros, tipografia Inter.
+   Padrão visual: topo amarelo, cartões brancos/escuros, tipografia Montserrat.
    ═══════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
 :root {
   /* Paleta Gobrax */
@@ -42,7 +42,7 @@
   --sombra-suave:     0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
   --sombra-media:     0 4px 16px rgba(0,0,0,.10), 0 8px 28px rgba(0,0,0,.07);
   --raio:             16px;
-  --fonte: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --fonte: 'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   color-scheme: light;
 }
@@ -403,3 +403,58 @@ tbody tr:hover { background: var(--apoio); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation-duration: .01s !important; }
 }
+
+/* ══════════════════════════════════════════
+   Identidade v3: vidro, cápsulas e brilho amarelo (igual ao painel)
+══════════════════════════════════════════ */
+:root {
+  --fundo: #F1F1EC;
+  --raio: 22px;
+  --vidro: rgba(255,255,255,.78);
+  --vidro-borda: rgba(255,255,255,.95);
+  --brilho-a: rgba(254,219,0,.30);
+  --brilho-b: rgba(252,183,9,.16);
+  --ativo: #2B2B2B;
+  --ativo-tinta: #FFFFFD;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #0F1012;
+    --vidro: rgba(30,31,35,.74);
+    --vidro-borda: rgba(255,255,255,.07);
+    --brilho-a: rgba(254,219,0,.10);
+    --brilho-b: rgba(252,183,9,.06);
+    --ativo: #FEDB00;
+    --ativo-tinta: #2B2B2B;
+  }
+}
+body {
+  background:
+    radial-gradient(60% 50% at 100% 0%, var(--brilho-a) 0%, transparent 70%),
+    radial-gradient(45% 45% at 0% 100%, var(--brilho-b) 0%, transparent 70%),
+    var(--fundo);
+  background-attachment: fixed;
+}
+.topo {
+  top: 12px; margin: 12px auto 0; max-width: calc(1200px + 2 * max(20px, env(safe-area-inset-left)));
+  width: calc(100% - 24px); border: 1px solid var(--vidro-borda); border-radius: 999px;
+  background: var(--vidro); box-shadow: 0 14px 34px -14px rgba(31,31,26,.18);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4);
+}
+.topo-int { padding: 0 12px 0 22px; }
+.btn { border-radius: 999px; }
+.btn-peq, .btn-grande { border-radius: 999px; }
+.btn-primario { box-shadow: 0 8px 18px -8px rgba(252,183,9,.9); }
+.abas {
+  align-self: flex-start; gap: 4px; padding: 5px; border: 1px solid var(--vidro-borda); border-radius: 999px;
+  background: var(--vidro); box-shadow: 0 14px 34px -14px rgba(31,31,26,.14);
+}
+.aba { border: 0; margin: 0; border-radius: 999px; padding: 9px 18px; font-weight: 500; }
+.aba[aria-selected="true"] { background: var(--ativo); color: var(--ativo-tinta); font-weight: 600; }
+.cab h1 { font-size: 30px; font-weight: 700; letter-spacing: -.035em; }
+.cartao {
+  border: 1px solid var(--vidro-borda); background: var(--vidro);
+  box-shadow: 0 1px 2px rgba(31,31,26,.04), 0 14px 34px -14px rgba(31,31,26,.14);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+}
+.campo input, .campo select { border-radius: 12px; }

@@ -1687,12 +1687,17 @@ html[data-tema="escuro"] .hero-v2 .hv-stat b { color: #FEDB00; text-shadow: 0 0 
 html[data-tema="escuro"] .hero-v2 .hv-stat small { color: var(--texto-2); }
 html[data-tema="escuro"] .hero-v2 .hv-ic { background: #FEDB00; color: #2B2B2B; box-shadow: 0 0 16px rgba(254, 219, 0, 0.5); }
 html[data-tema="escuro"] .hero-v2 .dp-campo { background: rgba(255, 255, 255, 0.06); color: var(--tinta); border: 1px solid rgba(254, 219, 0, 0.3); }
+/* brilho que atravessa o cabeçalho: corre por dentro dele (o cabeçalho não corta nada, para o calendário abrir inteiro) */
 .hero-geral.hero-v2::after {
-  content: ""; display: block; position: absolute; top: 0; bottom: 0; left: 0; width: 30%; right: auto; height: auto; border-radius: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent); animation: gbx-varre 5s linear infinite; pointer-events: none;
+  content: ""; display: block; position: absolute; inset: 0; width: auto; height: auto; border-radius: inherit; z-index: 0;
+  background: linear-gradient(100deg, transparent 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  animation: gbx-reflexo 6s linear infinite; pointer-events: none;
 }
-html[data-tema="escuro"] .hero-geral.hero-v2::after { background: linear-gradient(90deg, transparent, rgba(254, 219, 0, 0.08), transparent); }
-.hero-geral.hero-v2 { overflow: hidden; }
+html[data-tema="escuro"] .hero-geral.hero-v2::after { background-image: linear-gradient(100deg, transparent 42%, rgba(254, 219, 0, 0.08) 50%, transparent 58%); }
+@keyframes gbx-reflexo { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+.hero-geral.hero-v2 { overflow: visible; }
+.hero-v2 .hv-topo, .hero-v2 .hv-stats { position: relative; z-index: 1; }
+.hero-v2 .hv-topo { z-index: 30; }
 .hero-v2 .hv-topo { overflow: visible; }
 
 /* Números do topo do escuro com brilho; KPI selecionado aceso */
@@ -1712,6 +1717,10 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
 
 /* Anéis de desempenho */
 .aneis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+/* botão principal volta a ser amarelo (a camada v3 tinha trocado o fundo de todos os botões) */
+.btn.btn-primario { background: var(--amarelo); color: #2B2B2B; border-color: transparent; font-weight: 600; }
+.btn.btn-primario:hover { background: var(--amarelo-hover); color: #2B2B2B; }
+.btn.btn-primario:disabled { background: var(--apoio); color: var(--texto-3); box-shadow: none; }
 .anel-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 12px 16px; border-radius: 18px; text-align: center;
   background: var(--vidro-forte); border: 1px solid var(--hairline); transition: transform 180ms var(--ease), box-shadow 180ms var(--ease); }
 .anel-card:hover { transform: translateY(-3px); box-shadow: var(--sombra-flutua); }
@@ -3012,6 +3021,7 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 52, data: '2026-10-26', titulo: 'Usuários em Configurações e anéis novos', texto: 'No painel com login, quem é administrador convida pessoas, troca o perfil, gera link de senha e desativa acessos direto em Configurações. A barra com seu nome saiu do canto da tela e virou o botão com suas iniciais no topo. Os Anéis de desempenho mostram agora início da faixa verde, motor ligado parado, embalo, piloto automático e pedal no range crítico. O calendário do cabeçalho voltou a abrir inteiro.', href: '#/config', link: 'Abrir Configurações' },
     { id: 51, data: '2026-10-26', titulo: 'Central de comando', texto: 'O painel virou uma central de comando: fundo escuro com grade (o claro continua no botão do sol), números em fonte de painel, gráficos com brilho e animação, Análise inteligente da frota e Anéis de desempenho na Visão geral. Veículos e grupos saiu do menu. Motorista individual agora é uma aba dentro de Motoristas.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 50, data: '2026-10-26', titulo: 'Menu no topo e gráficos novos', texto: 'O menu lateral saiu: as seções (Relatório, Frota, Motoristas, Retenção) ficam em pílulas no topo, e as páginas de cada seção aparecem logo abaixo. Os gráficos mudaram: linhas suaves com área listrada e o valor do último dia num balão, barras em cápsula com a maior em amarelo, medidores em semicírculo, rosca em segmentos e calendário em bolinhas. Passe o mouse para ver cada dia.', href: '#/dashboards', link: 'Abrir Dashboards' },
     { id: 49, data: '2026-10-26', titulo: 'Novo visual do painel', texto: 'O painel ganhou cara nova: cartões de vidro arredondados, menu e topo flutuantes, abas em cápsula, números maiores e o cabeçalho da Visão geral em amarelo Gobrax. A fonte agora é a Montserrat. A tela de entrada também ficou clara. Os dados e os botões continuam nos mesmos lugares.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -5709,7 +5719,7 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
   // ---------- Configurações: clientes e anexo de planilhas (no perfil de cada cliente) ----------
   function abasConfig() {
     return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Configurações</h1>
-      <span class="sub">Clientes e dados da API. Para buscar os dados, abra o perfil do cliente.</span></div></div>`;
+      <span class="sub">${ehAdmin() ? 'Usuários, clientes e dados da API.' : 'Clientes e dados da API.'} Para buscar os dados, abra o perfil do cliente.</span></div></div>`;
   }
 
   // ---------- Tela: Visão geral — o relatório padrão para mostrar ao cliente ----------
@@ -5753,18 +5763,20 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
   // Anéis de desempenho: cada indicador de condução como um anel, com a mudança contra o período anterior
   function aneisDesempenho(c) {
     const A = c.frotaA, B = c.frotaB;
-    const ks = ['nota', 'faixa_verde', 'inicio_faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador'].filter((k) => IND_MAP[k] && temInd(k) && A[k] !== null && A[k] !== undefined);
+    // só os cinco que a operação acompanha; o pedal crítico é o range alto do acelerador (pedalPressureOnHigh na API)
+    const ROT_ANEL = { motor_ocioso: 'Motor ligado parado', pressao_acelerador: 'Pedal no range crítico' };
+    const ks = ['inicio_faixa_verde', 'motor_ocioso', 'embalo', 'piloto_automatico', 'pressao_acelerador'].filter((k) => IND_MAP[k] && temInd(k) && A[k] !== null && A[k] !== undefined);
     if (!ks.length) return '';
     const R = 38, L = 2 * Math.PI * R;
     const anel = (k) => {
       const ind = IND_MAP[k], v = A[k], p = clamp(v, 0, 100) / 100, id = X.ui.novoId('an');
       const menor = ind.melhor !== undefined && ind.melhor < 0;
-      return `<div class="anel-card"><svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="${esc(ind.label)} ${esc(fmtInd(ind, v))}">
+      return `<div class="anel-card"><svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="${esc(ROT_ANEL[k] || ind.label)} ${esc(fmtInd(ind, v))}">
           <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FEDB00"/><stop offset="1" stop-color="#FCB709"/></linearGradient></defs>
           <circle cx="52" cy="52" r="${R}" fill="none" style="stroke:var(--graf-hach)" stroke-width="10" stroke-dasharray="2 4"/>
           <circle class="anel-arco" cx="52" cy="52" r="${R}" fill="none" stroke="url(#${id})" stroke-width="10" stroke-linecap="round" transform="rotate(-90 52 52)" style="stroke-dasharray:${L.toFixed(1)};stroke-dashoffset:${(L * (1 - p)).toFixed(1)};--len:${L.toFixed(1)}"/>
           <text class="anel-num" x="52" y="58" text-anchor="middle">${esc(fmtInd(ind, v))}</text></svg>
-        <b>${esc(ind.label)}</b><span class="anel-sub">${menor ? 'menor é melhor' : 'maior é melhor'}</span>${variacao(X.variacao(ind, v, B[k]))}</div>`;
+        <b>${esc(ROT_ANEL[k] || ind.label)}</b><span class="anel-sub">${menor ? 'menor é melhor' : 'maior é melhor'}</span>${variacao(X.variacao(ind, v, B[k]))}</div>`;
     };
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Anéis de desempenho</h2>
         <span class="h2-sub">Onde a frota está em cada indicador de condução no período e quanto mudou desde o período anterior.</span></div></div>
@@ -6519,6 +6531,82 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
   const periodosTxt = (ls) => { const cs = coberturas({ linhas: ls }); return cs.length ? cs.map((c) => D.periodoBR(c)).join(' · ') : ''; };
 
   // Configurações → lista de clientes; cada cliente abre o próprio perfil, onde as planilhas são anexadas
+  // ---------- Usuários: no painel do servidor (/painel), o administrador convida e gerencia quem entra ----------
+  // A ponte do servidor (painel-base.js) publica window.GBX_CONTA = { eu, chamar }; no GitHub Pages e no Claude não há login e a seção não aparece.
+  const PAPEIS_USU = { admin: 'Administrador', colaborador: 'Colaborador', leitor: 'Leitor' };
+  const contaSrv = () => window.GBX_CONTA || null;
+  const ehAdmin = () => !!(contaSrv() && contaSrv().eu && contaSrv().eu.papel === 'admin');
+  const usu = () => E.usu || (E.usu = { lista: null, carregando: false, enviando: false, erro: '', form: { nome: '', email: '', papel: 'leitor' }, link: '', linkTxt: '' });
+  const dataHoraBR = (s) => (s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+  const naConfig = () => ['config', 'clientes', 'importar'].includes(E.rota.tela);
+  async function usuCarregar() {
+    const cs = contaSrv(), U = usu();
+    if (!cs) return;
+    U.carregando = true;
+    try { U.lista = await cs.chamar('GET', '/api/v1/usuarios'); }
+    catch (e) { U.lista = U.lista || []; U.erro = e.message; }
+    U.carregando = false;
+    if (naConfig()) render();
+  }
+  async function usuAlterar(id, papel, ativo) {
+    const U = usu(), u = (U.lista || []).find((x) => String(x.id) === String(id)), cs = contaSrv();
+    if (!u || !cs) return;
+    papel = papel || u.papel;
+    ativo = ativo === null ? u.ativo : ativo;
+    if (!ativo && u.ativo && !confirm('Desativar ' + u.nome + '? A pessoa sai da plataforma na hora e não consegue mais entrar.')) return;
+    try {
+      await cs.chamar('PUT', '/api/v1/usuarios/' + encodeURIComponent(u.id), { papel, ativo });
+      toast(!ativo ? u.nome + ' desativado.' : ativo !== u.ativo ? u.nome + ' reativado.' : 'Perfil de ' + u.nome + ' agora é ' + PAPEIS_USU[papel] + '.');
+      if (String(u.id) === String(cs.eu.id)) cs.eu.papel = papel;   // quem tirou o próprio perfil de administrador deixa de ver esta seção
+    } catch (e) { toast(e.message, 'erro'); }
+    usuCarregar();
+  }
+  function blocoUsuarios() {
+    if (!ehAdmin()) return '';
+    const U = usu(), eu = contaSrv().eu, f = U.form;
+    if (U.lista === null && !U.carregando) setTimeout(usuCarregar, 0);
+    const linhas = (U.lista || []).map((u) => {
+      const souEu = String(u.id) === String(eu.id), id = esc(String(u.id));
+      const sit = !u.ativo ? '<span class="badge badge-neutro">Desativado</span>' : !u.tem_senha ? '<span class="badge badge-atencao">Convite pendente</span>' : '<span class="badge badge-ok">Ativo</span>';
+      const papel = `<select class="campo" data-campo="usu-papel" data-id="${id}" aria-label="Perfil de ${esc(u.nome)}" ${u.ativo ? '' : 'disabled'} style="max-width:190px">${Object.entries(PAPEIS_USU).map(([v, r]) => `<option value="${v}" ${v === u.papel ? 'selected' : ''}>${r}</option>`).join('')}</select>`;
+      const acoes = [
+        u.ativo ? `<button type="button" class="btn-link peq" data-acao="usu-link" data-id="${id}">${u.tem_senha ? 'Novo link de senha' : 'Novo link de convite'}</button>` : '',
+        souEu ? '' : u.ativo ? `<button type="button" class="btn-link peq critico-txt" data-acao="usu-ativo" data-id="${id}" data-ativo="0">Desativar</button>` : `<button type="button" class="btn-link peq" data-acao="usu-ativo" data-id="${id}" data-ativo="1">Reativar</button>`
+      ].filter(Boolean).join(' ');
+      return `<tr><td><span class="pessoa">${avatar(u.nome, 32)}<span style="display:flex;flex-direction:column;min-width:0"><b style="font-weight:600">${esc(u.nome)}${souEu ? ' (você)' : ''}</b><span class="apoio">${esc(u.email)}</span></span></span></td>
+        <td>${papel}</td><td>${sit}</td><td class="dir">${dataHoraBR(u.ultimo_acesso)}</td><td class="dir" style="white-space:nowrap">${acoes}</td></tr>`;
+    }).join('');
+    const vazio = U.lista === null || U.carregando && !(U.lista || []).length
+      ? '<tr><td colspan="5"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando os usuários…</span></div></td></tr>'
+      : '<tr><td colspan="5"><div class="vazio"><span class="apoio">Nenhum usuário cadastrado.</span></div></td></tr>';
+    return `<section class="card" id="usuarios">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Usuários</h2>
+        <span class="h2-sub">Quem pode entrar no painel e o que cada um pode fazer. A pessoa convidada entra por <b>Primeiro acesso</b> na tela de entrada (recebe um código no e-mail) ou pelo link de convite, que vale uma vez só, por 72 horas.</span></div></div>
+      <div class="card-corpo">
+        <div class="grade-2" style="align-items:end">
+          <div class="campo-bloco"><label class="campo-rotulo" for="usu-nome">Nome</label><input class="campo" id="usu-nome" data-campo="usu-f-nome" value="${esc(f.nome)}" autocomplete="off" maxlength="120"></div>
+          <div class="campo-bloco"><label class="campo-rotulo" for="usu-email">E-mail</label><input class="campo" id="usu-email" type="email" data-campo="usu-f-email" value="${esc(f.email)}" autocomplete="off" maxlength="200"></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div class="campo-bloco" style="min-width:240px"><label class="campo-rotulo" for="usu-papel-novo">Perfil</label>
+            <select class="campo" id="usu-papel-novo" data-campo="usu-f-papel">
+              <option value="leitor" ${f.papel === 'leitor' ? 'selected' : ''}>Leitor: só vê</option>
+              <option value="colaborador" ${f.papel === 'colaborador' ? 'selected' : ''}>Colaborador: vê e pede buscas</option>
+              <option value="admin" ${f.papel === 'admin' ? 'selected' : ''}>Administrador: tudo, inclusive usuários</option>
+            </select></div>
+          <button type="button" class="btn btn-primario" data-acao="usu-convidar" ${U.enviando ? 'disabled' : ''}>${U.enviando ? 'Gerando…' : 'Gerar convite'}</button>
+        </div>
+        ${U.erro ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(U.erro)}</span></div></div>` : ''}
+        ${U.link ? `<div class="alerta alerta-ok"><span class="alerta-icone">✓</span><div class="alerta-corpo"><span class="alerta-titulo">${esc(U.linkTxt)}</span>
+          <span class="alerta-texto">Envie este link para a pessoa: <code style="overflow-wrap:anywhere">${esc(U.link)}</code></span>
+          <div class="alerta-acoes"><button type="button" class="btn" data-acao="usu-copiar">Copiar link</button><button type="button" class="btn-link peq" data-acao="usu-link-fechar">Fechar</button></div></div></div>` : ''}
+      </div>
+      <div class="tabela-wrap"><table class="tabela" style="min-width:720px"><thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th class="dir">Último acesso</th><th class="dir">Ações</th></tr></thead>
+        <tbody>${linhas || vazio}</tbody></table></div>
+    </section>`;
+  }
+  window.addEventListener('gbx-conta', () => { if (naConfig()) render(); });
+
   function telaClientes() {
     const f = E.clienteForm;
     const linhas = E.clientes.map((fc) => {
@@ -6544,6 +6632,7 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
     }).join('');
     return `
       ${abasConfig()}
+      ${blocoUsuarios()}
       ${avisoLocal()}
       <span class="sub">Cadastre o cliente e abra o perfil dele para anexar as planilhas de motoristas e de veículos.${E.clientesEmDb ? ' O cadastro é compartilhado com quem tem acesso a este painel.' : ' O cadastro fica salvo só neste navegador.'}</span>
       <section class="card">
@@ -7364,6 +7453,37 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
     'plano-aba': (el) => { E.planoAba = el.dataset.aba; render(); },
     'plano-comp': (el) => { E.planoComp = el.dataset.c; render(); },
     'plano-gran': (el) => { E.planoGran = el.dataset.g; render(); },
+    'usu-convidar': async () => {
+      const U = usu(), f = U.form, nome = f.nome.trim(), email = f.email.trim(), cs = contaSrv();
+      if (!cs) return;
+      if (!nome || !email) { U.erro = 'Informe o nome e o e-mail da pessoa.'; render(); return; }
+      U.erro = ''; U.enviando = true; render();
+      try {
+        const d = await cs.chamar('POST', '/api/v1/usuarios', { nome, email, papel: f.papel });
+        U.link = d.link_convite; U.linkTxt = 'Convite criado para ' + d.usuario.nome + ' (' + PAPEIS_USU[d.usuario.papel] + '). Vale até ' + dataHoraBR(d.expira_em) + '.';
+        U.form = { nome: '', email: '', papel: 'leitor' };
+        toast('Convite criado para ' + d.usuario.nome + '.');
+      } catch (e) { U.erro = e.message; }
+      U.enviando = false;
+      render(); usuCarregar();
+    },
+    'usu-link': async (el) => {
+      const U = usu(), u = (U.lista || []).find((x) => String(x.id) === el.dataset.id), cs = contaSrv();
+      if (!u || !cs) return;
+      try {
+        const d = await cs.chamar('POST', '/api/v1/usuarios/' + encodeURIComponent(u.id) + '/convite');
+        U.link = d.link_convite; U.linkTxt = (u.tem_senha ? 'Link para ' + u.nome + ' criar uma senha nova' : 'Novo convite para ' + u.nome) + '. Vale até ' + dataHoraBR(d.expira_em) + '; o link anterior deixou de valer.';
+        render();
+        const s = document.getElementById('usuarios'); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) { toast(e.message, 'erro'); }
+    },
+    'usu-ativo': (el) => { usuAlterar(el.dataset.id, null, el.dataset.ativo === '1'); },
+    'usu-copiar': async () => {
+      const U = usu();
+      try { await navigator.clipboard.writeText(U.link); toast('Link copiado.'); }
+      catch (e) { toast('Não consegui copiar: selecione o link e use Ctrl+C.', 'erro'); }
+    },
+    'usu-link-fechar': () => { const U = usu(); U.link = ''; U.linkTxt = ''; render(); },
     'mot-aba': (el) => { E.motAba = el.dataset.aba; armazem.gravar('gbx-mot-aba', E.motAba); if (E.rota.tela !== 'motoristas') location.hash = '#/motoristas'; else render(); },
     'grp-alternar': () => { const el = document.querySelector('[data-acao="grp-alternar"]'); E.gruposAberto = !(el && el.getAttribute('aria-expanded') === 'true'); render(); },
     'grp-criar': () => {
@@ -7524,6 +7644,7 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
     else if (k === 'busca-veic') { E.veicLista.busca = ev.target.value; E.veicLista.pag = 1; render(); }
     else if (k === 'per-ini' || k === 'per-fim') { if (E.perMot) { E.perMot[k.slice(4)] = ev.target.value; E.perMot.editado = true; } }
     else if (k && k.indexOf('cli-') === 0) E.clienteForm[k.slice(4)] = ev.target.value;
+    else if (k && k.indexOf('usu-f-') === 0) usu().form[k.slice(6)] = ev.target.value;
     else if (k && k.indexOf('trat-') === 0 && E.tratForm) E.tratForm[k.slice(5)] = ev.target.value;
   });
   document.addEventListener('change', (ev) => {
@@ -7537,6 +7658,7 @@ html[data-tema="escuro"] .app-v3 .topo { border-color: rgba(254, 219, 0, 0.14); 
       });
       return;
     }
+    if (k === 'usu-papel') { usuAlterar(el.dataset.id, el.value, null); return; }
     if (k === 'mot-comp') { E.motComp = el.value; render(); return; }
     if (k === 'plano-evo-ind') { E.planoEvoInd = el.value; render(); return; }
     if (k === 'grp-placa') {

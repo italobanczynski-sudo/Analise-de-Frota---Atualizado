@@ -129,20 +129,38 @@
     use: (nome) => (nome === 'db' ? Promise.resolve(db) : Promise.reject(Object.assign(new Error(nome + ' indisponível fora do Claude'), { code: 'unavailable' })))
   };
 
-  // ---------- quem está logado: nome, atalho para Clientes e usuários, e Sair ----------
-  function barraConta(eu) {
-    const b = document.createElement('div');
-    b.setAttribute('role', 'navigation');
-    b.setAttribute('aria-label', 'Sua conta');
-    Object.assign(b.style, { position: 'fixed', right: '16px', bottom: '16px', zIndex: 9999, display: 'flex', gap: '10px', alignItems: 'center',
-      padding: '8px 12px', borderRadius: '999px', background: '#1A1D24', color: '#F0F2F5', font: '600 13px Inter, "Segoe UI", sans-serif', boxShadow: '0 4px 16px rgba(0,0,0,.25)' });
-    const nome = document.createElement('span');
-    nome.textContent = eu.nome;
-    const link = (texto, acao) => { const a = document.createElement('button'); a.type = 'button'; a.textContent = texto;
-      Object.assign(a.style, { background: 'none', border: 0, color: '#FEDB00', font: 'inherit', cursor: 'pointer', padding: 0 }); a.addEventListener('click', acao); return a; };
-    b.append(nome, link('Clientes e usuários', () => location.assign('/plataforma')),
-      link('Sair', async () => { try { await chamar('POST', '/api/v1/auth/sair'); } catch (e) { /* sai mesmo assim */ } location.replace('/'); }));
-    document.body.appendChild(b);
+  // ---------- quem está logado: botão redondo com as iniciais no topo do painel; o menu (nome, Clientes e usuários, Sair) só abre no clique ----------
+  function botaoConta(eu) {
+    // o painel usa isto para mostrar a seção Usuários em Configurações (só para administradores)
+    window.GBX_CONTA = { eu, chamar };
+    dispatchEvent(new Event('gbx-conta'));
+    const iniciais = String(eu.nome || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+    const caixa = document.createElement('div');
+    caixa.className = 'sino conta';
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn-tema'; btn.textContent = iniciais;
+    btn.title = eu.nome; btn.setAttribute('aria-label', 'Sua conta: ' + eu.nome); btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
+    Object.assign(btn.style, { fontWeight: '700', fontSize: '13px' });
+    const menu = document.createElement('div');
+    menu.className = 'sino-painel'; menu.hidden = true;
+    Object.assign(menu.style, { left: 'auto', right: '0', width: '240px' });
+    const nome = document.createElement('div');
+    nome.className = 'sino-cab'; nome.textContent = eu.nome;
+    Object.assign(nome.style, { fontWeight: '600' });
+    const item = (texto, acao) => { const a = document.createElement('button'); a.type = 'button'; a.className = 'dm-op'; a.textContent = texto; a.addEventListener('click', acao); return a; };
+    if (eu.papel === 'admin') menu.append(nome, item('Usuários', () => { abrir(false); location.hash = '#/config'; setTimeout(() => { const s = document.getElementById('usuarios'); if (s) s.scrollIntoView({ block: 'start' }); }, 300); }));
+    else menu.append(nome);
+    menu.append(item('Clientes e coleta', () => location.assign('/plataforma')),
+      item('Sair', async () => { try { await chamar('POST', '/api/v1/auth/sair'); } catch (e) { /* sai mesmo assim */ } location.replace('/'); }));
+    const abrir = (sim) => { menu.hidden = !sim; btn.setAttribute('aria-expanded', String(sim)); };
+    btn.addEventListener('click', (ev) => { ev.stopPropagation(); abrir(menu.hidden); });
+    document.addEventListener('click', (ev) => { if (!caixa.contains(ev.target)) abrir(false); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') abrir(false); });
+    caixa.append(btn, menu);
+    // o painel redesenha o topo a cada mudança: o botão volta para o lugar sempre que some
+    const encaixar = () => { const alvo = document.querySelector('.topo-acoes'); if (alvo && !alvo.contains(caixa)) alvo.appendChild(caixa); };
+    encaixar();
+    new MutationObserver(encaixar).observe(document.getElementById('app') || document.body, { childList: true, subtree: true });
   }
-  addEventListener('DOMContentLoaded', () => { chamar('GET', '/api/v1/auth/eu').then(barraConta).catch(() => {}); });
+  addEventListener('DOMContentLoaded', () => { chamar('GET', '/api/v1/auth/eu').then(botaoConta).catch(() => {}); });
 })();

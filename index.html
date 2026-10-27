@@ -1753,7 +1753,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
 /* Resultado semanal: barra da semana, cartões por condutor e envio um por um */
 .sw-barra { display: flex; flex-direction: row; align-items: center; gap: 16px 24px; flex-wrap: wrap; }
-.sw-semana { display: flex; align-items: center; gap: 10px; }
+.sw-semana { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .sw-semana-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sw-semana-t b { font-size: 16px; font-weight: 700; color: var(--tinta); }
 .sw-num { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
@@ -1772,10 +1772,29 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 .sw-hero-v { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; color: var(--tinta); line-height: 1.1; }
 .sw-pos { font-size: 13px; font-weight: 700; color: var(--tinta); }
 .sw-linhas { display: flex; flex-direction: column; }
-.sw-linha { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--apoio); font-size: 13px; }
+.sw-linha { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; padding: 7px 0; border-bottom: 1px solid var(--apoio); font-size: 13px; }
 .sw-linha:last-child { border-bottom: 0; }
-.sw-linha > span:first-child { color: var(--corpo); min-width: 0; }
-.sw-linha .var { min-width: 76px; justify-content: flex-end; text-align: right; }
+.sw-rot { color: var(--corpo); min-width: 0; }
+.sw-linha .badge { justify-content: center; grid-row: 1 / span 2; grid-column: 2; min-width: 78px; }
+.sw-val { grid-column: 1; font-size: 13px; }
+.sw-antes { font-size: 11.5px; color: var(--texto-3); white-space: nowrap; }
+.sw-hero-s { display: flex; }
+.sw-placar { font-size: 12.5px; color: var(--texto-2); }
+.txt-atencao { color: var(--atencao-tinta); }
+.sw-bloco { display: flex; flex-direction: column; gap: 8px; }
+.sw-bloco-t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-2); }
+.sw-bloco-t .apoio { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sw-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.sw-dia { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.sw-dia small { font-size: 10.5px; color: var(--texto-3); }
+.sw-dia i { font-style: normal; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--apoio); color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.sw-mes { display: flex; gap: 6px; }
+.sw-mes-i { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; border-radius: 10px; background: var(--apoio); }
+.sw-mes-i small { font-size: 10.5px; color: var(--texto-2); font-weight: 600; }
+.sw-mes-i b { font-size: 14px; color: var(--tinta); }
+.sw-mes-i.sel { background: var(--amarelo); } .sw-mes-i.sel small, .sw-mes-i.sel b { color: #202124; }
+.sw-mes-i.cmp { box-shadow: inset 0 0 0 2px var(--borda-hover); }
+.sw-semana .sw-num .campo { width: auto; min-width: 150px; }
 .sw-acoes { display: flex; align-items: center; gap: 4px; margin-top: auto; }
 .sw-acoes a.btn { text-decoration: none; flex: 1 1 auto; min-width: 0; padding: 0 14px; justify-content: center; margin-right: 4px; }
 .sw-acoes .btn-icone { flex-shrink: 0; }
@@ -1793,6 +1812,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   .sw-previa { width: 100%; }
   .sw-barra-acoes { margin-left: 0; }
   .sw-num .campo { width: 100%; }
+  .sw-semana, .sw-semana .sw-num { width: 100%; }
+  .sw-semana .sw-num .campo { width: 100%; min-width: 0; }
 }
 </style></head><body>
 <div id="app" aria-live="polite"><p style="padding:24px;color:#5F6368;font-size:13px">Carregando…</p></div>
@@ -2709,7 +2730,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     rota: { tela: 'visao', id: null, aba: 'resumo' },
     lista: { busca: '', status: 'todos', ord: { col: 'delta', dir: -1 }, pag: 1, por: 10 },
     indGraf: 'nota', verTabela: false, motComp: 'kml', planoAba: 'diagnostico', planoComp: '', planoGran: '', planoEvoInd: 'kml', motAba: (() => { try { return localStorage.getItem('gbx-mot-aba') || 'resumo'; } catch (e) { return 'resumo'; } })(),
-    semana: null, semEnvio: null,   // Resultado semanal: segunda-feira da semana escolhida e o envio um por um
+    semMes: null, semana: null, semComp: '', semEnvio: null,   // Resultado semanal: mês, semana analisada, semana comparada (mesmo mês) e o envio um por um
     detalhe: { indGraf: 'nota', verTabela: false },
     comp: { escopo: 'frota', ind: 'nota', ord: -1 },
     preco: 6.1,
@@ -3087,6 +3108,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 55, data: '2026-10-27', titulo: 'Resultado semanal: semanas do mesmo mês, dias bons e de atenção', texto: 'No Resultado semanal você escolhe o mês, a semana analisada e com qual semana do mesmo mês comparar (não mais com o mês anterior). Cada condutor mostra a nota atual, cada indicador de antes para agora com Evoluiu ou Regrediu, os dias bons e de atenção da semana e a nota de cada semana do mês. No topo, o resumo da frota, que também vai pelo WhatsApp. A imagem e a mensagem trazem tudo isso.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 54, data: '2026-10-27', titulo: 'Resultado semanal por condutor', texto: 'Em Motoristas, a aba Resultado semanal mostra um cartão por condutor com a semana (segunda a domingo) comparada à anterior: nota, consumo, km, indicadores, destaque e ponto de atenção. Cada cartão gera a mensagem e a imagem para o WhatsApp do cliente, e o botão Enviar um por um percorre todos os condutores, marcando quem já foi enviado.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 53, data: '2026-10-26', titulo: 'Menu lateral de volta', texto: 'O menu voltou para a lateral, flutuando em vidro, com a tela aberta em amarelo. Clique no botão de cima para ver os nomes. As pílulas do topo saíram; no topo ficam o diesel, o cliente, o grupo, o tema, o sino e sua conta.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 52, data: '2026-10-26', titulo: 'Usuários em Configurações e anéis novos', texto: 'No painel com login, quem é administrador convida pessoas, troca o perfil, gera link de senha e desativa acessos direto em Configurações. A barra com seu nome saiu do canto da tela e virou o botão com suas iniciais no topo. Os Anéis de desempenho mostram agora início da faixa verde, motor ligado parado, embalo, piloto automático e pedal no range crítico. O calendário do cabeçalho voltou a abrir inteiro.', href: '#/config', link: 'Abrir Configurações' },
@@ -3801,39 +3823,94 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Resultado semanal: um cartão por condutor, pronto para mandar ao cliente pelo WhatsApp ----------
-  // Semana de segunda a domingo, comparada à semana anterior. A imagem é desenhada num canvas (sem biblioteca) e o texto
-  // usa a formatação do WhatsApp (*negrito*). O número do cliente e quem já foi enviado ficam só neste navegador.
+  // As semanas são as do mês escolhido (segunda a domingo, cortadas no início e no fim do mês) e a comparação é sempre com
+  // outra semana do mesmo mês, nunca com o mês anterior. A imagem é desenhada num canvas (sem biblioteca) e o texto usa a
+  // formatação do WhatsApp (*negrito*). O número do cliente e quem já foi enviado ficam só neste navegador.
   const SEM_INDS = ['kml', 'km', 'faixa_verde', 'inicio_faixa_verde', 'motor_ocioso', 'embalo', 'pressao_acelerador', 'tempo_excesso_velocidade', 'piloto_automatico', 'freio_motor'];
   const semIni = (s) => D.somar(s, -((D.deISO(s).getUTCDay() + 6) % 7));
-  // padrão: a última semana completa; se ainda não houver uma, a semana do último dia com dados
-  function semanaPadrao(b) {
-    const ult = semIni(b.fim);
-    return D.somar(ult, 6) <= b.fim || D.somar(ult, -7) < semIni(b.inicio) ? ult : D.somar(ult, -7);
+  function semanasDoMes(mes) {
+    const ini = D.inicioMes(mes), fim = D.fimMes(mes), out = [];
+    for (let seg = semIni(ini); seg <= fim; seg = D.somar(seg, 7)) {
+      const dom = D.somar(seg, 6);
+      out.push({ n: out.length + 1, ini: seg < ini ? ini : seg, fim: dom > fim ? fim : dom });
+    }
+    return out;
+  }
+  // padrão: o mês do último dia com dados, na última semana já fechada, comparada à semana anterior do mesmo mês
+  function semAjustar(b) {
+    const meses = [];
+    for (let m = D.inicioMes(b.inicio); m <= b.fim; m = D.somarMeses(m, 1)) meses.push(m);
+    if (!meses.includes(E.semMes)) { E.semMes = D.inicioMes(b.fim); E.semana = null; }
+    const ws = semanasDoMes(E.semMes).filter((w) => w.ini <= b.fim && w.fim >= b.inicio);
+    if (!ws.some((w) => w.ini === E.semana)) {
+      const fechadas = ws.filter((w) => w.fim <= b.fim), w = fechadas.length ? fechadas[fechadas.length - 1] : ws[ws.length - 1];
+      const ant = ws[ws.indexOf(w) - 1];
+      E.semana = w.ini; E.semComp = ant ? ant.ini : '';
+    }
+    if (E.semComp && (E.semComp === E.semana || !ws.some((w) => w.ini === E.semComp))) E.semComp = '';
+    return { meses, ws };
   }
   let memoSem = null;
   function dadosSemana() {
-    const b = E.base;
-    if (!E.semana || E.semana < semIni(b.inicio) || E.semana > semIni(b.fim)) E.semana = semanaPadrao(b);
-    if (memoSem && memoSem.base === b && memoSem.A.ini === E.semana) return memoSem;
-    const A = { ini: E.semana, fim: D.somar(E.semana, 6) }, B = { ini: D.somar(E.semana, -7), fim: D.somar(E.semana, -1) };
+    const b = E.base, { meses, ws } = semAjustar(b);
+    if (memoSem && memoSem.base === b && memoSem.mes === E.semMes && memoSem.A.ini === E.semana && (memoSem.B ? memoSem.B.ini : '') === E.semComp) return memoSem;
+    const A = ws.find((w) => w.ini === E.semana), B = ws.find((w) => w.ini === E.semComp) || null;
     const chave = temInd('nota') ? 'nota' : temInd('kml') ? 'kml' : null;
+    const doB = (ls) => (B ? X.filtrar(ls, B) : []);
+    const porSemana = (ls) => ws.map((w) => { const l = X.filtrar(ls, w); return l.length && chave ? X.agregar(l, IND_MAP[chave], b) : null; });
     const mots = b.motoristas.map((m) => {
       const la = X.filtrar(m.linhas, A);
       if (!la.length) return null;
-      const a = X.resumo(la, b), r = X.resumo(X.filtrar(m.linhas, B), b);
-      return { m, a, b: r, st: X.statusEvolucao(b, a, r), veiculos: [...new Set(la.map((l) => l.veiculo).filter(Boolean))] };
+      const a = X.resumo(la, b), r = X.resumo(doB(m.linhas), b);
+      return { m, la, a, b: r, st: X.statusEvolucao(b, a, r), mes: porSemana(m.linhas), veiculos: [...new Set(la.map((l) => l.veiculo).filter(Boolean))] };
     }).filter(Boolean);
     const val = (x) => (chave && Number.isFinite(x.a[chave]) ? x.a[chave] : -Infinity);
     mots.sort((p, q) => val(q) - val(p) || p.m.nome.localeCompare(q.m.nome, 'pt-BR'));
     mots.forEach((x, i) => { x.pos = Number.isFinite(val(x)) ? i + 1 : null; });
-    memoSem = { base: b, A, B, mots, chave, frota: X.resumo(X.filtrar(b.linhas, A), b), comPos: mots.filter((x) => x.pos).length };
+    memoSem = { base: b, mes: E.semMes, meses, ws, A, B, mots, chave, comPos: mots.filter((x) => x.pos).length,
+      frota: X.resumo(X.filtrar(b.linhas, A), b), frotaB: X.resumo(doB(b.linhas), b), frotaMes: porSemana(b.linhas) };
+    mots.forEach((x) => { x.dias = semDias(x, memoSem); });
     return memoSem;
   }
   const semHero = (s) => IND_MAP[s.chave || 'km'];
   const semTem = (v) => v !== null && v !== undefined && Number.isFinite(v);
   const semLinhas = (x, s) => SEM_INDS.filter((k) => k !== semHero(s).key && temInd(k) && IND_MAP[k] && semTem(x.a[k])).map((k) => IND_MAP[k]);
   const semVarTxt = (v) => (!v || v.semBase ? '' : v.estavel ? 'estável' : v.texto);
-  // destaque: o indicador que mais melhorou; atenção: o que mais piorou (contra a semana anterior)
+  const semNomeSem = (w) => 'semana ' + w.n + ' (' + D.periodoCurto(w) + ')';
+  // Cada dia da semana do condutor: bom ou de atenção pela nota do dia arredondada, como aparece (Bom a partir de 70, Crítico abaixo de 40);
+  // sem nota, pelo km/l do dia contra a média da frota na semana
+  function semDias(x, s) {
+    const k = s.chave;
+    if (!k) return [];
+    const ind = IND_MAP[k], porDia = new Map(), out = [];
+    x.la.forEach((l) => { if (!porDia.has(l.data)) porDia.set(l.data, []); porDia.get(l.data).push(l); });
+    for (let d = s.A.ini; d <= s.A.fim; d = D.somar(d, 1)) {
+      const ls = porDia.get(d), v = ls ? X.agregar(ls, ind, E.base) : null;
+      let cls = ls ? 'sem' : null;
+      if (semTem(v)) cls = k === 'nota' ? (Math.round(v) >= 70 ? 'bom' : Math.round(v) >= 40 ? 'atencao' : 'critico') : semTem(s.frota.kml) ? (v >= s.frota.kml ? 'bom' : 'atencao') : 'sem';
+      out.push({ data: d, v, cls });
+    }
+    return out;
+  }
+  const SEM_DIA_COR = { bom: '#1E8E3E', atencao: '#F9AB00', critico: '#D93025', sem: '#9AA0A6' };
+  const semDiasBons = (x) => x.dias.filter((d) => d.cls === 'bom');
+  const semDiasAtencao = (x) => x.dias.filter((d) => d.cls === 'atencao' || d.cls === 'critico');
+  const semValDia = (s, v) => (s.chave === 'nota' ? fmt(v, 0) : fmtInd(IND_MAP[s.chave], v, false));
+  const semCrit = (s) => (s.chave === 'nota' ? 'nota do dia: boa a partir de 70' : 'km/l do dia contra a média da frota');
+  // Situação de um indicador contra a semana comparada; km rodados não conta como evolução de condução
+  function semSituacao(ind, v) {
+    if (!v || v.semBase) return { rot: 'Sem base', cls: 'neutro' };
+    if (ind.key === 'km' || !ind.melhor || v.sentido === 'neutro') return { rot: v.estavel ? 'Igual' : 'Variou', cls: 'neutro' };
+    if (v.estavel) return { rot: 'Estável', cls: 'neutro' };
+    return v.sentido === 'melhor' ? { rot: 'Evoluiu', cls: 'bom' } : { rot: 'Regrediu', cls: 'ruim' };
+  }
+  function semPlacar(x, s) {
+    const l = [semHero(s)].concat(semLinhas(x, s)).filter((ind) => ind.key !== 'km' && ind.melhor)
+      .map((ind) => X.variacao(ind, x.a[ind.key], x.b[ind.key])).filter((v) => v && !v.semBase)
+      .map((v) => (v.estavel ? 'est' : v.sentido));
+    return { ev: l.filter((c) => c === 'melhor').length, rg: l.filter((c) => c === 'pior').length, tot: l.length };
+  }
+  // destaque: o indicador que mais melhorou; atenção: o que mais piorou (contra a semana comparada)
   function semDestaques(x) {
     const l = ['nota'].concat(SEM_INDS).filter((k) => k !== 'km' && temInd(k) && IND_MAP[k] && IND_MAP[k].melhor).map((k) => {
       const ind = IND_MAP[k], v = X.variacao(ind, x.a[k], x.b[k]);
@@ -3843,29 +3920,64 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return { mel: l.filter((o) => o.s > 0).sort((p, q) => q.s - p.s)[0], pio: l.filter((o) => o.s < 0).sort((p, q) => p.s - q.s)[0] };
   }
   function semTexto(x, s) {
-    const h = semHero(s), vh = X.variacao(h, x.a[h.key], x.b[h.key]), d = semDestaques(x);
-    const par = (v) => (semVarTxt(v) ? ` (${semVarTxt(v)})` : '');
-    const linha = (ind) => `• ${ind.label}: *${fmtInd(ind, x.a[ind.key])}*` + (ind.key === 'km' && semTem(x.a.dias) ? ` em ${fmt(x.a.dias, 0)} ${x.a.dias === 1 ? 'dia' : 'dias'}` : par(X.variacao(ind, x.a[ind.key], x.b[ind.key])));
+    const h = semHero(s), vh = X.variacao(h, x.a[h.key], x.b[h.key]), pl = semPlacar(x, s), d = semDestaques(x);
+    const em = { bom: '✅', ruim: '🔻', neutro: '➖' };
+    const linha = (ind) => {
+      const v = X.variacao(ind, x.a[ind.key], x.b[ind.key]), si = semSituacao(ind, v);
+      const km = ind.key === 'km' && semTem(x.a.dias) ? ` em ${fmt(x.a.dias, 0)} ${x.a.dias === 1 ? 'dia' : 'dias'}` : '';
+      return `${em[si.cls]} ${ind.label}: ${s.B && semTem(x.b[ind.key]) ? fmtInd(ind, x.b[ind.key]) + ' → ' : ''}*${fmtInd(ind, x.a[ind.key])}*${km}${semVarTxt(v) ? ` (${semVarTxt(v)})` : ''}`;
+    };
+    const dia = (o) => `${D.semana(o.data)} ${D.curta(o.data)} (${semValDia(s, o.v)})`;
+    const bons = semDiasBons(x), at = semDiasAtencao(x);
+    const mes = s.chave && s.ws.length > 1 ? s.ws.map((w, i) => (semTem(x.mes[i]) ? (w.ini === s.A.ini ? `*S${w.n}: ${semValDia(s, x.mes[i])}*` : `S${w.n}: ${semValDia(s, x.mes[i])}`) : null)).filter(Boolean).join(' · ') : '';
     return [
       '*Resultado semanal do condutor*',
       `*${x.m.nome}*`,
-      `Semana de ${D.periodoBR(s.A)}`,
-      x.veiculos.length ? `Veículo: ${x.veiculos.join(', ')}` : '',
+      `${D.nomeMes(s.mes)} · semana ${s.A.n} (${D.periodoBR(s.A)})`,
+      s.B ? `Comparada à ${semNomeSem(s.B)} do mesmo mês` : 'Sem outra semana do mês para comparar',
+      x.veiculos.length ? `Veículo: ${x.veiculos.join(', ')}` : null,
       '',
-      `⭐ *${h.label}: ${fmtInd(h, x.a[h.key])}*${par(vh)}`,
-      x.pos ? `🏆 ${x.pos}º lugar entre ${s.comPos} condutores da frota` : '',
+      `⭐ *${h.label} atual: ${fmtInd(h, x.a[h.key])}*` + (s.B && vh && !vh.semBase ? ` — ${semSituacao(h, vh).rot.toLowerCase()} (${semVarTxt(vh)}; antes ${fmtInd(h, x.b[h.key])})` : ''),
+      x.pos ? `🏆 ${x.pos}º lugar entre ${s.comPos} condutores da frota` : null,
+      pl.tot ? `📈 Evoluiu em ${pl.ev} de ${pl.tot} indicadores${pl.rg ? `, regrediu em ${pl.rg}` : ''}` : null,
       '',
-      '📊 *Indicadores da semana*',
+      s.B ? `📊 *Indicadores: semana ${s.B.n} → semana ${s.A.n}*` : '📊 *Indicadores da semana*',
       ...semLinhas(x, s).map(linha),
+      x.dias.length ? '' : null,
+      x.dias.length ? `📅 *Dias da semana* (${semCrit(s)})` : null,
+      x.dias.length ? `✅ Dias bons: ${bons.length ? bons.map(dia).join(', ') : 'nenhum'}` : null,
+      x.dias.length ? `⚠️ Dias de atenção: ${at.length ? at.map(dia).join(', ') : 'nenhum'}` : null,
+      mes ? '' : null,
+      mes ? `📆 *${h.label} no mês, semana a semana:* ${mes}` : null,
       d.mel || d.pio ? '' : null,
       d.mel ? `✅ *Destaque:* ${d.mel.ind.label} (${d.mel.v.texto})` : null,
       d.pio ? `⚠️ *Ponto de atenção:* ${d.pio.ind.label} (${d.pio.v.texto})` : null,
       '',
-      `_Entre parênteses, a comparação com a semana anterior (${D.periodoCurto(s.B)}). Dados Gobrax._`
+      '_Dados Gobrax._'
     ].filter((l) => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
   }
+  // Resumo da frota na semana, para mostrar ao cliente o resultado do conjunto
+  function semTextoFrota(s) {
+    const h = semHero(s), vh = X.variacao(h, s.frota[h.key], s.frotaB[h.key]);
+    const cont = { evoluiu: 0, regrediu: 0, estavel: 0 };
+    s.mots.forEach((x) => { if (cont[x.st.status] !== undefined) cont[x.st.status]++; });
+    const bons = s.mots.reduce((t, x) => t + semDiasBons(x).length, 0), at = s.mots.reduce((t, x) => t + semDiasAtencao(x).length, 0);
+    const evo = s.mots.map((x) => ({ x, v: X.variacao(h, x.a[h.key], x.b[h.key]) })).filter((o) => o.v && !o.v.semBase && o.v.sentido === 'melhor').sort((p, q) => q.v.delta - p.v.delta).slice(0, 3);
+    return [
+      '*Resumo semanal da frota*',
+      `${D.nomeMes(s.mes)} · semana ${s.A.n} (${D.periodoBR(s.A)})${s.B ? `, comparada à ${semNomeSem(s.B)}` : ''}`,
+      '',
+      `⭐ *${h.label} da frota: ${fmtInd(h, s.frota[h.key])}*${s.B && vh && !vh.semBase ? ` (antes ${fmtInd(h, s.frotaB[h.key])}; ${semVarTxt(vh)})` : ''}`,
+      `👥 ${s.mots.length} condutores: ${cont.evoluiu} evoluíram, ${cont.estavel} estáveis, ${cont.regrediu} regrediram`,
+      bons + at ? `📅 ${bons} dias bons e ${at} dias de atenção (${semCrit(s)})` : null,
+      s.comPos ? `🏆 Melhores da semana: ${s.mots.filter((x) => x.pos).slice(0, 3).map((x) => `${x.pos}º ${x.m.nome} (${fmtInd(h, x.a[h.key])})`).join(', ')}` : null,
+      evo.length ? `📈 Maior evolução: ${evo.map((o) => `${o.x.m.nome} (${o.v.texto})`).join(', ')}` : null,
+      '',
+      '_Dados Gobrax._'
+    ].filter((l) => l !== null).join('\n');
+  }
 
-  // Imagem 1080×1350 (retrato, boa para o WhatsApp). Guardada por semana para não redesenhar a cada clique.
+  // Imagem em pé (1080 de largura; a altura cresce com o conteúdo). Guardada por semana para não redesenhar a cada clique.
   let semImgs = { s: null, m: new Map() };
   function semImagem(x, s) {
     if (semImgs.s !== s) { semImgs.m.forEach((o) => o.url && URL.revokeObjectURL(o.url)); semImgs = { s, m: new Map() }; }
@@ -3875,17 +3987,20 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   async function desenharSemana(x, s) {
     try { await Promise.all(['700 64px Montserrat', '600 28px Montserrat', '500 24px Montserrat'].map((f) => document.fonts.load(f))); } catch (e) { /* segue com a fonte do sistema */ }
-    const W = 1080, H = 1350, M = 64, cv = document.createElement('canvas');
+    const h = semHero(s), linhas = semLinhas(x, s).slice(0, 5), temMes = !!s.chave && s.ws.length > 1, temDias = x.dias.length > 0;
+    const W = 1080, M = 64, LH = 100, G = 32;
+    const H = 340 + 250 + G + (temDias ? 250 + G : 0) + (temMes ? 210 + G : 0) + 70 + linhas.length * LH + 20 + 80;
+    const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     const F = (peso, tam) => `${peso} ${tam}px Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif`;
-    const caixa = (x0, y0, w, h, r, cor) => {
-      g.beginPath(); g.moveTo(x0 + r, y0); g.arcTo(x0 + w, y0, x0 + w, y0 + h, r); g.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
-      g.arcTo(x0, y0 + h, x0, y0, r); g.arcTo(x0, y0, x0 + w, y0, r); g.closePath(); g.fillStyle = cor; g.fill();
+    const caixa = (x0, y0, w, hh, r, cor) => {
+      g.beginPath(); g.moveTo(x0 + r, y0); g.arcTo(x0 + w, y0, x0 + w, y0 + hh, r); g.arcTo(x0 + w, y0 + hh, x0, y0 + hh, r);
+      g.arcTo(x0, y0 + hh, x0, y0, r); g.arcTo(x0, y0, x0 + w, y0, r); g.closePath(); g.fillStyle = cor; g.fill();
     };
     const txt = (t, x0, y0, fonte, cor, al) => { g.font = fonte; g.fillStyle = cor; g.textAlign = al || 'left'; g.fillText(t, x0, y0); return g.measureText(t).width; };
     const corta = (t, fonte, max) => { g.font = fonte; if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; };
-    const corVar = (v) => (!v || v.semBase || v.estavel || v.sentido === 'neutro' ? '#5F6368' : v.sentido === 'melhor' ? '#137333' : '#C5221F');
+    const SIT = { bom: ['#E6F4EA', '#137333'], ruim: ['#FCE8E6', '#C5221F'], neutro: ['#F1F3F4', '#5F6368'] };
 
     // cabeçalho escuro com o logo para fundo escuro e um filete amarelo
     g.fillStyle = '#F7F8FA'; g.fillRect(0, 0, W, H);
@@ -3894,7 +4009,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const logo = await new Promise((ok) => { const src = ASSET('logo-escuro') || ASSET('logo'); if (!src) { ok(null); return; } const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
     if (logo && logo.width) g.drawImage(logo, M, 62, logo.width * (52 / logo.height), 52); else txt('gobrax', M, 104, F(700, 48), '#FEDB00');
     txt('RESULTADO SEMANAL', W - M, 84, F(700, 24), '#FEDB00', 'right');
-    txt(D.periodoBR(s.A), W - M, 118, F(500, 26), '#FFFFFF', 'right');
+    txt(D.nomeMes(s.mes) + ' · semana ' + s.A.n + ' (' + D.periodoCurto(s.A) + ')', W - M, 118, F(500, 24), '#FFFFFF', 'right');
 
     // condutor
     const ini = x.m.nome.trim().split(/\s+/).filter((p) => !/^(de|da|do|das|dos|e)$/i.test(p));
@@ -3903,46 +4018,73 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     txt(corta(x.m.nome, F(700, 44), W - M * 2 - 140), M + 132, 210, F(700, 44), '#FFFFFF');
     txt(corta(x.veiculos.length ? 'Veículo ' + x.veiculos.join(', ') : 'Motorista', F(500, 24), W - M * 2 - 140), M + 132, 250, F(500, 24), '#BDC1C6');
 
-    // destaque principal: nota (ou km/l), status e posição na frota
-    const h = semHero(s), vh = X.variacao(h, x.a[h.key], x.b[h.key]), st = STATUS[x.st.status] || STATUS.sembase;
+    // nota atual (ou km/l), situação contra a semana comparada e posição na frota
+    const vh = X.variacao(h, x.a[h.key], x.b[h.key]), sh = semSituacao(h, vh);
     caixa(M, 340, W - M * 2, 250, 32, '#FFFFFF');
-    txt(h.label.toUpperCase(), M + 48, 404, F(600, 24), '#5F6368');
+    txt(h.label.toUpperCase() + ' ATUAL', M + 48, 404, F(600, 24), '#5F6368');
     txt(fmtInd(h, x.a[h.key]), M + 44, 516, F(700, 112), '#202124');
-    txt(semVarTxt(vh) ? semVarTxt(vh) + ' vs. semana anterior' : 'sem semana anterior para comparar', M + 48, 562, F(600, 24), corVar(vh));
+    txt(s.B && vh && !vh.semBase ? `${sh.rot} ${semVarTxt(vh)} · antes ${fmtInd(h, x.b[h.key])} (semana ${s.B.n})` : 'sem outra semana do mês para comparar', M + 48, 562, F(600, 24), SIT[sh.cls][1]);
     if (x.pos) {
-      txt(x.pos + 'º', W - M - 48, 516, F(700, 84), '#202124', 'right');
-      txt('de ' + s.comPos + ' condutores', W - M - 48, 558, F(500, 24), '#5F6368', 'right');
+      txt(x.pos + 'º', W - M - 48, 486, F(700, 84), '#202124', 'right');
+      txt('de ' + s.comPos + ' condutores', W - M - 48, 524, F(500, 24), '#5F6368', 'right');
     }
-    g.font = F(700, 22); const ws = g.measureText(st.rot.toUpperCase()).width + 40;
-    caixa(W - M - 48 - ws, 378, ws, 40, 20, st.cor === '#DADCE0' ? '#E8EAED' : st.cor);
-    txt(st.rot.toUpperCase(), W - M - 48 - ws / 2, 405, F(700, 22), st.cor === '#DADCE0' ? '#3C4043' : '#FFFFFF', 'center');
+    if (s.B && vh && !vh.semBase) {
+      g.font = F(700, 22); const ws = g.measureText(sh.rot.toUpperCase()).width + 40;
+      caixa(W - M - 48 - ws, 372, ws, 40, 20, SIT[sh.cls][0]);
+      txt(sh.rot.toUpperCase(), W - M - 48 - ws / 2, 399, F(700, 22), SIT[sh.cls][1], 'center');
+    }
+    let y = 340 + 250 + G;
 
-    // indicadores da semana
-    const linhas = semLinhas(x, s).slice(0, 5), y0 = 622, lh = 88;
-    caixa(M, y0, W - M * 2, linhas.length * lh + 40, 32, '#FFFFFF');
-    linhas.forEach((ind, i) => {
-      const y = y0 + 20 + i * lh, v = X.variacao(ind, x.a[ind.key], x.b[ind.key]);
-      if (i) { g.fillStyle = '#F1F3F4'; g.fillRect(M + 40, y, W - M * 2 - 80, 2); }
-      txt(ind.label, M + 48, y + 44, F(600, 27), '#202124');
-      const sub = ind.key === 'km' ? (semTem(x.a.dias) ? fmt(x.a.dias, 0) + (x.a.dias === 1 ? ' dia rodado' : ' dias rodados') : '') : semTem(s.frota[ind.key]) ? 'média da frota ' + fmtInd(ind, s.frota[ind.key]) : '';
-      if (sub) txt(sub, M + 48, y + 74, F(500, 21), '#80868B');
-      txt(fmtInd(ind, x.a[ind.key]), W - M - 260, y + 58, F(700, 34), '#202124', 'right');
-      txt(semVarTxt(v) || '—', W - M - 48, y + 58, F(600, 24), corVar(v), 'right');
-    });
-
-    // destaque e ponto de atenção
-    const d = semDestaques(x), itens = [d.mel && ['Destaque', d.mel, '#137333'], d.pio && ['Atenção', d.pio, '#C5221F']].filter(Boolean);
-    const yd = y0 + linhas.length * lh + 68;
-    if (itens.length) {
-      caixa(M, yd, W - M * 2, itens.length * 56 + 32, 28, '#FFFFFF');
-      itens.forEach(([rot, o, cor], i) => {
-        const y = yd + 52 + i * 56;
-        g.beginPath(); g.arc(M + 56, y - 8, 9, 0, Math.PI * 2); g.fillStyle = cor; g.fill();
-        const w = txt(rot + ':', M + 80, y, F(700, 26), cor);
-        txt(corta(o.ind.label + ' ' + o.v.texto, F(500, 26), W - M * 2 - 140 - w), M + 92 + w, y, F(500, 26), '#202124');
+    // dias bons e de atenção
+    if (temDias) {
+      const nb = semDiasBons(x).length, na = semDiasAtencao(x).length;
+      caixa(M, y, W - M * 2, 250, 32, '#FFFFFF');
+      txt('DIAS DA SEMANA', M + 48, y + 52, F(600, 22), '#5F6368');
+      txt(`${nb} ${nb === 1 ? 'dia bom' : 'dias bons'} · ${na} de atenção`, W - M - 48, y + 52, F(600, 22), '#202124', 'right');
+      const cw = (W - M * 2 - 64) / 7, x0 = M + 32 + ((7 - x.dias.length) * cw) / 2;
+      x.dias.forEach((o, i) => {
+        const cx = x0 + cw * i + cw / 2;
+        txt(D.semana(o.data).toUpperCase(), cx, y + 100, F(600, 20), '#80868B', 'center');
+        g.beginPath(); g.arc(cx, y + 150, 40, 0, Math.PI * 2); g.fillStyle = o.cls ? SEM_DIA_COR[o.cls] : '#F1F3F4'; g.fill();
+        txt(semTem(o.v) ? semValDia(s, o.v) : '—', cx, y + 159, F(700, 24), o.cls ? '#FFFFFF' : '#9AA0A6', 'center');
+        txt(D.curta(o.data), cx, y + 222, F(500, 19), '#80868B', 'center');
       });
+      y += 250 + G;
     }
-    txt('Gobrax · comparação com a semana de ' + D.periodoBR(s.B), W / 2, H - 30, F(500, 21), '#9AA0A6', 'center');
+
+    // a nota de cada semana do mês: a analisada em amarelo, a comparada em cinza
+    if (temMes) {
+      caixa(M, y, W - M * 2, 210, 32, '#FFFFFF');
+      txt((h.label + ' no mês, semana a semana').toUpperCase(), M + 48, y + 52, F(600, 22), '#5F6368');
+      const cw = (W - M * 2 - 64) / s.ws.length;
+      s.ws.forEach((w, i) => {
+        const bx = M + 32 + cw * i, sel = w.ini === s.A.ini, cmp = s.B && w.ini === s.B.ini;
+        caixa(bx + 6, y + 76, cw - 12, 108, 18, sel ? '#FEDB00' : cmp ? '#E8EAED' : '#F7F8FA');
+        txt('SEMANA ' + w.n + (cmp ? ' · BASE' : ''), bx + cw / 2, y + 104, F(700, 17), '#3C4043', 'center');
+        txt(semTem(x.mes[i]) ? semValDia(s, x.mes[i]) : '—', bx + cw / 2, y + 146, F(700, 32), semTem(x.mes[i]) ? '#202124' : '#9AA0A6', 'center');
+        txt(D.periodoCurto(w), bx + cw / 2, y + 172, F(500, 16), '#5F6368', 'center');
+      });
+      y += 210 + G;
+    }
+
+    // indicadores: semana comparada → semana analisada
+    const pl = semPlacar(x, s);
+    caixa(M, y, W - M * 2, 70 + linhas.length * LH + 20, 32, '#FFFFFF');
+    txt(s.B ? `SEMANA ${s.B.n} → SEMANA ${s.A.n}` : 'INDICADORES DA SEMANA', M + 48, y + 52, F(600, 22), '#5F6368');
+    if (pl.tot) txt(`Evoluiu em ${pl.ev} de ${pl.tot}`, W - M - 48, y + 52, F(700, 22), pl.ev >= pl.rg ? '#137333' : '#C5221F', 'right');
+    linhas.forEach((ind, i) => {
+      const yy = y + 70 + i * LH, v = X.variacao(ind, x.a[ind.key], x.b[ind.key]), si = semSituacao(ind, v);
+      g.fillStyle = '#F1F3F4'; g.fillRect(M + 40, yy, W - M * 2 - 80, 2);
+      txt(corta(ind.label, F(600, 27), 430), M + 48, yy + 44, F(600, 27), '#202124');
+      const sub = [s.B && semTem(x.b[ind.key]) ? 'antes ' + fmtInd(ind, x.b[ind.key]) : '', ind.key === 'km' ? (semTem(x.a.dias) ? fmt(x.a.dias, 0) + (x.a.dias === 1 ? ' dia rodado' : ' dias rodados') : '') : semTem(s.frota[ind.key]) ? 'frota ' + fmtInd(ind, s.frota[ind.key]) : ''].filter(Boolean).join(' · ');
+      if (sub) txt(sub, M + 48, yy + 76, F(500, 21), '#80868B');
+      txt(fmtInd(ind, x.a[ind.key]), W - M - 260, yy + 60, F(700, 34), '#202124', 'right');
+      g.font = F(700, 19); const pw = Math.max(150, g.measureText(si.rot.toUpperCase()).width + 32);
+      caixa(W - M - 40 - pw, yy + 20, pw, 36, 18, SIT[si.cls][0]);
+      txt(si.rot.toUpperCase(), W - M - 40 - pw / 2, yy + 45, F(700, 19), SIT[si.cls][1], 'center');
+      if (semVarTxt(v)) txt(semVarTxt(v), W - M - 40 - pw / 2, yy + 82, F(600, 20), SIT[si.cls][1], 'center');
+    });
+    txt('Gobrax · ' + (s.B ? 'comparação com a ' + semNomeSem(s.B) + ' do mesmo mês' : 'semana sem comparação no mês'), W / 2, H - 34, F(500, 21), '#9AA0A6', 'center');
     return new Promise((ok, falha) => cv.toBlob((b) => (b ? ok(b) : falha(new Error('imagem'))), 'image/png'));
   }
 
@@ -3960,16 +4102,27 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const podeCompartilhar = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] })); } catch (e) { return false; } };
 
   function semCartao(x, s, env) {
-    const h = semHero(s), id = esc(x.m.id);
+    const h = semHero(s), id = esc(x.m.id), vh = X.variacao(h, x.a[h.key], x.b[h.key]), pl = semPlacar(x, s);
+    const BADGE = { bom: 'badge-ok', ruim: 'badge-critico', neutro: 'badge-neutro' };
+    const nb = semDiasBons(x).length, na = semDiasAtencao(x).length;
+    const dias = x.dias.length ? `<div class="sw-bloco"><span class="sw-bloco-t">Dias da semana<span class="apoio"><b class="txt-bom">${nb} ${nb === 1 ? 'bom' : 'bons'}</b> · <b class="txt-atencao">${na} de atenção</b></span></span>
+        <div class="sw-dias">${x.dias.map((o) => `<span class="sw-dia" title="${esc(D.semana(o.data) + ' ' + D.br(o.data) + ': ' + (semTem(o.v) ? semValDia(s, o.v) : o.cls ? 'sem valor' : 'sem rodagem'))}"><small>${D.semana(o.data)}</small><i style="${o.cls ? `background:${SEM_DIA_COR[o.cls]};color:#fff` : ''}">${semTem(o.v) ? esc(semValDia(s, o.v)) : '–'}</i></span>`).join('')}</div></div>` : '';
+    const mes = s.chave && s.ws.length > 1 ? `<div class="sw-bloco"><span class="sw-bloco-t">${esc(h.label)} no mês</span>
+        <div class="sw-mes">${s.ws.map((w, i) => `<span class="sw-mes-i ${w.ini === s.A.ini ? 'sel' : s.B && w.ini === s.B.ini ? 'cmp' : ''}" title="${esc(semNomeSem(w))}"><small>S${w.n}</small><b class="num">${semTem(x.mes[i]) ? esc(semValDia(s, x.mes[i])) : '–'}</b></span>`).join('')}</div></div>` : '';
     return `<article class="sw-card ${env ? 'enviado' : ''}">
       <div class="sw-cab">${avatar(x.m.nome, 40)}
         <div class="sw-quem"><a class="sw-nome" href="${linkMotorista(x.m.id)}" title="Abrir o motorista">${esc(x.m.nome)}</a><span class="apoio">${esc(x.veiculos.slice(0, 2).join(', ') || 'Sem veículo informado')}${x.veiculos.length > 2 ? ' +' + (x.veiculos.length - 2) : ''}</span></div>
         ${env ? '<span class="badge badge-ok">Enviado</span>' : badgeStatus(x.st.status)}</div>
       <div class="sw-hero">
-        <span class="sw-hero-t">${esc(h.label)}</span>
+        <span class="sw-hero-t">${esc(h.label)} atual</span>
         <span class="sw-hero-l"><span class="sw-hero-v num">${esc(fmtInd(h, x.a[h.key]))}</span>${x.pos ? `<span class="sw-pos num">${x.pos}º de ${s.comPos}</span>` : ''}</span>
-        ${variacao(X.variacao(h, x.a[h.key], x.b[h.key]), 'vs. semana anterior')}</div>
-      <div class="sw-linhas">${semLinhas(x, s).slice(0, 4).map((ind) => `<div class="sw-linha"><span>${esc(ind.label)}</span><b class="num">${esc(fmtInd(ind, x.a[ind.key]))}</b>${variacao(X.variacao(ind, x.a[ind.key], x.b[ind.key]))}</div>`).join('')}</div>
+        ${s.B ? `<span class="sw-hero-s">${variacao(vh, semTem(x.b[h.key]) ? 'antes ' + fmtInd(h, x.b[h.key]) : '')}</span>` : '<span class="apoio">Sem outra semana do mês para comparar</span>'}</div>
+      ${pl.tot ? `<span class="sw-placar">Evoluiu em <b class="txt-bom">${pl.ev}</b> de ${pl.tot} indicadores${pl.rg ? ` · regrediu em <b class="txt-ruim">${pl.rg}</b>` : ''}</span>` : ''}
+      <div class="sw-linhas">${semLinhas(x, s).slice(0, 5).map((ind) => {
+        const v = X.variacao(ind, x.a[ind.key], x.b[ind.key]), si = semSituacao(ind, v);
+        return `<div class="sw-linha" title="${esc(ind.label + (semVarTxt(v) ? ': ' + semVarTxt(v) : ''))}"><span class="sw-rot">${esc(ind.label)}</span><span class="badge ${BADGE[si.cls]}">${si.rot}</span><span class="sw-val num">${s.B && semTem(x.b[ind.key]) ? `<span class="sw-antes">${esc(fmtInd(ind, x.b[ind.key]))} →</span> ` : ''}<b>${esc(fmtInd(ind, x.a[ind.key]))}</b>${semVarTxt(v) ? ` <span class="sw-antes">(${esc(semVarTxt(v))})</span>` : ''}</span></div>`;
+      }).join('')}</div>
+      ${dias}${mes}
       <div class="sw-acoes">
         <a class="btn btn-primario" href="${esc(semLinkWhats(semTexto(x, s)))}" target="_blank" rel="noopener" data-acao="sem-whats" data-id="${id}">${icone('whats', 14)}WhatsApp</a>
         <button type="button" class="btn-icone" data-acao="sem-copiar-img" data-id="${id}" title="Copiar a imagem para colar no WhatsApp" aria-label="Copiar a imagem de ${esc(x.m.nome)}">${icone('imagem', 14)}</button>
@@ -3977,15 +4130,36 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <button type="button" class="btn-icone" data-acao="sem-baixar-img" data-id="${id}" title="Baixar a imagem (PNG)" aria-label="Baixar a imagem de ${esc(x.m.nome)}">${icone('baixar', 14)}</button>
       </div></article>`;
   }
+  // Resumo da frota na semana (valor entregue ao cliente) com o texto pronto para o WhatsApp
+  function semResumoFrota(s) {
+    if (!s.mots.length) return '';
+    const h = semHero(s), vh = X.variacao(h, s.frota[h.key], s.frotaB[h.key]);
+    const cont = { evoluiu: 0, regrediu: 0, estavel: 0 };
+    s.mots.forEach((x) => { if (cont[x.st.status] !== undefined) cont[x.st.status]++; });
+    const bons = s.mots.reduce((t, x) => t + semDiasBons(x).length, 0), at = s.mots.reduce((t, x) => t + semDiasAtencao(x).length, 0);
+    const kml = temInd('kml') && h.key !== 'kml' ? IND_MAP.kml : IND_MAP.km;
+    const tile = (cls, t, v, sub) => `<div class="cd-tile ${cls}"><span class="cd-tile-t">${t}</span><span class="cd-tile-v num">${v}</span><span class="cd-tile-s">${sub}</span></div>`;
+    const sit = (v) => { const c = semSituacao(h, v).cls; return c === 'bom' ? 'bom' : c === 'ruim' ? 'ruim' : ''; };
+    return `<section class="card">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Resumo da frota na semana ${s.A.n}</h2>
+        <span class="h2-sub">${s.B ? `Comparada à ${esc(semNomeSem(s.B))} de ${esc(D.nomeMes(s.mes).toLowerCase())}` : 'Primeira semana com dados no mês: escolha outra semana para comparar'}</span></div>
+        <a class="btn" style="text-decoration:none" href="${esc(semLinkWhats(semTextoFrota(s)))}" target="_blank" rel="noopener">${icone('whats', 14)}Enviar resumo da frota</a></div>
+      <div class="card-corpo"><div class="cd-tiles">
+        ${tile(sit(vh), esc(h.label) + ' da frota', esc(fmtInd(h, s.frota[h.key])), s.B ? `antes ${esc(fmtInd(h, s.frotaB[h.key]))} · ${variacao(vh)}` : 'sem comparação')}
+        ${tile('', 'Condutores', fmt(s.mots.length, 0), `<span class="txt-bom">${cont.evoluiu} evoluíram</span> · <span class="txt-ruim">${cont.regrediu} regrediram</span>${cont.estavel ? ' · ' + cont.estavel + ' estáveis' : ''}`)}
+        ${bons + at ? tile(bons >= at ? 'bom' : 'ruim', 'Dias bons', fmt(bons, 0), `${at} dias de atenção · ${esc(semCrit(s))}`) : ''}
+        ${tile(sit(X.variacao(kml, s.frota[kml.key], s.frotaB[kml.key])), esc(kml.label), esc(fmtInd(kml, s.frota[kml.key])), s.B ? `antes ${esc(fmtInd(kml, s.frotaB[kml.key]))} · ${variacao(X.variacao(kml, s.frota[kml.key], s.frotaB[kml.key]))}` : 'sem comparação')}
+      </div></div></section>`;
+  }
   function painelSemanal() {
     if (!E.base || !E.base.motoristas.length) return '';
-    const s = dadosSemana(), env = semEnviados(), b = E.base;
+    const s = dadosSemana(), env = semEnviados();
     const nEnv = s.mots.filter((x) => env.has(String(x.m.id))).length;
     return `<section class="card"><div class="card-corpo sw-barra">
         <div class="sw-semana">
-          <button type="button" class="btn-icone" data-acao="sem-semana" data-d="-1" ${E.semana <= semIni(b.inicio) ? 'disabled' : ''} aria-label="Semana anterior">${icone('esq', 16)}</button>
-          <span class="sw-semana-t"><b>Semana de ${D.periodoBR(s.A)}</b><span class="apoio">Segunda a domingo · comparada a ${D.periodoCurto(s.B)}${s.A.fim > b.fim ? ` · dados até ${D.br(b.fim)}` : ''}</span></span>
-          <button type="button" class="btn-icone" data-acao="sem-semana" data-d="1" ${E.semana >= semIni(b.fim) ? 'disabled' : ''} aria-label="Próxima semana">${icone('dir', 16)}</button>
+          <label class="sw-num"><span class="apoio">Mês</span><select class="campo" data-campo="sem-mes">${s.meses.map((m) => `<option value="${m}" ${m === s.mes ? 'selected' : ''}>${D.nomeMes(m)}</option>`).join('')}</select></label>
+          <label class="sw-num"><span class="apoio">Semana analisada</span><select class="campo" data-campo="sem-sel">${s.ws.map((w) => `<option value="${w.ini}" ${w.ini === s.A.ini ? 'selected' : ''}>Semana ${w.n} · ${D.periodoCurto(w)}</option>`).join('')}</select></label>
+          <label class="sw-num"><span class="apoio">Comparar com (mesmo mês)</span><select class="campo" data-campo="sem-comp"><option value="">Sem comparação</option>${s.ws.filter((w) => w.ini !== s.A.ini).map((w) => `<option value="${w.ini}" ${s.B && w.ini === s.B.ini ? 'selected' : ''}>Semana ${w.n} · ${D.periodoCurto(w)}</option>`).join('')}</select></label>
         </div>
         <label class="sw-num"><span class="apoio">WhatsApp do cliente (opcional)</span>
           <input class="campo" id="sem-whats" type="tel" inputmode="tel" data-campo="sem-whats" value="${esc(armazem.ler(semChaveWhats()) || '')}" placeholder="DDD + número" title="Com o número, o WhatsApp já abre a conversa do cliente. Sem ele, você escolhe o contato. Fica salvo só neste navegador."></label>
@@ -3995,8 +4169,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           <button type="button" class="btn" data-acao="sem-baixar-todas" ${s.mots.length ? '' : 'disabled'}>${icone('baixar', 14)}Baixar imagens</button>
           <button type="button" class="btn btn-primario" data-acao="sem-seq" ${s.mots.length ? '' : 'disabled'}>${icone('whats', 14)}Enviar um por um</button>
         </div></div></section>
+      ${semResumoFrota(s)}
       ${s.mots.length ? `<div class="sw-grade">${s.mots.map((x) => semCartao(x, s, env.has(String(x.m.id)))).join('')}</div>`
-        : '<section class="card"><div class="vazio"><span class="vazio-titulo">Nenhum condutor rodou nesta semana</span><span class="apoio">Use as setas para escolher outra semana.</span></div></section>'}`;
+        : '<section class="card"><div class="vazio"><span class="vazio-titulo">Nenhum condutor rodou nesta semana</span><span class="apoio">Escolha outra semana do mês.</span></div></section>'}`;
   }
   // Envio em sequência: imagem + texto de um condutor por vez; ao abrir o WhatsApp, marca como enviado e passa ao próximo
   function painelEnvioSemanal() {
@@ -7793,7 +7968,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     'usu-link-fechar': () => { const U = usu(); U.link = ''; U.linkTxt = ''; render(); },
     'mot-aba': (el) => { E.motAba = el.dataset.aba; armazem.gravar('gbx-mot-aba', E.motAba); if (E.rota.tela !== 'motoristas') location.hash = '#/motoristas'; else render(); },
     // Resultado semanal
-    'sem-semana': (el) => { E.semana = D.somar(E.semana, 7 * Number(el.dataset.d)); E.semEnvio = null; render(); },
     'sem-whats': (el) => {
       // o link abre o WhatsApp sozinho; aqui só marca como enviado (e, no envio em sequência, vai para o próximo)
       semMarcar(el.dataset.id);
@@ -8002,6 +8176,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   document.addEventListener('change', (ev) => {
     const el = ev.target, k = el.dataset.campo;
     if (k === 'sem-whats') { armazem.gravar(semChaveWhats(), el.value.trim()); render(); return; }
+    if (k === 'sem-mes') { E.semMes = el.value; E.semana = null; E.semEnvio = null; render(); return; }
+    if (k === 'sem-sel') {   // nova semana: compara com a anterior do mesmo mês (dá para trocar no seletor ao lado)
+      const ws = semanasDoMes(E.semMes), i = ws.findIndex((w) => w.ini === el.value);
+      E.semana = el.value; E.semComp = i > 0 ? ws[i - 1].ini : ''; E.semEnvio = null; render(); return;
+    }
+    if (k === 'sem-comp') { E.semComp = el.value; E.semEnvio = null; render(); return; }
     if (k === 'hub-arquivo' && el.files && el.files[0]) {
       el.files[0].text().then((t) => {
         let o = null; try { o = JSON.parse(t); } catch (e) { o = null; }

@@ -1795,6 +1795,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 .sw-mes-i.sel { background: var(--amarelo); } .sw-mes-i.sel small, .sw-mes-i.sel b { color: #202124; }
 .sw-mes-i.cmp { box-shadow: inset 0 0 0 2px var(--borda-hover); }
 .sw-semana .sw-num .campo { width: auto; min-width: 150px; }
+.sw-export { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sw-acoes { display: flex; align-items: center; gap: 4px; margin-top: auto; }
 .sw-acoes a.btn { text-decoration: none; flex: 1 1 auto; min-width: 0; padding: 0 14px; justify-content: center; margin-right: 4px; }
 .sw-acoes .btn-icone { flex-shrink: 0; }
@@ -2730,7 +2731,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     rota: { tela: 'visao', id: null, aba: 'resumo' },
     lista: { busca: '', status: 'todos', ord: { col: 'delta', dir: -1 }, pag: 1, por: 10 },
     indGraf: 'nota', verTabela: false, motComp: 'kml', planoAba: 'diagnostico', planoComp: '', planoGran: '', planoEvoInd: 'kml', motAba: (() => { try { return localStorage.getItem('gbx-mot-aba') || 'resumo'; } catch (e) { return 'resumo'; } })(),
-    semMes: null, semana: null, semComp: '', semEnvio: null,   // Resultado semanal: mês, semana analisada, semana comparada (mesmo mês) e o envio um por um
+    semMes: null, semana: null, semComp: '', semEnvio: null, semPdfGerando: false,   // Resultado semanal: mês, semana analisada, semana comparada (mesmo mês) e o envio um por um
     detalhe: { indGraf: 'nota', verTabela: false },
     comp: { escopo: 'frota', ind: 'nota', ord: -1 },
     preco: 6.1,
@@ -3108,6 +3109,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 56, data: '2026-10-27', titulo: 'Exportar o resultado semanal', texto: 'No Resultado semanal, o resumo da frota ganhou os botões Baixar PDF (numa página só: resumo e ranking da frota e o resultado de cada condutor), Planilha (abre no Excel) e Enviar relatório no WhatsApp, que baixa o PDF e abre a conversa do cliente com a mensagem pronta para você anexar o arquivo. No celular, Compartilhar PDF manda direto pelo WhatsApp.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 55, data: '2026-10-27', titulo: 'Resultado semanal: semanas do mesmo mês, dias bons e de atenção', texto: 'No Resultado semanal você escolhe o mês, a semana analisada e com qual semana do mesmo mês comparar (não mais com o mês anterior). Cada condutor mostra a nota atual, cada indicador de antes para agora com Evoluiu ou Regrediu, os dias bons e de atenção da semana e a nota de cada semana do mês. No topo, o resumo da frota, que também vai pelo WhatsApp. A imagem e a mensagem trazem tudo isso.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 54, data: '2026-10-27', titulo: 'Resultado semanal por condutor', texto: 'Em Motoristas, a aba Resultado semanal mostra um cartão por condutor com a semana (segunda a domingo) comparada à anterior: nota, consumo, km, indicadores, destaque e ponto de atenção. Cada cartão gera a mensagem e a imagem para o WhatsApp do cliente, e o botão Enviar um por um percorre todos os condutores, marcando quem já foi enviado.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 53, data: '2026-10-26', titulo: 'Menu lateral de volta', texto: 'O menu voltou para a lateral, flutuando em vidro, com a tela aberta em amarelo. Clique no botão de cima para ver os nomes. As pílulas do topo saíram; no topo ficam o diesel, o cliente, o grupo, o tema, o sino e sua conta.', href: '#/geral', link: 'Abrir Visão geral' },
@@ -3978,18 +3980,24 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // Imagem em pé (1080 de largura; a altura cresce com o conteúdo). Guardada por semana para não redesenhar a cada clique.
+  // O canvas fica guardado: vira PNG (imagem do WhatsApp) ou JPEG (página do PDF)
   let semImgs = { s: null, m: new Map() };
-  function semImagem(x, s) {
+  function semCanvas(x, s) {
     if (semImgs.s !== s) { semImgs.m.forEach((o) => o.url && URL.revokeObjectURL(o.url)); semImgs = { s, m: new Map() }; }
-    const id = String(x.m.id);
-    if (!semImgs.m.has(id)) semImgs.m.set(id, { p: desenharSemana(x, s) });
-    return semImgs.m.get(id).p;
+    const id = x ? String(x.m.id) : '#frota';
+    if (!semImgs.m.has(id)) semImgs.m.set(id, { c: x ? desenharSemana(x, s) : desenharFrota(s) });
+    return semImgs.m.get(id).c;
   }
-  async function desenharSemana(x, s) {
+  const paraBlob = (cv, tipo, q) => new Promise((ok, falha) => cv.toBlob((b) => (b ? ok(b) : falha(new Error('imagem'))), tipo || 'image/png', q));
+  function semImagem(x, s) {
+    semCanvas(x, s);
+    const o = semImgs.m.get(String(x.m.id));
+    if (!o.p) o.p = o.c.then((cv) => paraBlob(cv));
+    return o.p;
+  }
+  // Ferramentas de desenho comuns às imagens do resultado semanal
+  async function semPincel(W, H) {
     try { await Promise.all(['700 64px Montserrat', '600 28px Montserrat', '500 24px Montserrat'].map((f) => document.fonts.load(f))); } catch (e) { /* segue com a fonte do sistema */ }
-    const h = semHero(s), linhas = semLinhas(x, s).slice(0, 5), temMes = !!s.chave && s.ws.length > 1, temDias = x.dias.length > 0;
-    const W = 1080, M = 64, LH = 100, G = 32;
-    const H = 340 + 250 + G + (temDias ? 250 + G : 0) + (temMes ? 210 + G : 0) + 70 + linhas.length * LH + 20 + 80;
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
@@ -4000,13 +4008,19 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     };
     const txt = (t, x0, y0, fonte, cor, al) => { g.font = fonte; g.fillStyle = cor; g.textAlign = al || 'left'; g.fillText(t, x0, y0); return g.measureText(t).width; };
     const corta = (t, fonte, max) => { g.font = fonte; if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; };
-    const SIT = { bom: ['#E6F4EA', '#137333'], ruim: ['#FCE8E6', '#C5221F'], neutro: ['#F1F3F4', '#5F6368'] };
+    const logo = await new Promise((ok) => { const src = ASSET('logo-escuro') || ASSET('logo'); if (!src) { ok(null); return; } const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+    return { cv, g, F, caixa, txt, corta, logo, SIT: { bom: ['#E6F4EA', '#137333'], ruim: ['#FCE8E6', '#C5221F'], neutro: ['#F1F3F4', '#5F6368'] } };
+  }
+  async function desenharSemana(x, s) {
+    const h = semHero(s), linhas = semLinhas(x, s).slice(0, 5), temMes = !!s.chave && s.ws.length > 1, temDias = x.dias.length > 0;
+    const W = 1080, M = 64, LH = 100, G = 32;
+    const H = 340 + 250 + G + (temDias ? 250 + G : 0) + (temMes ? 210 + G : 0) + 70 + linhas.length * LH + 20 + 80;
+    const { cv, g, F, caixa, txt, corta, logo, SIT } = await semPincel(W, H);
 
     // cabeçalho escuro com o logo para fundo escuro e um filete amarelo
     g.fillStyle = '#F7F8FA'; g.fillRect(0, 0, W, H);
     g.fillStyle = '#202124'; g.fillRect(0, 0, W, 300);
     g.fillStyle = '#FEDB00'; g.fillRect(0, 300, W, 8);
-    const logo = await new Promise((ok) => { const src = ASSET('logo-escuro') || ASSET('logo'); if (!src) { ok(null); return; } const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
     if (logo && logo.width) g.drawImage(logo, M, 62, logo.width * (52 / logo.height), 52); else txt('gobrax', M, 104, F(700, 48), '#FEDB00');
     txt('RESULTADO SEMANAL', W - M, 84, F(700, 24), '#FEDB00', 'right');
     txt(D.nomeMes(s.mes) + ' · semana ' + s.A.n + ' (' + D.periodoCurto(s.A) + ')', W - M, 118, F(500, 24), '#FFFFFF', 'right');
@@ -4085,7 +4099,135 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       if (semVarTxt(v)) txt(semVarTxt(v), W - M - 40 - pw / 2, yy + 82, F(600, 20), SIT[si.cls][1], 'center');
     });
     txt('Gobrax · ' + (s.B ? 'comparação com a ' + semNomeSem(s.B) + ' do mesmo mês' : 'semana sem comparação no mês'), W / 2, H - 34, F(500, 21), '#9AA0A6', 'center');
-    return new Promise((ok, falha) => cv.toBlob((b) => (b ? ok(b) : falha(new Error('imagem'))), 'image/png'));
+    return cv;
+  }
+
+  // Primeira página do relatório: resumo da frota e o ranking de todos os condutores da semana
+  async function desenharFrota(s) {
+    const h = semHero(s), W = 1080, M = 64, G = 32, RH = 72;
+    const H = 340 + 250 + G + 170 + G + 80 + s.mots.length * RH + 20 + 80;
+    const { cv, g, F, caixa, txt, corta, logo, SIT } = await semPincel(W, H);
+    const cont = { evoluiu: 0, regrediu: 0, estavel: 0, sembase: 0 };
+    s.mots.forEach((x) => { cont[x.st.status]++; });
+    const bons = s.mots.reduce((t, x) => t + semDiasBons(x).length, 0), at = s.mots.reduce((t, x) => t + semDiasAtencao(x).length, 0);
+
+    g.fillStyle = '#F7F8FA'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#202124'; g.fillRect(0, 0, W, 300);
+    g.fillStyle = '#FEDB00'; g.fillRect(0, 300, W, 8);
+    if (logo && logo.width) g.drawImage(logo, M, 62, logo.width * (52 / logo.height), 52); else txt('gobrax', M, 104, F(700, 48), '#FEDB00');
+    txt('RELATÓRIO SEMANAL', W - M, 84, F(700, 24), '#FEDB00', 'right');
+    txt(D.nomeMes(s.mes) + ' · semana ' + s.A.n + ' (' + D.periodoCurto(s.A) + ')', W - M, 118, F(500, 24), '#FFFFFF', 'right');
+    txt(corta(E.cliente || 'Resumo da frota', F(700, 44), W - M * 2), M, 214, F(700, 44), '#FFFFFF');
+    txt(s.B ? 'Comparado à ' + semNomeSem(s.B) + ' do mesmo mês' : 'Semana sem comparação no mês', M, 256, F(500, 24), '#BDC1C6');
+
+    const vh = X.variacao(h, s.frota[h.key], s.frotaB[h.key]), sh = semSituacao(h, vh);
+    caixa(M, 340, W - M * 2, 250, 32, '#FFFFFF');
+    txt((h.label + ' da frota').toUpperCase(), M + 48, 404, F(600, 24), '#5F6368');
+    txt(fmtInd(h, s.frota[h.key]), M + 44, 516, F(700, 112), '#202124');
+    txt(s.B && vh && !vh.semBase ? `${sh.rot} ${semVarTxt(vh)} · antes ${fmtInd(h, s.frotaB[h.key])} (semana ${s.B.n})` : 'sem outra semana do mês para comparar', M + 48, 562, F(600, 24), SIT[sh.cls][1]);
+    txt(String(s.mots.length), W - M - 48, 486, F(700, 84), '#202124', 'right');
+    txt('condutores na semana', W - M - 48, 524, F(500, 24), '#5F6368', 'right');
+
+    // três números: evolução dos condutores, dias bons e consumo
+    const kml = temInd('kml') && h.key !== 'kml' ? IND_MAP.kml : IND_MAP.km, vk = X.variacao(kml, s.frota[kml.key], s.frotaB[kml.key]);
+    const tiles = [
+      ['CONDUTORES', `${cont.evoluiu} evoluíram`, `${cont.regrediu} regrediram · ${cont.estavel} estáveis`, '#137333'],
+      ['DIAS DA SEMANA', `${bons} bons`, `${at} de atenção`, '#137333'],
+      [kml.label.toUpperCase(), fmtInd(kml, s.frota[kml.key]), s.B && semTem(s.frotaB[kml.key]) ? `antes ${fmtInd(kml, s.frotaB[kml.key])} · ${semVarTxt(vk)}` : '', SIT[semSituacao(kml, vk).cls][1]]
+    ];
+    const tw = (W - M * 2 - G * 2) / 3, yt = 340 + 250 + G;
+    tiles.forEach(([t, v, sub, cor], i) => {
+      const x0 = M + i * (tw + G);
+      caixa(x0, yt, tw, 170, 28, '#FFFFFF');
+      txt(corta(t, F(600, 19), tw - 56), x0 + 28, yt + 46, F(600, 19), '#5F6368');
+      txt(corta(v, F(700, 36), tw - 56), x0 + 28, yt + 100, F(700, 36), cor);
+      txt(corta(sub, F(500, 19), tw - 56), x0 + 28, yt + 140, F(500, 19), '#5F6368');
+    });
+
+    // ranking de todos os condutores
+    const yr = yt + 170 + G, cx = { pos: M + 40, nome: M + 104, nota: M + 580, var: M + 720, dias: W - M - 40 };
+    caixa(M, yr, W - M * 2, 80 + s.mots.length * RH + 20, 32, '#FFFFFF');
+    txt('CONDUTOR', cx.nome, yr + 54, F(600, 18), '#5F6368');
+    txt(h.label.toUpperCase(), cx.nota, yr + 54, F(600, 18), '#5F6368', 'right');
+    txt('VARIAÇÃO', cx.var, yr + 54, F(600, 18), '#5F6368', 'right');
+    txt('BONS / ATENÇÃO', cx.dias, yr + 54, F(600, 18), '#5F6368', 'right');
+    s.mots.forEach((x, i) => {
+      const y = yr + 80 + i * RH, v = X.variacao(h, x.a[h.key], x.b[h.key]), si = semSituacao(h, v);
+      g.fillStyle = '#F1F3F4'; g.fillRect(M + 32, y, W - M * 2 - 64, 2);
+      txt(x.pos ? x.pos + 'º' : '—', cx.pos, y + 46, F(700, 24), '#202124');
+      g.beginPath(); g.arc(cx.nome + 8, y + 38, 8, 0, Math.PI * 2); g.fillStyle = (STATUS[x.st.status] || STATUS.sembase).cor; g.fill();
+      txt(corta(x.m.nome, F(600, 24), cx.nota - cx.nome - 140), cx.nome + 28, y + 46, F(600, 24), '#202124');
+      txt(fmtInd(h, x.a[h.key]), cx.nota, y + 46, F(700, 26), '#202124', 'right');
+      txt(semVarTxt(v) || '—', cx.var, y + 46, F(600, 22), SIT[si.cls][1], 'right');
+      txt(x.dias.length ? `${semDiasBons(x).length} / ${semDiasAtencao(x).length}` : '—', cx.dias, y + 46, F(600, 22), '#3C4043', 'right');
+    });
+    txt('Gobrax · ao lado, o resultado de cada condutor', W / 2, H - 34, F(500, 21), '#9AA0A6', 'center');
+    return cv;
+  }
+
+  // PDF montado à mão com as imagens em JPEG (uma página por imagem), sem biblioteca externa
+  function pdfDeImagens(imgs) {
+    const enc = new TextEncoder(), partes = [], offs = [];
+    let tam = 0;
+    const add = (v) => { const b = typeof v === 'string' ? enc.encode(v) : v; partes.push(b); tam += b.length; };
+    const obj = (n, corpo, stream) => {
+      offs[n] = tam; add(n + ' 0 obj\n' + corpo);
+      if (stream) { add('\nstream\n'); add(stream); add('\nendstream'); }
+      add('\nendobj\n');
+    };
+    add('%PDF-1.4\n');
+    const total = 3 + imgs.length * 3;
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, `<< /Type /Pages /Kids [${imgs.map((_, i) => 3 + i * 3 + ' 0 R').join(' ')}] /Count ${imgs.length} >>`);
+    imgs.forEach((im, i) => {
+      const p = 3 + i * 3, w = im.w / 2, hh = im.h / 2, cs = `q ${w} 0 0 ${hh} 0 0 cm /Im Do Q`;
+      obj(p, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${hh}] /Resources << /XObject << /Im ${p + 2} 0 R >> >> /Contents ${p + 1} 0 R >>`);
+      obj(p + 1, `<< /Length ${cs.length} >>`, enc.encode(cs));
+      obj(p + 2, `<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>`, im.bytes);
+    });
+    const xref = tam;
+    add(`xref\n0 ${total}\n0000000000 65535 f \n` + offs.slice(1).map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join(''));
+    add(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(partes, { type: 'application/pdf' });
+  }
+  // Tudo numa página só: o resumo da frota e os cartões dos condutores em grade. Mais condutores, mais colunas
+  // (e cartões menores), para a página caber no limite do canvas e do PDF.
+  async function semPaginaUnica(s) {
+    const telas = await Promise.all([semCanvas(null, s)].concat(s.mots.map((x) => semCanvas(x, s))));
+    const n = telas.length, cols = Math.min(8, Math.max(Math.ceil(Math.sqrt(n / 1.7)), Math.ceil(n / 16), 1));
+    const TW = cols <= 3 ? 1080 : 540, GAP = 40, esc_ = TW / 1080;
+    const linhas = [];
+    for (let i = 0; i < n; i += cols) linhas.push(telas.slice(i, i + cols));
+    const alt = linhas.map((l) => Math.max(...l.map((cv) => cv.height * esc_)));
+    const cv = document.createElement('canvas');
+    cv.width = cols * TW + (cols + 1) * GAP; cv.height = Math.round(alt.reduce((t, a) => t + a, 0) + (linhas.length + 1) * GAP);
+    const g = cv.getContext('2d');
+    g.fillStyle = '#E8EAED'; g.fillRect(0, 0, cv.width, cv.height);
+    let y = GAP;
+    linhas.forEach((l, r) => {
+      l.forEach((t, c) => g.drawImage(t, GAP + c * (TW + GAP), y, TW, t.height * esc_));
+      y += alt[r] + GAP;
+    });
+    return cv;
+  }
+  async function semPdf(s) {
+    const cv = await semPaginaUnica(s);
+    return pdfDeImagens([{ w: cv.width, h: cv.height, bytes: new Uint8Array(await (await paraBlob(cv, 'image/jpeg', 0.88)).arrayBuffer()) }]);
+  }
+  const semSlug = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  const semArquivoPdf = (s) => 'relatorio-semanal-' + (semSlug(E.cliente) || 'frota') + '-' + s.A.ini + '.pdf';
+  const semTextoPdf = (s) => semTextoFrota(s) + '\n\n📎 Segue em anexo o relatório completo em PDF: o resumo da frota e o resultado de cada condutor numa página só.';
+  // Planilha da semana: uma linha por condutor, com antes e agora de cada indicador
+  function semCSV(s) {
+    const h = semHero(s), inds = [h].concat(SEM_INDS.filter((k) => k !== h.key && temInd(k) && IND_MAP[k]).map((k) => IND_MAP[k]));
+    const cab = ['Posição', 'Motorista', 'Veículos', 'Situação', 'Dias bons', 'Dias de atenção'];
+    inds.forEach((i) => { const u = i.un ? ' (' + i.un + ')' : ''; cab.push(i.label + ' antes' + u, i.label + ' agora' + u, i.label + ' situação'); });
+    const linhas = s.mots.map((x) => {
+      const l = [x.pos || '', x.m.nome, x.veiculos.join(', '), STATUS[x.st.status].rot, semDiasBons(x).length, semDiasAtencao(x).length];
+      inds.forEach((i) => l.push(numCSV(x.b[i.key], i.casas), numCSV(x.a[i.key], i.casas), semSituacao(i, X.variacao(i, x.a[i.key], x.b[i.key])).rot));
+      return csvLinha(l);
+    });
+    return [csvLinha([`${E.cliente || 'Frota'} · ${D.nomeMes(s.mes)} · semana ${s.A.n} (${D.periodoBR(s.A)})${s.B ? ' comparada à ' + semNomeSem(s.B) : ''}`]), csvLinha(cab)].concat(linhas).join('\n');
   }
 
   const semChaveEnv = () => 'gbx-sem-env:' + ckey(E.cliente) + ':' + E.semana;
@@ -4099,7 +4241,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   const semArquivo = (x) => 'resultado-semanal-' + x.m.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() + '-' + E.semana + '.png';
   const semMot = (id) => dadosSemana().mots.find((x) => String(x.m.id) === String(id));
-  const podeCompartilhar = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] })); } catch (e) { return false; } };
+  const podeCompartilhar = (tipo) => { try { const t = tipo || 'image/png'; return !!(navigator.canShare && navigator.canShare({ files: [new File([''], t === 'application/pdf' ? 'x.pdf' : 'x.png', { type: t })] })); } catch (e) { return false; } };
 
   function semCartao(x, s, env) {
     const h = semHero(s), id = esc(x.m.id), vh = X.variacao(h, x.a[h.key], x.b[h.key]), pl = semPlacar(x, s);
@@ -4143,7 +4285,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `<section class="card">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Resumo da frota na semana ${s.A.n}</h2>
         <span class="h2-sub">${s.B ? `Comparada à ${esc(semNomeSem(s.B))} de ${esc(D.nomeMes(s.mes).toLowerCase())}` : 'Primeira semana com dados no mês: escolha outra semana para comparar'}</span></div>
-        <a class="btn" style="text-decoration:none" href="${esc(semLinkWhats(semTextoFrota(s)))}" target="_blank" rel="noopener">${icone('whats', 14)}Enviar resumo da frota</a></div>
+        <div class="sw-export" role="group" aria-label="Exportar o relatório da semana">
+          <button type="button" class="btn" data-acao="sem-csv" title="Planilha com todos os condutores e indicadores (abre no Excel)">${icone('tabela', 14)}Planilha</button>
+          <button type="button" class="btn" data-acao="sem-pdf" ${E.semPdfGerando ? 'disabled' : ''} title="Uma página só: resumo da frota e todos os condutores">${E.semPdfGerando ? '<span class="spinner"></span>Gerando PDF…' : icone('baixar', 14) + 'Baixar PDF'}</button>
+          ${podeCompartilhar('application/pdf') ? `<button type="button" class="btn" data-acao="sem-pdf-compartilhar" ${E.semPdfGerando ? 'disabled' : ''}>Compartilhar PDF</button>` : ''}
+          <a class="btn btn-primario" style="text-decoration:none" href="${esc(semLinkWhats(semTextoPdf(s)))}" target="_blank" rel="noopener" data-acao="sem-pdf-whats" title="Baixa o PDF e abre o WhatsApp do cliente com a mensagem; anexe o arquivo baixado">${icone('whats', 14)}Enviar relatório no WhatsApp</a>
+        </div></div>
       <div class="card-corpo"><div class="cd-tiles">
         ${tile(sit(vh), esc(h.label) + ' da frota', esc(fmtInd(h, s.frota[h.key])), s.B ? `antes ${esc(fmtInd(h, s.frotaB[h.key]))} · ${variacao(vh)}` : 'sem comparação')}
         ${tile('', 'Condutores', fmt(s.mots.length, 0), `<span class="txt-bom">${cont.evoluiu} evoluíram</span> · <span class="txt-ruim">${cont.regrediu} regrediram</span>${cont.estavel ? ' · ' + cont.estavel + ' estáveis' : ''}`)}
@@ -4205,6 +4352,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           </span>
         </div>
       </div></div>`;
+  }
+  let semPdfCache = null;
+  async function semGerarPdf() {
+    const s = dadosSemana();
+    if (semPdfCache && semPdfCache.s === s) return semPdfCache;
+    E.semPdfGerando = true; render();
+    try { semPdfCache = { s, nome: semArquivoPdf(s), blob: await semPdf(s) }; return semPdfCache; }
+    catch (e) { toast('Não foi possível gerar o PDF.', 'erro'); return null; }
+    finally { E.semPdfGerando = false; render(); }
   }
   function preencherImagensSemanais() {
     document.querySelectorAll('img[data-sem-img]').forEach((img) => {
@@ -8005,6 +8161,14 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       const s = dadosSemana();
       for (const x of s.mots) await baixarBlob(semArquivo(x), await semImagem(x, s));
       toast(s.mots.length + ' imagem(ns) gerada(s).');
+    },
+    // Relatório da semana inteira: PDF (frota + uma página por condutor) e planilha
+    'sem-csv': () => { const s = dadosSemana(); baixar('resultado-semanal-' + (semSlug(E.cliente) || 'frota') + '-' + s.A.ini + '.csv', semCSV(s)); },
+    'sem-pdf': () => semGerarPdf().then((r) => r && baixarBlob(r.nome, r.blob, 'Tente pelo GitHub Pages.')),
+    'sem-pdf-whats': () => { setTimeout(() => semGerarPdf().then((r) => { if (r) { baixarBlob(r.nome, r.blob); toast('PDF baixado. No WhatsApp, anexe o arquivo ' + r.nome + ' na conversa.'); } }), 0); },   // espera o link abrir o WhatsApp antes de redesenhar
+    'sem-pdf-compartilhar': () => {
+      semGerarPdf().then((r) => r && navigator.share({ files: [new File([r.blob], r.nome, { type: 'application/pdf' })], text: semTextoPdf(dadosSemana()) }))
+        .catch((e) => { if (!e || e.name !== 'AbortError') toast('Não foi possível compartilhar. Use Baixar PDF.', 'erro'); });
     },
     'sem-limpar-env': () => { armazem.apagar(semChaveEnv()); render(); },
     'sem-seq': () => { const s = dadosSemana(), env = semEnviados(), i = s.mots.findIndex((x) => !env.has(String(x.m.id))); E.semEnvio = { i: i < 0 ? 0 : i }; render(); },

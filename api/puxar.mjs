@@ -76,7 +76,7 @@ async function apiGet(caminho, params, token) {
 // performance só nas janelas daquele motorista (vehicleIdentification + início e fim do vínculo).
 const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
-const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
+const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota', 'horas_motor', 'horas_pedal'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
 const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
 const msJanela = (s) => Date.parse(s.replace(' ', 'T') + 'Z');
 function vinculos(p, jan) {
@@ -93,11 +93,22 @@ function vinculos(p, jan) {
   const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
   return { lista, diaTodo };
 }
+// Cada percentual da API tem a sua base: o tempo em movimento na maioria; a ignição ligada no motor ligado parado (movement.percentage
+// é movimento ÷ ignição); o tempo com o pé no acelerador nos três ranges do pedal (que somam 100%). Juntar janelas ou dias pondera por ela.
+const PEDAL = ['pedalPressureOnLow', 'pedalPressureOnMid', 'pedalPressureOnHigh'];
+const indApi = (ind, k) => ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig) || null;   // a API escreve pedalPressureOnHig
+function basesApi(ind) {
+  const mv = ind.movement ? numApi(ind.movement.duration) : null, mp = ind.movement ? numApi(ind.movement.percentage) : null;
+  const ped = PEDAL.reduce((t, k) => { const x = indApi(ind, k); return t + (x ? numApi(x.duration) || 0 : 0); }, 0);
+  return { mov: mv, motor: mv && mp ? mv / (mp / 100) : null, pedal: ped || null };
+}
+const baseDo = (k, b) => (k === 'idle' ? b.motor : PEDAL.includes(k) ? b.pedal : b.mov);
 // Soma as janelas de um motorista: km, litros e freadas somados; cada indicador é a média dos percentuais da própria API
-// ponderada pelo tempo em movimento de cada janela (a base do percentual não é o movimento: o motor ligado parado passaria de 100%)
+// ponderada pela base dele em cada janela
 function juntarJanelas(res) {
   const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, soma = {}, peso = {};
-  let kmVel = 0, mov = 0;
+  const tot = { mov: 0, motor: 0, pedal: 0 };
+  let kmVel = 0;
   res.forEach(({ e, p }) => {
     e.forEach((r) => {
       const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
@@ -107,27 +118,27 @@ function juntarJanelas(res) {
       if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
     });
     p.forEach((r) => {
-      const ind = (r && r.indicators) || {}, w = ind.movement ? numApi(ind.movement.duration) || 0 : 0;
-      mov += w;
-      if (!w) return;
+      const ind = (r && r.indicators) || {}, b = basesApi(ind);
+      if (!b.mov) return;
+      tot.mov += b.mov; tot.motor += b.motor || 0; tot.pedal += b.pedal || 0;
       PERF_COLS.forEach(([, k]) => {
-        const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig), pc = x ? numApi(x.percentage) : null;
-        if (pc !== null) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
+        const x = indApi(ind, k), pc = x ? numApi(x.percentage) : null, w = baseDo(k, b);
+        if (pc !== null && w) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
       });
     });
   });
-  const ind = { movement: { duration: mov } };
-  Object.keys(soma).forEach((k) => { ind[k] = { percentage: soma[k] / peso[k] }; });
+  const ind = { movement: { duration: tot.mov, percentage: tot.motor ? (tot.mov / tot.motor) * 100 : null } };
+  Object.keys(soma).forEach((k) => { const pc = soma[k] / peso[k]; ind[k] = { percentage: pc, duration: PEDAL.includes(k) ? (pc * tot.pedal) / 100 : null }; });
   return { est, ind };
 }
 // Uma linha no layout do painel: estatísticas (r) + indicadores da performance (ind). O CPF dos motoristas nunca entra.
 function linhaApi(dia, nome, placa, r, ind, cli, rodou, soPerf) {
   const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
   const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
-  const pct = (k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
-  const mov = ind.movement ? numApi(ind.movement.duration) : null;
+  const pct = (k) => { const x = indApi(ind, k); return x ? n(x.percentage) : ''; };
+  const b = basesApi(ind), h = (v) => (v === null ? '' : n(v / 60));
   return [br(dia), escC(nome || placa), escC(placa), soPerf ? '' : n(r.totalMileage || 0), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
-    rodou ? n(r.averageSpeed) : '', n(r.odometer), mov === null ? '' : n(mov / 60), '']   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
+    rodou ? n(r.averageSpeed) : '', n(r.odometer), h(b.mov), '', h(b.motor), h(b.pedal)]   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
     .concat(PERF_COLS.map(([, k]) => pct(k)), [escC(cli), '1']).join(';');
 }
 // Um dia: as linhas dos veículos (dia inteiro de cada um), as dos motoristas que ficaram o dia todo no veículo e,

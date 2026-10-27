@@ -1868,6 +1868,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { key: 'km', obrig: true, rotulo: 'Km rodados no dia', ex: '412,6', aliases: ['km', 'km_rodado', 'km_rodados', 'distancia', 'distancia_km', 'quilometragem', 'km_percorrido', 'km_percorridos'] },
     { key: 'litros', rotulo: 'Litros de diesel', ex: '158,2', aliases: ['litros', 'consumo_l', 'consumo_litros', 'combustivel', 'litros_consumidos', 'diesel', 'diesel_l'] },
     { key: 'horas', rotulo: 'Horas de condução', ex: '6,8', aliases: ['horas', 'horas_conducao', 'horas_de_conducao', 'tempo_conducao', 'horas_rodadas'] },
+    { key: 'horas_motor', rotulo: 'Horas com a ignição ligada (base do motor ligado parado)', ex: '8,1', aliases: ['horas_motor', 'horas_ignicao', 'horas_motor_ligado'] },
+    { key: 'horas_pedal', rotulo: 'Horas com o pé no acelerador (base dos ranges do pedal)', ex: '5,2', aliases: ['horas_pedal', 'horas_acelerador'] },
     { key: 'viagens', rotulo: 'Viagens no dia', ex: '1', aliases: ['viagens', 'qtd_viagens', 'n_viagens', 'numero_viagens'] },
     { key: 'faixa_verde', rotulo: '% do tempo na faixa verde', ex: '64,5', aliases: ['faixa_verde', 'faixa_verde_pct', 'pct_faixa_verde', 'faixa_verde_'] },
     { key: 'embalo', rotulo: '% de aproveitamento de embalo', ex: '22,1', aliases: ['embalo', 'embalo_pct', 'aproveitamento_de_embalo', 'aproveitamento_embalo'] },
@@ -1912,16 +1914,16 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { key: 'nota', grupo: 'nota', label: 'Nota Gobrax', desc: 'Média ponderada pelos km rodados', un: '', casas: 1, melhor: 1, tipo: 'media', col: 'nota', peso: 'km', var: 'pts' },
     { key: 'faixa_verde', grupo: 'conducao', label: 'Faixa verde', desc: 'Tempo na rotação econômica', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'faixa_verde', peso: 'horas', var: 'pp' },
     { key: 'embalo', grupo: 'conducao', label: 'Aproveitamento de embalo', desc: 'Inércia usada sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'embalo', peso: 'km', var: 'pp' },
-    { key: 'motor_ocioso', grupo: 'conducao', label: 'Motor ligado parado', desc: 'Motor ligado com o veículo parado', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'motor_ocioso', peso: 'horas', var: 'pp' },
-    { key: 'pressao_acelerador', grupo: 'conducao', label: 'Pedal no range crítico', desc: 'Tempo com o acelerador na pressão crítica', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_acelerador', peso: 'horas', var: 'pp' },
+    { key: 'motor_ocioso', grupo: 'conducao', label: 'Motor ligado parado', desc: 'Motor ligado com o veículo parado', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'motor_ocioso', peso: 'horas_motor', var: 'pp' },
+    { key: 'pressao_acelerador', grupo: 'conducao', label: 'Pedal no range crítico', desc: 'Tempo com o acelerador na pressão crítica', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_acelerador', peso: 'horas_pedal', var: 'pp' },
     { key: 'excesso_rotacao', grupo: 'conducao', label: 'Acelerando acima do verde', desc: 'Tempo acima da faixa verde de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
     { key: 'excesso_velocidade', grupo: 'conducao', label: 'Excesso de velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'excesso_velocidade', den: 'km', mult: 100, var: 'pct' },
     { key: 'tempo_excesso_velocidade', grupo: 'conducao', label: 'Tempo em excesso de velocidade', desc: 'Tempo acima da velocidade configurada', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'tempo_excesso_velocidade', peso: 'horas', var: 'pp' },
     { key: 'inicio_faixa_verde', grupo: 'conducao', label: 'Início da faixa verde', desc: 'Parte mais econômica da faixa verde', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'inicio_faixa_verde', peso: 'horas', var: 'pp' },
     { key: 'final_faixa_verde', grupo: 'conducao', label: 'Final da faixa verde', desc: 'Parte alta da faixa verde', un: '%', casas: 1, melhor: 0, tipo: 'media', col: 'final_faixa_verde', peso: 'horas', var: 'pp' },
     { key: 'eco_roll', grupo: 'conducao', label: 'Eco Roll / I-Roll', desc: 'Tempo em roda livre', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'eco_roll', peso: 'horas', var: 'pp' },
-    { key: 'pressao_ideal', grupo: 'conducao', label: 'Pedal na pressão ideal', desc: 'Tempo com o acelerador no range ideal', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'pressao_ideal', peso: 'horas', var: 'pp' },
-    { key: 'pressao_atencao', grupo: 'conducao', label: 'Pedal em atenção', desc: 'Tempo com o acelerador no range de atenção', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_atencao', peso: 'horas', var: 'pp' },
+    { key: 'pressao_ideal', grupo: 'conducao', label: 'Pedal na pressão ideal', desc: 'Tempo com o acelerador no range ideal', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'pressao_ideal', peso: 'horas_pedal', var: 'pp' },
+    { key: 'pressao_atencao', grupo: 'conducao', label: 'Pedal em atenção', desc: 'Tempo com o acelerador no range de atenção', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_atencao', peso: 'horas_pedal', var: 'pp' },
     { key: 'piloto_automatico', grupo: 'conducao', label: 'Piloto automático', desc: 'Tempo com piloto automático ativo', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'piloto_automatico', peso: 'horas', var: 'pp' },
     { key: 'freio_motor', grupo: 'conducao', label: 'Freio motor', desc: 'Tempo com freio motor, sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'freio_motor', peso: 'horas', var: 'pp' },
     { key: 'frenagens', grupo: 'conducao', label: 'Freadas a cada 100 km', desc: 'Freadas totais a cada 100 km rodados', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
@@ -1938,6 +1940,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   ];
   const IND_MAP = Object.fromEntries(IND.map((i) => [i.key, i]));
 
+  const PESO_RESERVA = { horas_motor: 'horas', horas_pedal: 'horas' };
   function colunasDoIndicador(ind) {
     if (ind.tipo === 'soma' || ind.tipo === 'media') return [ind.col];
     if (ind.tipo === 'razao') return [ind.num, ind.den];
@@ -2107,18 +2110,20 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       return n ? s : null;
     }
     if (ind.tipo === 'media') {
-      // pondera pela coluna do indicador; sem esse peso nos dados (ex.: a API só de performance não traz km), usa o outro, e por fim a média simples
+      // pondera pela coluna do indicador; sem esse peso nos dados (ex.: a API só de performance não traz km), usa o outro, e por fim a média simples.
+      // Motor ligado parado e pedal pesam pela própria base (ignição ligada, pé no acelerador); linha importada antes dessas colunas usa as horas.
       const media = (pesoCol) => {
         let s = 0, w = 0;
         linhas.forEach((l) => {
           const v = l[ind.col];
           if (v === null || v === undefined) return;
-          const p = !pesoCol ? 1 : l[pesoCol] > 0 ? l[pesoCol] : 0;
+          const lw = PESO_RESERVA[pesoCol] && (l[pesoCol] === null || l[pesoCol] === undefined) ? l[PESO_RESERVA[pesoCol]] : l[pesoCol];
+          const p = !pesoCol ? 1 : lw > 0 ? lw : 0;
           s += v * p; w += p;
         });
         return w > 0 ? s / w : null;
       };
-      const pref = ind.peso === 'horas' && !base.temHoras ? 'km' : ind.peso;
+      const pref = (ind.peso === 'horas' || PESO_RESERVA[ind.peso]) && !base.temHoras ? 'km' : ind.peso;
       const r = media(pref);
       return r !== null ? r : media(pref === 'km' ? 'horas' : 'km') !== null ? media(pref === 'km' ? 'horas' : 'km') : media(null);
     }
@@ -3109,6 +3114,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 59, data: '2026-10-27', titulo: 'Pedal e motor ligado parado iguais aos da plataforma', texto: 'Na API, cada indicador tem a sua base: o motor ligado parado é sobre o tempo de ignição ligada e os ranges do pedal (ideal, atenção e crítico) são sobre o tempo com o pé no acelerador. O painel juntava os dias pelas horas em movimento, e por isso o pedal no range crítico e o motor ligado parado de uma semana saíam diferentes da plataforma. Agora cada um é ponderado pela própria base. Vale para as próximas buscas na API.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 58, data: '2026-10-27', titulo: 'Indicadores do motorista corrigidos', texto: 'Quando o motorista dirigiu o veículo só em parte do dia, os indicadores dele (faixa verde, motor ligado parado, pedal no range crítico e os demais) eram recalculados sobre o tempo em movimento e podiam sair distorcidos, com o motor ligado parado passando de 100%. Agora cada indicador é a média dos percentuais da própria plataforma, ponderada pelas horas em movimento de cada trecho. Vale para as próximas buscas na API.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 57, data: '2026-10-27', titulo: 'Motorista é motorista, veículo é veículo', texto: 'Antes, o motorista que mais dirigiu um veículo no dia ficava com o dia inteiro do veículo, e os números do condutor saíam maiores que os da análise por motorista da plataforma. Agora o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado ao veículo. Vale para as próximas buscas na API. Os indicadores ganharam os nomes da plataforma: Motor ligado parado, Acelerando acima do verde, Pedal no range crítico e Freadas a cada 100 km (são as freadas totais, não só as bruscas).', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 56, data: '2026-10-27', titulo: 'Exportar o resultado semanal', texto: 'No Resultado semanal, o resumo da frota ganhou os botões Baixar PDF (numa página só: resumo e ranking da frota e o resultado de cada condutor), Planilha (abre no Excel) e Enviar relatório no WhatsApp, que baixa o PDF e abre a conversa do cliente com a mensagem pronta para você anexar o arquivo. No celular, Compartilhar PDF manda direto pelo WhatsApp.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -6813,11 +6819,22 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
     return { lista, diaTodo };
   }
+  // Cada percentual da API tem a sua base: o tempo em movimento na maioria; a ignição ligada no motor ligado parado (movement.percentage
+  // é movimento ÷ ignição); o tempo com o pé no acelerador nos três ranges do pedal (que somam 100%). Juntar janelas ou dias pondera por ela.
+  const PEDAL = ['pedalPressureOnLow', 'pedalPressureOnMid', 'pedalPressureOnHigh'];
+  const indApi = (ind, k) => ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig) || null;   // a API escreve pedalPressureOnHig
+  function basesApi(ind) {
+    const mv = ind.movement ? numApi(ind.movement.duration) : null, mp = ind.movement ? numApi(ind.movement.percentage) : null;
+    const ped = PEDAL.reduce((t, k) => { const x = indApi(ind, k); return t + (x ? numApi(x.duration) || 0 : 0); }, 0);
+    return { mov: mv, motor: mv && mp ? mv / (mp / 100) : null, pedal: ped || null };
+  }
+  const baseDo = (k, b) => (k === 'idle' ? b.motor : PEDAL.includes(k) ? b.pedal : b.mov);
   // Soma as janelas de um motorista: km, litros e freadas somados; cada indicador é a média dos percentuais da própria API
-  // ponderada pelo tempo em movimento de cada janela (a base do percentual não é o movimento: o motor ligado parado passaria de 100%)
+  // ponderada pela base dele em cada janela
   function juntarJanelas(res) {
     const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, soma = {}, peso = {};
-    let kmVel = 0, mov = 0;
+    const tot = { mov: 0, motor: 0, pedal: 0 };
+    let kmVel = 0;
     res.forEach(({ e, p }) => {
       e.forEach((r) => {
         const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
@@ -6827,28 +6844,28 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
       });
       p.forEach((r) => {
-        const ind = (r && r.indicators) || {}, w = ind.movement ? numApi(ind.movement.duration) || 0 : 0;
-        mov += w;
-        if (!w) return;
+        const ind = (r && r.indicators) || {}, b = basesApi(ind);
+        if (!b.mov) return;
+        tot.mov += b.mov; tot.motor += b.motor || 0; tot.pedal += b.pedal || 0;
         PERF_COLS.forEach(([, k]) => {
-          const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig), pc = x ? numApi(x.percentage) : null;
-          if (pc !== null) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
+          const x = indApi(ind, k), pc = x ? numApi(x.percentage) : null, w = baseDo(k, b);
+          if (pc !== null && w) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
         });
       });
     });
-    const ind = { movement: { duration: mov } };
-    Object.keys(soma).forEach((k) => { ind[k] = { percentage: soma[k] / peso[k] }; });
+    const ind = { movement: { duration: tot.mov, percentage: tot.motor ? (tot.mov / tot.motor) * 100 : null } };
+    Object.keys(soma).forEach((k) => { const pc = soma[k] / peso[k]; ind[k] = { percentage: pc, duration: PEDAL.includes(k) ? (pc * tot.pedal) / 100 : null }; });
     return { est, ind };
   }
-  const COLS_API = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
+  const COLS_API = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota', 'horas_motor', 'horas_pedal'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
   // Uma linha no layout do painel: estatísticas (r) + indicadores da performance (ind). O CPF dos motoristas nunca entra.
   function linhaApi(dia, nome, placa, r, ind, cli, rodou) {
     const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
     const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
-    const pct = (k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
-    const mov = ind.movement ? numApi(ind.movement.duration) : null;
+    const pct = (k) => { const x = indApi(ind, k); return x ? n(x.percentage) : ''; };
+    const b = basesApi(ind), h = (v) => (v === null ? '' : n(v / 60));
     return [D.br(dia), escC(nome || placa), escC(placa), n(r.totalMileage || 0), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
-      rodou ? n(r.averageSpeed) : '', n(r.odometer), mov === null ? '' : n(mov / 60), '']   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
+      rodou ? n(r.averageSpeed) : '', n(r.odometer), h(b.mov), '', h(b.motor), h(b.pedal)]   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
       .concat(PERF_COLS.map(([, k]) => pct(k)), [escC(cli), '1']).join(';');
   }
   // Um dia: as linhas dos veículos (dia inteiro de cada um), as dos motoristas que ficaram o dia todo no veículo e,

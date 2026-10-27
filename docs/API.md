@@ -156,6 +156,7 @@ Detalhes da resposta da performance:
 - Não existe nota geral (`score`) no registro. Cada indicador traz o próprio `score`, por isso a coluna `nota` fica vazia.
 - A pressão crítica do pedal vem como `pedalPressureOnHig`, sem o "h" final. O painel e o script aceitam os dois nomes.
 - `movement.duration` vem em minutos.
+- Cada percentual tem a sua base (conferido em 27/10/2026, `duration ÷ percentage`): o tempo em movimento na maioria dos indicadores; a ignição ligada no `idle` (motor ligado parado), que é `movement.duration ÷ movement.percentage`; e o tempo com o pé no acelerador nos três ranges do pedal, que somam 100%. O painel grava essas bases em `horas_motor` e `horas_pedal` e pondera cada indicador pela própria base ao juntar dias ou vínculos.
 - A pressão crítica do pedal vem como `pedalPressureOnHig` (sem o "h"); o painel aceita os dois nomes.
 - Sem nota e sem km/l, o status de cada motorista e veículo (evoluiu, estável, regrediu) usa a faixa verde: ±2 p.p. contra o período anterior.
 - Sem km, conta como rodando quem teve tempo em movimento, e as médias usam as horas como peso.

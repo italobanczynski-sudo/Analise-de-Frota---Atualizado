@@ -76,7 +76,6 @@ async function apiGet(caminho, params, token) {
 // performance só nas janelas daquele motorista (vehicleIdentification + início e fim do vínculo).
 const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
-const IND_DUR = ['movement'].concat(PERF_COLS.map(([, k]) => k));
 const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
 const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
 const msJanela = (s) => Date.parse(s.replace(' ', 'T') + 'Z');
@@ -94,10 +93,11 @@ function vinculos(p, jan) {
   const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
   return { lista, diaTodo };
 }
-// Soma as janelas de um motorista: km, litros e freadas somados; indicadores pela duração de cada um sobre o tempo em movimento
+// Soma as janelas de um motorista: km, litros e freadas somados; cada indicador é a média dos percentuais da própria API
+// ponderada pelo tempo em movimento de cada janela (a base do percentual não é o movimento: o motor ligado parado passaria de 100%)
 function juntarJanelas(res) {
-  const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, dur = {};
-  let kmVel = 0;
+  const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, soma = {}, peso = {};
+  let kmVel = 0, mov = 0;
   res.forEach(({ e, p }) => {
     e.forEach((r) => {
       const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
@@ -107,12 +107,17 @@ function juntarJanelas(res) {
       if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
     });
     p.forEach((r) => {
-      const ind = (r && r.indicators) || {};
-      IND_DUR.forEach((k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); if (x) dur[k] = (dur[k] || 0) + (numApi(x.duration) || 0); });
+      const ind = (r && r.indicators) || {}, w = ind.movement ? numApi(ind.movement.duration) || 0 : 0;
+      mov += w;
+      if (!w) return;
+      PERF_COLS.forEach(([, k]) => {
+        const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig), pc = x ? numApi(x.percentage) : null;
+        if (pc !== null) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
+      });
     });
   });
-  const mov = dur.movement || 0, ind = {};
-  Object.keys(dur).forEach((k) => { ind[k] = { duration: dur[k], percentage: k === 'movement' ? 100 : mov ? (dur[k] / mov) * 100 : null }; });
+  const ind = { movement: { duration: mov } };
+  Object.keys(soma).forEach((k) => { ind[k] = { percentage: soma[k] / peso[k] }; });
   return { est, ind };
 }
 // Uma linha no layout do painel: estatísticas (r) + indicadores da performance (ind). O CPF dos motoristas nunca entra.

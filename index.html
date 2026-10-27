@@ -3109,6 +3109,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 58, data: '2026-10-27', titulo: 'Indicadores do motorista corrigidos', texto: 'Quando o motorista dirigiu o veículo só em parte do dia, os indicadores dele (faixa verde, motor ligado parado, pedal no range crítico e os demais) eram recalculados sobre o tempo em movimento e podiam sair distorcidos, com o motor ligado parado passando de 100%. Agora cada indicador é a média dos percentuais da própria plataforma, ponderada pelas horas em movimento de cada trecho. Vale para as próximas buscas na API.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 57, data: '2026-10-27', titulo: 'Motorista é motorista, veículo é veículo', texto: 'Antes, o motorista que mais dirigiu um veículo no dia ficava com o dia inteiro do veículo, e os números do condutor saíam maiores que os da análise por motorista da plataforma. Agora o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado ao veículo. Vale para as próximas buscas na API. Os indicadores ganharam os nomes da plataforma: Motor ligado parado, Acelerando acima do verde, Pedal no range crítico e Freadas a cada 100 km (são as freadas totais, não só as bruscas).', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 56, data: '2026-10-27', titulo: 'Exportar o resultado semanal', texto: 'No Resultado semanal, o resumo da frota ganhou os botões Baixar PDF (numa página só: resumo e ranking da frota e o resultado de cada condutor), Planilha (abre no Excel) e Enviar relatório no WhatsApp, que baixa o PDF e abre a conversa do cliente com a mensagem pronta para você anexar o arquivo. No celular, Compartilhar PDF manda direto pelo WhatsApp.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 55, data: '2026-10-27', titulo: 'Resultado semanal: semanas do mesmo mês, dias bons e de atenção', texto: 'No Resultado semanal você escolhe o mês, a semana analisada e com qual semana do mesmo mês comparar (não mais com o mês anterior). Cada condutor mostra a nota atual, cada indicador de antes para agora com Evoluiu ou Regrediu, os dias bons e de atenção da semana e a nota de cada semana do mês. No topo, o resumo da frota, que também vai pelo WhatsApp. A imagem e a mensagem trazem tudo isso.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -6796,7 +6797,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // motorista da plataforma). drivers[] traz o início e o fim de cada vínculo, recortados na janela consultada. Um único
   // motorista vinculado o dia todo usa a linha do próprio veículo; nos demais casos o painel consulta estatísticas e
   // performance só nas janelas daquele motorista (vehicleIdentification + início e fim do vínculo).
-  const IND_DUR = ['movement'].concat(PERF_COLS.map(([, k]) => k));
   const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
   const msJanela = (s) => Date.parse(s.replace(' ', 'T') + 'Z');
   function vinculos(p, jan) {
@@ -6813,10 +6813,11 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
     return { lista, diaTodo };
   }
-  // Soma as janelas de um motorista: km, litros e freadas somados; indicadores pela duração de cada um sobre o tempo em movimento
+  // Soma as janelas de um motorista: km, litros e freadas somados; cada indicador é a média dos percentuais da própria API
+  // ponderada pelo tempo em movimento de cada janela (a base do percentual não é o movimento: o motor ligado parado passaria de 100%)
   function juntarJanelas(res) {
-    const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, dur = {};
-    let kmVel = 0;
+    const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, soma = {}, peso = {};
+    let kmVel = 0, mov = 0;
     res.forEach(({ e, p }) => {
       e.forEach((r) => {
         const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
@@ -6826,12 +6827,17 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
       });
       p.forEach((r) => {
-        const ind = (r && r.indicators) || {};
-        IND_DUR.forEach((k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); if (x) dur[k] = (dur[k] || 0) + (numApi(x.duration) || 0); });
+        const ind = (r && r.indicators) || {}, w = ind.movement ? numApi(ind.movement.duration) || 0 : 0;
+        mov += w;
+        if (!w) return;
+        PERF_COLS.forEach(([, k]) => {
+          const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig), pc = x ? numApi(x.percentage) : null;
+          if (pc !== null) { soma[k] = (soma[k] || 0) + pc * w; peso[k] = (peso[k] || 0) + w; }
+        });
       });
     });
-    const mov = dur.movement || 0, ind = {};
-    Object.keys(dur).forEach((k) => { ind[k] = { duration: dur[k], percentage: k === 'movement' ? 100 : mov ? (dur[k] / mov) * 100 : null }; });
+    const ind = { movement: { duration: mov } };
+    Object.keys(soma).forEach((k) => { ind[k] = { percentage: soma[k] / peso[k] }; });
     return { est, ind };
   }
   const COLS_API = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);

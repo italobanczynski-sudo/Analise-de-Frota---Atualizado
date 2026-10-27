@@ -1,6 +1,6 @@
 // Package background roda as tarefas automáticas: a busca de dados (logo que o servidor sobe e depois
 // a cada COLETA_INTERVALO_MIN), a limpeza das sessões de login vencidas (a cada 6 horas) e o WhatsApp
-// dos motoristas (todo dia na WHATSAPP_HORA de Brasília, com o resultado do dia anterior).
+// dos motoristas (na hora marcada na aba WhatsApp, horário de Brasília, com o resultado do dia anterior).
 package background
 
 import (
@@ -10,7 +10,6 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/sirupsen/logrus"
 
-	"analisefrota/common/utils"
 	"analisefrota/environment"
 	"analisefrota/modules/coleta"
 	"analisefrota/modules/sessao"
@@ -18,7 +17,7 @@ import (
 )
 
 func Init() {
-	s, err := gocron.NewScheduler(gocron.WithLocation(utils.FusoBR())) // horas marcadas em horário de Brasília
+	s, err := gocron.NewScheduler()
 	if err != nil {
 		logrus.Fatalf("background: agendador: %v", err)
 	}
@@ -39,14 +38,9 @@ func Init() {
 		logrus.Fatalf("background: limpeza de sessões: %v", err)
 	}
 
-	wa := environment.Cfg.WhatsApp
-	if wa.Automatico {
-		if _, err := s.NewJob(gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(wa.Hora), 0, 0))), gocron.NewTask(enviarWhatsApp), unica); err != nil {
-			logrus.Fatalf("background: tarefa do WhatsApp: %v", err)
-		}
-		logrus.Infof("background: WhatsApp dos motoristas todo dia às %dh (Brasília)", wa.Hora)
-	} else {
-		logrus.Info("background: WhatsApp automático desligado (WHATSAPP_AUTOMATICO=false)")
+	// toda hora cheia: o módulo confere se o envio automático está ligado e se é a hora marcada (a aba WhatsApp muda sem reiniciar)
+	if _, err := s.NewJob(gocron.CronJob("0 * * * *", false), gocron.NewTask(enviarWhatsApp), unica); err != nil {
+		logrus.Fatalf("background: tarefa do WhatsApp: %v", err)
 	}
 	s.Start()
 }
@@ -54,7 +48,7 @@ func Init() {
 func enviarWhatsApp() {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute)
 	defer cancel()
-	whatsapp.NewWhatsApp().EnviarTodos(ctx)
+	whatsapp.NewWhatsApp().EnviarAgendado(ctx)
 }
 
 func buscarTodos() {

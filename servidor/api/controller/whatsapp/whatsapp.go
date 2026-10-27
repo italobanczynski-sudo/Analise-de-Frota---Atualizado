@@ -6,6 +6,7 @@ import (
 	"analisefrota/api/controller"
 	mwwhatsapp "analisefrota/api/middleware/whatsapp"
 	"analisefrota/common/utils"
+	modwhatsapp "analisefrota/modules/whatsapp"
 )
 
 // Painel: GET /api/v1/clientes/:id/whatsapp
@@ -50,6 +51,24 @@ func Enviar(c *gin.Context) {
 		return
 	}
 	controller.Response(c, mwwhatsapp.WhatsApp_t{ClienteID: id, Dia: req.Dia}.Enviar(c.Request.Context()))
+}
+
+// Config: GET /api/v1/whatsapp/config
+func Config(c *gin.Context) {
+	controller.Response(c, mwwhatsapp.WhatsApp_t{}.Config(c.Request.Context()))
+}
+
+// SalvarConfig: PUT /api/v1/whatsapp/config {"account_sid", "auth_token", "remetente", "template_sid", "automatico", "hora"}
+func SalvarConfig(c *gin.Context) {
+	var req ConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil || utils.ValidateStruct(req) != nil {
+		controller.RetFail(c, "preencha Account SID, número que envia e Template SID; a hora vai de 0 a 23")
+		return
+	}
+	controller.Response(c, mwwhatsapp.WhatsApp_t{UsuarioID: controller.UsuarioLogado(c).ID, NovaConfig: modwhatsapp.NovaConfig_t{
+		AccountSID: req.AccountSID, AuthToken: req.AuthToken, Remetente: req.Remetente, TemplateSID: req.TemplateSID,
+		Automatico: req.Automatico, Hora: req.Hora,
+	}}.SalvarConfig(c.Request.Context()))
 }
 
 // SalvarContato: PUT /api/v1/clientes/:id/whatsapp/contatos {"motorista", "telefone", "autorizado"}

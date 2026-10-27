@@ -40,6 +40,7 @@ var (
 		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
 		usuario.ErrCodigoInvalido, base.ErrColecao, base.ErrID, base.ErrDados, base.ErrGrande,
 		contato.ErrMotorista, contato.ErrTelefone, contato.ErrSemAutorizacao, whatsapp.ErrDiaFuturo,
+		whatsapp.ErrAccountSID, whatsapp.ErrAuthToken, whatsapp.ErrSemToken, whatsapp.ErrRemetente, whatsapp.ErrTemplateSID, whatsapp.ErrHora,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}

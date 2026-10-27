@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -35,25 +34,17 @@ type Twilio_t struct {
 
 type teste_t struct{}
 
-var (
-	local     WhatsApp_I
-	localOnce sync.Once
-)
-
 const baseTwilio = "https://api.twilio.com/2010-04-01/Accounts/"
 
-// NewWhatsApp devolve o envio único configurado pelo environment
-func NewWhatsApp() WhatsApp_I {
-	localOnce.Do(func() {
-		cfg := environment.Cfg.WhatsApp
-		if cfg.Configurado() {
-			local = &Twilio_t{Cfg: cfg, Base: baseTwilio, HTTP: &http.Client{Timeout: 20 * time.Second}}
-			return
-		}
-		logrus.Warn("twilio: WhatsApp não configurado; modo de teste (as mensagens aparecem só neste log)")
-		local = &teste_t{}
-	})
-	return local
+var clienteHTTP = &http.Client{Timeout: 20 * time.Second}
+
+// NewWhatsApp devolve o envio para a configuração dada (a da aba WhatsApp ou a do environment);
+// incompleta, cai no modo de teste. Com o Auth Token, TwilioAPIKey é o próprio Account SID.
+func NewWhatsApp(cfg environment.WhatsAppConfig_t) WhatsApp_I {
+	if cfg.Configurado() {
+		return &Twilio_t{Cfg: cfg, Base: baseTwilio, HTTP: clienteHTTP}
+	}
+	return &teste_t{}
 }
 
 func (t *teste_t) Teste() bool { return true }
@@ -117,7 +108,7 @@ func (t *Twilio_t) Enviar(ctx context.Context, telefone string, variaveis map[st
 }
 
 // ErrCredenciais: a API Key ou o segredo não valem (revogados ou copiados errado). Ninguém recebe até corrigir.
-var ErrCredenciais = errors.New("twilio: API Key ou segredo recusados; confira TWILIO_API_KEY e TWILIO_API_SECRET")
+var ErrCredenciais = errors.New("a Twilio recusou o Account SID e o Auth Token; confira os dois na Conexão com a Twilio (aba WhatsApp)")
 
 // Mascarar deixa só os 4 últimos dígitos do telefone, para log e tela
 func Mascarar(telefone string) string {

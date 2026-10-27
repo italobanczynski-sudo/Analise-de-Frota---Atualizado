@@ -58,6 +58,25 @@
       </div>
       <p id="wa-aviso" class="alerta" hidden></p>
 
+      <div class="cartao" id="cartao-twilio" hidden>
+        <div class="cartao-cab">
+          <h2>Conexão com a Twilio</h2>
+          <p>Copie os dados do console da Twilio (console.twilio.com) e salve. O Auth Token fica cifrado e não aparece de novo. Vale para todos os clientes.</p>
+        </div>
+        <div class="cartao-corpo">
+          <form id="form-twilio" class="form-twilio" novalidate autocomplete="off">
+            <div class="campo"><label for="tw-sid">Account SID</label><input id="tw-sid" maxlength="64" spellcheck="false" placeholder="AC..."><span class="ajuda">Página inicial do console, em Account Info</span></div>
+            <div class="campo"><label for="tw-token">Auth Token</label><input id="tw-token" type="password" maxlength="128" spellcheck="false" autocomplete="new-password"><span id="tw-token-ajuda" class="ajuda">Mesma tela, clique em Show</span></div>
+            <div class="campo"><label for="tw-remetente">Número que envia</label><input id="tw-remetente" maxlength="40" spellcheck="false" placeholder="+1 415 523 8886"><span class="ajuda">Para testar, o número do Sandbox (+1 415 523 8886)</span></div>
+            <div class="campo"><label for="tw-template">Template SID</label><input id="tw-template" maxlength="64" spellcheck="false" placeholder="HX..."><span class="ajuda">Content Template Builder · <button id="copiar-template" class="btn-link btn" type="button">copiar texto do template</button></span></div>
+            <label class="check"><input id="tw-automatico" type="checkbox"> Enviar sozinho todo dia</label>
+            <div class="campo campo-hora"><label for="tw-hora">Às</label><select id="tw-hora"></select></div>
+            <button id="botao-twilio" class="btn btn-primario" type="submit">Salvar conexão</button>
+          </form>
+          <p id="erro-twilio" class="alerta alerta-erro" role="alert" hidden></p>
+        </div>
+      </div>
+
       <div class="cartao">
         <div class="cartao-cab">
           <h2>Cadastrar WhatsApp</h2>

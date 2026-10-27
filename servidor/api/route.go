@@ -69,6 +69,8 @@ func GetRoutes(r *gin.Engine) {
 	adm.POST("/clientes", ctcliente.Criar)
 	adm.PUT("/clientes/:id/token", ctcliente.SalvarToken)
 	adm.POST("/clientes/:id/whatsapp/enviar", ctwhatsapp.Enviar)
+	adm.GET("/whatsapp/config", ctwhatsapp.Config)
+	adm.PUT("/whatsapp/config", ctwhatsapp.SalvarConfig)
 	adm.GET("/usuarios", ctusuario.Listar)
 	adm.POST("/usuarios", ctusuario.Criar)
 	adm.POST("/usuarios/:id/convite", ctusuario.NovoConvite)

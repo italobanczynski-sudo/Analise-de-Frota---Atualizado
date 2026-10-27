@@ -1,6 +1,7 @@
 package whatsapp_test
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"analisefrota/adapters/twilio"
+	"analisefrota/environment"
 	"analisefrota/modules/cliente"
 	"analisefrota/modules/contato"
 	"analisefrota/modules/diario"
@@ -32,6 +34,13 @@ func (m *RepoMock_t) Concluir(ctx context.Context, clienteID int64, motorista, d
 func (m *RepoMock_t) Listar(ctx context.Context, clienteID int64, desde string) ([]whatsapp_repo.EnvioRow_t, error) {
 	a := m.Called(ctx, clienteID, desde)
 	return a.Get(0).([]whatsapp_repo.EnvioRow_t), a.Error(1)
+}
+func (m *RepoMock_t) BuscarConfig(ctx context.Context) (whatsapp_repo.ConfigRow_t, bool, error) {
+	a := m.Called(ctx)
+	return a.Get(0).(whatsapp_repo.ConfigRow_t), a.Bool(1), a.Error(2)
+}
+func (m *RepoMock_t) SalvarConfig(ctx context.Context, row whatsapp_repo.ConfigRow_t) error {
+	return m.Called(ctx, row).Error(0)
 }
 
 type DiarioMock_t struct {
@@ -103,15 +112,25 @@ type WhatsAppSuite struct {
 	twilio    *TwilioMock_t
 	svc       whatsapp.Service_I
 	ctx       context.Context
+	chave     []byte
+	cfgUsada  environment.WhatsAppConfig_t // a configuração com que o envio foi montado
 }
 
 func (s *WhatsAppSuite) SetupTest() {
 	s.repo, s.diario, s.premiacao = new(RepoMock_t), new(DiarioMock_t), new(PremiacaoMock_t)
 	s.contatos, s.clientes, s.twilio = new(ContatosMock_t), new(ClientesMock_t), new(TwilioMock_t)
 	s.ctx = context.Background()
+	s.chave = bytes.Repeat([]byte{7}, 32)
 	agora := time.Date(2026, 10, 27, 10, 0, 0, 0, time.UTC) // 27/10 às 7h de Brasília
 	s.svc = whatsapp.NewWhatsAppCom(whatsapp.Deps_t{Repo: s.repo, Clientes: s.clientes, Contatos: s.contatos, Diario: s.diario,
-		Premiacao: s.premiacao, Twilio: s.twilio, Agora: func() time.Time { return agora }})
+		Premiacao: s.premiacao, Chave: s.chave, Agora: func() time.Time { return agora },
+		Env:    environment.WhatsAppConfig_t{Hora: 7},
+		Twilio: func(cfg environment.WhatsAppConfig_t) twilio.WhatsApp_I { s.cfgUsada = cfg; return s.twilio }})
+}
+
+// semConfigNaTela: o administrador ainda não salvou a conexão (vale a do ambiente)
+func (s *WhatsAppSuite) semConfigNaTela() {
+	s.repo.On("BuscarConfig", s.ctx).Return(whatsapp_repo.ConfigRow_t{}, false, nil)
 }
 
 // semNotas: a premiação não traz ninguém (os testes de envio não olham a nota)
@@ -241,6 +260,7 @@ func (s *WhatsAppSuite) TestNotaVemDaPremiacaoDoMesEDoAnterior() {
 
 func (s *WhatsAppSuite) TestEnviaSoParaQuemTemWhatsAppEUmaVez() {
 	s.semNotas()
+	s.semConfigNaTela()
 	s.diario.On("Listar", s.ctx, int64(1), "2026-10-19", "2026-10-26").Return([]diario.Registro_t{
 		reg("Ana", "2026-10-26", 80, 5), reg("Beto", "2026-10-26", 70, 5), reg("Caio", "2026-10-26", 60, 5),
 	}, nil)
@@ -261,6 +281,7 @@ func (s *WhatsAppSuite) TestEnviaSoParaQuemTemWhatsAppEUmaVez() {
 
 func (s *WhatsAppSuite) TestCredencialRecusadaParaTudo() {
 	s.semNotas()
+	s.semConfigNaTela()
 	s.diario.On("Listar", s.ctx, int64(1), mock.Anything, mock.Anything).Return([]diario.Registro_t{
 		reg("Ana", "2026-10-26", 80, 5), reg("Beto", "2026-10-26", 70, 5),
 	}, nil)
@@ -276,12 +297,14 @@ func (s *WhatsAppSuite) TestCredencialRecusadaParaTudo() {
 }
 
 func (s *WhatsAppSuite) TestNaoMandaDiaQueNaoTerminou() {
+	s.semConfigNaTela()
 	_, err := s.svc.Enviar(s.ctx, 1, "2026-10-27")
 	s.ErrorIs(err, whatsapp.ErrDiaFuturo)
 }
 
 func (s *WhatsAppSuite) TestEnviarTodosUsaOntemDeBrasilia() {
 	s.semNotas()
+	s.semConfigNaTela()
 	s.clientes.On("Listar", s.ctx).Return([]cliente.Cliente_t{{ID: 1, Nome: "Cliente X"}}, nil)
 	s.diario.On("Listar", s.ctx, int64(1), "2026-10-19", "2026-10-26").Return([]diario.Registro_t{}, nil)
 	s.contatos.On("Destinos", s.ctx, int64(1)).Return([]contato.Destino_t{}, nil)

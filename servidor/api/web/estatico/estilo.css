@@ -309,6 +309,12 @@ select.inline { height: 32px; font-size: 13px; padding: 0 10px; width: auto; bor
 .previa-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .previa-cab b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .previa-texto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 var(--fonte); color: var(--texto-2); }
+.form-twilio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+.form-twilio .check { height: auto; margin-top: 4px; }
+.form-twilio .campo-hora { max-width: 140px; }
+.form-twilio .btn-primario { grid-column: 1 / -1; justify-self: start; }
+.form-twilio .ajuda .btn-link { padding: 0; height: auto; font-size: 12px; }
+@media (max-width: 840px) { .form-twilio { grid-template-columns: 1fr; } }
 .importar-wa { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--hairline); }
 .importar-wa b { font-size: 13.5px; }
 .importar-wa p { margin: 4px 0 0; max-width: 620px; }

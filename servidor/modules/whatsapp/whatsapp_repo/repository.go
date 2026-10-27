@@ -25,6 +25,8 @@ type Repository_I interface {
 	Reservar(ctx context.Context, clienteID int64, motorista, dia string) (bool, error)
 	Concluir(ctx context.Context, clienteID int64, motorista, dia, situacao, sid, erro string) error
 	Listar(ctx context.Context, clienteID int64, desde string) ([]EnvioRow_t, error)
+	BuscarConfig(ctx context.Context) (ConfigRow_t, bool, error)
+	SalvarConfig(ctx context.Context, row ConfigRow_t) error
 }
 
 type Repository_t struct {

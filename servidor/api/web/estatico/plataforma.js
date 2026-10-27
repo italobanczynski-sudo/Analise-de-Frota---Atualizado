@@ -128,11 +128,64 @@ async function iniciarWhatsApp() {
     sel.replaceChildren(...clientes.map((c) => el('option', { value: c.id }, c.nome)));
     $('wa-dia').value = ontemISO();
     $('wa-dia').max = ontemISO();
+    carregarTwilio();
   }
   carregarWhatsApp();
 }
 
 function clienteWA() { return $('wa-cliente').value; }
+
+// ---------- conexão com a Twilio (só administrador) ----------
+let templateTexto = '';
+
+async function carregarTwilio() {
+  if (eu.papel !== 'admin') return;
+  const sel = $('tw-hora');
+  if (!sel.options.length) sel.replaceChildren(...Array.from({ length: 24 }, (_, h) => el('option', { value: h }, String(h).padStart(2, '0') + 'h')));
+  let c;
+  try {
+    c = await api('GET', '/api/v1/whatsapp/config');
+  } catch (e) {
+    toast(e.message, true);
+    return;
+  }
+  $('tw-sid').value = c.account_sid || '';
+  $('tw-token').value = '';
+  $('tw-token').placeholder = c.tem_token ? '•••••••• salvo (deixe vazio para manter)' : 'cole o Auth Token';
+  $('tw-remetente').value = c.remetente || '+1 415 523 8886';
+  $('tw-template').value = c.template_sid || '';
+  $('tw-automatico').checked = !!c.automatico;
+  sel.value = String(c.hora ?? 7);
+  $('cartao-twilio').hidden = false;
+}
+
+$('form-twilio').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const erro = $('erro-twilio');
+  mostrarErro(erro, '');
+  $('botao-twilio').disabled = true;
+  try {
+    await api('PUT', '/api/v1/whatsapp/config', {
+      account_sid: $('tw-sid').value.trim(), auth_token: $('tw-token').value.trim(), remetente: $('tw-remetente').value.trim(),
+      template_sid: $('tw-template').value.trim(), automatico: $('tw-automatico').checked, hora: Number($('tw-hora').value),
+    });
+    toast('Conexão com a Twilio salva.');
+    carregarTwilio();
+    carregarWhatsApp();
+  } catch (e) {
+    mostrarErro(erro, e.message);
+  }
+  $('botao-twilio').disabled = false;
+});
+
+$('copiar-template').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(templateTexto);
+    toast('Texto do template copiado: cole no Content Template Builder da Twilio.');
+  } catch (e) {
+    toast('Não consegui copiar; o texto está no arquivo docs/WHATSAPP.md.', true);
+  }
+});
 
 async function carregarWhatsApp() {
   $('previas').replaceChildren();
@@ -147,12 +200,13 @@ async function carregarWhatsApp() {
     $('lista-wa').replaceChildren(el('tr', {}, el('td', { colspan: 5, class: 'vazio', text: e.message })));
     return;
   }
+  templateTexto = p.template;
   const aviso = $('wa-aviso');
   aviso.className = 'alerta ' + (p.configurado && p.automatico ? 'alerta-ok' : 'alerta-erro');
   aviso.textContent = !p.configurado
-    ? 'Modo de teste: a conta Twilio ainda não está configurada no servidor. Nada é enviado; as mensagens aparecem só no log.'
+    ? 'Modo de teste: a Twilio ainda não está conectada' + (eu.papel === 'admin' ? ' (preencha a Conexão com a Twilio logo abaixo)' : ' (fale com um administrador)') + '. Nada é enviado.'
     : p.automatico ? 'Envio automático ligado: todo dia às ' + p.hora + 'h (Brasília), com o resultado do dia anterior.'
-      : 'Twilio configurada, mas o envio automático está desligado (WHATSAPP_AUTOMATICO=false).';
+      : 'Twilio conectada. O envio automático está desligado: use "Enviar agora" para testar.';
   aviso.hidden = false;
 
   motoristasWA = p.motoristas;

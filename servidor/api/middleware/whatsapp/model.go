@@ -14,6 +14,7 @@ type WhatsApp_t struct {
 	Autorizado bool
 	Ativo      bool
 	Dia        string // AAAA-MM-DD; vazio = ontem
+	NovaConfig modwhatsapp.NovaConfig_t
 }
 
 // Painel_t é a tela do WhatsApp de um cliente

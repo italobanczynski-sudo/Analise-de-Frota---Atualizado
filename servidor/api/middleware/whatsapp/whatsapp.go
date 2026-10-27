@@ -8,10 +8,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"analisefrota/adapters/twilio"
 	"analisefrota/api/middleware"
 	"analisefrota/common/utils"
-	"analisefrota/environment"
 	modcliente "analisefrota/modules/cliente"
 	modcontato "analisefrota/modules/contato"
 	"analisefrota/modules/diario"
@@ -44,13 +45,36 @@ func (m WhatsApp_t) Painel(ctx context.Context) *middleware.Response_t {
 		}
 	}
 	sort.Strings(motoristas)
-	envios, err := modwhatsapp.NewWhatsApp().Historico(ctx, m.ClienteID, diasHistorico)
+	svc := modwhatsapp.NewWhatsApp()
+	envios, err := svc.Historico(ctx, m.ClienteID, diasHistorico)
 	if err != nil {
 		return middleware.RetErro(err)
 	}
-	cfg := environment.Cfg.WhatsApp
-	return middleware.RetOkData(Painel_t{Configurado: cfg.Configurado(), Automatico: cfg.Automatico, Hora: cfg.Hora,
+	cfg, err := svc.Config(ctx)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	return middleware.RetOkData(Painel_t{Configurado: cfg.Configurado, Automatico: cfg.Automatico, Hora: cfg.Hora,
 		Template: modwhatsapp.TextoTemplate, Contatos: contatos, Motoristas: motoristas, Envios: envios})
+}
+
+// Config devolve a conexão com a Twilio (sem o Auth Token)
+func (m WhatsApp_t) Config(ctx context.Context) *middleware.Response_t {
+	cfg, err := modwhatsapp.NewWhatsApp().Config(ctx)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	return middleware.RetOkData(cfg)
+}
+
+// SalvarConfig grava a conexão com a Twilio (o Auth Token vai cifrado; vazio mantém o salvo)
+func (m WhatsApp_t) SalvarConfig(ctx context.Context) *middleware.Response_t {
+	cfg, err := modwhatsapp.NewWhatsApp().SalvarConfig(ctx, m.NovaConfig, m.UsuarioID)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	logrus.Infof("whatsapp: conexão com a Twilio alterada pelo usuário %d", m.UsuarioID)
+	return middleware.RetOkData(cfg)
 }
 
 // Previa monta as mensagens do dia sem enviar

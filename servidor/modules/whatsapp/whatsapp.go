@@ -13,6 +13,7 @@ import (
 
 	"analisefrota/adapters/twilio"
 	"analisefrota/common/utils"
+	"analisefrota/environment"
 	"analisefrota/modules/cliente"
 	"analisefrota/modules/contato"
 	"analisefrota/modules/diario"
@@ -27,7 +28,12 @@ type Service_I interface {
 	Enviar(ctx context.Context, clienteID int64, dia string) (Resultado_t, error)
 	// EnviarTodos manda o resultado de ontem (dia de Brasília) para todos os clientes
 	EnviarTodos(ctx context.Context) map[string]error
+	// EnviarAgendado roda de hora em hora: só envia se o automático estiver ligado e for a hora marcada (Brasília)
+	EnviarAgendado(ctx context.Context) map[string]error
 	Historico(ctx context.Context, clienteID int64, dias int) ([]Envio_t, error)
+	// Config e SalvarConfig: a conexão com a Twilio que o administrador preenche na aba WhatsApp
+	Config(ctx context.Context) (Config_t, error)
+	SalvarConfig(ctx context.Context, n NovaConfig_t, usuarioID int64) (Config_t, error)
 }
 
 // Deps_t são as dependências do envio; os testes trocam cada uma por um mock
@@ -37,8 +43,11 @@ type Deps_t struct {
 	Contatos  contato.Service_I
 	Diario    diario.Service_I
 	Premiacao premiacao.Service_I
-	Twilio    twilio.WhatsApp_I
-	Agora     func() time.Time
+	// Twilio monta o envio para a configuração que vale no momento
+	Twilio func(cfg environment.WhatsAppConfig_t) twilio.WhatsApp_I
+	Env    environment.WhatsAppConfig_t // usada enquanto o administrador não salvar a conexão na tela
+	Chave  []byte                       // cifra o Auth Token salvo na tela
+	Agora  func() time.Time
 }
 
 type whatsapp_t struct{ d Deps_t }
@@ -46,7 +55,8 @@ type whatsapp_t struct{ d Deps_t }
 func NewWhatsApp() Service_I {
 	return &whatsapp_t{d: Deps_t{
 		Repo: whatsapp_repo.NewRepository(), Clientes: cliente.NewCliente(), Contatos: contato.NewContato(),
-		Diario: diario.NewDiario(), Premiacao: premiacao.NewPremiacao(), Twilio: twilio.NewWhatsApp(), Agora: time.Now,
+		Diario: diario.NewDiario(), Premiacao: premiacao.NewPremiacao(), Twilio: twilio.NewWhatsApp,
+		Env: environment.Cfg.WhatsApp, Chave: environment.Cfg.Seguranca.ChaveTokensBytes(), Agora: time.Now,
 	}}
 }
 
@@ -117,7 +127,12 @@ func (w *whatsapp_t) Previa(ctx context.Context, clienteID int64, dia string) ([
 }
 
 func (w *whatsapp_t) Enviar(ctx context.Context, clienteID int64, dia string) (Resultado_t, error) {
-	out := Resultado_t{Dia: dia, Erros: []string{}, Teste: w.d.Twilio.Teste()}
+	cfg, err := w.efetiva(ctx)
+	if err != nil {
+		return Resultado_t{Dia: dia, Erros: []string{}}, err
+	}
+	envio := w.d.Twilio(cfg)
+	out := Resultado_t{Dia: dia, Erros: []string{}, Teste: envio.Teste()}
 	res, err := w.resumos(ctx, clienteID, dia)
 	if err != nil {
 		return out, err
@@ -144,7 +159,7 @@ func (w *whatsapp_t) Enviar(ctx context.Context, clienteID int64, dia string) (R
 			out.JaEnviadas++
 			continue
 		}
-		sid, err := w.d.Twilio.Enviar(ctx, tel, r.Variaveis)
+		sid, err := envio.Enviar(ctx, tel, r.Variaveis)
 		if err != nil {
 			_ = w.d.Repo.Concluir(ctx, clienteID, r.Motorista, dia, SituacaoErro, "", err.Error())
 			out.Erros = append(out.Erros, r.Motorista+": "+err.Error())
@@ -159,6 +174,18 @@ func (w *whatsapp_t) Enviar(ctx context.Context, clienteID int64, dia string) (R
 		out.Enviadas++
 	}
 	return out, nil
+}
+
+func (w *whatsapp_t) EnviarAgendado(ctx context.Context) map[string]error {
+	cfg, err := w.efetiva(ctx)
+	if err != nil {
+		logrus.Warnf("whatsapp: %v", err)
+		return map[string]error{"(configuração)": err}
+	}
+	if !cfg.Automatico || w.d.Agora().In(utils.FusoBR()).Hour() != cfg.Hora {
+		return nil
+	}
+	return w.EnviarTodos(ctx)
 }
 
 func (w *whatsapp_t) EnviarTodos(ctx context.Context) map[string]error {

@@ -10,10 +10,12 @@ import (
 	"analisefrota/modules/base"
 	"analisefrota/modules/cliente"
 	"analisefrota/modules/coleta"
+	"analisefrota/modules/contato"
 	"analisefrota/modules/diario"
 	"analisefrota/modules/premiacao"
 	"analisefrota/modules/sessao"
 	"analisefrota/modules/usuario"
+	"analisefrota/modules/whatsapp"
 )
 
 type Response_t struct {
@@ -37,10 +39,11 @@ var (
 		diario.ErrDiaInvalido, diario.ErrPeriodoInvertido, diario.ErrPeriodoLongo, premiacao.ErrMesInvalido, coleta.ErrDiasColeta,
 		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
 		usuario.ErrCodigoInvalido, base.ErrColecao, base.ErrID, base.ErrDados, base.ErrGrande,
+		contato.ErrMotorista, contato.ErrTelefone, contato.ErrSemAutorizacao, whatsapp.ErrDiaFuturo,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}
-	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado}
+	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado, contato.ErrNaoEncontrado}
 	errosConflito       = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
 
 	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")

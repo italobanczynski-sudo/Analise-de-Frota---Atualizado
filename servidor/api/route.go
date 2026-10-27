@@ -11,6 +11,7 @@ import (
 	ctcoleta "analisefrota/api/controller/coleta"
 	ctfrota "analisefrota/api/controller/frota"
 	ctusuario "analisefrota/api/controller/usuario"
+	ctwhatsapp "analisefrota/api/controller/whatsapp"
 	"analisefrota/api/web"
 	"analisefrota/modules/usuario"
 )
@@ -56,11 +57,18 @@ func GetRoutes(r *gin.Engine) {
 	colab.PUT("/base/:colecao/:doc", ctbase.Gravar)
 	colab.POST("/base/:colecao", ctbase.Criar)
 	colab.DELETE("/base/:colecao/:doc", ctbase.Apagar)
+	// WhatsApp dos motoristas: telefone é dado pessoal, o leitor não vê
+	colab.GET("/clientes/:id/whatsapp", ctwhatsapp.Painel)
+	colab.GET("/clientes/:id/whatsapp/previa", ctwhatsapp.Previa)
+	colab.PUT("/clientes/:id/whatsapp/contatos", ctwhatsapp.SalvarContato)
+	colab.PUT("/clientes/:id/whatsapp/contatos/ativo", ctwhatsapp.AtivarContato)
+	colab.DELETE("/clientes/:id/whatsapp/contatos", ctwhatsapp.RemoverContato)
 
 	// só administrador
 	adm := v1.Group("", exigirPapel(usuario.PapelAdmin))
 	adm.POST("/clientes", ctcliente.Criar)
 	adm.PUT("/clientes/:id/token", ctcliente.SalvarToken)
+	adm.POST("/clientes/:id/whatsapp/enviar", ctwhatsapp.Enviar)
 	adm.GET("/usuarios", ctusuario.Listar)
 	adm.POST("/usuarios", ctusuario.Criar)
 	adm.POST("/usuarios/:id/convite", ctusuario.NovoConvite)

@@ -1883,8 +1883,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { key: 'pressao_atencao', rotulo: '% do tempo com o pedal em atenção', ex: '15,0', aliases: ['pressao_atencao', 'pressao_pedal_atencao'] },
     { key: 'piloto_automatico', rotulo: '% do tempo com piloto automático', ex: '12,0', aliases: ['piloto_automatico', 'cruise_control', 'piloto_automatico_pct'] },
     { key: 'freio_motor', rotulo: '% do tempo com freio motor', ex: '8,6', aliases: ['freio_motor', 'freio_motor_pct', 'engine_brake'] },
-    { key: 'frenagens', rotulo: 'Frenagens bruscas', ex: '1', aliases: ['frenagens', 'frenagens_bruscas', 'freadas', 'freadas_bruscas', 'frenagem_brusca'] },
-    { key: 'frenagens_alta', rotulo: 'Frenagens em alta velocidade', ex: '0', aliases: ['frenagens_alta', 'frenagens_em_alta_velocidade', 'freadas_alta_velocidade'] },
+    { key: 'frenagens', rotulo: 'Freadas (total no dia)', ex: '12', aliases: ['frenagens', 'frenagens_bruscas', 'freadas', 'freadas_bruscas', 'frenagem_brusca'] },
+    { key: 'frenagens_alta', rotulo: 'Freadas em alta velocidade', ex: '0', aliases: ['frenagens_alta', 'frenagens_em_alta_velocidade', 'freadas_alta_velocidade'] },
     { key: 'velocidade_media', rotulo: 'Velocidade média (km/h)', ex: '62,5', aliases: ['velocidade_media', 'vel_media', 'velocidade_media_km_h'] },
     { key: 'odometro', rotulo: 'Odômetro no fim do dia (km)', ex: '291862,2', aliases: ['odometro', 'odometer', 'hodometro'] },
     { key: 'nota', rotulo: 'Nota Gobrax do dia (0–100)', ex: '78,4', aliases: ['nota', 'nota_gobrax', 'score', 'pontuacao', 'nota_motorista', 'nota_do_motorista'] },
@@ -1912,9 +1912,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { key: 'nota', grupo: 'nota', label: 'Nota Gobrax', desc: 'Média ponderada pelos km rodados', un: '', casas: 1, melhor: 1, tipo: 'media', col: 'nota', peso: 'km', var: 'pts' },
     { key: 'faixa_verde', grupo: 'conducao', label: 'Faixa verde', desc: 'Tempo na rotação econômica', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'faixa_verde', peso: 'horas', var: 'pp' },
     { key: 'embalo', grupo: 'conducao', label: 'Aproveitamento de embalo', desc: 'Inércia usada sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'embalo', peso: 'km', var: 'pp' },
-    { key: 'motor_ocioso', grupo: 'conducao', label: 'Motor ocioso', desc: 'Motor ligado com o veículo parado', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'motor_ocioso', peso: 'horas', var: 'pp' },
-    { key: 'pressao_acelerador', grupo: 'conducao', label: 'Pressão do acelerador', desc: 'Tempo com pedal acima do ideal', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_acelerador', peso: 'horas', var: 'pp' },
-    { key: 'excesso_rotacao', grupo: 'conducao', label: 'Excesso de rotação', desc: 'Tempo acima da faixa de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
+    { key: 'motor_ocioso', grupo: 'conducao', label: 'Motor ligado parado', desc: 'Motor ligado com o veículo parado', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'motor_ocioso', peso: 'horas', var: 'pp' },
+    { key: 'pressao_acelerador', grupo: 'conducao', label: 'Pedal no range crítico', desc: 'Tempo com o acelerador na pressão crítica', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_acelerador', peso: 'horas', var: 'pp' },
+    { key: 'excesso_rotacao', grupo: 'conducao', label: 'Acelerando acima do verde', desc: 'Tempo acima da faixa verde de rotação', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'excesso_rotacao', peso: 'horas', var: 'pp' },
     { key: 'excesso_velocidade', grupo: 'conducao', label: 'Excesso de velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'excesso_velocidade', den: 'km', mult: 100, var: 'pct' },
     { key: 'tempo_excesso_velocidade', grupo: 'conducao', label: 'Tempo em excesso de velocidade', desc: 'Tempo acima da velocidade configurada', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'tempo_excesso_velocidade', peso: 'horas', var: 'pp' },
     { key: 'inicio_faixa_verde', grupo: 'conducao', label: 'Início da faixa verde', desc: 'Parte mais econômica da faixa verde', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'inicio_faixa_verde', peso: 'horas', var: 'pp' },
@@ -1924,8 +1924,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { key: 'pressao_atencao', grupo: 'conducao', label: 'Pedal em atenção', desc: 'Tempo com o acelerador no range de atenção', un: '%', casas: 1, melhor: -1, tipo: 'media', col: 'pressao_atencao', peso: 'horas', var: 'pp' },
     { key: 'piloto_automatico', grupo: 'conducao', label: 'Piloto automático', desc: 'Tempo com piloto automático ativo', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'piloto_automatico', peso: 'horas', var: 'pp' },
     { key: 'freio_motor', grupo: 'conducao', label: 'Freio motor', desc: 'Tempo com freio motor, sem acelerar', un: '%', casas: 1, melhor: 1, tipo: 'media', col: 'freio_motor', peso: 'horas', var: 'pp' },
-    { key: 'frenagens', grupo: 'conducao', label: 'Frenagens bruscas', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
-    { key: 'frenagens_alta', grupo: 'conducao', label: 'Frenagens em alta velocidade', desc: 'Eventos a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens_alta', den: 'km', mult: 100, var: 'pct' },
+    { key: 'frenagens', grupo: 'conducao', label: 'Freadas a cada 100 km', desc: 'Freadas totais a cada 100 km rodados', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens', den: 'km', mult: 100, var: 'pct' },
+    { key: 'frenagens_alta', grupo: 'conducao', label: 'Freadas em alta velocidade', desc: 'Freadas em alta velocidade a cada 100 km', un: '/100 km', casas: 2, melhor: -1, tipo: 'razao', num: 'frenagens_alta', den: 'km', mult: 100, var: 'pct' },
     { key: 'velocidade_media', grupo: 'conducao', label: 'Velocidade média', desc: 'Média ponderada pelos km rodados', un: 'km/h', casas: 1, melhor: 0, tipo: 'media', col: 'velocidade_media', peso: 'km', var: 'pct' },
     { key: 'kml', grupo: 'consumo', label: 'Média de consumo', desc: 'Quilômetros por litro', un: 'km/l', casas: 2, melhor: 1, tipo: 'razao', num: 'km', den: 'litros', mult: 1, var: 'pct' },
     { key: 'l100', grupo: 'consumo', label: 'Litros a cada 100 km', desc: 'Consumo relativo à distância', un: 'L', casas: 1, melhor: -1, tipo: 'razao', num: 'litros', den: 'km', mult: 100, var: 'pct' },
@@ -3109,6 +3109,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 57, data: '2026-10-27', titulo: 'Motorista é motorista, veículo é veículo', texto: 'Antes, o motorista que mais dirigiu um veículo no dia ficava com o dia inteiro do veículo, e os números do condutor saíam maiores que os da análise por motorista da plataforma. Agora o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado ao veículo. Vale para as próximas buscas na API. Os indicadores ganharam os nomes da plataforma: Motor ligado parado, Acelerando acima do verde, Pedal no range crítico e Freadas a cada 100 km (são as freadas totais, não só as bruscas).', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 56, data: '2026-10-27', titulo: 'Exportar o resultado semanal', texto: 'No Resultado semanal, o resumo da frota ganhou os botões Baixar PDF (numa página só: resumo e ranking da frota e o resultado de cada condutor), Planilha (abre no Excel) e Enviar relatório no WhatsApp, que baixa o PDF e abre a conversa do cliente com a mensagem pronta para você anexar o arquivo. No celular, Compartilhar PDF manda direto pelo WhatsApp.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 55, data: '2026-10-27', titulo: 'Resultado semanal: semanas do mesmo mês, dias bons e de atenção', texto: 'No Resultado semanal você escolhe o mês, a semana analisada e com qual semana do mesmo mês comparar (não mais com o mês anterior). Cada condutor mostra a nota atual, cada indicador de antes para agora com Evoluiu ou Regrediu, os dias bons e de atenção da semana e a nota de cada semana do mês. No topo, o resumo da frota, que também vai pelo WhatsApp. A imagem e a mensagem trazem tudo isso.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 54, data: '2026-10-27', titulo: 'Resultado semanal por condutor', texto: 'Em Motoristas, a aba Resultado semanal mostra um cartão por condutor com a semana (segunda a domingo) comparada à anterior: nota, consumo, km, indicadores, destaque e ponto de atenção. Cada cartão gera a mensagem e a imagem para o WhatsApp do cliente, e o botão Enviar um por um percorre todos os condutores, marcando quem já foi enviado.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -3556,7 +3557,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { col: 'delta', rot: 'Variação da nota', ind: 'nota', dir: true },
     { col: 'kml', rot: 'Média km/l', ind: 'kml', dir: true },
     { col: 'faixa_verde', rot: 'Faixa verde', ind: 'faixa_verde', dir: true },
-    { col: 'motor_ocioso', rot: 'Motor ocioso', ind: 'motor_ocioso', dir: true },
+    { col: 'motor_ocioso', rot: 'Motor ligado parado', ind: 'motor_ocioso', dir: true },
     { col: 'km', rot: 'Km rodados', ind: 'km', dir: true },
     { col: 'dias', rot: 'Dias trab.', ind: 'dias', dir: true },
     { col: 'tendencia', rot: 'Tendência', semOrdem: true }
@@ -4450,6 +4451,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
             <span class="entidade-nome">${esc(m.nome)}</span>
             <span class="apoio">${m.condutores ? 'Veículo · ' + esc(m.condutores.length ? 'dirigido por ' + m.condutores.join(', ') : 'sem motorista identificado') : 'Motorista · ' + esc(m.veiculos.join(', ') || 'sem veículo informado')}</span>
+            <span class="apoio" style="font-size:11.5px">${m.condutores ? 'Dados do veículo: o dia inteiro, com qualquer condutor.' : 'Dados do condutor: só o tempo em que ele estava vinculado ao veículo, como na análise por motorista da plataforma.'}</span>
           </div>
           ${badgeStatus(x.st.status)}
           ${temInd('nota') ? badgeNota(x.a.nota) : ''}
@@ -4568,7 +4570,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Tela: Análise dos veículos (por veículo e agrupada por grupo, modelo, filial ou tipo) ----------
   // Roda com a base de veículos no lugar da de motoristas (ver comContexto): período, comparação e status usam o mesmo motor do resto do painel.
   const COLS_VEIC = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['litros', 'Consumo (L)'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['embalo', 'Embalo'],
-    ['motor_ocioso', 'Motor ocioso'], ['pressao_acelerador', 'Pressão do acelerador'], ['excesso_rotacao', 'Acima do verde'], ['tempo_excesso_velocidade', 'Excesso de velocidade (tempo)'],
+    ['motor_ocioso', 'Motor ligado parado'], ['pressao_acelerador', 'Pedal no range crítico'], ['excesso_rotacao', 'Acima do verde'], ['tempo_excesso_velocidade', 'Excesso de velocidade (tempo)'],
     ['inicio_faixa_verde', 'Início da faixa verde'], ['eco_roll', 'Eco Roll'], ['pressao_ideal', 'Pedal ideal'], ['pressao_atencao', 'Pedal em atenção'],
     ['piloto_automatico', 'Piloto automático'], ['freio_motor', 'Freio motor'], ['frenagens', 'Freadas /100 km'],
     ['frenagens_alta', 'Freadas em alta vel. /100 km'], ['velocidade_media', 'Velocidade média']];
@@ -6386,7 +6388,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!gs.length) return '';
     gs.sort((p, q) => (q.a.km || 0) - (p.a.km || 0) || (q.a.horas || 0) - (p.a.horas || 0));
     const tem = (k) => bv.indicadores.some((i) => i.key === k);
-    const cols = [['nota', IND_MAP.nota.label], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['motor_ocioso', 'Motor ocioso']].filter(([k]) => tem(k));
+    const cols = [['nota', IND_MAP.nota.label], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['motor_ocioso', 'Motor ligado parado']].filter(([k]) => tem(k));
     const linhas = gs.slice(0, 10).map((g) => `<tr><td><b style="font-weight:600">${esc(g.nome)}</b></td><td class="dir">${g.n}</td>${cols.map(([k]) => celInd(k, g.a, g.b)).join('')}<td class="dir">${fmtInd(IND_MAP.km, g.a.km)}</td></tr>`).join('');
     return `<section class="card">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Desempenho por grupo de veículos</h2>
@@ -6790,45 +6792,97 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
     ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
   const chavePlaca = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
-  // Mais de um motorista no dia: fica quem dirigiu por mais tempo (somar a linha para todos contaria os km e as horas em dobro)
-  function motoristaPrincipal(p) {
-    const t = new Map();
+  // Motorista não é veículo: o dado do condutor é só o do tempo em que ele estava vinculado ao veículo (como na análise por
+  // motorista da plataforma). drivers[] traz o início e o fim de cada vínculo, recortados na janela consultada. Um único
+  // motorista vinculado o dia todo usa a linha do próprio veículo; nos demais casos o painel consulta estatísticas e
+  // performance só nas janelas daquele motorista (vehicleIdentification + início e fim do vínculo).
+  const IND_DUR = ['movement'].concat(PERF_COLS.map(([, k]) => k));
+  const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
+  const msJanela = (s) => Date.parse(s.replace(' ', 'T') + 'Z');
+  function vinculos(p, jan) {
+    const ji = msJanela(jan.startDate), jf = msJanela(jan.endDate), porNome = new Map();
     ((p && p.drivers) || []).forEach((d) => {
-      const n = String((d && d.driverName) || '').trim();
-      if (!n) return;
-      const ms = Date.parse(String(d.endDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')) - Date.parse(String(d.startDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
-      t.set(n, (t.get(n) || 0) + (Number.isFinite(ms) && ms > 0 ? ms : 1));
+      const nome = String((d && d.driverName) || '').trim();
+      if (!nome) return;
+      const a = Math.max(ji, msApi(d.startDate) === null ? ji : msApi(d.startDate)), b = Math.min(jf, msApi(d.endDate) === null ? jf : msApi(d.endDate));
+      if (b <= a) return;
+      if (!porNome.has(nome)) porNome.set(nome, []);
+      porNome.get(nome).push([a, b]);
     });
-    return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
+    const lista = [...porNome.entries()].map(([nome, janelas]) => ({ nome, janelas }));
+    const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
+    return { lista, diaTodo };
   }
-  function diaParaCSV(dia, estat, perf, cli) {
-    const temPerf = true;   // colunas sempre iguais: dia sem performance fica com os indicadores vazios
-    const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
-      .concat(temPerf ? ['horas', 'nota'].concat(PERF_COLS.map(([k]) => k)) : [], ['cliente', 'dias_periodo']);
+  // Soma as janelas de um motorista: km, litros e freadas somados; indicadores pela duração de cada um sobre o tempo em movimento
+  function juntarJanelas(res) {
+    const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, dur = {};
+    let kmVel = 0;
+    res.forEach(({ e, p }) => {
+      e.forEach((r) => {
+        const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
+        est.totalMileage += km; est.totalConsumption += numApi(r.totalConsumption) || 0;
+        est.totalBreaking += numApi(r.totalBreaking) || 0; est.totalBreakingOnHighSpeed += numApi(r.totalBreakingOnHighSpeed) || 0;
+        if (v !== null && km) { est.averageSpeed = ((est.averageSpeed || 0) * kmVel + v * km) / (kmVel + km); kmVel += km; }
+        if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
+      });
+      p.forEach((r) => {
+        const ind = (r && r.indicators) || {};
+        IND_DUR.forEach((k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); if (x) dur[k] = (dur[k] || 0) + (numApi(x.duration) || 0); });
+      });
+    });
+    const mov = dur.movement || 0, ind = {};
+    Object.keys(dur).forEach((k) => { ind[k] = { duration: dur[k], percentage: k === 'movement' ? 100 : mov ? (dur[k] / mov) * 100 : null }; });
+    return { est, ind };
+  }
+  const COLS_API = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
+  // Uma linha no layout do painel: estatísticas (r) + indicadores da performance (ind). O CPF dos motoristas nunca entra.
+  function linhaApi(dia, nome, placa, r, ind, cli, rodou) {
     const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
     const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
+    const pct = (k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
+    const mov = ind.movement ? numApi(ind.movement.duration) : null;
+    return [D.br(dia), escC(nome || placa), escC(placa), n(r.totalMileage || 0), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+      rodou ? n(r.averageSpeed) : '', n(r.odometer), mov === null ? '' : n(mov / 60), '']   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
+      .concat(PERF_COLS.map(([, k]) => pct(k)), [escC(cli), '1']).join(';');
+  }
+  // Um dia: as linhas dos veículos (dia inteiro de cada um), as dos motoristas que ficaram o dia todo no veículo e,
+  // em "pendentes", os vínculos parciais que ainda precisam ser consultados na janela do motorista
+  function diaParaCSV(dia, estat, perf, cli, jan) {
     const perfPor = new Map();
     perf.forEach((r) => { const k = chavePlaca(r && r.vehicleIdentification); if (k && !perfPor.has(k)) perfPor.set(k, r); });
-    const vistos = new Set(), linhas = [], linhasMot = [];
+    const vistos = new Set(), linhas = [], linhasMot = [], pendentes = [];
     estat.forEach((r) => {
       const placa = placaApi(r && r.vehicleIdentification), k = chavePlaca(placa);
       if (!k || vistos.has(k)) return;
       vistos.add(k);
       const km = numApi(r.totalMileage) || 0, rodou = km > 0;
       const p = rodou ? perfPor.get(k) : null, ind = (p && p.indicators) || {};
-      const nome = motoristaPrincipal(p);
-      const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
-      const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
-      const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
-      const mov = ind.movement ? numApi(ind.movement.duration) : null;
-      const lin = [D.br(dia), escC(nome || placa), escC(placa), n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
-        rodou ? n(r.averageSpeed) : '', n(r.odometer)]
-        .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
-      linhas.push(lin);
-      if (rodou && nome) linhasMot.push(lin);   // sem motorista identificado, a linha fica só na planilha de veículos
+      const v = vinculos(p, jan);
+      // na linha do veículo, o motorista é só o rótulo de quem mais o dirigiu no dia (os números são do veículo)
+      const tempo = (m) => m.janelas.reduce((t, [a, b]) => t + (b - a), 0);
+      const principal = v.lista.slice().sort((x, y) => tempo(y) - tempo(x))[0];
+      linhas.push(linhaApi(dia, principal ? principal.nome : '', placa, r, ind, cli, rodou));
+      if (!rodou) return;   // sem motorista identificado, o dia fica só na planilha de veículos
+      if (v.diaTodo) linhasMot.push(linhaApi(dia, v.lista[0].nome, placa, r, ind, cli, true));
+      else v.lista.forEach((m) => pendentes.push({ placa, nome: m.nome, janelas: m.janelas }));
     });
-    const cab = cols.join(';');
-    return { csv: [cab].concat(linhas).join('\n'), n: linhas.length, csvMot: linhasMot.length ? [cab].concat(linhasMot).join('\n') : '' };
+    return { csv: [COLS_API.join(';')].concat(linhas).join('\n'), n: linhas.length, linhasMot, pendentes };
+  }
+  // Consulta as janelas de cada vínculo parcial e devolve a linha do motorista (vazia se ele não rodou nelas)
+  async function linhasDosVinculos(dia, pendentes, cli, token, comPerf) {
+    const out = [];
+    for (const v of pendentes) {
+      const res = [];
+      for (const [a, b] of v.janelas) {
+        const jan = { startDate: utc(a), endDate: utc(b), vehicleIdentification: v.placa };
+        const e = registros(await apiGet('v1/vehicle-statistics', jan, token).catch((er) => { if (/respondeu 404/.test(er.message)) return []; throw er; }));
+        const p = comPerf ? registros(await apiGet('v1/vehicle-performance', jan, token).catch(() => [])) : [];
+        res.push({ e, p });
+      }
+      const j = juntarJanelas(res);
+      if ((j.est.totalMileage || 0) > 0) out.push(linhaApi(dia, v.nome, v.placa, j.est, j.ind, cli, true));
+    }
+    return out;
   }
 
   async function buscarApi(cli, form) {
@@ -6854,10 +6908,14 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
             // sem a performance (token sem acesso, falha pontual) as estatísticas do dia entram mesmo assim
             // 404 ("Veículo não identificado") é dia sem dado; falha pontual pula só o dia; 3 seguidas desligam a performance
             if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); perfFalhas = 0; } catch (e) { if (!/respondeu 404/.test(e.message) && ++perfFalhas >= 3) { perfOk = false; perfErro = e.message; } } }
-            const { csv, n, csvMot } = diaParaCSV(dias[i], recs, perf, cli);
+            const { csv, n, linhasMot, pendentes } = diaParaCSV(dias[i], recs, perf, cli, jan);
             if (!n) continue;
             if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
-            if (csvMot) importarTexto(csvMot, 'API Gobrax · motoristas', true);   // o relatório geral sai da API, sem planilha
+            if (pendentes.length) {
+              passo('Motoristas do dia ' + D.br(dias[i]) + ': ' + pendentes.length + ' vínculo(s) com o veículo só em parte do dia');
+              linhasMot.push(...await linhasDosVinculos(dias[i], pendentes, cli, token, perfOk));
+            }
+            if (linhasMot.length) importarTexto([COLS_API.join(';')].concat(linhasMot).join('\n'), 'API Gobrax · motoristas', true);   // o relatório geral sai da API, sem planilha
           }
         } finally { E.importCli = null; E.silencio = false; E.impVeic = null; E.importacao = null; }
         st.feito.push(comDados ? 'estatísticas' + (perfOk ? ' e performance' : '') + ' de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
@@ -6934,9 +6992,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       campos: [['vehicleIdentification', 'veiculo (placa)'], ['totalMileage', 'km'], ['totalConsumption', 'litros'], ['totalBreaking', 'frenagens'], ['totalBreakingOnHighSpeed', 'frenagens_alta'], ['averageSpeed', 'velocidade_media'], ['odometer', 'odometro']],
       onde: 'Veículos e grupos, Veículo individual, Visão geral, Desenvolvimento da frota' },
     { metodo: 'GET', caminho: 'v1/vehicle-performance', titulo: 'Performance por veículo',
-      uso: 'Mesma janela diária das estatísticas, juntada pela placa. Se o token não tiver acesso ou a chamada falhar, as estatísticas do dia entram assim mesmo e o aviso aparece no perfil do cliente.',
+      uso: 'Mesma janela diária das estatísticas, juntada pela placa. Se o token não tiver acesso ou a chamada falhar, as estatísticas do dia entram assim mesmo e o aviso aparece no perfil do cliente. Motorista não é veículo: o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado. Quando o vínculo não cobre o dia todo (ou há mais de um motorista), estatísticas e performance são consultadas de novo com a placa e o início e o fim de cada vínculo.',
       params: [['startDate / endDate', 'Iguais aos das estatísticas'], ['vehicleIdentification', 'Vazio = todos']],
-      campos: [['indicators.greenRange.percentage', 'faixa_verde'], ['indicators.leverage.percentage', 'embalo'], ['indicators.idle.percentage', 'motor_ocioso'], ['indicators.pedalPressureOnHigh.percentage', 'pressao_acelerador'], ['indicators.powerRange.percentage', 'excesso_rotacao'], ['indicators.speeding.percentage', 'tempo_excesso_velocidade'], ['indicators.cruiseControl.percentage', 'piloto_automatico'], ['indicators.engineBrake.percentage', 'freio_motor'], ['indicators.movement.duration', 'horas (minutos ÷ 60)'], ['score', 'nota (0 a 100)'], ['drivers[].driverName', 'motorista (o CPF é descartado)']],
+      campos: [['indicators.greenRange.percentage', 'faixa_verde'], ['indicators.leverage.percentage', 'embalo'], ['indicators.idle.percentage', 'motor_ocioso'], ['indicators.pedalPressureOnHigh.percentage', 'pressao_acelerador'], ['indicators.powerRange.percentage', 'excesso_rotacao'], ['indicators.speeding.percentage', 'tempo_excesso_velocidade'], ['indicators.cruiseControl.percentage', 'piloto_automatico'], ['indicators.engineBrake.percentage', 'freio_motor'], ['indicators.movement.duration', 'horas (minutos ÷ 60)'], ['score', 'nota (0 a 100)'], ['drivers[].driverName, startDate, endDate', 'motorista e o tempo em que ele estava no veículo (o CPF é descartado)']],
       onde: 'Indicadores de condução em todas as telas de frota e motoristas' },
     { metodo: 'GET', caminho: 'v2/vehicle-odometer', titulo: 'Odômetro',
       uso: 'Último odômetro de cada veículo nos últimos 30 dias. Guarda um documento por cliente, substituído a cada busca.',

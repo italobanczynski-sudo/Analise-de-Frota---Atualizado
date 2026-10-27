@@ -70,29 +70,67 @@ async function apiGet(caminho, params, token) {
   }
 }
 
-// Mais de um motorista no dia: fica quem dirigiu por mais tempo (somar a linha para todos contaria os km e as horas em dobro)
-function motoristaPrincipal(p) {
-  const t = new Map();
-  ((p && p.drivers) || []).forEach((d) => {
-    const n = String((d && d.driverName) || '').trim();
-    if (!n) return;
-    const ms = Date.parse(String(d.endDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')) - Date.parse(String(d.startDate || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
-    t.set(n, (t.get(n) || 0) + (Number.isFinite(ms) && ms > 0 ? ms : 1));
-  });
-  return [...t.entries()].sort((a, b) => b[1] - a[1]).map(([n]) => n)[0] || '';
-}
+// Motorista não é veículo: o dado do condutor é só o do tempo em que ele estava vinculado ao veículo (como na análise por
+// motorista da plataforma). drivers[] traz o início e o fim de cada vínculo, recortados na janela consultada. Um único
+// motorista vinculado o dia todo usa a linha do próprio veículo; nos demais casos o script consulta estatísticas e
+// performance só nas janelas daquele motorista (vehicleIdentification + início e fim do vínculo).
 const PERF_COLS = [['faixa_verde', 'greenRange'], ['inicio_faixa_verde', 'extraEconomicRange'], ['final_faixa_verde', 'economicRange'], ['eco_roll', 'ecoRoll'], ['pressao_ideal', 'pedalPressureOnLow'], ['pressao_atencao', 'pedalPressureOnMid'], ['embalo', 'leverage'], ['motor_ocioso', 'idle'], ['pressao_acelerador', 'pedalPressureOnHigh'],
   ['excesso_rotacao', 'powerRange'], ['tempo_excesso_velocidade', 'speeding'], ['piloto_automatico', 'cruiseControl'], ['freio_motor', 'engineBrake']];
-// Um dia de estatísticas + performance → linhas no layout do painel. O CPF dos motoristas é descartado aqui.
-function diaParaLinhas(dia, estat, perf, cli) {
-  const temPerf = true;   // colunas sempre iguais: dia sem performance fica com os indicadores vazios
-  const cols = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro']
-    .concat(temPerf ? ['horas', 'nota'].concat(PERF_COLS.map(([k]) => k)) : [], ['cliente', 'dias_periodo']);
+const IND_DUR = ['movement'].concat(PERF_COLS.map(([, k]) => k));
+const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF_COLS.map(([k]) => k), ['cliente', 'dias_periodo']);
+const msApi = (s) => { const t = Date.parse(String(s || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? t : null; };
+const msJanela = (s) => Date.parse(s.replace(' ', 'T') + 'Z');
+function vinculos(p, jan) {
+  const ji = msJanela(jan.startDate), jf = msJanela(jan.endDate), porNome = new Map();
+  ((p && p.drivers) || []).forEach((d) => {
+    const nome = String((d && d.driverName) || '').trim();
+    if (!nome) return;
+    const a = Math.max(ji, msApi(d.startDate) === null ? ji : msApi(d.startDate)), b = Math.min(jf, msApi(d.endDate) === null ? jf : msApi(d.endDate));
+    if (b <= a) return;
+    if (!porNome.has(nome)) porNome.set(nome, []);
+    porNome.get(nome).push([a, b]);
+  });
+  const lista = [...porNome.entries()].map(([nome, janelas]) => ({ nome, janelas }));
+  const diaTodo = lista.length === 1 && lista[0].janelas.some(([a, b]) => a - ji <= 60000 && jf - b <= 60000);
+  return { lista, diaTodo };
+}
+// Soma as janelas de um motorista: km, litros e freadas somados; indicadores pela duração de cada um sobre o tempo em movimento
+function juntarJanelas(res) {
+  const est = { totalMileage: 0, totalConsumption: 0, totalBreaking: 0, totalBreakingOnHighSpeed: 0, averageSpeed: null, odometer: null }, dur = {};
+  let kmVel = 0;
+  res.forEach(({ e, p }) => {
+    e.forEach((r) => {
+      const km = numApi(r.totalMileage) || 0, v = numApi(r.averageSpeed), o = numApi(r.odometer);
+      est.totalMileage += km; est.totalConsumption += numApi(r.totalConsumption) || 0;
+      est.totalBreaking += numApi(r.totalBreaking) || 0; est.totalBreakingOnHighSpeed += numApi(r.totalBreakingOnHighSpeed) || 0;
+      if (v !== null && km) { est.averageSpeed = ((est.averageSpeed || 0) * kmVel + v * km) / (kmVel + km); kmVel += km; }
+      if (o !== null) est.odometer = Math.max(est.odometer || 0, o);
+    });
+    p.forEach((r) => {
+      const ind = (r && r.indicators) || {};
+      IND_DUR.forEach((k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); if (x) dur[k] = (dur[k] || 0) + (numApi(x.duration) || 0); });
+    });
+  });
+  const mov = dur.movement || 0, ind = {};
+  Object.keys(dur).forEach((k) => { ind[k] = { duration: dur[k], percentage: k === 'movement' ? 100 : mov ? (dur[k] / mov) * 100 : null }; });
+  return { est, ind };
+}
+// Uma linha no layout do painel: estatísticas (r) + indicadores da performance (ind). O CPF dos motoristas nunca entra.
+function linhaApi(dia, nome, placa, r, ind, cli, rodou, soPerf) {
   const n = (v) => { const x = numApi(v); return x === null ? '' : String(Math.round(x * 100) / 100).replace('.', ','); };
   const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
+  const pct = (k) => { const x = ind[k] || (k === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
+  const mov = ind.movement ? numApi(ind.movement.duration) : null;
+  return [br(dia), escC(nome || placa), escC(placa), soPerf ? '' : n(r.totalMileage || 0), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
+    rodou ? n(r.averageSpeed) : '', n(r.odometer), mov === null ? '' : n(mov / 60), '']   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
+    .concat(PERF_COLS.map(([, k]) => pct(k)), [escC(cli), '1']).join(';');
+}
+// Um dia: as linhas dos veículos (dia inteiro de cada um), as dos motoristas que ficaram o dia todo no veículo e,
+// em "pendentes", os vínculos parciais que ainda precisam ser consultados na janela do motorista
+function diaParaLinhas(dia, estat, perf, cli, jan) {
   const perfPor = new Map();
   perf.forEach((r) => { const k = chavePlaca(r && r.vehicleIdentification); if (k && !perfPor.has(k)) perfPor.set(k, r); });
-  const vistos = new Set(), veic = [], mot = [];
+  const vistos = new Set(), veic = [], mot = [], pendentes = [];
   const soPerf = !estat.length;
   (soPerf ? perf : estat).forEach((r) => {
     const placa = placaApi(r && r.vehicleIdentification), k = chavePlaca(placa);
@@ -101,18 +139,16 @@ function diaParaLinhas(dia, estat, perf, cli) {
     const pk = perfPor.get(k), movK = pk && pk.indicators && pk.indicators.movement ? numApi(pk.indicators.movement.duration) : null;
     const km = numApi(r.totalMileage) || 0, rodou = soPerf ? (movK || 0) > 0 : km > 0;
     const p = rodou ? pk : null, ind = (p && p.indicators) || {};
-    const nome = motoristaPrincipal(p);
-    const pct = (nome) => { const x = ind[nome] || (nome === 'pedalPressureOnHigh' && ind.pedalPressureOnHig); return x ? n(x.percentage) : ''; };   // a API escreve pedalPressureOnHig
-    const sc = p ? (p.score !== undefined ? p.score : ind.score) : null;
-    const nota = numApi(sc && typeof sc === 'object' ? sc.score : sc);   // a performance não traz nota geral; a nota oficial vem mês a mês na premiação
-    const mov = ind.movement ? numApi(ind.movement.duration) : null;
-    const lin = [br(dia), escC(nome || placa), escC(placa), soPerf ? '' : n(km), rodou ? n(r.totalConsumption) : '', rodou ? n(r.totalBreaking) : '', rodou ? n(r.totalBreakingOnHighSpeed) : '',
-      rodou ? n(r.averageSpeed) : '', n(r.odometer)]
-      .concat(temPerf ? [mov === null ? '' : n(mov / 60), nota !== null && nota >= 0 && nota <= 100 ? n(nota) : ''].concat(PERF_COLS.map(([, nome]) => pct(nome))) : [], [escC(cli), '1']).join(';');
-    veic.push(lin);
-    if (rodou && nome) mot.push(lin);   // sem motorista identificado, a linha fica só na planilha de veículos
+    const v = vinculos(p, jan);
+    // na linha do veículo, o motorista é só o rótulo de quem mais o dirigiu no dia (os números são do veículo)
+    const tempo = (m) => m.janelas.reduce((t, [a, b]) => t + (b - a), 0);
+    const principal = v.lista.slice().sort((x, y) => tempo(y) - tempo(x))[0];
+    veic.push(linhaApi(dia, principal ? principal.nome : '', placa, r, ind, cli, rodou, soPerf));
+    if (!rodou) return;   // sem motorista identificado, o dia fica só na planilha de veículos
+    if (v.diaTodo) mot.push(linhaApi(dia, v.lista[0].nome, placa, r, ind, cli, true, soPerf));
+    else v.lista.forEach((m) => pendentes.push({ placa, nome: m.nome, janelas: m.janelas }));
   });
-  return { cols, veic, mot };
+  return { cols: COLS, veic, mot, pendentes };
 }
 // Documento da base tem até 256 KiB: divide as linhas do dia em partes abaixo de 200 KB
 function partes(cab, ls) {
@@ -154,8 +190,19 @@ async function puxar(c) {
     const estat = await buscar('estat', 'v1/vehicle-statistics', jan, d);
     const perf = await buscar('perf', 'v1/vehicle-performance', jan, d);
     if (falhas.estat >= 3 && falhas.perf >= 3) throw new Error(avisos.join('; '));
-    const { cols, veic, mot } = diaParaLinhas(d, estat, perf, cli);
+    const { cols, veic, mot, pendentes } = diaParaLinhas(d, estat, perf, cli, jan);
     if (!veic.length) continue;
+    // vínculos só em parte do dia: estatísticas e performance consultadas na janela de cada motorista
+    for (const v of pendentes) {
+      const res = [];
+      for (const [ja, jb] of v.janelas) {
+        const j = { startDate: utc(ja), endDate: utc(jb), vehicleIdentification: v.placa };
+        res.push({ e: estat.length ? await buscar('estat', 'v1/vehicle-statistics', j, d) : [], p: await buscar('perf', 'v1/vehicle-performance', j, d) });
+      }
+      const jj = juntarJanelas(res);
+      const rodou = estat.length ? (jj.est.totalMileage || 0) > 0 : !!(jj.ind.movement && jj.ind.movement.duration > 0);
+      if (rodou) mot.push(linhaApi(d, v.nome, v.placa, jj.est, jj.ind, cli, true, !estat.length));
+    }
     dias++;
     const c1 = cols.join(';');
     cab = cab || c1;

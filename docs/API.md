@@ -104,7 +104,9 @@ Usa a mesma janela diária das estatísticas e é juntada a elas pela placa. Se 
 | `indicators.pedalPressureOnMid.percentage` | `pressao_atencao` |
 | `indicators.movement.duration` | `horas` (minutos ÷ 60) |
 | `score` | `nota` (só entre 0 e 100) |
-| `drivers[].driverName` | `motorista`: com mais de um no dia, fica quem dirigiu por mais tempo; sem motorista, o dia entra só no veículo (o CPF é descartado) |
+| `drivers[].driverName`, `startDate`, `endDate` | `motorista` (o CPF é descartado). O veículo fica com o dia inteiro. O motorista fica só com o tempo em que estava vinculado: um único motorista vinculado o dia todo usa a linha do veículo; nos demais casos o painel consulta estatísticas e performance com `vehicleIdentification` e o início e o fim de cada vínculo, e soma as janelas (km, litros e freadas somados; indicadores pela duração sobre o tempo em movimento). Sem motorista, o dia entra só no veículo |
+
+Motorista não é veículo: na plataforma, a análise por motorista mostra só o tempo em que ele estava no veículo. Antes, o painel dava ao motorista o dia inteiro do veículo (quem dirigiu mais tempo ficava com tudo), e os números do condutor saíam maiores que os da plataforma.
 
 ### `GET v2/vehicle-odometer`: odômetro
 

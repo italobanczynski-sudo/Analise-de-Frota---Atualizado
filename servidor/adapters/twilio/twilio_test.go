@@ -46,7 +46,7 @@ func (s *TwilioSuite) TestEnviaTemplateComVariaveis() {
 		_, _ = w.Write([]byte(`{"sid":"SM123","status":"queued"}`))
 	})
 
-	sid, err := c.Enviar(context.Background(), "+5511900000000", map[string]string{"1": "Ana"})
+	sid, err := c.Enviar(context.Background(), "+5511900000000", map[string]string{"1": "Ana"}, "texto")
 
 	s.Require().NoError(err)
 	s.Equal("SM123", sid)
@@ -57,14 +57,28 @@ func (s *TwilioSuite) TestRecusaTrazAMensagemDaTwilio() {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"code":63016,"message":"Failed to send freeform message"}`))
 	})
-	_, err := c.Enviar(context.Background(), "+5511900000000", nil)
+	_, err := c.Enviar(context.Background(), "+5511900000000", nil, "")
 	s.ErrorContains(err, "63016")
 }
 
 func (s *TwilioSuite) TestCredencialRecusada() {
 	c := s.cliente(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusUnauthorized) })
-	_, err := c.Enviar(context.Background(), "+5511900000000", nil)
+	_, err := c.Enviar(context.Background(), "+5511900000000", nil, "")
 	s.True(errors.Is(err, twilio.ErrCredenciais))
+}
+
+func (s *TwilioSuite) TestSemTemplateMandaOTexto() {
+	c := s.cliente(func(w http.ResponseWriter, r *http.Request) {
+		s.Require().NoError(r.ParseForm())
+		s.Equal("Bom dia, Ana!", r.PostForm.Get("Body"))
+		s.Empty(r.PostForm.Get("ContentSid"))
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"sid":"SM9"}`))
+	})
+	c.Cfg.TemplateSID = ""
+	sid, err := c.Enviar(context.Background(), "+5511900000000", map[string]string{"1": "Ana"}, "Bom dia, Ana!")
+	s.Require().NoError(err)
+	s.Equal("SM9", sid)
 }
 
 func (s *TwilioSuite) TestMascarar() {

@@ -62,7 +62,7 @@ func Config(c *gin.Context) {
 func SalvarConfig(c *gin.Context) {
 	var req ConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil || utils.ValidateStruct(req) != nil {
-		controller.RetFail(c, "preencha Account SID, número que envia e Template SID; a hora vai de 0 a 23")
+		controller.RetFail(c, "preencha Account SID e número que envia; a hora vai de 0 a 23")
 		return
 	}
 	controller.Response(c, mwwhatsapp.WhatsApp_t{UsuarioID: controller.UsuarioLogado(c).ID, NovaConfig: modwhatsapp.NovaConfig_t{

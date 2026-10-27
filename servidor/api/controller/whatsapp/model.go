@@ -19,7 +19,7 @@ type ConfigRequest struct {
 	AccountSID  string `json:"account_sid" validate:"required,max=64"`
 	AuthToken   string `json:"auth_token" validate:"max=128"` // vazio mantém o salvo
 	Remetente   string `json:"remetente" validate:"required,max=40"`
-	TemplateSID string `json:"template_sid" validate:"required,max=64"`
+	TemplateSID string `json:"template_sid" validate:"max=64"`
 	Automatico  bool   `json:"automatico"`
 	Hora        int    `json:"hora" validate:"min=0,max=23"`
 }

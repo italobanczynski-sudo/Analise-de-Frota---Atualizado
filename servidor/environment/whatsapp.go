@@ -8,7 +8,8 @@ type WhatsAppConfig_t struct {
 	TwilioAPISecret  string `envconfig:"TWILIO_API_SECRET"`
 	// Número WhatsApp Business ligado à Twilio, no formato whatsapp:+55DDNNNNNNNNN
 	Remetente string `envconfig:"WHATSAPP_REMETENTE"`
-	// Content SID (HX...) do template aprovado pela Meta, criado em Twilio > Content Template Builder
+	// Content SID (HX...) do template aprovado pela Meta, criado em Twilio > Content Template Builder.
+	// Vazio = manda o texto pronto, que só chega a quem falou com o número nas últimas 24 h (Sandbox, testes)
 	TemplateSID string `envconfig:"WHATSAPP_TEMPLATE_SID"`
 	// Envio automático todo dia, na hora de Brasília abaixo (0 a 23). Desligado até tudo estar configurado.
 	Automatico bool `envconfig:"WHATSAPP_AUTOMATICO" default:"false"`
@@ -17,5 +18,5 @@ type WhatsAppConfig_t struct {
 
 // Configurado indica se há conta, remetente e template para enviar de verdade
 func (w WhatsAppConfig_t) Configurado() bool {
-	return w.TwilioAccountSID != "" && w.TwilioAPIKey != "" && w.TwilioAPISecret != "" && w.Remetente != "" && w.TemplateSID != ""
+	return w.TwilioAccountSID != "" && w.TwilioAPIKey != "" && w.TwilioAPISecret != "" && w.Remetente != ""
 }

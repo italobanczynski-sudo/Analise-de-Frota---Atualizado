@@ -19,8 +19,9 @@ import (
 )
 
 type WhatsApp_I interface {
-	// Enviar manda o template configurado para o telefone (+55...) com as variáveis {"1": ..., "2": ...}; devolve o SID da mensagem
-	Enviar(ctx context.Context, telefone string, variaveis map[string]string) (string, error)
+	// Enviar manda o template configurado para o telefone (+55...) com as variáveis {"1": ..., "2": ...}; devolve o SID da mensagem.
+	// Sem template configurado, manda o texto pronto: só chega a quem falou com o número nas últimas 24 h (Sandbox, testes).
+	Enviar(ctx context.Context, telefone string, variaveis map[string]string, texto string) (string, error)
 	// Teste indica o modo de teste (nada é enviado de verdade)
 	Teste() bool
 }
@@ -49,7 +50,7 @@ func NewWhatsApp(cfg environment.WhatsAppConfig_t) WhatsApp_I {
 
 func (t *teste_t) Teste() bool { return true }
 
-func (t *teste_t) Enviar(_ context.Context, telefone string, variaveis map[string]string) (string, error) {
+func (t *teste_t) Enviar(_ context.Context, telefone string, variaveis map[string]string, _ string) (string, error) {
 	logrus.Warnf("whatsapp (modo de teste, não enviado) para %s: %v", Mascarar(telefone), variaveis)
 	return "", nil
 }
@@ -62,16 +63,17 @@ type erroTwilio struct {
 	Message string `json:"message"`
 }
 
-func (t *Twilio_t) Enviar(ctx context.Context, telefone string, variaveis map[string]string) (string, error) {
-	vars, err := json.Marshal(variaveis)
-	if err != nil {
-		return "", err
-	}
-	form := url.Values{
-		"From":             {t.Cfg.Remetente},
-		"To":               {"whatsapp:" + telefone},
-		"ContentSid":       {t.Cfg.TemplateSID},
-		"ContentVariables": {string(vars)},
+func (t *Twilio_t) Enviar(ctx context.Context, telefone string, variaveis map[string]string, texto string) (string, error) {
+	form := url.Values{"From": {t.Cfg.Remetente}, "To": {"whatsapp:" + telefone}}
+	if t.Cfg.TemplateSID == "" {
+		form.Set("Body", texto)
+	} else {
+		vars, err := json.Marshal(variaveis)
+		if err != nil {
+			return "", err
+		}
+		form.Set("ContentSid", t.Cfg.TemplateSID)
+		form.Set("ContentVariables", string(vars))
 	}
 	end := t.Base + url.PathEscape(t.Cfg.TwilioAccountSID) + "/Messages.json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, end, strings.NewReader(form.Encode()))

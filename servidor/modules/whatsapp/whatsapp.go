@@ -159,7 +159,7 @@ func (w *whatsapp_t) Enviar(ctx context.Context, clienteID int64, dia string) (R
 			out.JaEnviadas++
 			continue
 		}
-		sid, err := envio.Enviar(ctx, tel, r.Variaveis)
+		sid, err := envio.Enviar(ctx, tel, r.Variaveis, Texto(r.Variaveis))
 		if err != nil {
 			_ = w.d.Repo.Concluir(ctx, clienteID, r.Motorista, dia, SituacaoErro, "", err.Error())
 			out.Erros = append(out.Erros, r.Motorista+": "+err.Error())

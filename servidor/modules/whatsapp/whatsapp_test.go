@@ -85,8 +85,8 @@ func (m *ClientesMock_t) Listar(ctx context.Context) ([]cliente.Cliente_t, error
 
 type TwilioMock_t struct{ mock.Mock }
 
-func (m *TwilioMock_t) Enviar(ctx context.Context, telefone string, vars map[string]string) (string, error) {
-	a := m.Called(ctx, telefone, vars)
+func (m *TwilioMock_t) Enviar(ctx context.Context, telefone string, vars map[string]string, texto string) (string, error) {
+	a := m.Called(ctx, telefone, vars, texto)
 	return a.String(0), a.Error(1)
 }
 func (m *TwilioMock_t) Teste() bool { return false }
@@ -267,7 +267,7 @@ func (s *WhatsAppSuite) TestEnviaSoParaQuemTemWhatsAppEUmaVez() {
 	s.contatos.On("Destinos", s.ctx, int64(1)).Return([]contato.Destino_t{{Motorista: "Ana", Telefone: "+5511900000001"}, {Motorista: "Beto", Telefone: "+5511900000002"}}, nil)
 	s.repo.On("Reservar", s.ctx, int64(1), "Ana", "2026-10-26").Return(true, nil)
 	s.repo.On("Reservar", s.ctx, int64(1), "Beto", "2026-10-26").Return(false, nil) // já recebeu
-	s.twilio.On("Enviar", s.ctx, "+5511900000001", mock.Anything).Return("SM1", nil)
+	s.twilio.On("Enviar", s.ctx, "+5511900000001", mock.Anything, mock.Anything).Return("SM1", nil)
 	s.repo.On("Concluir", s.ctx, int64(1), "Ana", "2026-10-26", whatsapp.SituacaoEnviada, "SM1", "").Return(nil)
 
 	r, err := s.svc.Enviar(s.ctx, 1, "2026-10-26")
@@ -287,7 +287,7 @@ func (s *WhatsAppSuite) TestCredencialRecusadaParaTudo() {
 	}, nil)
 	s.contatos.On("Destinos", s.ctx, int64(1)).Return([]contato.Destino_t{{Motorista: "Ana", Telefone: "+5511900000001"}, {Motorista: "Beto", Telefone: "+5511900000002"}}, nil)
 	s.repo.On("Reservar", s.ctx, int64(1), mock.Anything, mock.Anything).Return(true, nil)
-	s.twilio.On("Enviar", s.ctx, mock.Anything, mock.Anything).Return("", twilio.ErrCredenciais)
+	s.twilio.On("Enviar", s.ctx, mock.Anything, mock.Anything, mock.Anything).Return("", twilio.ErrCredenciais)
 	s.repo.On("Concluir", s.ctx, int64(1), "Ana", "2026-10-26", whatsapp.SituacaoErro, "", mock.Anything).Return(nil)
 
 	_, err := s.svc.Enviar(s.ctx, 1, "2026-10-26")

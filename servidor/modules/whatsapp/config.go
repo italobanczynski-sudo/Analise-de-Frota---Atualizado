@@ -45,6 +45,8 @@ var (
 	ErrRemetente   = errors.New("número que envia inválido: use o número do WhatsApp da Twilio com código do país, por exemplo +1 415 523 8886")
 	ErrTemplateSID = errors.New("Template SID inválido: começa com HX e tem 34 caracteres (Content Template Builder)")
 	ErrHora        = errors.New("a hora do envio vai de 0 a 23")
+	// sem template, a mensagem só chega a quem falou com o número nas últimas 24 h: não serve para o envio diário
+	ErrAutomaticoSemTemplate = errors.New("para enviar sozinho todo dia, preencha o Template SID aprovado pelo WhatsApp")
 
 	reAccountSID  = regexp.MustCompile(`^AC[0-9a-fA-F]{32}$`)
 	reAuthToken   = regexp.MustCompile(`^[0-9a-zA-Z]{32}$`)
@@ -86,8 +88,11 @@ func (w *whatsapp_t) SalvarConfig(ctx context.Context, n NovaConfig_t, usuarioID
 	if !reAccountSID.MatchString(n.AccountSID) {
 		return Config_t{}, ErrAccountSID
 	}
-	if !reTemplateSID.MatchString(n.TemplateSID) {
+	if n.TemplateSID != "" && !reTemplateSID.MatchString(n.TemplateSID) {
 		return Config_t{}, ErrTemplateSID
+	}
+	if n.Automatico && n.TemplateSID == "" {
+		return Config_t{}, ErrAutomaticoSemTemplate
 	}
 	rem, err := normalizarRemetente(n.Remetente)
 	if err != nil {

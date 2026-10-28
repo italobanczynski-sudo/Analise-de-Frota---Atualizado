@@ -7352,6 +7352,25 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     M.carregando = false;
     if (E.rota.tela === 'mensagens') render();
   }
+  // acompanha a busca do cliente de 10 em 10 s e, quando ela termina, atualiza a situação e recarrega as mensagens
+  function msgVigiarBusca(cli) {
+    const M = msg(), cs = contaSrv();
+    if (!cs || M.vigiando === cli) return;
+    M.vigiando = cli;
+    const conferir = async () => {
+      if (M.vigiando !== cli) return;   // trocou de cliente: outra vigia assume
+      try {
+        const sit = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/coleta');
+        const c = (M.clientes || []).find((x) => String(x.id) === cli);
+        if (c) c.coleta = Object.assign({}, c.coleta, { situacao: sit.situacao, ultimo_dia: sit.ultimo_dia, terminada_em: sit.terminada_em, mensagem: sit.mensagem });
+        if (sit.situacao === 'rodando') { setTimeout(conferir, 10000); return; }
+      } catch (e) { setTimeout(conferir, 10000); return; }   // tenta de novo na próxima
+      M.vigiando = ''; M.ocupado = '';
+      if (M.cli === cli) M.lista = null;
+      if (E.rota.tela === 'mensagens') render();
+    };
+    setTimeout(conferir, 10000);
+  }
   function telaMensagens() {
     const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Mensagens do dia</h1><span class="sub">A análise de cada motorista no dia escolhido: como foi o dia, a evolução contra a média dele nos 7 dias anteriores e o que melhorar. Copie, mande pelo seu WhatsApp e marque como enviada. O acompanhamento aparece no Motorista individual.</span></div></div>`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
@@ -7361,6 +7380,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (M.cli && M.lista === null && !M.carregando) setTimeout(msgCarregar, 0);
     const lista = M.lista || [], enviadas = lista.filter((m) => m.enviada).length;
     const cliAtual = M.clientes.find((c) => String(c.id) === M.cli) || {}, col = cliAtual.coleta || {};
+    if (col.situacao === 'rodando') setTimeout(() => msgVigiarBusca(M.cli), 0);   // a busca já estava rodando ao abrir a tela
     const busca = col.situacao === 'rodando' || M.ocupado === '__coleta'
       ? `<div class="alerta alerta-ok" role="status"><span class="spinner"></span><div class="alerta-corpo"><span class="alerta-texto">Buscando os dados na API Gobrax… As mensagens se atualizam sozinhas quando terminar.</span></div></div>`
       : !col.ultimo_dia || col.ultimo_dia < M.dia
@@ -8327,18 +8347,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       M.ocupado = '__coleta'; render();
       try { await cs.chamar('POST', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/coleta'); toast('Busca iniciada. As mensagens se atualizam quando terminar.'); }
       catch (e) { toast(e.message, 'erro'); M.ocupado = ''; render(); return; }
-      // acompanha a busca de 10 em 10 s e recarrega as mensagens ao terminar
-      const conferir = async () => {
-        try {
-          const sit = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/coleta');
-          const c = (M.clientes || []).find((x) => String(x.id) === M.cli);
-          if (c) c.coleta = Object.assign({}, c.coleta, { situacao: sit.situacao, ultimo_dia: sit.ultimo_dia, terminada_em: sit.terminada_em, mensagem: sit.mensagem });
-          if (sit.situacao === 'rodando') { setTimeout(conferir, 10000); if (E.rota.tela === 'mensagens') render(); return; }
-        } catch (e) { /* tenta de novo na próxima */ setTimeout(conferir, 10000); return; }
-        M.ocupado = ''; M.lista = null;
-        if (E.rota.tela === 'mensagens') render();
-      };
-      setTimeout(conferir, 10000);
+      msgVigiarBusca(M.cli);
     },
     'msg-desmarcar': async (el) => {
       const M = msg(), m = (M.lista || [])[Number(el.dataset.i)], cs = contaSrv();

@@ -3014,7 +3014,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { sec: 'Motoristas' },
     { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
     { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
-    { tela: 'whatsapp', href: '#/whatsapp', icone: 'motorista-ind', rot: 'WhatsApp dos motoristas', srv: true },
+    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
     { sec: 'Retenção do cliente' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
@@ -3206,7 +3206,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       ${E.navAberto ? '<div class="nav-fundo" data-acao="nav-alternar" aria-hidden="true"></div>' : ''}
       <nav class="sidebar" aria-label="Menu principal">
         <button type="button" class="nav-marca" data-acao="nav-alternar" aria-expanded="${!!E.navAberto}" aria-label="${E.navAberto ? 'Fechar o menu' : 'Abrir o menu'}">${icone(E.navAberto ? 'fechar' : 'menu', 20)}<span>Análise de frota</span></button>
-        ${NAV.filter((n) => !n.rodape && (!n.srv || podeWA())).map((n) => (n.sec ? `<span class="nav-secao">${n.sec}</span>` : navItem(n))).join('')}
+        ${NAV.filter((n) => !n.rodape && (!n.srv || window.GBX_CONTA)).map((n) => (n.sec ? `<span class="nav-secao">${n.sec}</span>` : navItem(n))).join('')}
         <div class="nav-rodape">${NAV.filter((n) => n.rodape).map(navItem).join('')}</div>
       </nav>
       <div class="conteudo">
@@ -5781,7 +5781,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!veic) {   // Motorista individual é uma aba da página Motoristas
       const abasMot = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['lista', 'Lista de motoristas', c.mots.length]];
       return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Motoristas</h1><span class="sub">Um motorista por vez, comparado ao período anterior e à média da frota.</span></div></div>
-        <div class="abas" role="tablist" aria-label="Seções de Motoristas">${abasMot.map(([k, rot, n]) => `<button type="button" role="tab" class="aba" aria-selected="false" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<span role="tab" class="aba ativa" aria-selected="true"><span>Motorista individual</span></span></div>${seletor}${corpo}`;
+        <div class="abas" role="tablist" aria-label="Seções de Motoristas">${abasMot.map(([k, rot, n]) => `<button type="button" role="tab" class="aba" aria-selected="false" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<span role="tab" class="aba ativa" aria-selected="true"><span>Motorista individual</span></span></div>${seletor}${blocoMsgMotorista((c.mots.find((y) => y.m.id === id) || { m: {} }).m.nome)}${corpo}`;
     }
     return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.</span></div></div>${seletor}${corpo}`;
   }
@@ -7324,159 +7324,104 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <tbody>${linhas || vazio}</tbody></table></div>
     </section>`;
   }
-  // com o login, o menu ganha o WhatsApp dos motoristas: redesenha se o painel já está na tela
-  window.addEventListener('gbx-conta', () => { if (naConfig() || E.rota.tela === 'whatsapp' || document.querySelector('.nav-item')) render(); });
+  // com o login, o menu ganha as Mensagens do dia e o Motorista individual, o acompanhamento: redesenha se o painel já está na tela
+  window.addEventListener('gbx-conta', () => { const app = document.getElementById('app'); if (app && app.children.length) render(); });
 
-  // ---------- WhatsApp dos motoristas: só no painel do servidor (/painel), para colaborador e administrador ----------
-  // Telefones e o Auth Token da Twilio ficam no servidor, cifrados: a tela vê só os 4 últimos dígitos e nunca o token.
-  const podeWA = () => !!(contaSrv() && contaSrv().eu && contaSrv().eu.papel !== 'leitor');
-  const SIT_ENVIO = { enviada: ['Enviada', 'ok'], enviando: ['Enviando…', 'atencao'], erro: ['Com erro', 'critico'] };
-  const ontemWA = () => new Date(Date.now() - 27 * 3600 * 1000).toISOString().slice(0, 10);   // ontem em Brasília (UTC−3)
-  const wa = () => E.wa || (E.wa = { clientes: null, cli: '', p: null, carregado: false, carregando: false, erro: '', tw: null, f: { motorista: '', telefone: '', autorizado: false },
-    dia: ontemWA(), previas: null, imp: null, impAut: false, ocupado: '', teste: { motorista: '', telefone: '', res: null } });
-  // mesma regra do servidor (modules/contato): só confere na tela, quem decide é o servidor
-  function telWA(v) {
-    let d = String(v === null || v === undefined ? '' : v).replace(/\D/g, '');
-    if (d.startsWith('0') && (d.length === 11 || d.length === 12)) d = d.slice(1);
-    if (d.length === 10 || d.length === 11) d = '55' + d;
-    if (d.length === 12 && d[4] >= '6') d = d.slice(0, 4) + '9' + d.slice(4);   // celular antigo, sem o 9
-    return /^55[1-9][1-9](9\d{8}|[2-5]\d{7})$/.test(d) ? d : '';
+  // ---------- Mensagens do dia: a análise de cada motorista pronta para copiar e mandar pelo WhatsApp ----------
+  // Só no painel do servidor (/painel). A pessoa copia, manda do próprio WhatsApp e marca como enviada; cada marca guarda
+  // um retrato da análise, e o Motorista individual mostra os dias com mensagem e se ele melhorou no que foi apontado.
+  const ontemMsg = () => new Date(Date.now() - 27 * 3600 * 1000).toISOString().slice(0, 10);   // ontem em Brasília (UTC−3)
+  const msg = () => E.msg || (E.msg = { clientes: null, carregandoCli: false, cli: '', dia: ontemMsg(), lista: null, carregando: false, erro: '', ocupado: '', acomp: {} });
+  const podeMarcar = () => !!(contaSrv() && contaSrv().eu && contaSrv().eu.papel !== 'leitor');
+  async function msgClientes() {
+    const M = msg(), cs = contaSrv();
+    if (!cs || M.clientes || M.carregandoCli) return;
+    M.carregandoCli = true;
+    try { M.clientes = await cs.chamar('GET', '/api/v1/clientes'); } catch (e) { M.clientes = []; M.erro = e.message; }
+    M.carregandoCli = false;
+    render();
   }
-  async function waCarregar() {
-    const cs = contaSrv(), W = wa();
-    if (!cs || W.carregando) return;
-    W.carregando = true;
-    try {
-      if (!W.clientes) {
-        W.clientes = await cs.chamar('GET', '/api/v1/clientes');
-        const atual = W.clientes.find((c) => ckey(c.nome) === ckey(E.cliente)) || W.clientes[0];
-        W.cli = atual ? String(atual.id) : '';
-      }
-      if (ehAdmin() && !W.tw) {
-        const c = await cs.chamar('GET', '/api/v1/whatsapp/config');
-        W.tw = { sid: c.account_sid || '', temToken: !!c.tem_token, remetente: c.remetente || '+1 415 523 8886', template: c.template_sid || '', automatico: !!c.automatico, hora: c.hora === undefined ? 7 : c.hora, erro: '' };
-      }
-      W.p = W.cli ? await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp') : null;
-      W.erro = '';
-    } catch (e) { W.erro = e.message; }
-    W.carregando = false; W.carregado = true;
-    if (E.rota.tela === 'whatsapp') render();
+  // id do cliente no servidor para um nome do painel (os dois usam o mesmo nome)
+  const cliSrv = (nome) => { const c = (msg().clientes || []).find((x) => ckey(x.nome) === ckey(nome)); return c ? String(c.id) : ''; };
+  async function msgCarregar() {
+    const M = msg(), cs = contaSrv();
+    if (!cs || !M.cli || M.carregando) return;
+    M.carregando = true;
+    try { M.lista = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens?dia=' + encodeURIComponent(M.dia)); M.erro = ''; }
+    catch (e) { M.lista = []; M.erro = e.message; }
+    M.carregando = false;
+    if (E.rota.tela === 'mensagens') render();
   }
-  function waLerPlanilha(arq) {
-    if (!window.XLSX) { toast('O leitor de Excel não carregou. Recarregue a página e tente de novo.', 'erro'); return; }
-    arq.arrayBuffer().then((buf) => {
-      const wb = XLSX.read(buf, { type: 'array', raw: true });
-      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true });   // raw: telefone longo não vira "5,5E+12"
-      const cols = Object.keys(linhas[0] || {});
-      const achar = (nomes) => cols.find((c) => nomes.includes(nrm(c)));
-      const cm = achar(['motorista', 'nome', 'condutor', 'nome do motorista']), ct = achar(['whatsapp', 'telefone', 'celular', 'fone', 'numero']);
-      if (!linhas.length || !cm || !ct) { toast('A planilha precisa de uma coluna Motorista e uma coluna WhatsApp (ou Telefone/Celular).', 'erro'); return; }
-      const W = wa(), conhecidos = new Map(((W.p && W.p.motoristas) || []).map((m) => [nrm(m), m]));
-      W.imp = linhas.map((l) => {
-        const bruto = String(l[cm] || '').trim(), tel = telWA(l[ct]);
-        return { motorista: conhecidos.get(nrm(bruto)) || bruto, telefone: String(l[ct] || '').trim(), final: tel ? tel.slice(-4) : '', conhecido: conhecidos.has(nrm(bruto)),
-          problema: !bruto ? 'Sem nome' : !tel ? 'WhatsApp inválido' : '' };
-      }).filter((r) => r.motorista || r.telefone);
-      W.impAut = false;
-      render();
-    }).catch((e) => toast('Não foi possível ler a planilha: ' + e.message, 'erro'));
+  function telaMensagens() {
+    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Mensagens do dia</h1><span class="sub">A análise de cada motorista no dia escolhido: como foi o dia, a evolução contra a média dele nos 7 dias anteriores e o que melhorar. Copie, mande pelo seu WhatsApp e marque como enviada. O acompanhamento aparece no Motorista individual.</span></div></div>`;
+    if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
+    const M = msg();
+    if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
+    if (!M.cli) M.cli = cliSrv(E.cliente) || (M.clientes[0] ? String(M.clientes[0].id) : '');
+    if (M.cli && M.lista === null && !M.carregando) setTimeout(msgCarregar, 0);
+    const lista = M.lista || [], enviadas = lista.filter((m) => m.enviada).length;
+    const filtros = `<section class="card"><div class="card-corpo" style="flex-direction:row;align-items:flex-end;gap:14px;flex-wrap:wrap">
+      <div class="campo-bloco" style="min-width:260px"><label class="campo-rotulo" for="msg-cli">Cliente</label><select class="campo" id="msg-cli" data-campo="msg-cli">${M.clientes.map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === M.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>
+      <div class="campo-bloco"><label class="campo-rotulo" for="msg-dia">Análise do dia</label><input class="campo" id="msg-dia" type="date" data-campo="msg-dia" value="${esc(M.dia)}" max="${ontemMsg()}"></div>
+      ${lista.length ? `<span class="apoio"><b>${enviadas}</b> de <b>${lista.length}</b> mensagens marcadas como enviadas</span>` : ''}
+    </div></section>`;
+    const cartoes = M.carregando || M.lista === null ? '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Montando as análises…</span></div></div></section>'
+      : M.erro ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(M.erro)}</span></div></div>`
+        : !lista.length ? '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ninguém rodou neste dia</span><span class="apoio">Escolha outro dia ou confira se a busca da API está em dia.</span></div></div></section>'
+          : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">${lista.map((m, i) => `<section class="card" style="gap:0">
+            <div class="card-cab"><div class="card-cab-texto" style="flex-direction:row;align-items:center;gap:10px;justify-content:space-between;width:100%">
+              <span class="pessoa">${avatar(m.motorista, 32)}<b style="font-weight:600">${esc(m.motorista)}</b></span>
+              ${m.enviada ? `<span class="badge badge-ok" title="Marcada em ${esc(dataHoraBR(m.enviada))}">Enviada</span>` : '<span class="badge badge-vazio">Não enviada</span>'}</div></div>
+            <div class="card-corpo" style="gap:12px">
+              ${m.foco_rotulo ? `<span class="apoio">Ponto de atenção: <b>${esc(m.foco_rotulo)}</b> · melhorou em ${m.melhorou} e piorou em ${m.piorou} de ${m.comparados} indicadores</span>` : m.comparados ? `<span class="apoio">Nenhum ponto piorou · melhorou em ${m.melhorou} de ${m.comparados} indicadores</span>` : ''}
+              <p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55;padding:12px 14px;border-radius:12px;background:var(--apoio, rgba(127,127,127,.08))">${esc(m.texto)}</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn" data-acao="msg-copiar" data-i="${i}">Copiar</button>
+                <a class="btn" href="https://wa.me/?text=${encodeURIComponent(m.texto)}" target="_blank" rel="noopener" style="text-decoration:none">Abrir no WhatsApp</a>
+                ${podeMarcar() ? (m.enviada ? `<button type="button" class="btn-link peq" data-acao="msg-desmarcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Desmarcar</button>`
+                  : `<button type="button" class="btn btn-primario" data-acao="msg-marcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Marcar como enviada</button>`) : ''}
+              </div></div></section>`).join('')}</div>`;
+    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${filtros}${cartoes}</div>`;
   }
-  // envio de teste: a mensagem de um motorista vai para o número digitado (não salvo) e a tela mostra se a Twilio entregou
-  function blocoTesteWA(W, P) {
-    const T = W.teste, r = T.res, mots = (W.previas && W.previas.length ? W.previas.map((p) => p.motorista) : P.motoristas);
-    const resultado = !r ? '' : r.erro ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Não saiu</span><span class="alerta-texto">${esc(r.erro)}</span></div></div>`
-      : r.entregue ? '<div class="alerta alerta-ok" role="status"><span class="alerta-icone">✓</span><div class="alerta-corpo"><span class="alerta-titulo">Entregue</span><span class="alerta-texto">A mensagem chegou no WhatsApp do número de teste.</span></div></div>'
-        : r.motivo ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">A Twilio não entregou</span><span class="alerta-texto">${esc(r.motivo)}</span></div></div>`
-          : `<div class="alerta alerta-ok" role="status"><span class="alerta-icone">✓</span><div class="alerta-corpo"><span class="alerta-titulo">Aceita pela Twilio (${esc(r.situacao)})</span><span class="alerta-texto">Ainda sem confirmação de entrega. Confira o celular em alguns segundos.</span></div></div>`;
-    return `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px dashed var(--borda, #ccc);border-radius:14px">
-      <b style="font-weight:600">Enviar teste para um número</b>
-      <span class="apoio">Manda a mensagem de um motorista para o número que você digitar (o seu, por exemplo). O número não fica salvo e o motorista não recebe nada.</span>
-      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-        <div class="campo-bloco" style="min-width:240px"><label class="campo-rotulo" for="wa-t-mot">Mensagem do motorista</label><select class="campo" id="wa-t-mot" data-campo="wa-t-motorista"><option value="">Escolha…</option>${mots.map((m) => `<option value="${esc(m)}" ${m === T.motorista ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></div>
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-t-tel">Enviar para (DDD + número)</label><input class="campo" id="wa-t-tel" type="tel" inputmode="tel" data-campo="wa-t-telefone" value="${esc(T.telefone)}" placeholder="(51) 91234-5678" maxlength="30" autocomplete="off"></div>
-        <button type="button" class="btn btn-primario" data-acao="wa-teste" ${W.ocupado === 'teste' ? 'disabled' : ''}>${W.ocupado === 'teste' ? 'Enviando e conferindo…' : 'Enviar teste'}</button>
-      </div>${resultado}</div>`;
+
+  // Motorista individual: dias com mensagem enviada e se ele melhorou no que foi apontado (vem do servidor)
+  const RESULT_MSG = { melhorou: ['Melhorou', 'ok'], nao_melhorou: ['Não melhorou', 'critico'], aguardando: ['Aguardando dados', 'neutro'], sem_ponto: ['Sem ponto de atenção', 'vazio'] };
+  async function msgAcomp(cli, nome) {
+    const M = msg(), cs = contaSrv(), k = cli + '|' + nome;
+    if (!cs || M.acomp[k]) return;
+    M.acomp[k] = { carregando: true };
+    try { M.acomp[k] = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/acompanhamento?motorista=' + encodeURIComponent(nome)); }
+    catch (e) { M.acomp[k] = { erro: e.message }; }
+    if (E.rota.tela === 'individual') render();
   }
-  function telaWhatsapp() {
-    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">WhatsApp dos motoristas</h1><span class="sub">Toda manhã, cada motorista com WhatsApp cadastrado recebe a análise do dia anterior: km, média, início da faixa verde, embalo, motor ligado parado, piloto automático, pedal crítico, nota do mês e o que melhorar.</span></div></div>`;
-    if (!podeWA()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">Entre pela plataforma com perfil de colaborador ou administrador.</span></div></div></section>';
-    const W = wa();
-    if (!W.carregado && !W.carregando) setTimeout(waCarregar, 0);
-    const card = (titulo, sub, corpo, id) => `<section class="card"${id ? ` id="${id}"` : ''}><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${titulo}</h2>${sub ? `<span class="h2-sub">${sub}</span>` : ''}</div></div>${corpo}</section>`;
-    const alerta = (tipo, txt) => `<div class="alerta alerta-${tipo}" role="${tipo === 'erro' ? 'alert' : 'status'}"><span class="alerta-icone">${tipo === 'erro' ? '!' : '✓'}</span><div class="alerta-corpo"><span class="alerta-texto">${txt}</span></div></div>`;
-    const carregando = '<div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div>';
-    const chk = (campo, marcado, txt) => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" data-campo="${campo}" ${marcado ? 'checked' : ''} style="width:18px;height:18px">${txt}</label>`;
-    const P = W.p;
-    const selCli = `<div class="campo-bloco" style="min-width:260px"><label class="campo-rotulo" for="wa-cli">Cliente</label><select class="campo" id="wa-cli" data-campo="wa-cli">${(W.clientes || []).map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === W.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>`;
-    const aviso = !P ? '' : !P.configurado ? alerta('erro', 'Modo de teste: a Twilio ainda não está conectada' + (ehAdmin() ? ' (preencha a Conexão com a Twilio abaixo)' : ' (fale com um administrador)') + '. Nada é enviado.')
-      : P.automatico ? alerta('ok', 'Envio automático ligado: todo dia às ' + P.hora + 'h (Brasília), com o resultado do dia anterior.')
-        : alerta('ok', 'Twilio conectada. O envio automático está desligado: use "Enviar agora" para testar.');
-
-    // conexão com a Twilio (só administrador)
-    const T = W.tw;
-    const conexao = !ehAdmin() || !T ? '' : card('Conexão com a Twilio', 'Copie do console da Twilio (console.twilio.com, página inicial). O Auth Token fica cifrado e não aparece de novo. Vale para todos os clientes.', `<div class="card-corpo">
-      <div class="grade-2" style="align-items:start">
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-tw-sid">Account SID</label><input class="campo" id="wa-tw-sid" data-campo="wa-tw-sid" value="${esc(T.sid)}" placeholder="AC..." maxlength="64" spellcheck="false" autocomplete="off"></div>
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-tw-token">Auth Token</label><input class="campo" id="wa-tw-token" data-token type="password" placeholder="${T.temToken ? '•••••••• salvo (deixe vazio para manter)' : 'cole o Auth Token'}" maxlength="128" spellcheck="false" autocomplete="new-password"></div>
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-tw-rem">Número que envia</label><input class="campo" id="wa-tw-rem" data-campo="wa-tw-remetente" value="${esc(T.remetente)}" maxlength="40" spellcheck="false"><span class="apoio">Para testar, o número do Sandbox (+1 415 523 8886)</span></div>
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-tw-tpl">Template SID (deixe vazio para testar no Sandbox)</label><input class="campo" id="wa-tw-tpl" data-campo="wa-tw-template" value="${esc(T.template)}" placeholder="HX... (opcional no teste)" maxlength="64" spellcheck="false"><span class="apoio">Obrigatório para o envio diário · <button type="button" class="btn-link peq" data-acao="wa-copiar-template">copiar texto do template</button></span></div>
-      </div>
-      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-        ${chk('wa-tw-automatico', T.automatico, 'Enviar sozinho todo dia às')}
-        <select class="campo" data-campo="wa-tw-hora" aria-label="Hora do envio" style="max-width:110px">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === Number(T.hora) ? 'selected' : ''}>${String(h).padStart(2, '0')}h</option>`).join('')}</select>
-        <button type="button" class="btn btn-primario" data-acao="wa-tw-salvar" ${W.ocupado === 'tw' ? 'disabled' : ''}>${W.ocupado === 'tw' ? 'Salvando…' : 'Salvar conexão'}</button>
-      </div>
-      ${T.erro ? alerta('erro', esc(T.erro)) : ''}
-    </div>`, 'wa-twilio');
-
-    // cadastro (um a um ou por planilha)
-    const f = W.f;
-    const imp = W.imp ? (() => {
-      const validos = W.imp.filter((r) => !r.problema).length;
-      return `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Motorista</th><th>WhatsApp</th><th>Conferência</th></tr></thead><tbody>${W.imp.map((r) => `<tr><td>${esc(r.motorista || '—')}</td><td>${r.final ? '•••• ' + esc(r.final) : '—'}</td>
-        <td>${r.problema ? `<span class="badge badge-critico">${r.problema}</span>` : r.conhecido ? '<span class="badge badge-ok">Ok</span>' : '<span class="badge badge-atencao" title="O nome não aparece nos dados da API dos últimos 30 dias: confira se está escrito igual">Nome não encontrado na API</span>'}</td></tr>`).join('')}</tbody></table></div>
-        <div class="card-corpo">${chk('wa-imp-aut', W.impAut, 'Todos os motoristas válidos desta planilha autorizaram receber mensagens')}
-        <div style="display:flex;gap:10px"><button type="button" class="btn btn-primario" data-acao="wa-imp-salvar" ${!validos || W.ocupado === 'imp' ? 'disabled' : ''}>${W.ocupado === 'imp' ? 'Salvando…' : 'Salvar ' + validos + ' válido(s)'}</button><button type="button" class="btn" data-acao="wa-imp-cancelar">Cancelar</button></div></div>`;
-    })() : '';
-    const cadastro = !P ? '' : card('Cadastrar WhatsApp', 'Use o nome do motorista como aparece na API Gobrax (a lista sugere quem rodou nos últimos 30 dias). Só cadastre quem autorizou receber as mensagens.', `<div class="card-corpo">
-      <div class="grade-2" style="align-items:end">
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-f-mot">Motorista</label><input class="campo" id="wa-f-mot" list="wa-mots" data-campo="wa-f-motorista" value="${esc(f.motorista)}" maxlength="120" autocomplete="off"><datalist id="wa-mots">${P.motoristas.map((m) => `<option value="${esc(m)}">`).join('')}</datalist></div>
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-f-tel">WhatsApp (DDD + número)</label><input class="campo" id="wa-f-tel" type="tel" inputmode="tel" data-campo="wa-f-telefone" value="${esc(f.telefone)}" placeholder="(51) 91234-5678" maxlength="30" autocomplete="off"></div>
-      </div>
-      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">${chk('wa-f-autorizado', f.autorizado, 'O motorista autorizou receber')}
-        <button type="button" class="btn btn-primario" data-acao="wa-salvar" ${W.ocupado === 'f' ? 'disabled' : ''}>Salvar</button>
-        <label class="btn" for="wa-arquivo" style="cursor:pointer">Importar planilha</label><input id="wa-arquivo" type="file" accept=".xlsx,.xls,.csv" data-campo="wa-arquivo" hidden>
-        <span class="apoio">Planilha com as colunas Motorista e WhatsApp (ou Telefone); é lida aqui no navegador.</span></div>
-    </div>${imp}`);
-
-    // quem está cadastrado
-    const contatos = !P ? '' : card('Motoristas com WhatsApp', 'O número completo fica cifrado no servidor; aqui aparecem só os 4 últimos dígitos.', `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Motorista</th><th>WhatsApp</th><th>Autorizado em</th><th>Situação</th><th class="dir">Ações</th></tr></thead><tbody>
-      ${P.contatos.length ? P.contatos.map((c, i) => `<tr><td><span class="pessoa">${avatar(c.motorista, 32)}<b style="font-weight:600">${esc(c.motorista)}</b></span></td><td>•••• ${esc(c.telefone_final)}</td><td>${dataHoraBR(c.autorizado_em)}</td>
-        <td>${c.ativo ? '<span class="badge badge-ok">Recebendo</span>' : '<span class="badge badge-neutro">Pausado</span>'}</td>
-        <td class="dir" style="white-space:nowrap"><button type="button" class="btn-link peq" data-acao="wa-ativo" data-i="${i}">${c.ativo ? 'Pausar' : 'Retomar'}</button> <button type="button" class="btn-link peq critico-txt" data-acao="wa-remover" data-i="${i}">Remover</button></td></tr>`).join('')
-        : '<tr><td colspan="5"><div class="vazio"><span class="apoio">Nenhum motorista com WhatsApp cadastrado.</span></div></td></tr>'}</tbody></table></div>`);
-
-    // prévia e envio
-    const previas = W.previas === null ? '' : W.previas.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">${W.previas.map((p) => `<div class="card" style="padding:14px 16px;gap:10px;display:flex;flex-direction:column">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-weight:600">${esc(p.motorista)}</b>${p.tem_whatsapp ? '<span class="badge badge-ok">Recebe</span>' : '<span class="badge badge-vazio">Sem WhatsApp</span>'}</div>
-        <p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5">${esc(p.texto)}</p></div>`).join('')}</div>`
-      : '<div class="vazio"><span class="apoio">Nenhum motorista vinculado rodou neste dia.</span></div>';
-    const envio = !P ? '' : card('Prévia das mensagens', 'Veja o que cada motorista recebe. "Ver prévia" não envia nada.', `<div class="card-corpo">
-      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-        <div class="campo-bloco"><label class="campo-rotulo" for="wa-dia">Resultado do dia</label><input class="campo" id="wa-dia" type="date" data-campo="wa-dia" value="${esc(W.dia)}" max="${ontemWA()}"></div>
-        <button type="button" class="btn" data-acao="wa-previa" ${W.ocupado === 'previa' ? 'disabled' : ''}>${W.ocupado === 'previa' ? 'Montando…' : 'Ver prévia'}</button>
-        ${ehAdmin() ? `<button type="button" class="btn" data-acao="wa-enviar" title="Manda para os motoristas cadastrados, de verdade" ${W.ocupado === 'enviar' ? 'disabled' : ''}>${W.ocupado === 'enviar' ? 'Enviando…' : 'Enviar agora para os motoristas'}</button>` : ''}
-      </div>${ehAdmin() ? blocoTesteWA(W, P) : ''}${previas}</div>`);
-
-    const envios = !P ? '' : card('Últimos envios', 'Os 14 últimos dias. Cada motorista recebe no máximo uma mensagem por dia de resultado.', `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Dia</th><th>Motorista</th><th>Situação</th><th class="dir">Enviada em</th></tr></thead><tbody>
-      ${P.envios.length ? P.envios.map((e) => { const [r, c] = SIT_ENVIO[e.situacao] || ['—', 'neutro']; return `<tr><td>${D.br(e.dia)}</td><td>${esc(e.motorista)}</td><td><span class="badge badge-${c}" title="${esc(e.erro || '')}">${r}</span>${e.erro ? ` <span class="apoio">${esc(e.erro)}</span>` : ''}</td><td class="dir">${dataHoraBR(e.criado_em)}</td></tr>`; }).join('')
-        : '<tr><td colspan="4"><div class="vazio"><span class="apoio">Nenhuma mensagem enviada nos últimos 14 dias.</span></div></td></tr>'}</tbody></table></div>`);
-
-    const corpo = W.erro ? alerta('erro', esc(W.erro)) : !W.carregado ? `<section class="card"><div class="card-corpo">${carregando}</div></section>`
-      : !(W.clientes || []).length ? alerta('erro', 'Nenhum cliente cadastrado na plataforma.') : '';
-    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">
-      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">${W.clientes && W.clientes.length ? selCli : ''}</div>
-      ${corpo}${aviso}${conexao}${cadastro}${contatos}${envio}${envios}</div>`;
+  function blocoMsgMotorista(nome) {
+    if (!contaSrv() || !nome) return '';
+    const M = msg();
+    if (!M.clientes) { setTimeout(msgClientes, 0); return ''; }
+    const cli = cliSrv(E.cliente);
+    if (!cli) return '';
+    const A = M.acomp[cli + '|' + nome];
+    if (!A) setTimeout(() => msgAcomp(cli, nome), 0);
+    const pct = (v) => (v === null || v === undefined ? '—' : fmt(v, 1) + '%');
+    let corpo;
+    if (!A || A.carregando) corpo = '<div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando as mensagens…</span></div></div>';
+    else if (A.erro) corpo = `<div class="card-corpo"><span class="apoio">${esc(A.erro)}</span></div>`;
+    else if (!A.dias_enviada) corpo = '<div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma mensagem enviada ainda</span><span class="apoio">Em <a class="btn-link" href="#/mensagens">Mensagens do dia</a>, copie a análise, mande pelo WhatsApp e marque como enviada.</span></div></div>';
+    else {
+      const avaliados = A.envios.filter((e) => e.resultado === 'melhorou' || e.resultado === 'nao_melhorou'), melhorou = avaliados.filter((e) => e.resultado === 'melhorou').length;
+      const focos = A.focos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${A.focos.map((f) => `<span class="tag">${esc(f.rotulo)}: apontado ${f.vezes}x · melhorou depois em ${f.melhorou}${f.aguardando ? ' · ' + f.aguardando + ' aguardando' : ''}</span>`).join('')}</div>` : '';
+      corpo = `<div class="card-corpo" style="gap:12px">
+        <div style="display:flex;gap:28px;flex-wrap:wrap">
+          <div><span class="apoio">Dias com mensagem</span><div style="font-size:26px;font-weight:700">${A.dias_enviada}</div></div>
+          <div><span class="apoio">Melhorou no ponto apontado</span><div style="font-size:26px;font-weight:700">${avaliados.length ? melhorou + ' de ' + avaliados.length : '—'}</div></div>
+        </div>${focos}</div>
+        <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Dia</th><th>Ponto apontado</th><th class="dir">No dia</th><th class="dir">Média antes</th><th class="dir">Depois (até 7 dias)</th><th>Resultado</th><th>Evolução no dia</th><th class="dir">Nota do mês</th></tr></thead><tbody>
+        ${A.envios.map((e) => { const [r, c] = RESULT_MSG[e.resultado] || ['—', 'neutro']; return `<tr><td>${D.br(e.dia)}</td><td>${e.foco_rotulo ? esc(e.foco_rotulo) : '<span class="mudo">—</span>'}</td>
+          <td class="dir">${pct(e.foco_valor)}</td><td class="dir">${pct(e.foco_media)}</td><td class="dir">${e.foco ? pct(e.depois) + (e.dias_depois ? ` <span class="apoio">(${e.dias_depois}d)</span>` : '') : '—'}</td>
+          <td><span class="badge badge-${c}">${r}</span></td><td>${e.comparados ? `melhorou ${e.melhorou} · piorou ${e.piorou} de ${e.comparados}` : '—'}</td><td class="dir">${e.nota === null || e.nota === undefined ? '—' : fmt(e.nota, 1)}</td></tr>`; }).join('')}
+        </tbody></table></div>`;
+    }
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Mensagens pelo WhatsApp</h2><span class="h2-sub">Dias em que este motorista recebeu a análise e, para o ponto apontado em cada uma, a média dele nos dias seguintes comparada ao dia do aviso.</span></div></div>${corpo}</section>`;
   }
 
   function telaClientes() {
@@ -7796,8 +7741,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, whatsapp: telaWhatsapp };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao', 'api', 'whatsapp'].includes(E.rota.tela);
+    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
@@ -7839,7 +7784,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api', 'whatsapp'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api', 'mensagens'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 
@@ -8351,101 +8296,33 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       } catch (e) { toast(e.message, 'erro'); }
     },
     'usu-ativo': (el) => { usuAlterar(el.dataset.id, null, el.dataset.ativo === '1'); },
-    // WhatsApp dos motoristas (rotas /api/v1/clientes/:id/whatsapp e /api/v1/whatsapp/config do servidor)
-    'wa-salvar': async () => {
-      const W = wa(), f = W.f, cs = contaSrv();
-      if (!cs) return;
-      if (!f.motorista.trim() || !f.telefone.trim()) { toast('Informe o motorista e o WhatsApp.', 'erro'); return; }
-      if (!f.autorizado) { toast('Só cadastre o motorista que autorizou receber, e marque a confirmação.', 'erro'); return; }
-      W.ocupado = 'f'; render();
+    'msg-copiar': async (el) => {
+      const m = (msg().lista || [])[Number(el.dataset.i)];
+      if (!m) return;
+      try { await navigator.clipboard.writeText(m.texto); toast('Mensagem de ' + m.motorista + ' copiada. Cole no WhatsApp e, depois de mandar, marque como enviada.'); }
+      catch (e) { toast('Não consegui copiar: selecione o texto e use Ctrl+C.', 'erro'); }
+    },
+    'msg-marcar': async (el) => {
+      const M = msg(), m = (M.lista || [])[Number(el.dataset.i)], cs = contaSrv();
+      if (!m || !cs) return;
+      M.ocupado = m.motorista; render();
       try {
-        await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/contatos', { motorista: f.motorista.trim(), telefone: f.telefone.trim(), autorizado: true });
-        toast('WhatsApp de ' + f.motorista.trim() + ' salvo.');
-        W.f = { motorista: '', telefone: '', autorizado: false };
+        const r = await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/enviada', { dia: M.dia, motorista: m.motorista });
+        m.enviada = r.enviada; delete M.acomp[M.cli + '|' + m.motorista];
+        toast('Mensagem de ' + m.motorista + ' marcada como enviada.');
       } catch (e) { toast(e.message, 'erro'); }
-      W.ocupado = ''; waCarregar();
+      M.ocupado = ''; render();
     },
-    'wa-ativo': async (el) => {
-      const W = wa(), c = W.p && W.p.contatos[Number(el.dataset.i)], cs = contaSrv();
-      if (!c || !cs) return;
+    'msg-desmarcar': async (el) => {
+      const M = msg(), m = (M.lista || [])[Number(el.dataset.i)], cs = contaSrv();
+      if (!m || !cs) return;
+      M.ocupado = m.motorista; render();
       try {
-        await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/contatos/ativo', { motorista: c.motorista, ativo: !c.ativo });
-        toast(c.ativo ? c.motorista + ' não recebe mais até ser retomado.' : c.motorista + ' volta a receber.');
+        await cs.chamar('DELETE', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/enviada?dia=' + encodeURIComponent(M.dia) + '&motorista=' + encodeURIComponent(m.motorista));
+        m.enviada = null; delete M.acomp[M.cli + '|' + m.motorista];
+        toast('Mensagem de ' + m.motorista + ' desmarcada.');
       } catch (e) { toast(e.message, 'erro'); }
-      waCarregar();
-    },
-    'wa-remover': async (el) => {
-      const W = wa(), c = W.p && W.p.contatos[Number(el.dataset.i)], cs = contaSrv();
-      if (!c || !cs || !confirm('Remover o WhatsApp de ' + c.motorista + '? O número é apagado e o motorista deixa de receber.')) return;
-      try {
-        await cs.chamar('DELETE', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/contatos?motorista=' + encodeURIComponent(c.motorista));
-        toast('WhatsApp de ' + c.motorista + ' removido.');
-      } catch (e) { toast(e.message, 'erro'); }
-      waCarregar();
-    },
-    'wa-previa': async () => {
-      const W = wa(), cs = contaSrv();
-      if (!cs) return;
-      W.ocupado = 'previa'; render();
-      try { W.previas = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/previa?dia=' + encodeURIComponent(W.dia)); }
-      catch (e) { toast(e.message, 'erro'); }
-      W.ocupado = ''; render();
-    },
-    'wa-enviar': async () => {
-      const W = wa(), cs = contaSrv();
-      if (!cs || !confirm('Enviar agora o resultado de ' + D.br(W.dia) + ' para os motoristas com WhatsApp? Quem já recebeu este dia não recebe de novo.')) return;
-      W.ocupado = 'enviar'; render();
-      try {
-        const r = await cs.chamar('POST', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/enviar', { dia: W.dia });
-        const partes = [r.enviadas + ' enviada(s)'];
-        if (r.ja_enviadas) partes.push(r.ja_enviadas + ' já tinham recebido');
-        if (r.sem_whatsapp) partes.push(r.sem_whatsapp + ' sem WhatsApp');
-        if (r.erros.length) partes.push(r.erros.length + ' com erro: ' + r.erros.join('; '));
-        toast((r.teste ? 'Modo de teste (nada saiu de verdade): ' : '') + partes.join(', ') + '.', r.erros.length ? 'erro' : undefined);
-      } catch (e) { toast(e.message, 'erro'); }
-      W.ocupado = ''; waCarregar();
-    },
-    'wa-tw-salvar': async () => {
-      const W = wa(), T = W.tw, cs = contaSrv(), campo = document.getElementById('wa-tw-token');
-      if (!T || !cs) return;
-      W.ocupado = 'tw'; T.erro = ''; render();
-      try {
-        const c = await cs.chamar('PUT', '/api/v1/whatsapp/config', { account_sid: T.sid.trim(), auth_token: campo ? campo.value.trim() : '', remetente: T.remetente.trim(),
-          template_sid: T.template.trim(), automatico: T.automatico, hora: Number(T.hora) });
-        W.tw = Object.assign(T, { sid: c.account_sid, temToken: c.tem_token, remetente: c.remetente, template: c.template_sid });
-        const novo = document.getElementById('wa-tw-token'); if (novo) novo.value = '';
-        toast('Conexão com a Twilio salva.');
-      } catch (e) { T.erro = e.message; }
-      W.ocupado = ''; waCarregar();
-    },
-    'wa-copiar-template': async () => {
-      const W = wa();
-      try { await navigator.clipboard.writeText((W.p && W.p.template) || ''); toast('Texto do template copiado: cole no Content Template Builder da Twilio.'); }
-      catch (e) { toast('Não consegui copiar; o texto está em docs/WHATSAPP.md.', 'erro'); }
-    },
-    'wa-imp-cancelar': () => { wa().imp = null; render(); },
-    'wa-teste': async () => {
-      const W = wa(), T = W.teste, cs = contaSrv();
-      if (!cs) return;
-      if (!T.motorista || !T.telefone.trim()) { toast('Escolha o motorista e digite o número de teste.', 'erro'); return; }
-      W.ocupado = 'teste'; T.res = null; render();
-      try { T.res = await cs.chamar('POST', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/teste', { dia: W.dia, motorista: T.motorista, telefone: T.telefone.trim() }); }
-      catch (e) { T.res = { erro: e.message }; }
-      W.ocupado = ''; render();
-    },
-    'wa-imp-salvar': async () => {
-      const W = wa(), cs = contaSrv();
-      if (!cs || !W.imp) return;
-      if (!W.impAut) { toast('Confirme que os motoristas autorizaram receber as mensagens.', 'erro'); return; }
-      W.ocupado = 'imp'; render();
-      let salvos = 0; const erros = [];
-      for (const r of W.imp.filter((x) => !x.problema)) {
-        try { await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/contatos', { motorista: r.motorista, telefone: r.telefone, autorizado: true }); salvos++; }
-        catch (e) { erros.push(r.motorista + ': ' + e.message); }
-      }
-      W.imp = null; W.ocupado = '';
-      toast(salvos + ' WhatsApp(s) salvo(s).' + (erros.length ? ' Com erro: ' + erros.join('; ') : ''), erros.length ? 'erro' : undefined);
-      waCarregar();
+      M.ocupado = ''; render();
     },
     'usu-copiar': async () => {
       const U = usu();
@@ -8666,9 +8543,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     else if (k === 'per-ini' || k === 'per-fim') { if (E.perMot) { E.perMot[k.slice(4)] = ev.target.value; E.perMot.editado = true; } }
     else if (k && k.indexOf('cli-') === 0) E.clienteForm[k.slice(4)] = ev.target.value;
     else if (k && k.indexOf('usu-f-') === 0) usu().form[k.slice(6)] = ev.target.value;
-    else if (k === 'wa-f-motorista' || k === 'wa-f-telefone') wa().f[k.slice(5)] = ev.target.value;
-    else if (k === 'wa-t-telefone') wa().teste.telefone = ev.target.value;
-    else if (k && k.indexOf('wa-tw-') === 0 && wa().tw && k !== 'wa-tw-automatico' && k !== 'wa-tw-hora') wa().tw[k.slice(6)] = ev.target.value;
     else if (k && k.indexOf('trat-') === 0 && E.tratForm) E.tratForm[k.slice(5)] = ev.target.value;
   });
   document.addEventListener('change', (ev) => {
@@ -8690,14 +8564,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       return;
     }
     if (k === 'usu-papel') { usuAlterar(el.dataset.id, el.value, null); return; }
-    if (k === 'wa-cli') { Object.assign(wa(), { cli: el.value, p: null, carregado: false, previas: null, imp: null }); render(); return; }
-    if (k === 'wa-dia') { wa().dia = el.value; wa().previas = null; render(); return; }
-    if (k === 'wa-f-autorizado') { wa().f.autorizado = el.checked; return; }
-    if (k === 'wa-imp-aut') { wa().impAut = el.checked; return; }
-    if (k === 'wa-t-motorista') { wa().teste.motorista = el.value; wa().teste.res = null; return; }
-    if (k === 'wa-tw-automatico' && wa().tw) { wa().tw.automatico = el.checked; return; }
-    if (k === 'wa-tw-hora' && wa().tw) { wa().tw.hora = Number(el.value); return; }
-    if (k === 'wa-arquivo' && el.files && el.files[0]) { waLerPlanilha(el.files[0]); el.value = ''; return; }
+    if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '' }); render(); return; }
+    if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '' }); render(); return; }
     if (k === 'mot-comp') { E.motComp = el.value; render(); return; }
     if (k === 'plano-evo-ind') { E.planoEvoInd = el.value; render(); return; }
     if (k === 'grp-placa') {

@@ -1,6 +1,5 @@
 // Package background roda as tarefas automáticas: a busca de dados (logo que o servidor sobe e depois
-// a cada COLETA_INTERVALO_MIN), a limpeza das sessões de login vencidas (a cada 6 horas) e o WhatsApp
-// dos motoristas (na hora marcada na aba WhatsApp, horário de Brasília, com o resultado do dia anterior).
+// a cada COLETA_INTERVALO_MIN) e a limpeza das sessões de login vencidas (a cada 6 horas).
 package background
 
 import (
@@ -13,7 +12,6 @@ import (
 	"analisefrota/environment"
 	"analisefrota/modules/coleta"
 	"analisefrota/modules/sessao"
-	"analisefrota/modules/whatsapp"
 )
 
 func Init() {
@@ -37,18 +35,7 @@ func Init() {
 	if _, err := s.NewJob(gocron.DurationJob(6*time.Hour), gocron.NewTask(limparSessoes), gocron.WithStartAt(gocron.WithStartImmediately()), unica); err != nil {
 		logrus.Fatalf("background: limpeza de sessões: %v", err)
 	}
-
-	// toda hora cheia: o módulo confere se o envio automático está ligado e se é a hora marcada (a aba WhatsApp muda sem reiniciar)
-	if _, err := s.NewJob(gocron.CronJob("0 * * * *", false), gocron.NewTask(enviarWhatsApp), unica); err != nil {
-		logrus.Fatalf("background: tarefa do WhatsApp: %v", err)
-	}
 	s.Start()
-}
-
-func enviarWhatsApp() {
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute)
-	defer cancel()
-	whatsapp.NewWhatsApp().EnviarAgendado(ctx)
 }
 
 func buscarTodos() {

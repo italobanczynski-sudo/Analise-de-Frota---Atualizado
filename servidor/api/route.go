@@ -10,8 +10,8 @@ import (
 	ctcliente "analisefrota/api/controller/cliente"
 	ctcoleta "analisefrota/api/controller/coleta"
 	ctfrota "analisefrota/api/controller/frota"
+	ctmensagem "analisefrota/api/controller/mensagem"
 	ctusuario "analisefrota/api/controller/usuario"
-	ctwhatsapp "analisefrota/api/controller/whatsapp"
 	"analisefrota/api/web"
 	"analisefrota/modules/usuario"
 )
@@ -47,31 +47,26 @@ func GetRoutes(r *gin.Engine) {
 	v1.GET("/clientes/:id/registros", ctfrota.Registros)
 	v1.GET("/clientes/:id/odometros", ctfrota.Odometros)
 	v1.GET("/clientes/:id/premiacoes", ctfrota.Premiacoes)
+	v1.GET("/clientes/:id/mensagens", ctmensagem.Listar)
+	v1.GET("/clientes/:id/mensagens/acompanhamento", ctmensagem.Acompanhamento)
 	v1.GET("/painel/dados", ctbase.Dados)
 	v1.GET("/base/:colecao", ctbase.Listar)
 
 	// colaborador e administrador
 	colab := v1.Group("", exigirPapel(usuario.PapelAdmin, usuario.PapelColaborador))
 	colab.POST("/clientes/:id/coleta", ctcoleta.Iniciar)
+	// mensagens dos motoristas: quem manda pelo WhatsApp marca como enviada
+	colab.PUT("/clientes/:id/mensagens/enviada", ctmensagem.Marcar)
+	colab.DELETE("/clientes/:id/mensagens/enviada", ctmensagem.Desmarcar)
 	// base do painel: o leitor só lê (como o Leitor do Artifact); colaborador e admin gravam
 	colab.PUT("/base/:colecao/:doc", ctbase.Gravar)
 	colab.POST("/base/:colecao", ctbase.Criar)
 	colab.DELETE("/base/:colecao/:doc", ctbase.Apagar)
-	// WhatsApp dos motoristas: telefone é dado pessoal, o leitor não vê
-	colab.GET("/clientes/:id/whatsapp", ctwhatsapp.Painel)
-	colab.GET("/clientes/:id/whatsapp/previa", ctwhatsapp.Previa)
-	colab.PUT("/clientes/:id/whatsapp/contatos", ctwhatsapp.SalvarContato)
-	colab.PUT("/clientes/:id/whatsapp/contatos/ativo", ctwhatsapp.AtivarContato)
-	colab.DELETE("/clientes/:id/whatsapp/contatos", ctwhatsapp.RemoverContato)
 
 	// só administrador
 	adm := v1.Group("", exigirPapel(usuario.PapelAdmin))
 	adm.POST("/clientes", ctcliente.Criar)
 	adm.PUT("/clientes/:id/token", ctcliente.SalvarToken)
-	adm.POST("/clientes/:id/whatsapp/enviar", ctwhatsapp.Enviar)
-	adm.POST("/clientes/:id/whatsapp/teste", ctwhatsapp.EnviarTeste)
-	adm.GET("/whatsapp/config", ctwhatsapp.Config)
-	adm.PUT("/whatsapp/config", ctwhatsapp.SalvarConfig)
 	adm.GET("/usuarios", ctusuario.Listar)
 	adm.POST("/usuarios", ctusuario.Criar)
 	adm.POST("/usuarios/:id/convite", ctusuario.NovoConvite)

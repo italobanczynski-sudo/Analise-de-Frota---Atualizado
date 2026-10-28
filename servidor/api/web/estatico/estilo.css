@@ -294,7 +294,6 @@ select.inline { height: 32px; font-size: 13px; padding: 0 10px; width: auto; bor
 }
 @media (max-width: 840px) { .form-convite { grid-template-columns: 1fr; } }
 
-
 /* Caixa do link de convite */
 .link-convite {
   margin-top: 18px; padding: 16px 18px;

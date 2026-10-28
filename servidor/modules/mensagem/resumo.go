@@ -1,4 +1,4 @@
-package whatsapp
+package mensagem
 
 import (
 	"fmt"
@@ -12,8 +12,7 @@ import (
 	"analisefrota/modules/diario"
 )
 
-// TextoTemplate é o template cadastrado na Twilio (Content Template Builder), igual letra por letra.
-// Serve também para a prévia na tela. As variáveis não podem ter quebra de linha (regra do WhatsApp).
+// TextoTemplate é o modelo da mensagem; {{n}} são trocados pelas variáveis do motorista (Texto)
 const TextoTemplate = `Bom dia, {{1}}! Aqui está a sua análise de {{2}}:
 
 🛣️ Km rodados: {{3}}
@@ -30,9 +29,9 @@ const TextoTemplate = `Bom dia, {{1}}! Aqui está a sua análise de {{2}}:
 
 💡 Para hoje: {{12}}
 
-Boa viagem! Para não receber mais estas mensagens, avise o seu gestor.`
+Boa viagem!`
 
-// quantas variáveis o template tem
+// quantas variáveis o modelo tem
 const totalVariaveis = 12
 
 // DiasComparacao: cada indicador do dia é comparado com a média do próprio motorista nos dias anteriores
@@ -44,6 +43,7 @@ const pioraMinima = 2.0
 // indicadores da análise individual: mesmos rótulos, sentido e peso do painel (index.html, IND).
 // A média de consumo (km/l) é razão: soma dos km dividida pela soma dos litros.
 type indicador_t struct {
+	chave    string // nome da coluna no diário (e no painel)
 	variavel string
 	rotulo   string
 	unidade  string  // "%" ou " km/l"
@@ -56,19 +56,19 @@ type indicador_t struct {
 	dica     string
 }
 
-var kml = indicador_t{variavel: "4", rotulo: "Média de consumo", unidade: " km/l", casas: 2, estavel: 0.05, melhor: 1, razao: true}
+var kml = indicador_t{chave: "kml", variavel: "4", rotulo: "Média de consumo", unidade: " km/l", casas: 2, estavel: 0.05, melhor: 1, razao: true}
 
 // percentuais, na ordem do template; só eles entram na dica do dia
 var indicadores = []indicador_t{
-	{"5", "Início da faixa verde", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.InicioFaixaVerde }, horas, false,
+	{"inicio_faixa_verde", "5", "Início da faixa verde", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.InicioFaixaVerde }, horas, false,
 		"mantenha a rotação no início da faixa verde: é onde o motor gasta menos diesel."},
-	{"6", "Embalo", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.Embalo }, km, false,
+	{"embalo", "6", "Embalo", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.Embalo }, km, false,
 		"olhe a via com antecedência e tire o pé antes de descidas, curvas e paradas para rodar no embalo."},
-	{"7", "Motor ligado parado", "%", 1, 1, -1, func(r diario.Registro_t) *float64 { return r.MotorOcioso }, horas, false,
+	{"motor_ocioso", "7", "Motor ligado parado", "%", 1, 1, -1, func(r diario.Registro_t) *float64 { return r.MotorOcioso }, horas, false,
 		"desligue o motor em esperas, filas, carga e descarga. Cada hora parada com o motor ligado queima cerca de 5 litros."},
-	{"8", "Piloto automático", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.PilotoAutomatico }, horas, false,
+	{"piloto_automatico", "8", "Piloto automático", "%", 1, 1, 1, func(r diario.Registro_t) *float64 { return r.PilotoAutomatico }, horas, false,
 		"use o piloto automático nos trechos planos de rodovia para manter a velocidade constante."},
-	{"9", "Pedal crítico", "%", 1, 1, -1, func(r diario.Registro_t) *float64 { return r.PressaoAcelerador }, horas, false,
+	{"pressao_acelerador", "9", "Pedal crítico", "%", 1, 1, -1, func(r diario.Registro_t) *float64 { return r.PressaoAcelerador }, horas, false,
 		"acelere de forma progressiva: pedal no fundo gasta muito e ganha pouca velocidade."},
 }
 
@@ -169,8 +169,12 @@ func montar(nome, dia string, hoje, antes []diario.Registro_t, nota Nota_t) Resu
 	for _, ind := range indicadores {
 		comps = append(comps, comparacao_t{ind, agregar(hoje, ind), agregar(antes, ind)})
 	}
-	r.Evolucao = evolucao(comps, len(antes) > 0)
+	r.Melhorou, r.Piorou, r.Comparados = contar(comps)
+	r.Evolucao = evolucao(r.Melhorou, r.Piorou, r.Comparados, len(antes) > 0)
 	r.Dica = dicaDoDia(comps[1:], len(antes) > 0)
+	if p := piorIndicador(comps[1:]); p != nil && len(antes) > 0 {
+		r.Foco, r.FocoRotulo, r.FocoValor, r.FocoMedia = p.ind.chave, p.ind.rotulo, p.hoje, p.media
+	}
 	r.Variaveis = map[string]string{
 		"1":  primeiroNome(nome),
 		"2":  dia[8:10] + "/" + dia[5:7],
@@ -185,12 +189,8 @@ func montar(nome, dia string, hoje, antes []diario.Registro_t, nota Nota_t) Resu
 	return r
 }
 
-// evolucao resume o dia: em quantos indicadores o motorista melhorou e em quantos piorou
-func evolucao(comps []comparacao_t, temHistorico bool) string {
-	if !temHistorico {
-		return "Ainda não temos dias anteriores seus para comparar. A partir de amanhã você acompanha a sua evolução."
-	}
-	melhorou, piorou, comparados := 0, 0, 0
+// contar: em quantos indicadores o motorista melhorou e em quantos piorou, entre os que deu para comparar
+func contar(comps []comparacao_t) (melhorou, piorou, comparados int) {
 	for _, c := range comps {
 		if c.hoje == nil || c.media == nil {
 			continue
@@ -202,6 +202,14 @@ func evolucao(comps []comparacao_t, temHistorico bool) string {
 		case -1:
 			piorou++
 		}
+	}
+	return
+}
+
+// evolucao resume o dia em uma frase
+func evolucao(melhorou, piorou, comparados int, temHistorico bool) string {
+	if !temHistorico {
+		return "Ainda não temos dias anteriores seus para comparar. A partir de amanhã você acompanha a sua evolução."
 	}
 	base := fmt.Sprintf("Contra a sua média dos últimos %d dias, você melhorou em %d e piorou em %d dos %d indicadores.", DiasComparacao, melhorou, piorou, comparados)
 	switch {
@@ -215,11 +223,8 @@ func evolucao(comps []comparacao_t, temHistorico bool) string {
 	return "Você manteve o nível. " + base
 }
 
-// dicaDoDia: o indicador que mais piorou em relação à média do próprio motorista
-func dicaDoDia(comps []comparacao_t, temHistorico bool) string {
-	if !temHistorico {
-		return "mantenha a rotação no início da faixa verde e desligue o motor nas esperas. Amanhã você recebe a comparação com o seu dia de hoje."
-	}
+// piorIndicador: o percentual que mais piorou em relação à média do próprio motorista (nil = nenhum piorou o bastante)
+func piorIndicador(comps []comparacao_t) *comparacao_t {
 	var pior *comparacao_t
 	maior := 0.0
 	for i := range comps {
@@ -232,6 +237,15 @@ func dicaDoDia(comps []comparacao_t, temHistorico bool) string {
 			pior, maior = c, p
 		}
 	}
+	return pior
+}
+
+// dicaDoDia: o que melhorar, a partir do indicador que mais piorou
+func dicaDoDia(comps []comparacao_t, temHistorico bool) string {
+	if !temHistorico {
+		return "mantenha a rotação no início da faixa verde e desligue o motor nas esperas. Amanhã você recebe a comparação com o seu dia de hoje."
+	}
+	pior := piorIndicador(comps)
 	if pior == nil {
 		return "nenhum indicador piorou em relação à sua média. Continue assim!"
 	}
@@ -374,7 +388,7 @@ func num(v float64, casas int) string {
 	return b.String()
 }
 
-// Texto preenche o template com as variáveis (prévia na tela e modo de teste)
+// Texto preenche o modelo com as variáveis do motorista: é a mensagem pronta para copiar
 func Texto(vars map[string]string) string {
 	t := TextoTemplate
 	for i := 1; i <= totalVariaveis; i++ {

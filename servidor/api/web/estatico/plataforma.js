@@ -3,9 +3,6 @@
 let eu = null;
 const $ = (id) => document.getElementById(id);
 
-// o WhatsApp dos motoristas fica no painel: o endereço antigo leva para lá
-if (location.hash === '#whatsapp') location.replace('/painel#/whatsapp');
-
 // ---------- início: quem está logado ----------
 (async function iniciar() {
   try {
@@ -18,7 +15,7 @@ if (location.hash === '#whatsapp') location.replace('/painel#/whatsapp');
   $('quem-nome').textContent = eu.nome;
   $('quem-papel').textContent = PAPEIS[eu.papel] || eu.papel;
   $('aba-usuarios').hidden = eu.papel !== 'admin';
-  abrirAba(abaDoEndereco());
+  abrirAba(location.hash === '#usuarios' && eu.papel === 'admin' ? 'usuarios' : 'clientes');
 })();
 
 $('sair').addEventListener('click', async () => {
@@ -27,25 +24,18 @@ $('sair').addEventListener('click', async () => {
 });
 
 // ---------- abas ----------
-const ABAS = ['clientes', 'usuarios'];
-
-// a aba do endereço (#usuarios), se o perfil puder vê-la
-function abaDoEndereco() {
-  const nome = location.hash.slice(1);
-  return ABAS.includes(nome) && !$('aba-' + nome).hidden ? nome : 'clientes';
-}
-
 function abrirAba(nome) {
-  ABAS.forEach((n) => {
+  ['clientes', 'usuarios'].forEach((n) => {
     $('aba-' + n).setAttribute('aria-selected', String(n === nome));
     $('sec-' + n).hidden = n !== nome;
   });
-  history.replaceState(null, '', nome === 'clientes' ? location.pathname : '#' + nome);
+  history.replaceState(null, '', nome === 'usuarios' ? '#usuarios' : location.pathname);
   if (nome === 'clientes') carregarClientes();
   else carregarUsuarios();
 }
-window.addEventListener('hashchange', () => { if (eu) abrirAba(abaDoEndereco()); });
-ABAS.forEach((n) => $('aba-' + n).addEventListener('click', () => abrirAba(n)));
+window.addEventListener('hashchange', () => { if (eu) abrirAba(location.hash === '#usuarios' && eu.papel === 'admin' ? 'usuarios' : 'clientes'); });
+$('aba-clientes').addEventListener('click', () => abrirAba('clientes'));
+$('aba-usuarios').addEventListener('click', () => abrirAba('usuarios'));
 
 // ---------- clientes ----------
 const SITUACAO = {

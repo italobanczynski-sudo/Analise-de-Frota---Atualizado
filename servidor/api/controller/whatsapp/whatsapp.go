@@ -53,6 +53,20 @@ func Enviar(c *gin.Context) {
 	controller.Response(c, mwwhatsapp.WhatsApp_t{ClienteID: id, Dia: req.Dia}.Enviar(c.Request.Context()))
 }
 
+// EnviarTeste: POST /api/v1/clientes/:id/whatsapp/teste {"dia", "motorista", "telefone"} (o telefone não é salvo)
+func EnviarTeste(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	var req TesteRequest
+	if err := c.ShouldBindJSON(&req); err != nil || utils.ValidateStruct(req) != nil {
+		controller.RetFail(c, "escolha o motorista e informe o WhatsApp de teste")
+		return
+	}
+	controller.Response(c, mwwhatsapp.WhatsApp_t{ClienteID: id, Dia: req.Dia, Motorista: req.Motorista, Telefone: req.Telefone}.EnviarTeste(c.Request.Context()))
+}
+
 // Config: GET /api/v1/whatsapp/config
 func Config(c *gin.Context) {
 	controller.Response(c, mwwhatsapp.WhatsApp_t{}.Config(c.Request.Context()))

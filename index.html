@@ -7333,7 +7333,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const SIT_ENVIO = { enviada: ['Enviada', 'ok'], enviando: ['Enviando…', 'atencao'], erro: ['Com erro', 'critico'] };
   const ontemWA = () => new Date(Date.now() - 27 * 3600 * 1000).toISOString().slice(0, 10);   // ontem em Brasília (UTC−3)
   const wa = () => E.wa || (E.wa = { clientes: null, cli: '', p: null, carregado: false, carregando: false, erro: '', tw: null, f: { motorista: '', telefone: '', autorizado: false },
-    dia: ontemWA(), previas: null, imp: null, impAut: false, ocupado: '' });
+    dia: ontemWA(), previas: null, imp: null, impAut: false, ocupado: '', teste: { motorista: '', telefone: '', res: null } });
   // mesma regra do servidor (modules/contato): só confere na tela, quem decide é o servidor
   function telWA(v) {
     let d = String(v === null || v === undefined ? '' : v).replace(/\D/g, '');
@@ -7380,6 +7380,22 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       W.impAut = false;
       render();
     }).catch((e) => toast('Não foi possível ler a planilha: ' + e.message, 'erro'));
+  }
+  // envio de teste: a mensagem de um motorista vai para o número digitado (não salvo) e a tela mostra se a Twilio entregou
+  function blocoTesteWA(W, P) {
+    const T = W.teste, r = T.res, mots = (W.previas && W.previas.length ? W.previas.map((p) => p.motorista) : P.motoristas);
+    const resultado = !r ? '' : r.erro ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Não saiu</span><span class="alerta-texto">${esc(r.erro)}</span></div></div>`
+      : r.entregue ? '<div class="alerta alerta-ok" role="status"><span class="alerta-icone">✓</span><div class="alerta-corpo"><span class="alerta-titulo">Entregue</span><span class="alerta-texto">A mensagem chegou no WhatsApp do número de teste.</span></div></div>'
+        : r.motivo ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">A Twilio não entregou</span><span class="alerta-texto">${esc(r.motivo)}</span></div></div>`
+          : `<div class="alerta alerta-ok" role="status"><span class="alerta-icone">✓</span><div class="alerta-corpo"><span class="alerta-titulo">Aceita pela Twilio (${esc(r.situacao)})</span><span class="alerta-texto">Ainda sem confirmação de entrega. Confira o celular em alguns segundos.</span></div></div>`;
+    return `<div style="display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px dashed var(--borda, #ccc);border-radius:14px">
+      <b style="font-weight:600">Enviar teste para um número</b>
+      <span class="apoio">Manda a mensagem de um motorista para o número que você digitar (o seu, por exemplo). O número não fica salvo e o motorista não recebe nada.</span>
+      <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+        <div class="campo-bloco" style="min-width:240px"><label class="campo-rotulo" for="wa-t-mot">Mensagem do motorista</label><select class="campo" id="wa-t-mot" data-campo="wa-t-motorista"><option value="">Escolha…</option>${mots.map((m) => `<option value="${esc(m)}" ${m === T.motorista ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></div>
+        <div class="campo-bloco"><label class="campo-rotulo" for="wa-t-tel">Enviar para (DDD + número)</label><input class="campo" id="wa-t-tel" type="tel" inputmode="tel" data-campo="wa-t-telefone" value="${esc(T.telefone)}" placeholder="(51) 91234-5678" maxlength="30" autocomplete="off"></div>
+        <button type="button" class="btn btn-primario" data-acao="wa-teste" ${W.ocupado === 'teste' ? 'disabled' : ''}>${W.ocupado === 'teste' ? 'Enviando e conferindo…' : 'Enviar teste'}</button>
+      </div>${resultado}</div>`;
   }
   function telaWhatsapp() {
     const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">WhatsApp dos motoristas</h1><span class="sub">Toda manhã, cada motorista com WhatsApp cadastrado recebe a análise do dia anterior: km, média, início da faixa verde, embalo, motor ligado parado, piloto automático, pedal crítico, nota do mês e o que melhorar.</span></div></div>`;
@@ -7449,8 +7465,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
         <div class="campo-bloco"><label class="campo-rotulo" for="wa-dia">Resultado do dia</label><input class="campo" id="wa-dia" type="date" data-campo="wa-dia" value="${esc(W.dia)}" max="${ontemWA()}"></div>
         <button type="button" class="btn" data-acao="wa-previa" ${W.ocupado === 'previa' ? 'disabled' : ''}>${W.ocupado === 'previa' ? 'Montando…' : 'Ver prévia'}</button>
-        ${ehAdmin() ? `<button type="button" class="btn btn-primario" data-acao="wa-enviar" ${W.ocupado === 'enviar' ? 'disabled' : ''}>${W.ocupado === 'enviar' ? 'Enviando…' : 'Enviar agora'}</button>` : ''}
-      </div>${previas}</div>`);
+        ${ehAdmin() ? `<button type="button" class="btn" data-acao="wa-enviar" title="Manda para os motoristas cadastrados, de verdade" ${W.ocupado === 'enviar' ? 'disabled' : ''}>${W.ocupado === 'enviar' ? 'Enviando…' : 'Enviar agora para os motoristas'}</button>` : ''}
+      </div>${ehAdmin() ? blocoTesteWA(W, P) : ''}${previas}</div>`);
 
     const envios = !P ? '' : card('Últimos envios', 'Os 14 últimos dias. Cada motorista recebe no máximo uma mensagem por dia de resultado.', `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Dia</th><th>Motorista</th><th>Situação</th><th class="dir">Enviada em</th></tr></thead><tbody>
       ${P.envios.length ? P.envios.map((e) => { const [r, c] = SIT_ENVIO[e.situacao] || ['—', 'neutro']; return `<tr><td>${D.br(e.dia)}</td><td>${esc(e.motorista)}</td><td><span class="badge badge-${c}" title="${esc(e.erro || '')}">${r}</span>${e.erro ? ` <span class="apoio">${esc(e.erro)}</span>` : ''}</td><td class="dir">${dataHoraBR(e.criado_em)}</td></tr>`; }).join('')
@@ -8408,6 +8424,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       catch (e) { toast('Não consegui copiar; o texto está em docs/WHATSAPP.md.', 'erro'); }
     },
     'wa-imp-cancelar': () => { wa().imp = null; render(); },
+    'wa-teste': async () => {
+      const W = wa(), T = W.teste, cs = contaSrv();
+      if (!cs) return;
+      if (!T.motorista || !T.telefone.trim()) { toast('Escolha o motorista e digite o número de teste.', 'erro'); return; }
+      W.ocupado = 'teste'; T.res = null; render();
+      try { T.res = await cs.chamar('POST', '/api/v1/clientes/' + encodeURIComponent(W.cli) + '/whatsapp/teste', { dia: W.dia, motorista: T.motorista, telefone: T.telefone.trim() }); }
+      catch (e) { T.res = { erro: e.message }; }
+      W.ocupado = ''; render();
+    },
     'wa-imp-salvar': async () => {
       const W = wa(), cs = contaSrv();
       if (!cs || !W.imp) return;
@@ -8642,6 +8667,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     else if (k && k.indexOf('cli-') === 0) E.clienteForm[k.slice(4)] = ev.target.value;
     else if (k && k.indexOf('usu-f-') === 0) usu().form[k.slice(6)] = ev.target.value;
     else if (k === 'wa-f-motorista' || k === 'wa-f-telefone') wa().f[k.slice(5)] = ev.target.value;
+    else if (k === 'wa-t-telefone') wa().teste.telefone = ev.target.value;
     else if (k && k.indexOf('wa-tw-') === 0 && wa().tw && k !== 'wa-tw-automatico' && k !== 'wa-tw-hora') wa().tw[k.slice(6)] = ev.target.value;
     else if (k && k.indexOf('trat-') === 0 && E.tratForm) E.tratForm[k.slice(5)] = ev.target.value;
   });
@@ -8668,6 +8694,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (k === 'wa-dia') { wa().dia = el.value; wa().previas = null; render(); return; }
     if (k === 'wa-f-autorizado') { wa().f.autorizado = el.checked; return; }
     if (k === 'wa-imp-aut') { wa().impAut = el.checked; return; }
+    if (k === 'wa-t-motorista') { wa().teste.motorista = el.value; wa().teste.res = null; return; }
     if (k === 'wa-tw-automatico' && wa().tw) { wa().tw.automatico = el.checked; return; }
     if (k === 'wa-tw-hora' && wa().tw) { wa().tw.hora = Number(el.value); return; }
     if (k === 'wa-arquivo' && el.files && el.files[0]) { waLerPlanilha(el.files[0]); el.value = ''; return; }

@@ -24,6 +24,12 @@ type ConfigRequest struct {
 	Hora        int    `json:"hora" validate:"min=0,max=23"`
 }
 
+type TesteRequest struct {
+	Dia       string `json:"dia" validate:"omitempty,datetime=2006-01-02"`
+	Motorista string `json:"motorista" validate:"required,max=120"`
+	Telefone  string `json:"telefone" validate:"required,max=30"`
+}
+
 type MotoristaRequest struct {
 	Motorista string `form:"motorista" validate:"required,max=120"`
 }

@@ -1,6 +1,7 @@
 package whatsapp_test
 
 import (
+	"strings"
 	"time"
 
 	"github.com/stretchr/testify/mock"
@@ -107,4 +108,32 @@ func (s *WhatsAppSuite) TestAgendadoSoNaHoraMarcadaEComAutomaticoLigado() {
 	s.clientes.On("Listar", s.ctx).Return([]cliente.Cliente_t{}, nil)
 	s.svc.EnviarAgendado(s.ctx)
 	s.clientes.AssertCalled(s.T(), "Listar", s.ctx)
+}
+
+func (s *WhatsAppSuite) TestEnviarTesteEsperaAEntregaEExplicaAFalha() {
+	salvo, _ := cripto.Cifrar(s.chave, tokenTeste)
+	s.repo.On("BuscarConfig", s.ctx).Return(whatsapp_repo.ConfigRow_t{AccountSID: sidTeste, AuthTokenCifrado: salvo, Remetente: "whatsapp:+14155238886", Hora: 7}, true, nil)
+	s.semNotas()
+	s.diario.On("Listar", s.ctx, int64(1), mock.Anything, mock.Anything).Return([]diario.Registro_t{reg("ANA LIMA", "2026-10-26", 80, 5)}, nil)
+	s.twilio.On("Enviar", s.ctx, "+5551912345678", mock.Anything, mock.MatchedBy(func(t string) bool { return strings.HasPrefix(t, "Bom dia, Ana!") })).Return("SM1", nil)
+	s.twilio.On("Status", s.ctx, "SM1").Return("undelivered", 63015, nil)
+
+	r, err := s.svc.EnviarTeste(s.ctx, 1, "2026-10-26", "Ana Lima", "(51) 1234-5678")
+	s.ErrorIs(err, contato.ErrTelefone, "fixo começando com 1 não é telefone")
+
+	r, err = s.svc.EnviarTeste(s.ctx, 1, "2026-10-26", "Ana Lima", "(51) 91234-5678")
+	s.Require().NoError(err)
+	s.False(r.Entregue)
+	s.Equal("undelivered", r.Situacao)
+	s.Contains(r.Motivo, "63015")
+	s.Contains(r.Motivo, "não entrou no Sandbox")
+
+	_, err = s.svc.EnviarTeste(s.ctx, 1, "2026-10-26", "Outro Motorista", "(51) 91234-5678")
+	s.ErrorIs(err, whatsapp.ErrMotoristaSemDia)
+}
+
+func (s *WhatsAppSuite) TestEnviarTesteSemConexao() {
+	s.semConfigNaTela()
+	_, err := s.svc.EnviarTeste(s.ctx, 1, "2026-10-26", "Ana", "(51) 91234-5678")
+	s.ErrorIs(err, whatsapp.ErrNaoConectado)
 }

@@ -31,6 +31,8 @@ type Service_I interface {
 	// EnviarAgendado roda de hora em hora: só envia se o automático estiver ligado e for a hora marcada (Brasília)
 	EnviarAgendado(ctx context.Context) map[string]error
 	Historico(ctx context.Context, clienteID int64, dias int) ([]Envio_t, error)
+	// EnviarTeste manda a mensagem de um motorista para um número qualquer e espera a Twilio dizer se entregou
+	EnviarTeste(ctx context.Context, clienteID int64, dia, motorista, telefone string) (Teste_t, error)
 	// Config e SalvarConfig: a conexão com a Twilio que o administrador preenche na aba WhatsApp
 	Config(ctx context.Context) (Config_t, error)
 	SalvarConfig(ctx context.Context, n NovaConfig_t, usuarioID int64) (Config_t, error)

@@ -90,6 +90,10 @@ func (m *TwilioMock_t) Enviar(ctx context.Context, telefone string, vars map[str
 	return a.String(0), a.Error(1)
 }
 func (m *TwilioMock_t) Teste() bool { return false }
+func (m *TwilioMock_t) Status(ctx context.Context, sid string) (string, int, error) {
+	a := m.Called(ctx, sid)
+	return a.String(0), a.Int(1), a.Error(2)
+}
 
 // ---------- dados ----------
 

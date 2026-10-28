@@ -95,13 +95,32 @@ func (m WhatsApp_t) Enviar(ctx context.Context) *middleware.Response_t {
 		return middleware.RetErro(err)
 	}
 	r, err := modwhatsapp.NewWhatsApp().Enviar(ctx, m.ClienteID, m.dia())
-	if errors.Is(err, twilio.ErrCredenciais) { // configuração do servidor: o administrador precisa ver a causa
-		return middleware.RetFail(http.StatusBadGateway, err.Error())
-	}
 	if err != nil {
-		return middleware.RetErro(err)
+		return retTwilio(err)
 	}
 	return middleware.RetOkData(r)
+}
+
+// EnviarTeste manda a mensagem de um motorista para o número digitado (não salvo) e devolve se a Twilio entregou
+func (m WhatsApp_t) EnviarTeste(ctx context.Context) *middleware.Response_t {
+	if _, err := modcliente.NewCliente().Buscar(ctx, m.ClienteID); err != nil {
+		return middleware.RetErro(err)
+	}
+	r, err := modwhatsapp.NewWhatsApp().EnviarTeste(ctx, m.ClienteID, m.dia(), m.Motorista, m.Telefone)
+	if err != nil {
+		return retTwilio(err)
+	}
+	return middleware.RetOkData(r)
+}
+
+// retTwilio: o que a Twilio respondeu vai para a tela como está (o administrador precisa ver a causa)
+func retTwilio(err error) *middleware.Response_t {
+	for _, e := range []error{twilio.ErrCredenciais, twilio.ErrRecusa, twilio.ErrConexao} {
+		if errors.Is(err, e) {
+			return middleware.RetFail(http.StatusBadGateway, err.Error())
+		}
+	}
+	return middleware.RetErro(err)
 }
 
 func (m WhatsApp_t) SalvarContato(ctx context.Context) *middleware.Response_t {

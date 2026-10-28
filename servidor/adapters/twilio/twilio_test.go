@@ -81,6 +81,27 @@ func (s *TwilioSuite) TestSemTemplateMandaOTexto() {
 	s.Equal("SM9", sid)
 }
 
+func (s *TwilioSuite) TestRecusaExplicaOCodigo() {
+	c := s.cliente(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":63015,"message":"Channel Sandbox can only send messages to phone numbers that have joined the Sandbox"}`))
+	})
+	_, err := c.Enviar(context.Background(), "+5511900000000", nil, "")
+	s.ErrorIs(err, twilio.ErrRecusa)
+	s.ErrorContains(err, "não entrou no Sandbox")
+}
+
+func (s *TwilioSuite) TestStatusDaMensagem() {
+	c := s.cliente(func(w http.ResponseWriter, r *http.Request) {
+		s.Equal("/<account-sid>/Messages/SM1.json", r.URL.Path)
+		_, _ = w.Write([]byte(`{"sid":"SM1","status":"undelivered","error_code":63016}`))
+	})
+	st, codigo, err := c.Status(context.Background(), "SM1")
+	s.Require().NoError(err)
+	s.Equal("undelivered", st)
+	s.Equal(63016, codigo)
+}
+
 func (s *TwilioSuite) TestMascarar() {
 	s.Equal("••••0000", twilio.Mascarar("+5511900000000"))
 	s.Equal("****", twilio.Mascarar("12"))

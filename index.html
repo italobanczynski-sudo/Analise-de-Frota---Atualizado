@@ -7363,8 +7363,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         const sit = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/coleta');
         const c = (M.clientes || []).find((x) => String(x.id) === cli);
         if (c) c.coleta = Object.assign({}, c.coleta, { situacao: sit.situacao, ultimo_dia: sit.ultimo_dia, terminada_em: sit.terminada_em, mensagem: sit.mensagem });
-        if (sit.situacao === 'rodando') { setTimeout(conferir, 10000); return; }
-      } catch (e) { setTimeout(conferir, 10000); return; }   // tenta de novo na próxima
+        if (sit.situacao === 'rodando' || sit.situacao === 'aguardando') { M.lista = null; if (E.rota.tela === 'mensagens') render(); setTimeout(conferir, 15000); return; }
+      } catch (e) { setTimeout(conferir, 15000); return; }   // tenta de novo na próxima
       M.vigiando = ''; M.ocupado = '';
       if (M.cli === cli) M.lista = null;
       if (E.rota.tela === 'mensagens') render();
@@ -7380,8 +7380,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (M.cli && M.lista === null && !M.carregando) setTimeout(msgCarregar, 0);
     const lista = M.lista || [], enviadas = lista.filter((m) => m.enviada).length;
     const cliAtual = M.clientes.find((c) => String(c.id) === M.cli) || {}, col = cliAtual.coleta || {};
-    if (col.situacao === 'rodando') setTimeout(() => msgVigiarBusca(M.cli), 0);   // a busca já estava rodando ao abrir a tela
-    const busca = col.situacao === 'rodando' || M.ocupado === '__coleta'
+    if (col.situacao === 'rodando' || col.situacao === 'aguardando') setTimeout(() => msgVigiarBusca(M.cli), 0);   // a busca já estava rodando ou esperando ao abrir a tela
+    const busca = col.situacao === 'aguardando'
+      ? `<div class="alerta alerta-atencao" role="status" style="background:rgba(252,183,9,.14)"><span class="spinner"></span><div class="alerta-corpo"><span class="alerta-titulo">A API Gobrax pediu uma pausa</span><span class="alerta-texto">${esc(col.mensagem || '')} Deixe esta tela aberta: as mensagens aparecem sozinhas quando os dados chegarem. Não precisa clicar em nada.</span></div></div>`
+      : col.situacao === 'rodando' || M.ocupado === '__coleta'
       ? `<div class="alerta alerta-ok" role="status"><span class="spinner"></span><div class="alerta-corpo"><span class="alerta-texto">Buscando os dados na API Gobrax… As mensagens se atualizam sozinhas quando terminar.</span></div></div>`
       : !lista.length && M.lista !== null && (!col.ultimo_dia || col.ultimo_dia < M.dia)
         ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Os dados de ${D.br(M.dia)} ainda não chegaram completos</span>

@@ -40,6 +40,8 @@ type Deps_t struct {
 	Premiacao premiacao.Service_I
 	Agora     func() time.Time
 	Dias      int
+	// Agendar roda f depois de d (nova tentativa quando a API libera); nil = não agenda (testes)
+	Agendar func(d time.Duration, f func())
 }
 
 type coleta_t struct{ d Deps_t }
@@ -49,6 +51,7 @@ func NewColeta() Service_I {
 		Repo: coleta_repo.NewRepository(), API: gobraxapi.NewClient(), Clientes: cliente.NewCliente(),
 		Diario: diario.NewDiario(), Odometro: odometro.NewOdometro(), Premiacao: premiacao.NewPremiacao(),
 		Agora: time.Now, Dias: environment.Cfg.Coleta.Dias,
+		Agendar: func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 	}}
 }
 
@@ -84,7 +87,31 @@ func (c *coleta_t) Executar(ctx context.Context, clienteID int64) (Resultado_t, 
 		_ = c.d.Repo.MarcarFim(ctx, clienteID, SituacaoErro, err.Error(), res.Avisos, nil, fim)
 		return res, err
 	}
+	if res.AguardarAte != nil {
+		c.agendarNovaTentativa(clienteID, *res.AguardarAte)
+		msg := "A API Gobrax pediu uma pausa até " + utils.HoraBR(*res.AguardarAte) + " (Brasília); a busca tenta de novo sozinha nessa hora. " + resumo(res)
+		return res, c.d.Repo.MarcarFim(ctx, clienteID, SituacaoAguardando, msg, res.Avisos, &ultimoDia, fim)
+	}
 	return res, c.d.Repo.MarcarFim(ctx, clienteID, SituacaoOk, resumo(res), res.Avisos, &ultimoDia, fim)
+}
+
+// agendarNovaTentativa refaz a busca do cliente logo depois do prazo que a API deu (uma por vez: a trava do cliente segura repetidas)
+func (c *coleta_t) agendarNovaTentativa(clienteID int64, ate time.Time) {
+	if c.d.Agendar == nil {
+		return
+	}
+	espera := ate.Sub(c.d.Agora()) + 15*time.Second
+	if espera < 15*time.Second {
+		espera = 15 * time.Second
+	}
+	c.d.Agendar(espera, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute)
+		defer cancel()
+		if _, err := c.Executar(ctx, clienteID); err != nil && !errors.Is(err, ErrEmAndamento) {
+			logrus.Warnf("coleta: nova tentativa do cliente %d: %v", clienteID, err)
+		}
+	})
+	logrus.Infof("coleta: cliente %d: a API pediu pausa; nova tentativa em %s", clienteID, espera.Round(time.Second))
 }
 
 // buscar devolve o resultado e até que dia a busca ficou completa
@@ -150,6 +177,13 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		// limite de uso: para aqui; o que já veio fica salvo e este dia em diante volta na próxima busca
 		if fe.limite || fp.limite {
 			fp.perdidos = append(fp.perdidos, dias[i:]...) // este dia e os mais antigos que ficaram sem buscar
+			for _, e := range []error{fe.ultimoErr, fp.ultimoErr} {
+				var lim gobraxapi.ErroLimite_t
+				if errors.As(e, &lim) && (res.AguardarAte == nil || lim.Ate.After(*res.AguardarAte)) {
+					ate := lim.Ate
+					res.AguardarAte = &ate
+				}
+			}
 			break
 		}
 		if fe.desligado && fp.desligado && !fp.semAcesso {

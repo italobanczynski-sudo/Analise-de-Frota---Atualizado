@@ -16,6 +16,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"analisefrota/common/utils"
 	"analisefrota/environment"
 )
 
@@ -37,7 +38,7 @@ type ErroLimite_t struct {
 }
 
 func (e ErroLimite_t) Error() string {
-	return fmt.Sprintf("%v em %s: a API pediu para esperar até %s", ErrLimite, e.Caminho, e.Ate.Format("15:04"))
+	return fmt.Sprintf("%v em %s: a API pediu para esperar até %s (Brasília)", ErrLimite, e.Caminho, utils.HoraBR(e.Ate))
 }
 
 func (e ErroLimite_t) Unwrap() error { return ErrLimite }

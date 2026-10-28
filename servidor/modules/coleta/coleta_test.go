@@ -279,17 +279,25 @@ func (s *ColetaSuite) TestLimiteDaAPIGuardaOQueVeioEDeixaORestoParaAProxima() {
 	s.api.On("Performance", mock.Anything, "tk", s.diaUTC("2026-10-22"), mock.Anything).Return(nil, limite)
 	var ultimo *string
 	var avisos []string
-	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoOk, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Run(func(a mock.Arguments) { avisos = a.Get(4).([]string); ultimo = a.Get(5).(*string) }).Return(nil)
+	var msg string
+	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoAguardando, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(a mock.Arguments) {
+			msg = a.Get(3).(string)
+			avisos = a.Get(4).([]string)
+			ultimo = a.Get(5).(*string)
+		}).Return(nil)
 
 	res, err := s.svc.Executar(s.ctx, 1)
 
 	s.Require().NoError(err)
+	s.Contains(msg, "pediu uma pausa até 12:17", "17 min depois das 12h de Brasília")
 	s.Equal(1, res.DiasComDados, "ontem (23/10) vem primeiro e completo")
 	s.diario.AssertCalled(s.T(), "SalvarDia", mock.Anything, int64(1), "2026-10-23", mock.Anything)
 	s.diario.AssertNotCalled(s.T(), "SalvarDia", mock.Anything, int64(1), "2026-10-22", mock.Anything)
 	s.api.AssertNotCalled(s.T(), "Estatisticas", mock.Anything, "tk", s.diaUTC("2026-10-24"), mock.Anything)
 	s.Equal("2026-10-21", *ultimo, "22/10 e hoje, que não vieram, voltam na próxima busca")
+	s.Require().NotNil(res.AguardarAte)
+	s.Equal(limite.Ate, *res.AguardarAte)
 	s.Require().NotEmpty(avisos)
 	s.Contains(avisos[0], "limite de uso")
 }

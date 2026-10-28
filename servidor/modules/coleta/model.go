@@ -8,7 +8,7 @@ type Situacao_t struct {
 	UltimoDia   string     `json:"ultimo_dia"` // último dia de Brasília buscado por completo
 	IniciadaEm  *time.Time `json:"iniciada_em"`
 	TerminadaEm *time.Time `json:"terminada_em"`
-	Situacao    string     `json:"situacao"` // nunca, rodando, ok, erro
+	Situacao    string     `json:"situacao"` // nunca, rodando, ok, erro, aguardando
 	Mensagem    string     `json:"mensagem"`
 	Avisos      []string   `json:"avisos"`
 }
@@ -21,6 +21,8 @@ type Resultado_t struct {
 	Odometros    int      `json:"odometros"`
 	MesesPremio  []string `json:"meses_premiacao"`
 	Avisos       []string `json:"avisos"`
+	// AguardarAte: a API pediu uma pausa (limite de uso); a busca tenta de novo sozinha nessa hora
+	AguardarAte *time.Time `json:"aguardar_ate"`
 }
 
 const (
@@ -28,4 +30,6 @@ const (
 	SituacaoRodando = "rodando"
 	SituacaoOk      = "ok"
 	SituacaoErro    = "erro"
+	// a API pediu uma pausa no meio da busca: o que veio está salvo e uma nova tentativa já está agendada
+	SituacaoAguardando = "aguardando"
 )

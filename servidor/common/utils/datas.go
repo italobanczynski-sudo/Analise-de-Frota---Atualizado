@@ -11,6 +11,9 @@ const (
 // Brasília é UTC−3 o ano todo (sem horário de verão desde 2019)
 var fusoBR = time.FixedZone("BRT", -3*3600)
 
+// HoraBR devolve a hora de Brasília (HH:MM) do instante t
+func HoraBR(t time.Time) string { return t.In(fusoBR).Format("15:04") }
+
 // DiaBR devolve o dia de Brasília (AAAA-MM-DD) do instante t
 func DiaBR(t time.Time) string { return t.In(fusoBR).Format(LayoutDia) }
 

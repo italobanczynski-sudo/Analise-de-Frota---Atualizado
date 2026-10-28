@@ -96,7 +96,10 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 	}
 
 	fe, fp := &falhas_t{nome: "estatísticas (km e litros)"}, &falhas_t{nome: "performance"}
-	for _, dia := range utils.DiasEntre(ini, hoje) {
+	// do dia mais novo para o mais antigo: se a API cortar no limite de uso, hoje e ontem (os que importam) já vieram
+	dias := utils.DiasEntre(ini, hoje)
+	sort.Sort(sort.Reverse(sort.StringSlice(dias)))
+	for i, dia := range dias {
 		jIni, jFim, _ := utils.JanelaDiaBR(dia)
 		var estat []gobraxapi.EstatisticaRec_t
 		estatFalhou, estatPediu := false, !fe.desligado
@@ -128,6 +131,7 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		}
 		// limite de uso: para aqui; o que já veio fica salvo e este dia em diante volta na próxima busca
 		if fe.limite || fp.limite {
+			fp.perdidos = append(fp.perdidos, dias[i:]...) // este dia e os mais antigos que ficaram sem buscar
 			break
 		}
 		if fe.desligado && fp.desligado && !fp.semAcesso {

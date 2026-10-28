@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"analisefrota/environment"
 )
 
@@ -21,7 +23,24 @@ var (
 	ErrTokenInvalido = errors.New("a API não aceitou o token (token inválido)")
 	ErrSemAcesso     = errors.New("o token não tem acesso a este dado")
 	ErrSemDados      = errors.New("a API respondeu 404 (sem dado para o período)")
+	ErrLimite        = errors.New("a API atingiu o limite de uso deste token")
 )
+
+// esperaMaxima: espera pedida pela API (429) que ainda vale aguardar na hora; acima disso a chamada desiste
+// e o caminho fica bloqueado até o prazo que a API deu (a busca tenta de novo na próxima rodada)
+const esperaMaxima = 60 * time.Second
+
+// ErroLimite_t diz até quando a API pediu para não chamar de novo
+type ErroLimite_t struct {
+	Caminho string
+	Ate     time.Time
+}
+
+func (e ErroLimite_t) Error() string {
+	return fmt.Sprintf("%v em %s: a API pediu para esperar até %s", ErrLimite, e.Caminho, e.Ate.Format("15:04"))
+}
+
+func (e ErroLimite_t) Unwrap() error { return ErrLimite }
 
 // ErroAPI é qualquer outra resposta de erro (400, 500...)
 type ErroAPI_t struct {
@@ -47,7 +66,9 @@ type Client_t struct {
 	http      *http.Client
 	base      string
 	intervalo time.Duration
-	mu        sync.Mutex // uma chamada por vez: a API aceita rajada de 10 e depois 1 por segundo
+	mu        sync.Mutex           // uma chamada por vez: a API aceita rajada de 10 e depois 1 por segundo
+	bloqueio  map[string]time.Time // caminho → até quando a API pediu para não chamar (429 com espera longa)
+	agora     func() time.Time
 }
 
 var (
@@ -65,29 +86,42 @@ func NewClient() Client_I {
 
 // NewClientCom monta um cliente com base e HTTP próprios (usado nos testes)
 func NewClientCom(base string, hc *http.Client, intervalo time.Duration) Client_I {
-	return &Client_t{http: hc, base: base, intervalo: intervalo}
+	return &Client_t{http: hc, base: base, intervalo: intervalo, bloqueio: map[string]time.Time{}, agora: time.Now}
 }
 
 // get faz o GET autenticado e decodifica a resposta em destino; repete quando a API pede para esperar (429)
 func (c *Client_t) get(ctx context.Context, caminho string, params url.Values, token string, destino any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if ate, ok := c.bloqueio[caminho]; ok && c.agora().Before(ate) {
+		return ErroLimite_t{Caminho: caminho, Ate: ate}
+	}
 	for tentativa := 0; ; tentativa++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+caminho+"?"+params.Encode(), nil)
 		if err != nil {
 			return err
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
+		inicio := time.Now()
 		resp, err := c.http.Do(req)
 		if err != nil {
+			logrus.Warnf("gobraxapi: %s %s: sem resposta em %s: %v", caminho, params.Get("startDate"), time.Since(inicio).Round(time.Millisecond), err)
 			return fmt.Errorf("sem resposta da API: %w", err)
 		}
 		corpo, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		// uma linha por chamada (sem o token): mostra onde a busca demora ou falha
+		logrus.Infof("gobraxapi: %s %s → %d em %s (%d KB)", caminho, params.Get("startDate"), resp.StatusCode, time.Since(inicio).Round(time.Millisecond), len(corpo)/1024)
 		if resp.StatusCode == http.StatusTooManyRequests && tentativa < 8 {
 			espera, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
 			if espera < 1 {
 				espera = 1
+			}
+			logrus.Warnf("gobraxapi: %s: limite de uso (429), a API pediu %ds de espera (tentativa %d de 8)", caminho, espera, tentativa+1)
+			if time.Duration(espera)*time.Second > esperaMaxima {
+				ate := c.agora().Add(time.Duration(espera) * time.Second)
+				c.bloqueio[caminho] = ate
+				return ErroLimite_t{Caminho: caminho, Ate: ate}
 			}
 			select {
 			case <-ctx.Done():

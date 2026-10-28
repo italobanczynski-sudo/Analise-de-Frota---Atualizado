@@ -30,6 +30,10 @@ func (m *RepoMock_t) Buscar(ctx context.Context, id int64) (coleta_repo.Situacao
 func (m *RepoMock_t) MarcarInicio(ctx context.Context, id int64, em time.Time) error {
 	return m.Called(ctx, id, em).Error(0)
 }
+func (m *RepoMock_t) MarcarInterrompidas(ctx context.Context, em time.Time) (int64, error) {
+	a := m.Called(ctx, em)
+	return a.Get(0).(int64), a.Error(1)
+}
 func (m *RepoMock_t) MarcarFim(ctx context.Context, id int64, situacao, mensagem string, avisos []string, ultimoDia *string, em time.Time) error {
 	return m.Called(ctx, id, situacao, mensagem, avisos, ultimoDia, em).Error(0)
 }
@@ -261,3 +265,42 @@ func (s *ColetaSuite) TestSituacaoDeQuemNuncaFoiBuscado() {
 }
 
 func TestColetaSuite(t *testing.T) { suite.Run(t, new(ColetaSuite)) }
+
+func (s *ColetaSuite) TestLimiteDaAPIGuardaOQueVeioEDeixaORestoParaAProxima() {
+	s.repo.On("Buscar", mock.Anything, int64(1)).Return(coleta_repo.SituacaoRow_t{}, nil)
+	limite := gobraxapi.ErroLimite_t{Caminho: "v1/vehicle-performance", Ate: s.agora.Add(17 * time.Minute)}
+	s.api.On("Estatisticas", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.EstatisticaRec_t{}, nil)
+	s.api.On("Performance", mock.Anything, "tk", s.diaUTC("2026-10-22"), mock.Anything).Return([]gobraxapi.PerformanceRec_t{}, nil)
+	s.api.On("Performance", mock.Anything, "tk", s.diaUTC("2026-10-23"), mock.Anything).Return(nil, limite)
+	var ultimo *string
+	var avisos []string
+	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoOk, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(a mock.Arguments) { avisos = a.Get(4).([]string); ultimo = a.Get(5).(*string) }).Return(nil)
+
+	res, err := s.svc.Executar(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.Equal(1, res.DiasComDados, "só 22/10 veio completo")
+	s.diario.AssertNotCalled(s.T(), "SalvarDia", mock.Anything, int64(1), "2026-10-23", mock.Anything)
+	s.api.AssertNotCalled(s.T(), "Estatisticas", mock.Anything, "tk", s.diaUTC("2026-10-24"), mock.Anything)
+	s.Equal("2026-10-22", *ultimo, "23/10 em diante volta na próxima busca")
+	s.Require().NotEmpty(avisos)
+	s.Contains(avisos[0], "limite de uso")
+}
+
+func (s *ColetaSuite) TestFalhaDaPerformanceNaoGravaODiaSemIndicadores() {
+	s.repo.On("Buscar", mock.Anything, int64(1)).Return(coleta_repo.SituacaoRow_t{}, nil)
+	s.api.On("Estatisticas", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.EstatisticaRec_t{}, nil)
+	s.api.On("Performance", mock.Anything, "tk", s.diaUTC("2026-10-23"), mock.Anything).Return(nil, gobraxapi.ErroAPI_t{Status: 500})
+	s.api.On("Performance", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.PerformanceRec_t{}, nil)
+	var ultimo *string
+	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoOk, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(a mock.Arguments) { ultimo = a.Get(5).(*string) }).Return(nil)
+
+	res, err := s.svc.Executar(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.Equal(2, res.DiasComDados)
+	s.diario.AssertNotCalled(s.T(), "SalvarDia", mock.Anything, int64(1), "2026-10-23", mock.Anything)
+	s.Equal("2026-10-22", *ultimo)
+}

@@ -21,6 +21,13 @@ func Init() {
 	}
 	unica := gocron.WithSingletonMode(gocron.LimitModeReschedule) // uma rodada de cada vez
 
+	// o servidor acabou de subir: busca que ficou "rodando" foi cortada no meio (reinício, hospedagem dormindo)
+	if n, err := coleta.NewColeta().MarcarInterrompidas(context.Background()); err != nil {
+		logrus.Warnf("background: marcar buscas interrompidas: %v", err)
+	} else if n > 0 {
+		logrus.Infof("background: %d busca(s) interrompida(s) por reinício marcada(s) como erro", n)
+	}
+
 	cfg := environment.Cfg.Coleta
 	if cfg.Automatica {
 		if _, err := s.NewJob(gocron.DurationJob(time.Duration(cfg.IntervaloMin)*time.Minute), gocron.NewTask(buscarTodos),

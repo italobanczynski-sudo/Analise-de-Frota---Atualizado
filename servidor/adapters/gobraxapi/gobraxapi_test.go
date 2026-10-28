@@ -97,4 +97,17 @@ func (s *GobraxAPISuite) TestEsperaQuandoRecebe429() {
 	s.Equal(2, chamadas)
 }
 
+func (s *GobraxAPISuite) TestEsperaLongaDesisteEBloqueiaOCaminho() {
+	chamadas := 0
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		chamadas++
+		w.Header().Set("Retry-After", "1005")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}
+	_, err := s.api.Performance(context.Background(), "tk", time.Now(), time.Now())
+	s.ErrorIs(err, gobraxapi.ErrLimite)
+	_, err = s.api.Performance(context.Background(), "tk", time.Now(), time.Now())
+	s.ErrorIs(err, gobraxapi.ErrLimite)
+	s.Equal(1, chamadas, "não chama de novo antes do prazo que a API pediu")
+}
 func TestGobraxAPISuite(t *testing.T) { suite.Run(t, new(GobraxAPISuite)) }

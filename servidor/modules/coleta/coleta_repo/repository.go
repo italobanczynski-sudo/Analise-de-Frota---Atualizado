@@ -17,6 +17,8 @@ type Repository_I interface {
 	Buscar(ctx context.Context, clienteID int64) (SituacaoRow_t, error)
 	MarcarInicio(ctx context.Context, clienteID int64, em time.Time) error
 	MarcarFim(ctx context.Context, clienteID int64, situacao, mensagem string, avisos []string, ultimoDia *string, em time.Time) error
+	// MarcarInterrompidas troca "rodando" por erro nas buscas que o servidor não terminou (reiniciou no meio)
+	MarcarInterrompidas(ctx context.Context, em time.Time) (int64, error)
 }
 
 type Repository_t struct {
@@ -39,6 +41,17 @@ func (r *Repository_t) Buscar(ctx context.Context, clienteID int64) (SituacaoRow
 func (r *Repository_t) MarcarInicio(ctx context.Context, clienteID int64, em time.Time) error {
 	_, err := r.Db.ExecContext(ctx, sqlMarcarInicio, clienteID, em)
 	return err
+}
+
+const sqlMarcarInterrompidas = `UPDATE coletas SET situacao = 'erro', terminada_em = $1,
+	mensagem = 'interrompida: o servidor reiniciou no meio da busca (a próxima busca refaz os dias que faltaram)' WHERE situacao = 'rodando'`
+
+func (r *Repository_t) MarcarInterrompidas(ctx context.Context, em time.Time) (int64, error) {
+	res, err := r.Db.ExecContext(ctx, sqlMarcarInterrompidas, em)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func (r *Repository_t) MarcarFim(ctx context.Context, clienteID int64, situacao, mensagem string, avisos []string, ultimoDia *string, em time.Time) error {

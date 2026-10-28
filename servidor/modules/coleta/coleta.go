@@ -26,6 +26,8 @@ type Service_I interface {
 	// ExecutarTodos busca, um de cada vez, todos os clientes que têm token
 	ExecutarTodos(ctx context.Context) map[string]error
 	Situacao(ctx context.Context, clienteID int64) (Situacao_t, error)
+	// MarcarInterrompidas: ao subir, nenhuma busca está rodando de verdade; as que ficaram "rodando" foram interrompidas
+	MarcarInterrompidas(ctx context.Context) (int64, error)
 }
 
 // Deps_t são as dependências da coleta; os testes trocam cada uma por um mock
@@ -97,8 +99,8 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 	for _, dia := range utils.DiasEntre(ini, hoje) {
 		jIni, jFim, _ := utils.JanelaDiaBR(dia)
 		var estat []gobraxapi.EstatisticaRec_t
-		estatFalhou := false
-		if !fe.desligado {
+		estatFalhou, estatPediu := false, !fe.desligado
+		if estatPediu {
 			estat, err = c.d.API.Estatisticas(ctx, token, jIni, jFim)
 			switch {
 			case err == nil || errors.Is(err, gobraxapi.ErrSemDados):
@@ -111,7 +113,8 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 			}
 		}
 		var perf []gobraxapi.PerformanceRec_t
-		if !fp.desligado {
+		perfFalhou, perfPediu := false, !fp.desligado
+		if perfPediu {
 			perf, err = c.d.API.Performance(ctx, token, jIni, jFim)
 			switch {
 			case err == nil || errors.Is(err, gobraxapi.ErrSemDados):
@@ -120,15 +123,22 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 				return res, "", err
 			default:
 				fp.errou(dia, err)
-				perf = nil
+				perf, perfFalhou = nil, true
 			}
 		}
-		if fe.desligado && fp.desligado {
+		// limite de uso: para aqui; o que já veio fica salvo e este dia em diante volta na próxima busca
+		if fe.limite || fp.limite {
+			break
+		}
+		if fe.desligado && fp.desligado && !fp.semAcesso {
 			res.Avisos = append(res.Avisos, append(fe.avisos(), fp.avisos()...)...)
 			return res, "", errors.New("estatísticas e performance pararam de responder; tente de novo mais tarde")
 		}
-		// falha pontual das estatísticas: não troca o dia salvo por um dia sem km (a próxima busca tenta de novo)
-		if estatFalhou {
+		// dado que faltou por falha ou limite: não troca o dia salvo por um dia pela metade (a próxima busca tenta de novo)
+		if estatFalhou || !estatPediu && fe.faltou(dia, false) {
+			continue
+		}
+		if (perfFalhou || !perfPediu) && fp.faltou(dia, perfPediu) {
 			continue
 		}
 		regs := c.d.Diario.MontarDia(clienteID, dia, estat, perf)
@@ -169,7 +179,7 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 	// dias perdidos voltam na próxima busca: o "último dia completo" fica antes do primeiro perdido
 	ultimo := hoje
 	perdidos := append(append([]string{}, fe.perdidos...), fp.perdidos...)
-	if len(perdidos) > 0 && !fe.desligado && !fp.desligado {
+	if len(perdidos) > 0 {
 		sort.Strings(perdidos)
 		ultimo = utils.SomarDias(perdidos[0], -1)
 	}
@@ -199,6 +209,10 @@ func (c *coleta_t) ExecutarTodos(ctx context.Context) map[string]error {
 		}
 	}
 	return out
+}
+
+func (c *coleta_t) MarcarInterrompidas(ctx context.Context) (int64, error) {
+	return c.d.Repo.MarcarInterrompidas(ctx, c.d.Agora())
 }
 
 func (c *coleta_t) Situacao(ctx context.Context, clienteID int64) (Situacao_t, error) {

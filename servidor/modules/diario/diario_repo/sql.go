@@ -19,3 +19,8 @@ const sqlListar = `SELECT
 FROM registros_diarios
 WHERE cliente_id = $1 AND dia BETWEEN $2 AND $3
 ORDER BY dia, placa`
+
+// um dia com performance tem ao menos um veículo com indicador de condução
+const sqlDiasComIndicadores = `SELECT DISTINCT to_char(dia, 'YYYY-MM-DD') FROM registros_diarios
+WHERE cliente_id = $1 AND dia BETWEEN $2 AND $3
+	AND (faixa_verde IS NOT NULL OR inicio_faixa_verde IS NOT NULL OR embalo IS NOT NULL OR motor_ocioso IS NOT NULL)`

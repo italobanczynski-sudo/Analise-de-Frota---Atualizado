@@ -15,6 +15,8 @@ type Service_I interface {
 	// SalvarDia substitui o dia inteiro do cliente pelos registros dados
 	SalvarDia(ctx context.Context, clienteID int64, dia string, regs []Registro_t) error
 	Listar(ctx context.Context, clienteID int64, ini, fim string) ([]Registro_t, error)
+	// DiasComIndicadores devolve os dias do período (AAAA-MM-DD) que já têm a performance gravada
+	DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) (map[string]bool, error)
 }
 
 type diario_t struct {
@@ -133,6 +135,21 @@ func (d *diario_t) Listar(ctx context.Context, clienteID int64, ini, fim string)
 	out := make([]Registro_t, len(rows))
 	for i, r := range rows {
 		out[i] = deRow(r)
+	}
+	return out, nil
+}
+
+func (d *diario_t) DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) (map[string]bool, error) {
+	if err := validarPeriodo(ini, fim); err != nil {
+		return nil, err
+	}
+	dias, err := d.repo.DiasComIndicadores(ctx, clienteID, ini, fim)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(dias))
+	for _, dia := range dias {
+		out[dia] = true
 	}
 	return out, nil
 }

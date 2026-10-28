@@ -28,7 +28,7 @@ var (
 
 // esperaMaxima: espera pedida pela API (429) que ainda vale aguardar na hora; acima disso a chamada desiste
 // e o caminho fica bloqueado até o prazo que a API deu (a busca tenta de novo na próxima rodada)
-const esperaMaxima = 60 * time.Second
+const esperaMaxima = 3 * time.Minute // a performance pede ~75 s entre chamadas: vale esperar
 
 // ErroLimite_t diz até quando a API pediu para não chamar de novo
 type ErroLimite_t struct {

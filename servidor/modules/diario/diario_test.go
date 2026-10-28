@@ -18,6 +18,10 @@ type RepositoryMock_t struct{ mock.Mock }
 func (m *RepositoryMock_t) SubstituirDia(ctx context.Context, clienteID int64, dia string, rows []diario_repo.RegistroRow_t) error {
 	return m.Called(ctx, clienteID, dia, rows).Error(0)
 }
+func (m *RepositoryMock_t) DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) ([]string, error) {
+	a := m.Called(ctx, clienteID, ini, fim)
+	return a.Get(0).([]string), a.Error(1)
+}
 func (m *RepositoryMock_t) Listar(ctx context.Context, clienteID int64, ini, fim string) ([]diario_repo.RegistroRow_t, error) {
 	a := m.Called(ctx, clienteID, ini, fim)
 	return a.Get(0).([]diario_repo.RegistroRow_t), a.Error(1)

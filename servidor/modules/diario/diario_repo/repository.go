@@ -12,6 +12,8 @@ type Repository_I interface {
 	// SubstituirDia apaga o dia do cliente e grava os registros novos, tudo numa transação
 	SubstituirDia(ctx context.Context, clienteID int64, dia string, rows []RegistroRow_t) error
 	Listar(ctx context.Context, clienteID int64, ini, fim string) ([]RegistroRow_t, error)
+	// DiasComIndicadores: dias do período que já têm os indicadores de condução gravados
+	DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) ([]string, error)
 }
 
 type Repository_t struct {
@@ -37,6 +39,12 @@ func (r *Repository_t) SubstituirDia(ctx context.Context, clienteID int64, dia s
 		}
 	}
 	return tx.Commit()
+}
+
+func (r *Repository_t) DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) ([]string, error) {
+	dias := []string{}
+	err := r.Db.SelectContext(ctx, &dias, sqlDiasComIndicadores, clienteID, ini, fim)
+	return dias, err
 }
 
 func (r *Repository_t) Listar(ctx context.Context, clienteID int64, ini, fim string) ([]RegistroRow_t, error) {

@@ -96,9 +96,27 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 	}
 
 	fe, fp := &falhas_t{nome: "estatísticas (km e litros)"}, &falhas_t{nome: "performance"}
-	// do dia mais novo para o mais antigo: se a API cortar no limite de uso, hoje e ontem (os que importam) já vieram
-	dias := utils.DiasEntre(ini, hoje)
-	sort.Sort(sort.Reverse(sort.StringSlice(dias)))
+	// A performance tem limite de uso apertado (a API chega a pedir 30 min de espera depois de 2 chamadas). Para gastar pouco:
+	// ontem primeiro (é o dia das mensagens), depois os mais antigos do mais novo para o mais velho, e hoje (parcial) por último;
+	// dia de antes de ontem que já tem a performance gravada não é buscado de novo (o dado não muda mais).
+	ontem := utils.SomarDias(hoje, -1)
+	completos := map[string]bool{}
+	if ini <= utils.SomarDias(hoje, -2) {
+		if completos, err = c.d.Diario.DiasComIndicadores(ctx, clienteID, ini, utils.SomarDias(hoje, -2)); err != nil {
+			return res, "", err
+		}
+	}
+	dias := []string{}
+	if ontem >= ini {
+		dias = append(dias, ontem)
+	}
+	antigos := utils.DiasEntre(ini, utils.SomarDias(hoje, -2))
+	for j := len(antigos) - 1; j >= 0; j-- {
+		if !completos[antigos[j]] {
+			dias = append(dias, antigos[j])
+		}
+	}
+	dias = append(dias, hoje)
 	for i, dia := range dias {
 		jIni, jFim, _ := utils.JanelaDiaBR(dia)
 		var estat []gobraxapi.EstatisticaRec_t
@@ -171,8 +189,9 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		res.Avisos = append(res.Avisos, "odômetro não veio: "+err.Error())
 	}
 
-	// premiação: do mês do início ao mês atual
-	if prem, err := c.d.API.Premiacao(ctx, token, utils.MesAPI(ini), utils.MesAPI(hoje)); err == nil {
+	// premiação: do mês anterior ao início até o mês atual (a API recusa início e fim no mesmo mês;
+	// e o mês anterior serve para comparar a nota)
+	if prem, err := c.d.API.Premiacao(ctx, token, utils.MesAPI(utils.SomarDias(ini, -31)), utils.MesAPI(hoje)); err == nil {
 		if res.MesesPremio, err = c.d.Premiacao.Salvar(ctx, clienteID, prem); err != nil {
 			return res, "", err
 		}

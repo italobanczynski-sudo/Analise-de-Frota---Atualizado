@@ -1,7 +1,7 @@
 # WhatsApp dos motoristas: como ligar
 
-Tudo é feito na plataforma, em **WhatsApp dos motoristas** (botão com as suas iniciais no painel, ou
-https://analise-de-frota.onrender.com/plataforma#whatsapp). Só administrador vê a parte da Twilio.
+Tudo é feito no painel, no menu **Motoristas → WhatsApp dos motoristas**
+(https://analise-de-frota.onrender.com/painel#/whatsapp). Só administrador vê a parte da Twilio.
 
 > Account SID, Auth Token e telefones vão **só** na plataforma. Nunca em chat, e-mail, print ou planilha compartilhada
 > (Política de Segurança da Informação da Gobrax, Cláusula 5.1).

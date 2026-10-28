@@ -27,7 +27,6 @@
   <main class="pagina">
     <nav class="abas" role="tablist" aria-label="Seções">
       <button class="aba" role="tab" id="aba-clientes" aria-controls="sec-clientes" aria-selected="true" type="button">Clientes</button>
-      <button class="aba" role="tab" id="aba-whatsapp" aria-controls="sec-whatsapp" aria-selected="false" type="button" hidden>WhatsApp</button>
       <button class="aba" role="tab" id="aba-usuarios" aria-controls="sec-usuarios" aria-selected="false" type="button" hidden>Usuários</button>
     </nav>
 
@@ -43,106 +42,6 @@
           <table>
             <thead><tr><th>Cliente</th><th>Busca de dados</th><th>Dados até</th><th>Última busca</th><th></th></tr></thead>
             <tbody id="lista-clientes"><tr><td colspan="5" class="vazio">Carregando…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="sec-whatsapp" role="tabpanel" aria-labelledby="aba-whatsapp" hidden>
-      <div class="cab">
-        <div>
-          <h1>WhatsApp dos motoristas</h1>
-          <p>Toda manhã, cada motorista com WhatsApp cadastrado recebe o resultado do dia anterior e o que melhorar.</p>
-        </div>
-        <div class="campo"><label for="wa-cliente">Cliente</label><select id="wa-cliente"></select></div>
-      </div>
-      <p id="wa-aviso" class="alerta" hidden></p>
-
-      <div class="cartao" id="cartao-twilio" hidden>
-        <div class="cartao-cab">
-          <h2>Conexão com a Twilio</h2>
-          <p>Copie os dados do console da Twilio (console.twilio.com) e salve. O Auth Token fica cifrado e não aparece de novo. Vale para todos os clientes.</p>
-        </div>
-        <div class="cartao-corpo">
-          <form id="form-twilio" class="form-twilio" novalidate autocomplete="off">
-            <div class="campo"><label for="tw-sid">Account SID</label><input id="tw-sid" maxlength="64" spellcheck="false" placeholder="AC..."><span class="ajuda">Página inicial do console, em Account Info</span></div>
-            <div class="campo"><label for="tw-token">Auth Token</label><input id="tw-token" type="password" maxlength="128" spellcheck="false" autocomplete="new-password"><span id="tw-token-ajuda" class="ajuda">Mesma tela, clique em Show</span></div>
-            <div class="campo"><label for="tw-remetente">Número que envia</label><input id="tw-remetente" maxlength="40" spellcheck="false" placeholder="+1 415 523 8886"><span class="ajuda">Para testar, o número do Sandbox (+1 415 523 8886)</span></div>
-            <div class="campo"><label for="tw-template">Template SID (deixe vazio para testar no Sandbox)</label><input id="tw-template" maxlength="64" spellcheck="false" placeholder="HX... (opcional no teste)"><span class="ajuda">Obrigatório para o envio diário · <button id="copiar-template" class="btn-link btn" type="button">copiar texto do template</button></span></div>
-            <label class="check"><input id="tw-automatico" type="checkbox"> Enviar sozinho todo dia</label>
-            <div class="campo campo-hora"><label for="tw-hora">Às</label><select id="tw-hora"></select></div>
-            <button id="botao-twilio" class="btn btn-primario" type="submit">Salvar conexão</button>
-          </form>
-          <p id="erro-twilio" class="alerta alerta-erro" role="alert" hidden></p>
-        </div>
-      </div>
-
-      <div class="cartao">
-        <div class="cartao-cab">
-          <h2>Cadastrar WhatsApp</h2>
-          <p>Use o nome do motorista como aparece na API Gobrax (a lista sugere quem rodou nos últimos 30 dias). Só cadastre quem autorizou receber as mensagens.</p>
-        </div>
-        <div class="cartao-corpo">
-          <form id="form-wa" class="form-wa" novalidate>
-            <div class="campo"><label for="wa-motorista">Motorista</label><input id="wa-motorista" list="wa-motoristas" autocomplete="off" required maxlength="120"><datalist id="wa-motoristas"></datalist></div>
-            <div class="campo"><label for="wa-telefone">WhatsApp (DDD + número)</label><input id="wa-telefone" type="tel" inputmode="tel" autocomplete="off" required maxlength="30" placeholder="(11) 91234-5678"></div>
-            <label class="check"><input id="wa-autorizado" type="checkbox"> O motorista autorizou receber</label>
-            <button id="botao-wa" class="btn btn-primario" type="submit">Salvar</button>
-          </form>
-          <p id="erro-wa" class="alerta alerta-erro" role="alert" hidden></p>
-
-          <div class="importar-wa">
-            <div>
-              <b>Ou importe uma planilha</b>
-              <p class="ajuda">Excel (.xlsx) ou .csv com uma coluna <b>Motorista</b> e uma coluna <b>WhatsApp</b> (ou Telefone/Celular). O arquivo é lido aqui no navegador; você confere a lista antes de salvar.</p>
-            </div>
-            <label class="btn" for="wa-arquivo">Escolher planilha</label>
-            <input id="wa-arquivo" type="file" accept=".xlsx,.xls,.csv" hidden>
-          </div>
-          <div id="wa-importacao" hidden>
-            <div class="tabela-wrap">
-              <table>
-                <thead><tr><th>Motorista</th><th>WhatsApp</th><th>Conferência</th></tr></thead>
-                <tbody id="lista-importacao"></tbody>
-              </table>
-            </div>
-            <label class="check"><input id="wa-autorizados" type="checkbox"> Todos os motoristas válidos desta planilha autorizaram receber mensagens</label>
-            <div class="acoes acoes-esq">
-              <button id="botao-importar" class="btn btn-primario" type="button">Salvar os válidos</button>
-              <button id="botao-cancelar-importacao" class="btn" type="button">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cartao">
-        <div class="cartao-cab"><h2>Motoristas com WhatsApp</h2><p>O número completo fica cifrado no banco; aqui aparecem só os 4 últimos dígitos.</p></div>
-        <div class="tabela-wrap">
-          <table>
-            <thead><tr><th>Motorista</th><th>WhatsApp</th><th>Autorizado em</th><th>Situação</th><th></th></tr></thead>
-            <tbody id="lista-wa"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="cartao">
-        <div class="cartao-cab"><h2>Prévia das mensagens</h2><p>Veja o que cada motorista recebe. Nada é enviado aqui.</p></div>
-        <div class="cartao-corpo">
-          <div class="linha-previa">
-            <div class="campo"><label for="wa-dia">Resultado do dia</label><input id="wa-dia" type="date"></div>
-            <button id="botao-previa" class="btn" type="button">Ver prévia</button>
-            <button id="botao-enviar" class="btn btn-primario" type="button" hidden>Enviar agora</button>
-          </div>
-          <div id="previas" class="previas"></div>
-        </div>
-      </div>
-
-      <div class="cartao">
-        <div class="cartao-cab"><h2>Últimos envios</h2><p>Os 14 últimos dias. Cada motorista recebe no máximo uma mensagem por dia de resultado.</p></div>
-        <div class="tabela-wrap">
-          <table>
-            <thead><tr><th>Dia</th><th>Motorista</th><th>Situação</th><th>Enviada em</th></tr></thead>
-            <tbody id="lista-envios"></tbody>
           </table>
         </div>
       </div>

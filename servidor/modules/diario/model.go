@@ -15,6 +15,8 @@ type Registro_t struct {
 	VelocidadeMedia        *float64 `json:"velocidade_media"`
 	Odometro               *float64 `json:"odometro"`
 	Horas                  *float64 `json:"horas"`
+	HorasMotor             *float64 `json:"horas_motor"` // ignição ligada: base do motor ligado parado
+	HorasPedal             *float64 `json:"horas_pedal"` // pé no acelerador: base dos ranges do pedal
 	Nota                   *float64 `json:"nota"`
 	FaixaVerde             *float64 `json:"faixa_verde"`
 	InicioFaixaVerde       *float64 `json:"inicio_faixa_verde"`

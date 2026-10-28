@@ -103,6 +103,8 @@ func (d *diario_t) MontarDia(clienteID int64, dia string, estat []gobraxapi.Esta
 					h := utils.Arred2(*m.Duration.Valor / 60) // a API manda minutos
 					r.Horas = &h
 				}
+				r.HorasMotor = baseHoras(pk.Indicators, "movement", "idle")
+				r.HorasPedal = baseHoras(pk.Indicators, "pedalPressureOnLow", "pedalPressureOnMid", "pedalPressureOnHigh", "pedalPressureOnHig")
 				for _, ind := range indicadores {
 					*ind.campo(&r) = percentual(pk.Indicators, ind.nome)
 				}
@@ -158,7 +160,7 @@ func paraRow(r Registro_t) diario_repo.RegistroRow_t {
 	return diario_repo.RegistroRow_t{
 		ClienteID: r.ClienteID, Dia: r.Dia, Placa: r.Placa, Motorista: r.Motorista, Rodou: r.Rodou,
 		Km: r.Km, Litros: r.Litros, Frenagens: r.Frenagens, FrenagensAlta: r.FrenagensAlta, VelocidadeMedia: r.VelocidadeMedia,
-		Odometro: r.Odometro, Horas: r.Horas, Nota: r.Nota, FaixaVerde: r.FaixaVerde, InicioFaixaVerde: r.InicioFaixaVerde,
+		Odometro: r.Odometro, Horas: r.Horas, HorasMotor: r.HorasMotor, HorasPedal: r.HorasPedal, Nota: r.Nota, FaixaVerde: r.FaixaVerde, InicioFaixaVerde: r.InicioFaixaVerde,
 		FinalFaixaVerde: r.FinalFaixaVerde, EcoRoll: r.EcoRoll, PressaoIdeal: r.PressaoIdeal, PressaoAtencao: r.PressaoAtencao,
 		Embalo: r.Embalo, MotorOcioso: r.MotorOcioso, PressaoAcelerador: r.PressaoAcelerador, ExcessoRotacao: r.ExcessoRotacao,
 		TempoExcessoVelocidade: r.TempoExcessoVelocidade, PilotoAutomatico: r.PilotoAutomatico, FreioMotor: r.FreioMotor,
@@ -173,7 +175,7 @@ func deRow(r diario_repo.RegistroRow_t) Registro_t {
 	return Registro_t{
 		ClienteID: r.ClienteID, Dia: dia, Placa: r.Placa, Motorista: r.Motorista, Rodou: r.Rodou,
 		Km: r.Km, Litros: r.Litros, Frenagens: r.Frenagens, FrenagensAlta: r.FrenagensAlta, VelocidadeMedia: r.VelocidadeMedia,
-		Odometro: r.Odometro, Horas: r.Horas, Nota: r.Nota, FaixaVerde: r.FaixaVerde, InicioFaixaVerde: r.InicioFaixaVerde,
+		Odometro: r.Odometro, Horas: r.Horas, HorasMotor: r.HorasMotor, HorasPedal: r.HorasPedal, Nota: r.Nota, FaixaVerde: r.FaixaVerde, InicioFaixaVerde: r.InicioFaixaVerde,
 		FinalFaixaVerde: r.FinalFaixaVerde, EcoRoll: r.EcoRoll, PressaoIdeal: r.PressaoIdeal, PressaoAtencao: r.PressaoAtencao,
 		Embalo: r.Embalo, MotorOcioso: r.MotorOcioso, PressaoAcelerador: r.PressaoAcelerador, ExcessoRotacao: r.ExcessoRotacao,
 		TempoExcessoVelocidade: r.TempoExcessoVelocidade, PilotoAutomatico: r.PilotoAutomatico, FreioMotor: r.FreioMotor,

@@ -11,11 +11,13 @@ type Resumo_t struct {
 	Nota      *float64 `json:"nota"`
 	Evolucao  string   `json:"evolucao"`
 	Dica      string   `json:"dica"`
-	// ponto de atenção do dia: o percentual que mais piorou contra a média (Foco vazio = nenhum)
+	// DiaAnterior: o dia com que a análise foi comparada (o anterior em que o motorista rodou; vazio = nenhum)
+	DiaAnterior string `json:"dia_anterior"`
+	// ponto de atenção do dia: o percentual que mais piorou contra o dia anterior (Foco vazio = nenhum)
 	Foco       string            `json:"foco"`
 	FocoRotulo string            `json:"foco_rotulo"`
 	FocoValor  *float64          `json:"foco_valor"`
-	FocoMedia  *float64          `json:"foco_media"`
+	FocoMedia  *float64          `json:"foco_media"` // valor do ponto apontado no dia anterior
 	Melhorou   int               `json:"melhorou"`
 	Piorou     int               `json:"piorou"`
 	Comparados int               `json:"comparados"`

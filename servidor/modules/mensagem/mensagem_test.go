@@ -59,11 +59,13 @@ func (m *RepoMock_t) ListarMotorista(ctx context.Context, clienteID int64, motor
 
 func f(v float64) *float64 { return &v }
 
-// reg é um veículo num dia: 10 h, 500 km, 200 L (2,5 km/l), embalo 20%, piloto 30%, pedal crítico 5%,
+// reg é um veículo num dia: 10 h em movimento, 12 h de ignição, 8 h com o pé no acelerador, 500 km, 200 L (2,5 km/l),
+// embalo 20%, acima do verde 3%, excesso de velocidade 1%, piloto 30%, pedal crítico 5%,
 // e o início da faixa verde e o motor ligado parado dados
 func reg(mot, dia string, inicioFV, ocioso float64) diario.Registro_t {
-	return diario.Registro_t{Motorista: mot, Dia: dia, Rodou: true, Km: f(500), Litros: f(200), Horas: f(10),
-		InicioFaixaVerde: f(inicioFV), MotorOcioso: f(ocioso), Embalo: f(20), PilotoAutomatico: f(30), PressaoAcelerador: f(5)}
+	return diario.Registro_t{Motorista: mot, Dia: dia, Rodou: true, Km: f(500), Litros: f(200), Horas: f(10), HorasMotor: f(12), HorasPedal: f(8),
+		InicioFaixaVerde: f(inicioFV), MotorOcioso: f(ocioso), Embalo: f(20), ExcessoRotacao: f(3), TempoExcessoVelocidade: f(1),
+		PilotoAutomatico: f(30), PressaoAcelerador: f(5)}
 }
 
 type MensagemSuite struct {
@@ -82,29 +84,46 @@ func (s *MensagemSuite) SetupTest() {
 	s.svc = mensagem.NewMensagemCom(mensagem.Deps_t{Repo: s.repo, Diario: s.diario, Premiacao: s.premiacao, Agora: func() time.Time { return agora }})
 }
 
-func (s *MensagemSuite) TestAnaliseComparaCadaIndicadorComAMedia() {
+// ---------- análise individual ----------
+
+func (s *MensagemSuite) TestAnaliseComparaCadaIndicadorComODiaAnterior() {
 	ontem := reg("JOAO DA SILVA", "2026-10-26", 75, 20) // início da faixa verde subiu, motor ligado parado dobrou
 	ontem.Litros = f(180)                               // 2,78 km/l
 	ontem.PilotoAutomatico = f(30.5)                    // estável
-	regs := []diario.Registro_t{reg("JOAO DA SILVA", "2026-10-24", 70, 8), reg("JOAO DA SILVA", "2026-10-25", 72, 10), ontem}
+	regs := []diario.Registro_t{reg("JOAO DA SILVA", "2026-10-24", 50, 2), reg("JOAO DA SILVA", "2026-10-25", 72, 10), ontem}
 
 	r := mensagem.MontarResumos("2026-10-26", regs, nil)
 
 	s.Require().Len(r, 1)
 	v := r[0].Variaveis
+	s.Equal("2026-10-25", r[0].DiaAnterior, "compara com o dia anterior, não com a média")
 	s.Equal("Joao", v["1"])
 	s.Equal("26/10", v["2"])
-	s.Equal("500 km", v["3"])
-	s.Equal("2,78 km/l ✅ melhorou 0,28 km/l", v["4"])
-	s.Equal("75,0% ✅ melhorou 4,0 pts", v["5"])
-	s.Equal("20,0% ➖ estável", v["6"])
-	s.Equal("20,0% ⚠️ piorou 11,0 pts", v["7"], "motor ligado parado: subir é piorar")
-	s.Equal("30,5% ➖ estável", v["8"])
-	s.Equal("5,0% ➖ estável", v["9"])
-	s.Equal("ainda não calculada", v["10"])
-	s.Equal("Você evoluiu! Contra a sua média dos últimos 7 dias, você melhorou em 2 e piorou em 1 dos 6 indicadores.", v["11"])
-	s.Contains(v["12"], "Motor ligado parado ficou em 20,0% (sua média: 9,0%)")
-	s.Contains(v["12"], "desligue o motor")
+	s.Equal(" (comparado com 25/10)", v["3"])
+	s.Equal("500 km", v["4"])
+	s.Equal("2,78 km/l ✅ melhorou 0,28 km/l", v["5"])
+	s.Equal("75,0% ✅ melhorou 3,0 pts", v["6"], "início de faixa verde: 72 → 75")
+	s.Equal("20,0% ➖ estável", v["7"])
+	s.Equal("20,0% ⚠️ piorou 10,0 pts", v["8"], "motor ligado parado: subir é piorar")
+	s.Equal("3,0% ➖ estável", v["9"])
+	s.Equal("1,0% ➖ estável", v["10"])
+	s.Equal("30,5% ➖ estável", v["11"])
+	s.Equal("5,0% ➖ estável", v["12"])
+	s.Equal("ainda não calculada", v["13"])
+	s.Equal("Você evoluiu! Em relação ao dia 25/10, você melhorou em 2 e piorou em 1 dos 8 indicadores.", v["14"])
+	s.Contains(v["15"], "Motor Ligado Parado ficou em 20,0% (no dia 25/10: 10,0%)")
+	s.Contains(v["15"], "desligue o motor")
+	txt := mensagem.Texto(v)
+	for _, rot := range []string{"Início de Faixa Verde:", "Aproveitamento de Embalo:", "Motor Ligado Parado:", "Acelerando acima do Verde:", "Excesso de Velocidade:", "Piloto Automático:", "Pedal Crítico:"} {
+		s.Contains(txt, rot)
+	}
+	s.True(strings.HasPrefix(txt, "Bom dia, Joao! Aqui está a sua análise de 26/10 (comparado com 25/10):"))
+}
+
+func (s *MensagemSuite) TestComparaComOUltimoDiaEmQueRodou() {
+	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-20", 70, 5), reg("Ana", "2026-10-26", 70, 5)}, nil)
+	s.Equal("2026-10-20", r[0].DiaAnterior, "não rodou entre 21 e 25/10")
+	s.Equal(" (comparado com 20/10)", r[0].Variaveis["3"])
 }
 
 func (s *MensagemSuite) TestEvoluiuOuRegrediu() {
@@ -114,54 +133,65 @@ func (s *MensagemSuite) TestEvoluiuOuRegrediu() {
 
 	r = mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 70, 5), reg("Ana", "2026-10-26", 60, 10)}, nil)
 	s.True(strings.HasPrefix(r[0].Evolucao, "Você regrediu um pouco."), r[0].Evolucao)
-	s.Contains(r[0].Dica, "Início da faixa verde ficou em 60,0%")
+	s.Contains(r[0].Dica, "Início de Faixa Verde ficou em 60,0% (no dia 25/10: 70,0%)")
 }
 
 func (s *MensagemSuite) TestNotaDoMesContraOMesAnterior() {
 	regs := []diario.Registro_t{reg("ANA  LIMA", "2026-10-26", 70, 5)}
 	notas := map[string]mensagem.Nota_t{mensagem.ChaveMotorista("Ana Lima"): {Mes: "2026-10", Atual: f(87.5), Anterior: f(84), Parcial: true}}
 	r := mensagem.MontarResumos("2026-10-26", regs, notas)
-	s.Equal("87,5 em outubro (parcial) ✅ subiu 3,5 pontos em relação a setembro", r[0].Variaveis["10"])
+	s.Equal("87,5 em outubro (parcial) ✅ subiu 3,5 pontos em relação a setembro", r[0].Variaveis["13"])
 	s.Equal(87.5, *r[0].Nota)
 
 	notas[mensagem.ChaveMotorista("Ana Lima")] = mensagem.Nota_t{Mes: "2026-01", Atual: f(80), Anterior: f(90)}
 	r = mensagem.MontarResumos("2026-10-26", regs, notas)
-	s.Equal("80,0 em janeiro ⚠️ caiu 10,0 pontos em relação a dezembro", r[0].Variaveis["10"])
+	s.Equal("80,0 em janeiro ⚠️ caiu 10,0 pontos em relação a dezembro", r[0].Variaveis["13"])
 
 	notas[mensagem.ChaveMotorista("Ana Lima")] = mensagem.Nota_t{Mes: "2026-10", Atual: f(80)}
 	r = mensagem.MontarResumos("2026-10-26", regs, notas)
-	s.Equal("80,0 em outubro", r[0].Variaveis["10"])
+	s.Equal("80,0 em outubro", r[0].Variaveis["13"])
 }
 
-func (s *MensagemSuite) TestJuntaOsVeiculosDoMesmoDiaPeloTempo() {
+func (s *MensagemSuite) TestJuntaOsVeiculosDoMesmoDiaCadaUmPelaPropriaBase() {
 	a := reg("Ana", "2026-10-26", 80, 5)
-	b := reg("Ana", "2026-10-26", 50, 5)
-	b.Horas, b.Km, b.Litros = f(30), f(1000), f(500) // dirigiu 3x mais tempo no segundo veículo
+	b := reg("Ana", "2026-10-26", 50, 17)
+	b.Horas, b.HorasMotor, b.HorasPedal, b.Km, b.Litros, b.PressaoAcelerador = f(30), f(36), f(24), f(1000), f(500), f(13)
 	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{a, b}, nil)
 
 	s.Require().Len(r, 1)
-	s.Equal("57,5%", r[0].Variaveis["5"])
-	s.Equal("1.500 km", r[0].Variaveis["3"])
+	s.Equal("57,5%", r[0].Variaveis["6"], "início de faixa verde pelo tempo em movimento: (80×10 + 50×30) ÷ 40")
+	s.Equal("14,0%", r[0].Variaveis["8"], "motor ligado parado pela ignição: (5×12 + 17×36) ÷ 48")
+	s.Equal("11,0%", r[0].Variaveis["12"], "pedal crítico pelo pé no acelerador: (5×8 + 13×24) ÷ 32")
+	s.Equal("1.500 km", r[0].Variaveis["4"])
 	s.Equal(2.14, *r[0].Kml, "1.500 km / 700 L")
 }
 
-func (s *MensagemSuite) TestSemHistoricoESemPiora() {
+func (s *MensagemSuite) TestDiaGravadoSemAsBasesUsaAsHorasEmMovimento() {
+	a, b := reg("Ana", "2026-10-26", 80, 5), reg("Ana", "2026-10-26", 50, 17)
+	a.HorasMotor, b.HorasMotor, b.Horas = nil, nil, f(30)
+	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{a, b}, nil)
+	s.Equal("14,0%", r[0].Variaveis["8"], "(5×10 + 17×30) ÷ 40")
+}
+
+func (s *MensagemSuite) TestSemDiaAnteriorESemPiora() {
 	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-26", 80, 5)}, nil)
-	s.Contains(r[0].Evolucao, "Ainda não temos dias anteriores")
-	s.Equal("80,0%", r[0].Variaveis["5"], "sem histórico, só o valor")
+	s.Contains(r[0].Evolucao, "Ainda não temos um dia anterior")
+	s.Equal("80,0%", r[0].Variaveis["6"], "sem dia anterior, só o valor")
+	s.Empty(r[0].Variaveis["3"])
+	s.True(strings.HasPrefix(mensagem.Texto(r[0].Variaveis), "Bom dia, Ana! Aqui está a sua análise de 26/10:"))
 
 	r = mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 80, 5), reg("Ana", "2026-10-26", 80.5, 5.5)}, nil)
 	s.Contains(r[0].Evolucao, "Você manteve o nível")
-	s.Contains(r[0].Dica, "nenhum indicador piorou")
+	s.Contains(r[0].Dica, "nenhum indicador piorou em relação ao dia 25/10")
 }
 
 func (s *MensagemSuite) TestIndicadorSemDado() {
 	ontem := reg("Ana", "2026-10-26", 80, 5)
 	ontem.PilotoAutomatico, ontem.Litros = nil, nil
 	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 80, 5), ontem}, nil)
-	s.Equal("sem dado ontem", r[0].Variaveis["8"])
-	s.Equal("sem dado ontem", r[0].Variaveis["4"])
-	s.Contains(r[0].Evolucao, "dos 4 indicadores")
+	s.Equal("sem dado no dia", r[0].Variaveis["11"])
+	s.Equal("sem dado no dia", r[0].Variaveis["5"])
+	s.Contains(r[0].Evolucao, "dos 6 indicadores")
 }
 
 func (s *MensagemSuite) TestIgnoraQuemNaoRodouOuSemMotorista() {
@@ -174,7 +204,7 @@ func (s *MensagemSuite) TestIgnoraQuemNaoRodouOuSemMotorista() {
 func (s *MensagemSuite) TestVariaveisSemQuebraDeLinha() {
 	notas := map[string]mensagem.Nota_t{"ANA": {Mes: "2026-10", Atual: f(90), Anterior: f(88)}}
 	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-20", 60, 5), reg("Ana", "2026-10-26", 40, 30)}, notas)
-	s.Len(r[0].Variaveis, 12)
+	s.Len(r[0].Variaveis, 15)
 	for k, v := range r[0].Variaveis {
 		s.NotEmpty(v, k)
 		s.NotContains(v, "\n", k)
@@ -269,7 +299,7 @@ func (s *MensagemSuite) TestAcompanhamentoMedeOPontoApontadoNosDiasSeguintes() {
 	s.Equal(mensagem.ResultadoNaoMelhorou, por["2026-10-20"].Resultado)
 	s.Equal(mensagem.ResultadoAguardando, por["2026-10-26"].Resultado, "ainda não rodou depois")
 	s.Equal(mensagem.ResultadoSemPonto, por["2026-10-05"].Resultado)
-	s.Equal("Motor ligado parado", a.Focos[0].Rotulo)
+	s.Equal("Motor Ligado Parado", a.Focos[0].Rotulo)
 	s.Equal(2, a.Focos[0].Vezes)
 	s.Equal(1, a.Focos[0].Melhorou)
 	s.Equal(1, a.Focos[0].Aguardando)

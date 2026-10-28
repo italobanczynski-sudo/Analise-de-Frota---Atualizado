@@ -13,6 +13,8 @@ type RegistroRow_t struct {
 	VelocidadeMedia        *float64 `db:"velocidade_media"`
 	Odometro               *float64 `db:"odometro"`
 	Horas                  *float64 `db:"horas"`
+	HorasMotor             *float64 `db:"horas_motor"`
+	HorasPedal             *float64 `db:"horas_pedal"`
 	Nota                   *float64 `db:"nota"`
 	FaixaVerde             *float64 `db:"faixa_verde"`
 	InicioFaixaVerde       *float64 `db:"inicio_faixa_verde"`

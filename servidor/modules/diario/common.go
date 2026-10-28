@@ -75,6 +75,21 @@ func notaGeral(p *gobraxapi.PerformanceRec_t) *float64 {
 	return faixaNota(n.Valor)
 }
 
+// baseHoras: base de um percentual em horas, como a documentação da API manda: duração ÷ percentual (em minutos).
+// Usa o primeiro indicador dado que tiver duração e percentual (ex.: os três ranges do pedal têm a mesma base).
+// "movement" é a exceção certa para a ignição: movement.duration ÷ movement.percentage = tempo de ignição ligada.
+func baseHoras(ind map[string]gobraxapi.Indicador_t, nomes ...string) *float64 {
+	for _, n := range nomes {
+		x, ok := ind[n]
+		if !ok || x.Duration.Valor == nil || x.Percentage.Valor == nil || *x.Percentage.Valor <= 0 {
+			continue
+		}
+		h := utils.Arred2(*x.Duration.Valor / *x.Percentage.Valor * 100 / 60)
+		return &h
+	}
+	return nil
+}
+
 func faixaNota(v *float64) *float64 {
 	if v == nil || *v < 0 || *v > 100 {
 		return nil

@@ -129,4 +129,18 @@ func (s *DiarioSuite) TestListarValidaPeriodo() {
 	s.ErrorIs(err, diario.ErrPeriodoInvertido)
 }
 
+func (s *DiarioSuite) TestGuardaABaseDeCadaIndicadorComoAPlataforma() {
+	e := estat(s, `[{"vehicleIdentification":"AAA1111","totalMileage":100}]`)
+	// 540 min em movimento = 90% da ignição (600 min); pedal: 50% = 120 min → 240 min com o pé no acelerador
+	p := perf(s, `[{"vehicleIdentification":"AAA1111","drivers":[{"driverName":"Ana"}],
+		"indicators":{"movement":{"duration":540,"percentage":90},"idle":{"duration":60,"percentage":10},
+		"pedalPressureOnLow":{"duration":120,"percentage":50},"pedalPressureOnHig":{"duration":24,"percentage":10}}}]`)
+
+	regs := s.svc.MontarDia(1, "2026-10-23", e, p)
+
+	s.Require().Len(regs, 1)
+	s.Equal(9.0, *regs[0].Horas)
+	s.Equal(10.0, *regs[0].HorasMotor, "ignição = 540 ÷ 90% = 600 min")
+	s.Equal(4.0, *regs[0].HorasPedal, "pé no acelerador = 120 ÷ 50% = 240 min")
+}
 func TestDiarioSuite(t *testing.T) { suite.Run(t, new(DiarioSuite)) }

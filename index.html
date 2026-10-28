@@ -7383,11 +7383,13 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (col.situacao === 'rodando') setTimeout(() => msgVigiarBusca(M.cli), 0);   // a busca já estava rodando ao abrir a tela
     const busca = col.situacao === 'rodando' || M.ocupado === '__coleta'
       ? `<div class="alerta alerta-ok" role="status"><span class="spinner"></span><div class="alerta-corpo"><span class="alerta-texto">Buscando os dados na API Gobrax… As mensagens se atualizam sozinhas quando terminar.</span></div></div>`
-      : !col.ultimo_dia || col.ultimo_dia < M.dia
+      : !lista.length && M.lista !== null && (!col.ultimo_dia || col.ultimo_dia < M.dia)
         ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Os dados de ${D.br(M.dia)} ainda não chegaram completos</span>
             <span class="alerta-texto">Dados até ${col.ultimo_dia ? D.br(col.ultimo_dia) : '—'}${col.terminada_em ? ' · última busca ' + esc(dataHoraBR(col.terminada_em)) : ''}${col.situacao === 'erro' && col.mensagem ? ' · ' + esc(col.mensagem) : ''}. A busca roda sozinha de hora em hora; se tiver pressa, busque agora.</span>
             ${podeMarcar() ? '<div class="alerta-acoes"><button type="button" class="btn btn-primario" data-acao="msg-buscar">Buscar agora</button></div>' : ''}</div></div>`
-        : `<span class="apoio">Dados até ${D.br(col.ultimo_dia)}${col.terminada_em ? ' · última busca ' + esc(dataHoraBR(col.terminada_em)) : ''}</span>`;
+        : col.ultimo_dia && col.ultimo_dia < M.dia
+          ? `<span class="apoio">Os dias mais recentes já chegaram; dias anteriores a ${D.br(col.ultimo_dia)} ainda estão sendo completados pela busca de hora em hora${col.terminada_em ? ' · última busca ' + esc(dataHoraBR(col.terminada_em)) : ''}</span>`
+          : `<span class="apoio">${col.ultimo_dia ? 'Dados até ' + D.br(col.ultimo_dia) : ''}${col.terminada_em ? ' · última busca ' + esc(dataHoraBR(col.terminada_em)) : ''}</span>`;
     const filtros = `<section class="card"><div class="card-corpo" style="flex-direction:row;align-items:flex-end;gap:14px;flex-wrap:wrap">
       <div class="campo-bloco" style="min-width:260px"><label class="campo-rotulo" for="msg-cli">Cliente</label><select class="campo" id="msg-cli" data-campo="msg-cli">${M.clientes.map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === M.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>
       <div class="campo-bloco"><label class="campo-rotulo" for="msg-dia">Análise do dia</label><input class="campo" id="msg-dia" type="date" data-campo="msg-dia" value="${esc(M.dia)}" max="${ontemMsg()}"></div>

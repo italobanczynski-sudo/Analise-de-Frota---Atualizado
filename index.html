@@ -3644,12 +3644,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `
       <div class="pag-cab"><div class="pag-cab-texto">
         <h1 class="h1">Motoristas</h1>
-        <span class="sub">${E.motAba === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp' : `Evolução ou regressão de cada condutor · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`}</span>
+        <span class="sub">${E.motAba === 'enviadas' ? 'Quantas mensagens cada condutor recebeu, no que foi orientado a melhorar e a nota em cada dia' : E.motAba === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp' : `Evolução ou regressão de cada condutor · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`}</span>
       </div></div>
-      ${E.motAba === 'semanal' ? '' : barraPeriodo() + semDadosNoPeriodo(c.la.length)}
+      ${E.motAba === 'semanal' || E.motAba === 'enviadas' ? '' : barraPeriodo() + semDadosNoPeriodo(c.la.length)}
       ${(() => {
-        const P = Object.assign(painelCondutores(c), { semanal: E.motAba === 'semanal' ? painelSemanal() : !!E.base.motoristas.length });
-        const abas = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['semanal', 'Resultado semanal'], ['lista', 'Lista de motoristas', c.mots.length]].filter(([k]) => k === 'lista' || P[k]);
+        const P = Object.assign(painelCondutores(c), { semanal: E.motAba === 'semanal' ? painelSemanal() : !!E.base.motoristas.length, enviadas: contaSrv() ? (E.motAba === 'enviadas' ? painelEnviadas(c) : true) : '' });
+        const abas = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['semanal', 'Resultado semanal'], ['enviadas', 'Mensagens enviadas'], ['lista', 'Lista de motoristas', c.mots.length]].filter(([k]) => k === 'lista' || P[k]);
         if (!abas.some(([k]) => k === E.motAba)) E.motAba = abas[0][0];
         return `<div class="abas" role="tablist" aria-label="Seções de Motoristas">${abas.map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.motAba === k ? 'ativa' : ''}" aria-selected="${E.motAba === k}" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<a role="tab" class="aba" aria-selected="false" href="#/individual/motorista" style="text-decoration:none"><span>Motorista individual</span></a></div>
           ${E.motAba !== 'lista' ? P[E.motAba] : ''}`;
@@ -5779,7 +5779,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <span class="apoio">${fmt(lista.length, 0)} ${veic ? 'veículos' : 'motoristas'} com registro no período · use as abas abaixo para ver todos os indicadores, produtividade e o dia a dia.</span>
       ${(() => { const sel = c.mots.find((y) => y.m.id === id); if (!sel) return ''; const partes = DIMS.filter((d) => sel.m.dims[d.key].length).map((d) => `<span class="tag">${d.label}: ${esc(sel.m.dims[d.key].slice(0, 3).join(', '))}</span>`); return partes.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${partes.join('')}</div>` : ''; })()}</div></section>`;
     if (!veic) {   // Motorista individual é uma aba da página Motoristas
-      const abasMot = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['lista', 'Lista de motoristas', c.mots.length]];
+      const abasMot = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo']].concat(contaSrv() ? [['enviadas', 'Mensagens enviadas']] : [], [['lista', 'Lista de motoristas', c.mots.length]]);
       return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Motoristas</h1><span class="sub">Um motorista por vez, comparado ao período anterior e à média da frota.</span></div></div>
         <div class="abas" role="tablist" aria-label="Seções de Motoristas">${abasMot.map(([k, rot, n]) => `<button type="button" role="tab" class="aba" aria-selected="false" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<span role="tab" class="aba ativa" aria-selected="true"><span>Motorista individual</span></span></div>${seletor}${blocoMsgMotorista((c.mots.find((y) => y.m.id === id) || { m: {} }).m.nome)}${corpo}`;
     }
@@ -7331,7 +7331,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // Só no painel do servidor (/painel). A pessoa copia, manda do próprio WhatsApp e marca como enviada; cada marca guarda
   // um retrato da análise, e o Motorista individual mostra os dias com mensagem e se ele melhorou no que foi apontado.
   const ontemMsg = () => new Date(Date.now() - 27 * 3600 * 1000).toISOString().slice(0, 10);   // ontem em Brasília (UTC−3)
-  const msg = () => E.msg || (E.msg = { clientes: null, carregandoCli: false, cli: '', dia: ontemMsg(), lista: null, carregando: false, erro: '', ocupado: '', acomp: {} });
+  const msg = () => E.msg || (E.msg = { clientes: null, carregandoCli: false, cli: '', dia: ontemMsg(), lista: null, carregando: false, erro: '', ocupado: '', acomp: {}, enviadas: {} });
   const podeMarcar = () => !!(contaSrv() && contaSrv().eu && contaSrv().eu.papel !== 'leitor');
   async function msgClientes() {
     const M = msg(), cs = contaSrv();
@@ -7454,6 +7454,45 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         </tbody></table></div>`;
     }
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Mensagens pelo WhatsApp</h2><span class="h2-sub">Dias em que este motorista recebeu a análise e, para o ponto apontado em cada uma (o que mais piorou contra o dia anterior), a média dele nos 7 dias seguintes comparada ao dia do aviso.</span></div></div>${corpo}</section>`;
+  }
+
+  // Motoristas › Mensagens enviadas: por motorista, quantas mensagens foram marcadas como enviadas, o que ele foi
+  // orientado a melhorar (o ponto da dica e os indicadores que pioraram contra o dia anterior) e a nota do mês em cada dia
+  async function msgEnviadas(cli) {
+    const M = msg(), cs = contaSrv();
+    if (!cs || M.enviadas[cli]) return;
+    M.enviadas[cli] = { carregando: true };
+    try { M.enviadas[cli] = { lista: await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/enviadas') }; }
+    catch (e) { M.enviadas[cli] = { erro: e.message }; }
+    if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
+  }
+  function painelEnviadas(c) {
+    const M = msg();
+    const card = (corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Mensagens enviadas aos motoristas</h2><span class="h2-sub">Só as mensagens marcadas como enviadas em <a class="btn-link" href="#/mensagens">Mensagens do dia</a>. Em cada dia: a nota do mês até aquele dia e os indicadores em que o motorista foi orientado a melhorar (o da dica em negrito, depois os que pioraram contra o dia anterior).</span></div></div>${corpo}</section>`;
+    const vazio = (t, a) => card(`<div class="card-corpo"><div class="vazio">${t ? `<span class="vazio-titulo">${t}</span>` : '<span class="spinner"></span>'}<span class="apoio">${a}</span></div></div>`);
+    if (!M.clientes) { setTimeout(msgClientes, 0); return vazio('', 'Carregando…'); }
+    const cli = cliSrv(E.cliente);
+    if (!cli) return vazio('Cliente sem dados no servidor', 'As mensagens existem para os clientes buscados pela API Gobrax no servidor.');
+    const R = M.enviadas[cli];
+    if (!R) setTimeout(() => msgEnviadas(cli), 0);
+    if (!R || R.carregando) return vazio('', 'Carregando as mensagens enviadas…');
+    if (R.erro) return vazio('Não consegui carregar', esc(R.erro));
+    if (!R.lista.length) return vazio('Nenhuma mensagem enviada ainda', 'Em Mensagens do dia, copie a análise, mande pelo WhatsApp e marque como enviada.');
+    const total = R.lista.reduce((a, x) => a + x.dias_enviada, 0);
+    const porNome = {};
+    c.mots.forEach((x) => { porNome[ckey(x.m.nome)] = x.m.id; });
+    const nota = (v) => (v === null || v === undefined ? '<span class="mudo">sem nota</span>' : `nota <b>${fmt(v, 1)}</b>`);
+    const linhas = R.lista.map((x) => {
+      const id = porNome[ckey(x.motorista)];
+      const nome = id ? `<a class="pessoa-nome" href="${linkMotorista(id)}" style="text-decoration:none">${esc(x.motorista)}</a>` : `<span class="pessoa-nome">${esc(x.motorista)}</span>`;
+      const inds = x.indicadores.length ? x.indicadores.map((i) => `<span class="tag">${esc(i.rotulo)} · ${i.vezes}x</span>`).join(' ') : '<span class="mudo">nenhum indicador piorou</span>';
+      const dias = x.envios.map((e) => `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="num" style="min-width:42px">${D.br(e.dia).slice(0, 5)}</span><span class="num" style="min-width:74px">${nota(e.nota)}</span><span class="apoio">${e.indicadores.length ? e.indicadores.map((r) => (r === e.foco_rotulo ? `<b>${esc(r)}</b>` : esc(r))).join(', ') : 'nenhum indicador piorou'}</span></div>`).join('');
+      return `<tr><td><span class="pessoa">${avatar(x.motorista, 32)}${nome}</span></td><td class="dir num" style="font-size:18px;font-weight:700">${x.dias_enviada}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap;max-width:360px">${inds}</div></td><td><div style="display:flex;flex-direction:column;gap:4px">${dias}</div></td></tr>`;
+    }).join('');
+    return card(`<div class="card-corpo" style="flex-direction:row;gap:28px;flex-wrap:wrap">
+        <div><span class="apoio">Mensagens enviadas</span><div style="font-size:26px;font-weight:700">${total}</div></div>
+        <div><span class="apoio">Motoristas que receberam</span><div style="font-size:26px;font-weight:700">${R.lista.length}</div></div></div>
+      <div class="tabela-wrap"><table class="tabela" style="min-width:900px"><thead><tr><th>Motorista</th><th class="dir">Mensagens</th><th>Indicadores orientados a melhorar</th><th>Dias enviados · nota do mês · indicadores</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
   }
 
   function telaClientes() {
@@ -8340,7 +8379,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       M.ocupado = m.motorista; render();
       try {
         const r = await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/enviada', { dia: M.dia, motorista: m.motorista });
-        m.enviada = r.enviada; delete M.acomp[M.cli + '|' + m.motorista];
+        m.enviada = r.enviada; delete M.acomp[M.cli + '|' + m.motorista]; delete M.enviadas[M.cli];
         toast('Mensagem de ' + m.motorista + ' marcada como enviada.');
       } catch (e) { toast(e.message, 'erro'); }
       M.ocupado = ''; render();
@@ -8359,7 +8398,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       M.ocupado = m.motorista; render();
       try {
         await cs.chamar('DELETE', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/enviada?dia=' + encodeURIComponent(M.dia) + '&motorista=' + encodeURIComponent(m.motorista));
-        m.enviada = null; delete M.acomp[M.cli + '|' + m.motorista];
+        m.enviada = null; delete M.acomp[M.cli + '|' + m.motorista]; delete M.enviadas[M.cli];
         toast('Mensagem de ' + m.motorista + ' desmarcada.');
       } catch (e) { toast(e.message, 'erro'); }
       M.ocupado = ''; render();

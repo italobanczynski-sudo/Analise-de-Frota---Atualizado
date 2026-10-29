@@ -21,6 +21,7 @@ type Resumo_t struct {
 	Melhorou   int               `json:"melhorou"`
 	Piorou     int               `json:"piorou"`
 	Comparados int               `json:"comparados"`
+	Pioraram   []string          `json:"pioraram"` // chaves dos indicadores que pioraram contra o dia anterior (⚠️ no texto)
 	Variaveis  map[string]string `json:"-"`
 }
 
@@ -54,6 +55,29 @@ type Envio_t struct {
 	Comparados int       `json:"comparados"`
 	Nota       *float64  `json:"nota"`
 	MarcadoEm  time.Time `json:"marcado_em"`
+}
+
+// Enviadas_t são as mensagens enviadas a um motorista: quantas, os dias com a nota e o que ele foi orientado a melhorar
+type Enviadas_t struct {
+	Motorista   string           `json:"motorista"`
+	DiasEnviada int              `json:"dias_enviada"`
+	Indicadores []IndicadorVez_t `json:"indicadores"` // o mais apontado primeiro
+	Envios      []EnviadaNota_t  `json:"envios"`      // o mais recente primeiro
+}
+
+// EnviadaNota_t é um dia com mensagem enviada: a nota do mês naquele dia e os indicadores a melhorar
+type EnviadaNota_t struct {
+	Dia         string   `json:"dia"`
+	Nota        *float64 `json:"nota"`
+	Foco        string   `json:"foco"` // o ponto da dica "Para hoje"
+	FocoRotulo  string   `json:"foco_rotulo"`
+	Indicadores []string `json:"indicadores"` // rótulos: o foco primeiro, depois os outros que pioraram
+}
+
+type IndicadorVez_t struct {
+	Chave  string `json:"chave"`
+	Rotulo string `json:"rotulo"`
+	Vezes  int    `json:"vezes"`
 }
 
 type FocoTotal_t struct {

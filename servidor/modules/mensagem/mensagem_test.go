@@ -50,6 +50,10 @@ func (m *RepoMock_t) ListarDia(ctx context.Context, clienteID int64, dia string)
 	a := m.Called(ctx, clienteID, dia)
 	return a.Get(0).([]mensagem_repo.EnviadaRow_t), a.Error(1)
 }
+func (m *RepoMock_t) ListarCliente(ctx context.Context, clienteID int64) ([]mensagem_repo.EnviadaRow_t, error) {
+	a := m.Called(ctx, clienteID)
+	return a.Get(0).([]mensagem_repo.EnviadaRow_t), a.Error(1)
+}
 func (m *RepoMock_t) ListarMotorista(ctx context.Context, clienteID int64, motorista string) ([]mensagem_repo.EnviadaRow_t, error) {
 	a := m.Called(ctx, clienteID, motorista)
 	return a.Get(0).([]mensagem_repo.EnviadaRow_t), a.Error(1)
@@ -255,6 +259,7 @@ func (s *MensagemSuite) TestMarcarGuardaORetratoDaAnalise() {
 	s.Equal(20.0, *gravado.FocoValor)
 	s.Equal(8.0, *gravado.FocoMedia)
 	s.Equal(int64(9), *gravado.MarcadoPor)
+	s.Equal("motor_ocioso", gravado.Pioraram, "guarda os indicadores marcados com ⚠️ no texto")
 
 	_, err = s.svc.Marcar(s.ctx, 1, "2026-10-26", "Beto", 9)
 	s.ErrorIs(err, mensagem.ErrMotoristaSemDia)
@@ -303,6 +308,31 @@ func (s *MensagemSuite) TestAcompanhamentoMedeOPontoApontadoNosDiasSeguintes() {
 	s.Equal(2, a.Focos[0].Vezes)
 	s.Equal(1, a.Focos[0].Melhorou)
 	s.Equal(1, a.Focos[0].Aguardando)
+}
+
+func (s *MensagemSuite) TestEnviadasPorMotoristaComNotaEIndicadores() {
+	s.repo.On("ListarCliente", s.ctx, int64(1)).Return([]mensagem_repo.EnviadaRow_t{
+		{Motorista: "ANA LIMA", Dia: "2026-10-20", Foco: "motor_ocioso", Pioraram: "kml,motor_ocioso,pressao_acelerador", Nota: f(84)},
+		{Motorista: "Ana  Lima", Dia: "2026-10-26", Foco: "motor_ocioso", Pioraram: "motor_ocioso", Nota: f(86.5)},
+		{Motorista: "ANA LIMA", Dia: "2026-10-22", Foco: "", Pioraram: ""},
+		{Motorista: "BETO", Dia: "2026-10-26", Foco: "embalo"}, // marcada antes de guardar os que pioraram: só o foco
+	}, nil)
+
+	l, err := s.svc.Enviadas(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.Require().Len(l, 2)
+	ana := l[0]
+	s.Equal("Ana  Lima", ana.Motorista, "o nome da mensagem mais recente")
+	s.Equal(3, ana.DiasEnviada)
+	s.Equal([]string{"2026-10-26", "2026-10-22", "2026-10-20"}, []string{ana.Envios[0].Dia, ana.Envios[1].Dia, ana.Envios[2].Dia})
+	s.Equal(86.5, *ana.Envios[0].Nota)
+	s.Equal([]string{"Motor Ligado Parado", "Média de consumo", "Pedal Crítico"}, ana.Envios[2].Indicadores, "o foco primeiro, sem repetir")
+	s.Empty(ana.Envios[1].Indicadores)
+	s.Equal(mensagem.IndicadorVez_t{Chave: "motor_ocioso", Rotulo: "Motor Ligado Parado", Vezes: 2}, ana.Indicadores[0])
+	s.Len(ana.Indicadores, 3)
+	s.Equal("BETO", l[1].Motorista)
+	s.Equal([]string{"Aproveitamento de Embalo"}, l[1].Envios[0].Indicadores)
 }
 
 func (s *MensagemSuite) TestNaoMontaDiaQueNaoTerminou() {

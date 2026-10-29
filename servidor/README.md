@@ -134,6 +134,7 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `PUT /api/v1/usuarios/:id` `{papel, ativo}` | admin | Troca perfil / ativa / desativa |
 | `GET /api/v1/clientes/:id/mensagens?dia=AAAA-MM-DD` | logado | Mensagem pronta de cada motorista que rodou no dia (sem `dia`: ontem) e se já foi marcada como enviada |
 | `GET /api/v1/clientes/:id/mensagens/acompanhamento?motorista=Nome` | logado | Dias com mensagem enviada ao motorista e se ele melhorou depois no ponto apontado |
+| `GET /api/v1/clientes/:id/mensagens/enviadas` | logado | Por motorista: quantas mensagens foram marcadas como enviadas, a nota do mês em cada dia e os indicadores que ele foi orientado a melhorar (aba Motoristas › Mensagens enviadas) |
 | `PUT /api/v1/clientes/:id/mensagens/enviada` `{dia, motorista}` | colaborador, admin | Marca a mensagem como enviada (guarda o retrato da análise) |
 | `DELETE /api/v1/clientes/:id/mensagens/enviada?dia=&motorista=` | colaborador, admin | Desmarca |
 

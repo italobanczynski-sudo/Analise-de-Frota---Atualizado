@@ -67,3 +67,15 @@ func (m Mensagem_t) Acompanhamento(ctx context.Context) *middleware.Response_t {
 	}
 	return middleware.RetOkData(r)
 }
+
+// Enviadas devolve, por motorista, as mensagens enviadas: quantas, a nota em cada dia e os indicadores apontados
+func (m Mensagem_t) Enviadas(ctx context.Context) *middleware.Response_t {
+	if _, err := modcliente.NewCliente().Buscar(ctx, m.ClienteID); err != nil {
+		return middleware.RetErro(err)
+	}
+	r, err := modmensagem.NewMensagem().Enviadas(ctx, m.ClienteID)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	return middleware.RetOkData(r)
+}

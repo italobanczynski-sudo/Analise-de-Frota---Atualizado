@@ -214,6 +214,12 @@ func montar(nome, dia string, hoje, antes []diario.Registro_t, nota Nota_t) Resu
 	}
 	r.DiaAnterior = anterior
 	r.Melhorou, r.Piorou, r.Comparados = contar(comps)
+	r.Pioraram = []string{}
+	for _, c := range comps {
+		if c.sentido() < 0 {
+			r.Pioraram = append(r.Pioraram, c.ind.chave)
+		}
+	}
 	r.Evolucao = evolucao(r.Melhorou, r.Piorou, r.Comparados, anterior)
 	r.Dica = dicaDoDia(comps[1:], anterior)
 	if p := piorIndicador(comps[1:]); p != nil && len(antes) > 0 {

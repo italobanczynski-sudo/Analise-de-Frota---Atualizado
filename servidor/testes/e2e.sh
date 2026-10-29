@@ -97,6 +97,9 @@ confere "cliente inexistente" 404 "$(req admin GET /api/v1/clientes/999999/odome
 confere "premiação com mês inválido" 400 "$(req admin GET "/api/v1/clientes/$ID_CLI/premiacoes?mes=2026-13")"
 confere "premiação" 200 "$(req admin GET "/api/v1/clientes/$ID_CLI/premiacoes?mes=2026-10")"
 confere "situação da busca" 200 "$(req admin GET /api/v1/clientes/$ID_CLI/coleta)"
+confere "mensagens enviadas do cliente" 200 "$(req admin GET /api/v1/clientes/$ID_CLI/mensagens/enviadas)"
+contem "sem mensagens enviadas ainda" '"dados":\[\]'
+confere "mensagens enviadas de cliente inexistente" 404 "$(req admin GET /api/v1/clientes/999999/mensagens/enviadas)"
 
 echo "== permissões do leitor"
 confere "leitor vê clientes" 200 "$(req leitor GET /api/v1/clientes)"

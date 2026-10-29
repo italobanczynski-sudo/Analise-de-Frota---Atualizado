@@ -8,6 +8,7 @@ package mensagem
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"analisefrota/common/utils"
@@ -24,6 +25,8 @@ type Service_I interface {
 	Desmarcar(ctx context.Context, clienteID int64, dia, motorista string) error
 	// Acompanhamento: dias com mensagem enviada e se o motorista melhorou depois no ponto apontado
 	Acompanhamento(ctx context.Context, clienteID int64, motorista string) (Acompanhamento_t, error)
+	// Enviadas: por motorista, quantas mensagens foram enviadas, a nota em cada dia e os indicadores apontados
+	Enviadas(ctx context.Context, clienteID int64) ([]Enviadas_t, error)
 }
 
 // Deps_t são as dependências; os testes trocam cada uma por um mock
@@ -82,7 +85,8 @@ func (m *mensagem_t) Marcar(ctx context.Context, clienteID int64, dia, motorista
 			continue
 		}
 		row := mensagem_repo.EnviadaRow_t{ClienteID: clienteID, Motorista: r.Motorista, Dia: dia, Foco: r.Foco, FocoValor: r.FocoValor,
-			FocoMedia: r.FocoMedia, Melhorou: r.Melhorou, Piorou: r.Piorou, Comparados: r.Comparados, Nota: r.Nota}
+			FocoMedia: r.FocoMedia, Melhorou: r.Melhorou, Piorou: r.Piorou, Comparados: r.Comparados, Nota: r.Nota,
+			Pioraram: strings.Join(r.Pioraram, ",")}
 		if usuarioID > 0 {
 			row.MarcadoPor = &usuarioID
 		}

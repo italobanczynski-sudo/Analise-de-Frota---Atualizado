@@ -21,6 +21,7 @@ type EnviadaRow_t struct {
 	Piorou     int       `db:"piorou"`
 	Comparados int       `db:"comparados"`
 	Nota       *float64  `db:"nota"`
+	Pioraram   string    `db:"pioraram"` // chaves separadas por vírgula
 	MarcadoEm  time.Time `db:"marcado_em"`
 	MarcadoPor *int64    `db:"marcado_por"`
 }
@@ -32,6 +33,8 @@ type Repository_I interface {
 	Desmarcar(ctx context.Context, clienteID int64, motorista, dia string) (bool, error)
 	ListarDia(ctx context.Context, clienteID int64, dia string) ([]EnviadaRow_t, error)
 	ListarMotorista(ctx context.Context, clienteID int64, motorista string) ([]EnviadaRow_t, error)
+	// ListarCliente: todas as mensagens enviadas do cliente, por motorista e dia
+	ListarCliente(ctx context.Context, clienteID int64) ([]EnviadaRow_t, error)
 }
 
 type Repository_t struct {
@@ -42,12 +45,12 @@ func NewRepository() Repository_I {
 	return &Repository_t{Db: dbPostgres.GetPgConn()}
 }
 
-const sqlColunas = `cliente_id, motorista, dia::text AS dia, foco, foco_valor, foco_media, melhorou, piorou, comparados, nota, marcado_em, marcado_por`
+const sqlColunas = `cliente_id, motorista, dia::text AS dia, foco, foco_valor, foco_media, melhorou, piorou, comparados, nota, pioraram, marcado_em, marcado_por`
 
-const sqlMarcar = `INSERT INTO mensagens_enviadas (cliente_id, motorista, dia, foco, foco_valor, foco_media, melhorou, piorou, comparados, nota, marcado_por)
-VALUES (:cliente_id, :motorista, :dia, :foco, :foco_valor, :foco_media, :melhorou, :piorou, :comparados, :nota, :marcado_por)
+const sqlMarcar = `INSERT INTO mensagens_enviadas (cliente_id, motorista, dia, foco, foco_valor, foco_media, melhorou, piorou, comparados, nota, pioraram, marcado_por)
+VALUES (:cliente_id, :motorista, :dia, :foco, :foco_valor, :foco_media, :melhorou, :piorou, :comparados, :nota, :pioraram, :marcado_por)
 ON CONFLICT (cliente_id, motorista, dia) DO UPDATE SET foco = EXCLUDED.foco, foco_valor = EXCLUDED.foco_valor, foco_media = EXCLUDED.foco_media,
-	melhorou = EXCLUDED.melhorou, piorou = EXCLUDED.piorou, comparados = EXCLUDED.comparados, nota = EXCLUDED.nota,
+	melhorou = EXCLUDED.melhorou, piorou = EXCLUDED.piorou, comparados = EXCLUDED.comparados, nota = EXCLUDED.nota, pioraram = EXCLUDED.pioraram,
 	marcado_por = EXCLUDED.marcado_por, marcado_em = now()`
 
 const sqlDesmarcar = `DELETE FROM mensagens_enviadas WHERE cliente_id = $1 AND motorista = $2 AND dia = $3`
@@ -58,6 +61,8 @@ const sqlListarDia = `SELECT ` + sqlColunas + ` FROM mensagens_enviadas WHERE cl
 const sqlListarMotorista = `SELECT ` + sqlColunas + ` FROM mensagens_enviadas
 WHERE cliente_id = $1 AND upper(regexp_replace(trim(motorista), '\s+', ' ', 'g')) = upper(regexp_replace(trim($2), '\s+', ' ', 'g'))
 ORDER BY dia`
+
+const sqlListarCliente = `SELECT ` + sqlColunas + ` FROM mensagens_enviadas WHERE cliente_id = $1 ORDER BY motorista, dia`
 
 func (r *Repository_t) Marcar(ctx context.Context, row EnviadaRow_t) error {
 	_, err := r.Db.NamedExecContext(ctx, sqlMarcar, row)
@@ -82,5 +87,11 @@ func (r *Repository_t) ListarDia(ctx context.Context, clienteID int64, dia strin
 func (r *Repository_t) ListarMotorista(ctx context.Context, clienteID int64, motorista string) ([]EnviadaRow_t, error) {
 	rows := []EnviadaRow_t{}
 	err := r.Db.SelectContext(ctx, &rows, sqlListarMotorista, clienteID, motorista)
+	return rows, err
+}
+
+func (r *Repository_t) ListarCliente(ctx context.Context, clienteID int64) ([]EnviadaRow_t, error) {
+	rows := []EnviadaRow_t{}
+	err := r.Db.SelectContext(ctx, &rows, sqlListarCliente, clienteID)
 	return rows, err
 }

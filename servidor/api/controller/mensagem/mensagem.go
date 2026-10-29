@@ -79,3 +79,12 @@ func Acompanhamento(c *gin.Context) {
 	}
 	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, Motorista: req.Motorista}.Acompanhamento(c.Request.Context()))
 }
+
+// Enviadas: GET /api/v1/clientes/:id/mensagens/enviadas
+func Enviadas(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id}.Enviadas(c.Request.Context()))
+}

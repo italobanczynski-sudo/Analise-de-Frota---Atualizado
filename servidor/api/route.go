@@ -49,6 +49,7 @@ func GetRoutes(r *gin.Engine) {
 	v1.GET("/clientes/:id/premiacoes", ctfrota.Premiacoes)
 	v1.GET("/clientes/:id/mensagens", ctmensagem.Listar)
 	v1.GET("/clientes/:id/mensagens/acompanhamento", ctmensagem.Acompanhamento)
+	v1.GET("/clientes/:id/mensagens/enviadas", ctmensagem.Enviadas)
 	v1.GET("/painel/dados", ctbase.Dados)
 	v1.GET("/base/:colecao", ctbase.Listar)
 

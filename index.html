@@ -7479,6 +7479,21 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (R.erro) return vazio('Não consegui carregar', esc(R.erro));
     if (!R.lista.length) return vazio('Nenhuma mensagem enviada ainda', 'Em Mensagens do dia, copie a análise, mande pelo WhatsApp e marque como enviada.');
     const total = R.lista.reduce((a, x) => a + x.dias_enviada, 0);
+    // gráficos: mensagens enviadas por dia (do primeiro envio ao último, no máximo 60 dias) e indicadores mais apontados
+    const porDia = {}, porInd = {};
+    R.lista.forEach((x) => x.envios.forEach((e) => { porDia[e.dia] = (porDia[e.dia] || 0) + 1; }));
+    R.lista.forEach((x) => x.indicadores.forEach((i) => { porInd[i.rotulo] = (porInd[i.rotulo] || 0) + i.vezes; }));
+    const dias = Object.keys(porDia).sort(), serie = [];
+    if (dias.length) {
+      const fim = new Date(dias[dias.length - 1] + 'T12:00:00Z');
+      let d = new Date(Math.max(new Date(dias[0] + 'T12:00:00Z').getTime(), fim.getTime() - 59 * 864e5));
+      for (; d <= fim; d = new Date(d.getTime() + 864e5)) { const k = d.toISOString().slice(0, 10); serie.push({ data: k, valor: porDia[k] || 0 }); }
+    }
+    E.graficos['msg-enviadas-dia'] = { tipo: 'barras', serie, ind: { label: 'Mensagens enviadas', casas: 0, un: '' }, titulo: 'Mensagens enviadas por dia' };
+    const inds = Object.entries(porInd).sort((a, b) => b[1] - a[1]).map(([rot, n]) => ({ rot, n }));
+    const graficos = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;padding:0 16px 16px">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Mensagens enviadas por dia</span><div class="grafico" data-grafico="msg-enviadas-dia" style="height:200px"></div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Indicadores mais apontados <span class="apoio" style="font-weight:400">(% das mensagens)</span></span>${inds.length ? barrasHub(inds, total) : '<span class="apoio">Nenhum indicador apontado ainda.</span>'}</div></div>`;
     const porNome = {};
     c.mots.forEach((x) => { porNome[ckey(x.m.nome)] = x.m.id; });
     const nota = (v) => (v === null || v === undefined ? '<span class="mudo">sem nota</span>' : `nota <b>${fmt(v, 1)}</b>`);
@@ -7487,12 +7502,14 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       const nome = id ? `<a class="pessoa-nome" href="${linkMotorista(id)}" style="text-decoration:none">${esc(x.motorista)}</a>` : `<span class="pessoa-nome">${esc(x.motorista)}</span>`;
       const inds = x.indicadores.length ? x.indicadores.map((i) => `<span class="tag">${esc(i.rotulo)} · ${i.vezes}x</span>`).join(' ') : '<span class="mudo">nenhum indicador piorou</span>';
       const dias = x.envios.map((e) => `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="num" style="min-width:42px">${D.br(e.dia).slice(0, 5)}</span><span class="num" style="min-width:74px">${nota(e.nota)}</span><span class="apoio">${e.indicadores.length ? e.indicadores.map((r) => (r === e.foco_rotulo ? `<b>${esc(r)}</b>` : esc(r))).join(', ') : 'nenhum indicador piorou'}</span></div>`).join('');
-      return `<tr><td><span class="pessoa">${avatar(x.motorista, 32)}${nome}</span></td><td class="dir num" style="font-size:18px;font-weight:700">${x.dias_enviada}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap;max-width:360px">${inds}</div></td><td><div style="display:flex;flex-direction:column;gap:4px">${dias}</div></td></tr>`;
+      const notas = x.envios.slice().reverse().map((e) => (e.nota === null || e.nota === undefined ? null : e.nota));
+      return `<tr><td><span class="pessoa">${avatar(x.motorista, 32)}${nome}</span></td><td class="dir num" style="font-size:18px;font-weight:700">${x.dias_enviada}</td><td title="Nota do mês em cada dia com mensagem, do primeiro ao último envio">${X.ui.sparkline(notas, '#FCB709')}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap;max-width:360px">${inds}</div></td><td><div style="display:flex;flex-direction:column;gap:4px">${dias}</div></td></tr>`;
     }).join('');
     return card(`<div class="card-corpo" style="flex-direction:row;gap:28px;flex-wrap:wrap">
         <div><span class="apoio">Mensagens enviadas</span><div style="font-size:26px;font-weight:700">${total}</div></div>
         <div><span class="apoio">Motoristas que receberam</span><div style="font-size:26px;font-weight:700">${R.lista.length}</div></div></div>
-      <div class="tabela-wrap"><table class="tabela" style="min-width:900px"><thead><tr><th>Motorista</th><th class="dir">Mensagens</th><th>Indicadores orientados a melhorar</th><th>Dias enviados · nota do mês · indicadores</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
+      ${graficos}
+      <div class="tabela-wrap"><table class="tabela" style="min-width:900px"><thead><tr><th>Motorista</th><th class="dir">Mensagens</th><th>Nota nos envios</th><th>Indicadores orientados a melhorar</th><th>Dias enviados · nota do mês · indicadores</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
   }
 
   function telaClientes() {

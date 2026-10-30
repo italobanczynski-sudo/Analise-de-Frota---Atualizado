@@ -1834,8 +1834,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     somar(s, n) { const d = D.deISO(s); d.setUTCDate(d.getUTCDate() + n); return D.paraISO(d); },
     dif(a, b) { return Math.round((D.deISO(b) - D.deISO(a)) / 86400000); },
     hoje() { const d = new Date(); return D.paraISO(new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))); },
-    br(s) { if (!s) return ''; const [a, m, d] = s.split('-'); return d + '/' + m + '/' + a; },
-    curta(s) { if (!s) return ''; const [, m, d] = s.split('-'); return d + '/' + m; },
+    // só aceita 'AAAA-MM-DD' (o resto vira vazio): datas vindas da base ou do servidor entram direto no HTML
+    br(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; },
+    curta(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? m[3] + '/' + m[2] : ''; },
     semana(s) { return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][D.deISO(s).getUTCDay()]; },
     inicioMes(s) { return s.slice(0, 8) + '01'; },
     fimMes(s) { const d = D.deISO(D.inicioMes(s)); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); return D.paraISO(d); },
@@ -2081,7 +2082,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ls.forEach((l) => { if (l[d.key]) c[l[d.key]] = (c[l[d.key]] || 0) + 1; });
         dims[d.key] = Object.keys(c).sort((a, b) => c[b] - c[a]);
       });
-      return { id: String(i + 1), nome, linhas: ls, veiculos: Object.keys(veic).sort((a, b) => veic[b] - veic[a]), dims };
+      return { id: nome, nome, linhas: ls, veiculos: Object.keys(veic).sort((a, b) => veic[b] - veic[a]), dims };
     });
     const fixas = ['data', 'motorista', 'veiculo', 'cliente', 'dias_periodo'];
     const meta = metaColunas(colunas.filter((c) => fixas.includes(c) || linhas.some((l) => l[c] !== null && l[c] !== undefined && l[c] !== '')));
@@ -2196,6 +2197,19 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return { status: delta >= lim ? 'evoluiu' : delta <= -lim ? 'regrediu' : 'estavel', delta: va - vb, ind: k };
   }
 
+  // Texto da regra de evolução do indicador escolhido por statusEvolucao (tirado de LIMIAR, para nunca divergir)
+  function regraEvolucao(k) {
+    const nome = { nota: 'pela Nota Gobrax', kml: 'pela média de km/l', inicio_faixa_verde: 'pelo início da faixa verde', faixa_verde: 'pela faixa verde' }[k] || 'pela Nota Gobrax';
+    const lim = LIMIAR[k] !== undefined ? LIMIAR[k] : LIMIAR.nota;
+    return nome + ' (±' + (k === 'kml' ? fmt(lim * 100, 0) + '%' : fmt(lim, 0) + (k === 'nota' ? ' pts' : ' p.p.')) + ')';
+  }
+  // Diferença absoluta com seta e a unidade do indicador (pts, p.p. ou a unidade, ex. km/l)
+  function textoDelta(ind, d) {
+    if (d === null || d === undefined || !Number.isFinite(d)) return '—';
+    const suf = ind.var === 'pts' ? ' pts' : ind.var === 'pp' ? ' p.p.' : ind.un ? ' ' + ind.un : '';
+    return (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmt(Math.abs(d), ind.var === 'pct' ? ind.casas : 1) + suf;
+  }
+
   function faixaNota(n) {
     if (n === null || n === undefined) return null;
     return n >= 70 ? 'bom' : n >= 40 ? 'atencao' : 'critico';
@@ -2223,7 +2237,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   G.GBX = G.GBX || {};
   Object.assign(G.GBX, { rodou, rodouLinha,
     D, COLUNAS, TEXTO, DIMS, GRUPOS, IND, IND_MAP, numero, normalizar, metaColunas, importarCSV, paraCSV, criarBase, filtrar, agregar, resumo, serieDiaria,
-    variacao, statusEvolucao, faixaNota, fmt, fmtInd, gerarExemplo, LIMIAR
+    variacao, statusEvolucao, regraEvolucao, textoDelta, faixaNota, fmt, fmtInd, gerarExemplo, LIMIAR
   });
 })(window);
 
@@ -2727,8 +2741,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const E = {
     base: null,
     fonte: { tipo: 'vazio', nome: 'Sem dados' },
-    cliente: '', linhasAll: null, colunasAll: null, semCliente: false,
-    veic: null, impVeic: null, confirmarRemocaoVeic: false, veicOrd: { col: 'nota', dir: -1 },
+    cliente: '', linhasAll: null, colunasAll: null, semCliente: false, silencio: 0, importCli: null,
+    veic: null, impVeic: null, veicOrd: { col: 'nota', dir: -1 },
     churnVista: 'cliente', trat: [], tratForm: null, tratRemover: null, tratInd: 'nota', tratEmDb: false,
     clientes: [], clientesPronto: false, clientesEmDb: false, clienteForm: { nome: '', grupo: '', obs: '' }, clienteRemover: null,
     A: null, B: null, modoComp: 'anterior', presetA: '30',
@@ -2849,6 +2863,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }
     memo = null;
     E.lista.pag = 1; E.veicLista.pag = 1;
+    E.comp.escopo = 'frota';   // o escopo é o id (posição) do motorista: com outra base apontaria para outra pessoa
   }
 
   // Troca o cliente em análise sem perder o período escolhido
@@ -2918,10 +2933,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (k === 'ultima') { const cs = coberturas(bb); return cs.length ? cs[cs.length - 1] : null; }
     return null;
   }
-  const PRESETS = [
-    ['ultimo', 'Último dia com dados'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'],
-    ['mes', 'Mês atual'], ['mesant', 'Mês anterior'], ['tudo', 'Todo o período']
-  ];
   function aplicarPreset(k) {
     const pp = presetPeriodo(k);
     if (!pp) return;
@@ -2946,13 +2957,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }).filter((x) => x.ativo);
     const cont = { evoluiu: 0, estavel: 0, regrediu: 0, sembase: 0 };
     mots.forEach((x) => { cont[x.st.status]++; });
-    memo = { chave, base: b, la, lb, frotaA, frotaB, mots, cont };
+    const nAtivos = mots.filter((x) => x.la.length).length;   // com registro no período analisado (mots inclui quem só rodou na comparação)
+    memo = { chave, base: b, la, lb, frotaA, frotaB, mots, cont, nAtivos };
     return memo;
   }
 
   function economia(a, b) {
-    if (!a.km || !a.litros || !b.kml) return null;
-    const litros = a.km / b.kml - a.litros;
+    // só os dias com km e litros (os mesmos do km/l): litros que a frota gastaria nesses km com o consumo de b, menos os gastos
+    if (!a.litros || !a.kml || !b.kml) return null;
+    const litros = a.litros * (a.kml / b.kml - 1);
     return { litros, reais: litros * E.preco };
   }
 
@@ -3096,11 +3109,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
-    { id: 47, data: '2026-10-23', titulo: 'Seletor de cliente arredondado', texto: 'O seletor de cliente (e o de grupo) no topo ganhou cantos redondos, igual à pílula do diesel.', href: '#/geral', link: 'Abrir Visão geral' },
-    { id: 46, data: '2026-10-23', titulo: 'Preço do diesel na pílula verde', texto: 'Clique na pílula verde do diesel, no topo, para escolher o preço: Automático (estado do grupo ou do cliente), Média Brasil (geral) ou um estado, cada um com o valor da Petrobras. O seletor separado saiu.', href: '#/geral', link: 'Abrir Visão geral' },
-    { id: 45, data: '2026-10-23', titulo: 'Menu lateral flutuante', texto: 'O menu da esquerda agora flutua e mostra só os ícones (passe o mouse para ver o nome). Clique no botão de menu no topo dele para abrir as opções com os nomes; clique fora, escolha uma página ou aperte Esc para fechar.', href: '#/geral', link: 'Abrir Visão geral' },
-    { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
-    { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
       </select>`;
   }
   function seletorGrupo() {
@@ -3128,6 +3136,11 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { id: 50, data: '2026-10-26', titulo: 'Menu no topo e gráficos novos', texto: 'O menu lateral saiu: as seções (Relatório, Frota, Motoristas, Retenção) ficam em pílulas no topo, e as páginas de cada seção aparecem logo abaixo. Os gráficos mudaram: linhas suaves com área listrada e o valor do último dia num balão, barras em cápsula com a maior em amarelo, medidores em semicírculo, rosca em segmentos e calendário em bolinhas. Passe o mouse para ver cada dia.', href: '#/dashboards', link: 'Abrir Dashboards' },
     { id: 49, data: '2026-10-26', titulo: 'Novo visual do painel', texto: 'O painel ganhou cara nova: cartões de vidro arredondados, menu e topo flutuantes, abas em cápsula, números maiores e o cabeçalho da Visão geral em amarelo Gobrax. A fonte agora é a Montserrat. A tela de entrada também ficou clara. Os dados e os botões continuam nos mesmos lugares.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 48, data: '2026-10-24', titulo: 'Mapa ao vivo saiu do painel', texto: 'A tela Mapa ao vivo foi retirada e não aparece mais no menu Frota. O restante do painel continua igual.', href: '#/veiculos', link: 'Abrir Veículos e grupos' },
+    { id: 47, data: '2026-10-23', titulo: 'Seletor de cliente arredondado', texto: 'O seletor de cliente (e o de grupo) no topo ganhou cantos redondos, igual à pílula do diesel.', href: '#/geral', link: 'Abrir Visão geral' },
+    { id: 46, data: '2026-10-23', titulo: 'Preço do diesel na pílula verde', texto: 'Clique na pílula verde do diesel, no topo, para escolher o preço: Automático (estado do grupo ou do cliente), Média Brasil (geral) ou um estado, cada um com o valor da Petrobras. O seletor separado saiu.', href: '#/geral', link: 'Abrir Visão geral' },
+    { id: 45, data: '2026-10-23', titulo: 'Menu lateral flutuante', texto: 'O menu da esquerda agora flutua e mostra só os ícones (passe o mouse para ver o nome). Clique no botão de menu no topo dele para abrir as opções com os nomes; clique fora, escolha uma página ou aperte Esc para fechar.', href: '#/geral', link: 'Abrir Visão geral' },
+    { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
+    { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 42, data: '2026-10-23', titulo: 'Troca de cliente só no topo', texto: 'Os botões "Cliente do relatório" saíram da Visão geral. Para trocar de empresa, use o seletor de cliente na barra do canto superior direito.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 41, data: '2026-10-23', titulo: 'Caju Transportes no painel', texto: 'A Caju Transportes entrou como cliente, já ligada ao HubSpot (perfil, nota CHS, ligações, reuniões, notas, chamados e contatos) e com o diesel de Mato Grosso do Sul. Os últimos 30 dias de motoristas, veículos, odômetro (41 veículos) e premiação já entraram pela API, separados dos dados da Xtsul.', href: '#/clientes', link: 'Abrir Clientes' },
     { id: 40, data: '2026-10-22', titulo: 'Baixar arquivo no painel do Claude', texto: 'Na janela de exportação, o botão Baixar arquivo agora funciona também no painel do Claude: ele pede sua confirmação e salva o CSV. Copiar continua disponível.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -3224,17 +3237,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const RAPIDOS = [['ultimo', 'Último dia'], ['7', '7 dias'], ['30', '30 dias'], ['90', '90 dias'], ['mes', 'Mês atual'], ['mesant', 'Mês anterior'], ['tudo', 'Todo o período']];
 
   // ---------- Calendário livre: dia, semana, mês ou intervalo; comparação escolhida pela pessoa ----------
-  const mesInteiro = (p) => p.ini === D.inicioMes(p.ini) && p.fim === D.fimMes(p.ini);
   function granPeriodo(d, g) {
     if (g === 'semana') { const ini = D.somar(d, -((D.deISO(d).getUTCDay() + 6) % 7)); return { ini, fim: D.somar(ini, 6) }; }   // segunda a domingo
     if (g === 'mes') return { ini: D.inicioMes(d), fim: D.fimMes(d) };
     return { ini: d, fim: d };
-  }
-  function compPara(p, comp) {
-    const mesAnt = () => { const i = D.somarMeses(p.ini, -1); return { ini: i, fim: D.fimMes(i) }; };
-    if (comp === 'semana') return { ini: D.somar(p.ini, -7), fim: D.somar(p.fim, -7) };
-    if (comp === 'mes') return mesInteiro(p) ? mesAnt() : deslocar(p, 1, 0);
-    return mesInteiro(p) ? mesAnt() : anterior(p);   // anterior equivalente: dia anterior com dados, semana anterior, mês anterior
   }
   function atalhosPeriodo() { return (temTotais(E.base) ? [['ultima', 'Última planilha']] : []).concat(RAPIDOS); }
   function painelCalendario() {
@@ -3470,7 +3476,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
     const ordenados = c.mots.filter((x) => x.st.delta !== null).sort((p, q) => q.st.delta - p.st.delta);
     const indSt = IND_MAP[ordenados[0] ? ordenados[0].st.ind : 'nota'];
-    const fmtDelta = (d) => (indSt.key === 'nota' ? (d > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(d), 1) + ' pts' : (d > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(d), 2) + ' km/l');
+    const fmtDelta = (d) => X.textoDelta(indSt, d);
     const lista = (arr, sinal) => arr.length ? arr.map((x, i) => `<a class="ranking-item" href="${linkMotorista(x.m.id)}" style="text-decoration:none;color:inherit">
         <span class="ranking-pos">${i + 1}º</span>${avatar(x.m.nome, 28)}
         <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span class="pessoa-nome">${esc(x.m.nome)}</span><span class="apoio num" style="font-size:11.5px">${fmtInd(indSt, x.b[indSt.key])} → ${fmtInd(indSt, x.a[indSt.key])}</span></span>
@@ -3484,7 +3490,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `
       <div class="pag-cab"><div class="pag-cab-texto">
         <h1 class="h1">Desenvolvimento da frota</h1>
-        <span class="sub">${total} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}</span>
+        <span class="sub">${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}</span>
       </div>
       <a class="btn" href="#/comparativo" style="text-decoration:none">${icone('tabela', 14, '#5F6368')}Comparativo completo</a>
       </div>
@@ -3495,7 +3501,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="grade-2">
         <section class="card">
           <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução dos motoristas</h2>
-            <span class="h2-sub">${indSt.key === 'nota' ? 'Pela Nota Gobrax: evoluiu com +2 pts ou mais, regrediu com −2 pts ou menos.' : 'Pela média km/l: ±2% entre os períodos.'}</span></div></div>
+            <span class="h2-sub">Evoluiu ou regrediu ${X.regraEvolucao(indSt.key)} entre os períodos.</span></div></div>
           <div class="card-corpo">
             <div class="dist" role="img" aria-label="${dist.map((k) => c.cont[k] + ' ' + nomeStatus(k)).join(', ')}">${dist.map((k) => `<span style="width:${pct(c.cont[k])}%;background:${STATUS[k].cor}"></span>`).join('')}</div>
             <div class="dist-leg">${['evoluiu', 'estavel', 'regrediu'].map((k) => `<button type="button" class="dist-item" data-acao="ver-status" data-status="${k}">
@@ -3634,7 +3640,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       }
     };
     const corpo = pagina.length
-      ? pagina.map((x) => `<tr class="clicavel" data-acao="abrir-motorista" data-id="${x.m.id}">${cols.map((k) => celula(x, k)).join('')}</tr>`).join('')
+      ? pagina.map((x) => `<tr class="clicavel" data-acao="abrir-motorista" data-id="${esc(x.m.id)}">${cols.map((k) => celula(x, k)).join('')}</tr>`).join('')
       : `<tr><td colspan="${cols.length}"><div class="vazio"><span class="vazio-icone">${icone('filtro', 14, '#9AA0A6')}</span>
           <span class="vazio-titulo">Nenhum motorista com esses filtros</span>
           <span class="apoio" style="max-width:36ch">Tente remover a busca ou o filtro de evolução, ou ampliar o período.</span>
@@ -3899,7 +3905,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     for (let d = s.A.ini; d <= s.A.fim; d = D.somar(d, 1)) {
       const ls = porDia.get(d), v = ls ? X.agregar(ls, ind, E.base) : null;
       let cls = ls ? 'sem' : null;
-      if (semTem(v)) cls = k === 'nota' ? (Math.round(v) >= 70 ? 'bom' : Math.round(v) >= 40 ? 'atencao' : 'critico') : semTem(s.frota.kml) ? (v >= s.frota.kml ? 'bom' : 'atencao') : 'sem';
+      if (semTem(v)) cls = k === 'nota' ? X.faixaNota(Math.round(v)) : semTem(s.frota.kml) ? (v >= s.frota.kml ? 'bom' : 'atencao') : 'sem';
       out.push({ data: d, v, cls });
     }
     return out;
@@ -3910,16 +3916,18 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const semValDia = (s, v) => (s.chave === 'nota' ? fmt(v, 0) : fmtInd(IND_MAP[s.chave], v, false));
   const semCrit = (s) => (s.chave === 'nota' ? 'nota do dia: boa a partir de 70' : 'km/l do dia contra a média da frota');
   // Situação de um indicador contra a semana comparada; km rodados não conta como evolução de condução
+  // Nota, km/l e faixa verde seguem o mesmo limiar da evolução do motorista (X.LIMIAR), para o card e o selo nunca discordarem
+  const dentroDoLimiar = (ind, v) => X.LIMIAR[ind.key] !== undefined && Math.abs(ind.key === 'kml' ? (v.rel || 0) : v.delta) < X.LIMIAR[ind.key];
   function semSituacao(ind, v) {
     if (!v || v.semBase) return { rot: 'Sem base', cls: 'neutro' };
     if (ind.key === 'km' || !ind.melhor || v.sentido === 'neutro') return { rot: v.estavel ? 'Igual' : 'Variou', cls: 'neutro' };
-    if (v.estavel) return { rot: 'Estável', cls: 'neutro' };
+    if (v.estavel || dentroDoLimiar(ind, v)) return { rot: 'Estável', cls: 'neutro' };
     return v.sentido === 'melhor' ? { rot: 'Evoluiu', cls: 'bom' } : { rot: 'Regrediu', cls: 'ruim' };
   }
   function semPlacar(x, s) {
     const l = [semHero(s)].concat(semLinhas(x, s)).filter((ind) => ind.key !== 'km' && ind.melhor)
-      .map((ind) => X.variacao(ind, x.a[ind.key], x.b[ind.key])).filter((v) => v && !v.semBase)
-      .map((v) => (v.estavel ? 'est' : v.sentido));
+      .map((ind) => ({ ind, v: X.variacao(ind, x.a[ind.key], x.b[ind.key]) })).filter((o) => o.v && !o.v.semBase)
+      .map((o) => (o.v.estavel || dentroDoLimiar(o.ind, o.v) ? 'est' : o.v.sentido));
     return { ev: l.filter((c) => c === 'melhor').length, rg: l.filter((c) => c === 'pior').length, tot: l.length };
   }
   // destaque: o indicador que mais melhorou; atenção: o que mais piorou (contra a semana comparada)
@@ -4499,7 +4507,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
             <label class="campo-bloco" style="min-width:220px"><span class="campo-rotulo">Escopo</span>
               <select class="campo" data-campo="escopo">
                 <option value="frota" ${escopo === 'frota' ? 'selected' : ''}>Frota inteira</option>
-                ${c.mots.map((x) => `<option value="${x.m.id}" ${escopo === x.m.id ? 'selected' : ''}>${esc(x.m.nome)}</option>`).join('')}
+                ${c.mots.map((x) => `<option value="${esc(x.m.id)}" ${escopo === x.m.id ? 'selected' : ''}>${esc(x.m.nome)}</option>`).join('')}
               </select></label>
             <label class="campo-bloco" style="width:150px"><span class="campo-rotulo">Preço do diesel</span>
               <span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="preco" id="preco-diesel" value="${fmt(E.preco, 2)}" aria-label="Preço do diesel em reais por litro"><span>R$/L</span></span>${E.diesel ? (E.precoManual ? `<button type="button" class="btn-link peq" data-acao="preco-auto">Usar o da Petrobras (R$ ${fmt(Number(E.diesel.preco_br), 2)})</button>` : `<span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.diesel.periodo || '')}</span>`) : ''}</label>
@@ -4524,7 +4532,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         </div>
         <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">
           <table class="tabela" style="min-width:720px"><thead><tr><th>#</th><th>Motorista</th><th class="dir">Período analisado</th><th class="dir">Comparação</th><th class="dir">Variação</th><th>Resultado</th></tr></thead>
-          <tbody>${linhas.map((r, i) => `<tr class="clicavel" data-acao="abrir-motorista" data-id="${r.x.m.id}"><td class="num mudo">${i + 1}</td>
+          <tbody>${linhas.map((r, i) => `<tr class="clicavel" data-acao="abrir-motorista" data-id="${esc(r.x.m.id)}"><td class="num mudo">${i + 1}</td>
             <td><span class="pessoa">${avatar(r.x.m.nome, 28)}<span class="pessoa-nome">${esc(r.x.m.nome)}</span></span></td>
             <td class="dir">${fmtInd(ind, r.x.a[ind.key])}</td><td class="dir" style="color:var(--texto-2)">${fmtInd(ind, r.x.b[ind.key])}</td>
             <td class="dir">${variacao(r.v)}</td><td>${resultado(r.v, ind)}</td></tr>`).join('')}</tbody></table></div></div>
@@ -5221,7 +5229,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (v.tickets && v.tickets.semDetalhe) dims.push({ nome: 'Suporte', nivel: 'atencao', texto: `${fmt(tot(v.tickets), 0)} chamados no histórico. A coleta não teve permissão para ler os chamados, então não dá para dizer quantos estão abertos nem os assuntos.`, acoes: ['Conferir no HubSpot os chamados em aberto deste cliente antes da próxima conversa.'] });
     else dims.push({ nome: 'Suporte', nivel: nivel(!ab && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${fmt(ab, 0)} em aberto. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
     // 4. Contrato e frota
-    const fc = hubNum(p.frota_contratada), bv = E.veic ? baseVeic() : null, comDados = bv ? bv.motoristas.length : null;
+    const fc = hubNum(p.frota_contratada), comDados = E.veic ? placasDoCliente().length : null;   // todas as placas do cliente, sem o filtro de grupo
     const ini = hubDia(p.data_inicio_do_contrato_original), fim = hubDia(p.data_de_termino_do_contrato);
     const mesesCli = ini ? Math.max(0, Math.round(D.dif(ini, hoje) / 30.4)) : null, diasFim = fim ? D.dif(hoje, fim) : null;
     const adocao = fc && comDados !== null ? comDados / fc : null;
@@ -5263,7 +5271,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span><span class="alerta-texto">Ou rode <code>node api/hubspot.mjs</code> com o token do HubSpot no api/.env e clique em <b>Importar arquivo</b>.</span></div></div>`}</div></section>`;
     }
     const p = v.comp, tot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : null), res = (r) => (r && r.results) || [];
-    const bv = E.veic ? baseVeic() : null;
     // perfil
     const estados = String(p.estados_onde_opera || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
     const campo = (rot, val) => (val ? `<div class="hb-campo"><span>${rot}</span><b>${val}</b></div>` : '');
@@ -5286,7 +5293,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <div class="hb-chs-nota"><span class="hb-t">Nota CHS</span><b style="color:${corChs(chs)}">${chs === null ? '—' : fmt(chs, 0)}</b><span class="apoio">de 100${hubNum(p.chs_score) !== null && hubNum(p.nota_do_chs) !== null ? ' · nota final ' + fmt(hubNum(p.chs_score), 1) : ''}</span></div>
         <div class="hb-chs-partes">${partes.map(([r, n]) => `<div class="hb-parte"><span>${r}</span><span class="hb-trilho"><i style="width:${Math.max(2, Math.min(100, n))}%;background:${corChs(n)}"></i></span><b>${fmt(n, 0)}</b></div>`).join('')}</div></div>`;
     // números
-    const fc = hubNum(p.frota_contratada), ft = hubNum(p.frota_total), noPainel = bv ? bv.motoristas.length : null;
+    const fc = hubNum(p.frota_contratada), ft = hubNum(p.frota_total), noPainel = E.veic ? placasDoCliente().length : null;
     const ultCall = res(v.calls)[0], ultEmail = res(v.emails)[0];
     const dUlt = hubDia(p.notes_last_contacted), ds = diasDesde(dUlt);
     const tile = (t, val, sub, cls) => `<div class="hb-tile ${cls || ''}"><span class="hb-t">${t}</span><b>${val}</b><span class="hb-s">${sub}</span></div>`;
@@ -5351,7 +5358,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!itens.length) return '';
     return `<section class="radar" aria-label="Análise inteligente da frota">
       <div class="radar-cab"><span class="radar-pulso" aria-hidden="true"></span><b><span class="ia" aria-hidden="true">✦</span>Análise inteligente da frota</b>
-        <span class="radar-sub">leitura de ${fmt(c.la.length, 0)} registros de ${fmt(c.mots.length, 0)} motoristas, atualizada a cada filtro</span></div>
+        <span class="radar-sub">leitura de ${fmt(c.la.length, 0)} registros de ${fmt(c.nAtivos, 0)} motoristas, atualizada a cada filtro</span></div>
       <div class="radar-scan" aria-hidden="true"></div>
       <ul class="radar-lista">${itens.slice(0, 6).map((i, n) => `<li class="radar-i radar-${i.cls}" style="--n:${n}"><span class="radar-ic">${i.icone}</span><span>${i.html}</span></li>`).join('')}</ul>
     </section>`;
@@ -5479,7 +5486,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ${resultado}${potencial}
         ${num('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), P.ref ? 'meta interna ' + fmt(P.ref, 2) + ' km/l' : '')}
         ${num('Km por dia trabalhado', fmtInd(IND_MAP.km_dia, A.km_dia), dv('km_dia'), fmt(A.dias, 0) + ' dias trabalhados')}
-        ${num(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.mots.length, 0) + ' motoristas ativos')}
+        ${num(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.nAtivos, 0) + ' motoristas ativos')}
       </div>
       <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a R$ ${fmt(E.preco, 2)}/L (ajuste na aba Comparativo). A referência é o km/l que separa o quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
     </section>`;
@@ -5496,9 +5503,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }
     const regr = c.mots.filter((x) => x.st.status === 'regrediu' && x.st.delta !== null).sort((p, q) => p.st.delta - q.st.delta);
     if (regr.length) {
-      const share = regr.length / c.mots.length, top = regr.slice(0, 5), mx = Math.abs(top[0].st.delta) || 1, ind = IND_MAP[top[0].st.ind];
+      const share = regr.length / Math.max(1, c.mots.length - c.cont.sembase), top = regr.slice(0, 5), mx = Math.abs(top[0].st.delta) || 1, ind = IND_MAP[top[0].st.ind];
       ac.push({ ord: 60 + share * 100, prio: share >= 0.25 ? 'Alta' : 'Média', tema: 'Evolução', titulo: 'Motoristas que pioraram',
-        grande: fmt(regr.length, 0), pequeno: `de ${c.mots.length} motoristas (${fmt(share * 100, 0)}%)`,
+        grande: fmt(regr.length, 0), pequeno: `de ${c.mots.length - c.cont.sembase} motoristas com base (${fmt(share * 100, 0)}%)`,
         texto: 'Pioraram em relação ao período anterior. Agir cedo evita que o resultado vire hábito.',
         linhas: top.map((x) => planoLinha(x, `${fmtInd(ind, x.b[ind.key])} → ${fmtInd(ind, x.a[ind.key])}`, (Math.abs(x.st.delta) / mx) * 100, 'var(--atencao)')).join(''),
         passo: 'Conversar individualmente com os que mais caíram e entender o que mudou: rota, veículo ou carga.' });
@@ -5902,24 +5909,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="gauge-centro"><span class="gauge-num num">${fmt(score, 0)}</span><span class="gauge-rot">risco ${faixa.toLowerCase()}</span></div></div>`;
   }
   // Prova de valor: o que a gestão da frota já entregou ao cliente (apoio à retenção)
-  function cartaoProvaValor() {
-    if (!E.base) return '';
-    const c = calc();
-    const ec = economia(c.frotaA, c.frotaB);
-    const n = c.mots.length;
-    const evol = c.cont.evoluiu, reg = c.cont.regrediu;
-    const dn = (c.frotaA.nota > 0 && c.frotaB.nota > 0) ? c.frotaA.nota - c.frotaB.nota : null;
-    const dLit = c.frotaB.kml && c.frotaA.km ? c.frotaA.km / c.frotaB.kml - c.frotaA.litros : null;
-    const itens = [];
-    if (ec && ec.reais > 0) itens.push(['Economia de diesel', 'R$ ' + fmt(ec.reais, 0), fmt(ec.litros, 0) + ' L a menos que no período anterior, para os mesmos km (diesel a R$ ' + fmt(E.preco, 2) + '/L)']);
-    if (dn !== null) itens.push(['Evolução da nota', (dn >= 0 ? '+' : '') + fmt(dn, 1) + ' pts', 'de ' + fmt(c.frotaB.nota, 1) + ' para ' + fmt(c.frotaA.nota, 1)]);
-    itens.push(['Motoristas que evoluíram', fmt(evol, 0) + ' de ' + fmt(n, 0), reg ? fmt(reg, 0) + ' ainda pedem atenção' : 'nenhum regrediu']);
-    itens.push(['Km monitorados', fmt(c.frotaA.km, 0) + ' km', 'rodagem acompanhada pela Gobrax no período']);
-    const pot = (function () { try { const p = planoDados(); return p && p.mensal > 0 ? p.mensal : null; } catch (e) { return null; } })();
-    const cards = itens.map((i) => '<div class="kpi kpi-bom"><span class="kpi-titulo">' + i[0] + '</span><span class="kpi-valor">' + i[1] + '</span><span class="kpi-desc">' + esc(i[2]) + '</span></div>').join('');
-    const roteiro = ['Abra a reunião mostrando a economia e a evolução da nota acima, com números do próprio cliente.', 'Mostre os motoristas que mais evoluíram e reconheça quem melhorou.', 'Apresente o plano de ação (aba Plano de ação) com o ganho que ainda está na mesa' + (pot ? ': cerca de R$ ' + fmt(pot, 0) + ' por mês' : '') + '.', 'Feche com um compromisso de prazo: próxima revisão em 30 dias.'];
-    return '<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Prova de valor para a retenção</h2><span class="h2-sub">O que a gestão da frota já entregou neste período. Use na conversa com o cliente.</span></div></div><div class="card-corpo"><div class="grade-kpi">' + cards + '</div><div style="margin-top:14px"><b>Roteiro da conversa de retenção</b>' + roteiro.map((r, i) => '<div class="churn-passo"><span class="churn-passo-n">' + (i + 1) + '</span><div><p>' + esc(r) + '</p></div></div>').join('') + '</div></div></section>';
-  }
 
   // ---------- Tratativas: o que foi combinado com o cliente e o que aconteceu com os números depois ----------
   const CHAVE_TRAT = 'gbx-frota-tratativas';
@@ -6413,7 +6402,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // Critério usado para evoluiu / regrediu (segue X.statusEvolucao: nota, km/l, início da faixa verde ou faixa verde)
-  const critEvolucao = (c) => ({ nota: 'pela Nota Gobrax (±2 pts)', kml: 'pela média de km/l (±2%)', inicio_faixa_verde: 'pelo início da faixa verde (±2 p.p.)', faixa_verde: 'pela faixa verde (±2 p.p.)' }[((c.mots.find((x) => x.st && x.st.ind) || {}).st || {}).ind] || 'pela Nota Gobrax (±2 pts)');
+  const critEvolucao = (c) => X.regraEvolucao(((c.mots.find((x) => x.st && x.st.ind) || {}).st || {}).ind);
   // Anéis de desempenho: cada indicador de condução como um anel, com a mudança contra o período anterior
   function aneisDesempenho(c) {
     const A = c.frotaA, B = c.frotaB;
@@ -6808,7 +6797,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const nGrupos = opcoesDim('grupo', true).length;
     const stat = (ic, v, rot) => `<div class="hv-stat"><span class="hv-ic">${icone(ic, 19)}</span><span><b>${fmt(v, 0)}</b><small>${rot}</small></span></div>`;
     const stats = [
-      stat('pessoas', c.mots.length, 'motoristas'),
+      stat('pessoas', c.nAtivos, 'motoristas'),
       bv ? stat('caminhao', bv.motoristas.length, 'veículos') : '',
       nGrupos ? stat('camadas', nGrupos, 'grupos') : '',
       A.km ? stat('estrada', A.km, 'km monitorados') : '',
@@ -6835,7 +6824,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml)));
     if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde)));
     if (temInd('motor_ocioso')) itens.push(item('Motor ligado parado', fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso), dv('motor_ocioso'), 'antes ' + fmtInd(IND_MAP.motor_ocioso, B.motor_ocioso)));
-    if (c.lb.length) itens.push(item('Motoristas que evoluíram', fmt(c.cont.evoluiu, 0) + ' de ' + fmt(c.mots.length, 0), c.cont.regrediu ? `<span class="exec-ruim">${fmt(c.cont.regrediu, 0)} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', critEvolucao(c)));
+    if (c.lb.length) itens.push(item('Motoristas que evoluíram', fmt(c.cont.evoluiu, 0) + ' de ' + fmt(c.mots.length - c.cont.sembase, 0), c.cont.regrediu ? `<span class="exec-ruim">${fmt(c.cont.regrediu, 0)} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', critEvolucao(c)));
     const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Resultado do período</span><span class="exec-sub">${D.periodoBR(E.A)}${c.lb.length ? ' · comparado a ' + D.periodoBR(E.B) : ''}</span></div>
       <div class="exec-grade">${itens.join('')}</div></section>`;
 
@@ -6891,7 +6880,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     let destaques = '';
     if (ord.length) {
       const indSt = IND_MAP[ord[0].st.ind];
-      const fmtD = (d) => (d > 0 ? '▲ ' : '▼ ') + (indSt.key === 'nota' ? fmt(Math.abs(d), 1) + ' pts' : fmt(Math.abs(d), 2) + ' km/l');
+      const fmtD = (d) => X.textoDelta(indSt, d);
       const mx = Math.max.apply(null, ord.map((x) => Math.abs(x.st.delta)).concat([1e-9]));
       const lin = (arr, bom) => (arr.length ? arr.map((x) => planoLinha(x, fmtD(x.st.delta), (Math.abs(x.st.delta) / mx) * 100, bom ? 'var(--ok)' : 'var(--critico)')).join('') : '<span class="apoio" style="padding:6px 0">Nenhum motorista nesta situação.</span>');
       const evol = ord.filter((x) => x.st.status === 'evoluiu').slice(0, 5);
@@ -6949,14 +6938,17 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
       try { db.collection('config').doc('diesel_uf').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !v.diesel || !v.diesel.br) return; if (!E.dieselUF || String(v.coleta) > String(E.dieselUF.coleta)) { E.dieselUF = v; render(); } }, () => {}); } catch (e) { /* sem preços por estado */ }
       try { db.collection('config').doc('diesel').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !(Number(v.preco_br) > 0)) return; E.diesel = v; if (!E.precoManual) E.preco = Number(v.preco_br); render(); }, () => {}); } catch (e) { /* sem preço automático */ }
-      try { db.collection('relacionamento').onSnapshot((sn) => { if (E.demo) return; E.rel = sn.docs.map((d) => Object.assign({ id: d.id }, d.data())).filter((r) => true); vigiarHubspot(); if (['plano', 'clientes', 'churn'].includes(E.rota.tela)) render(); }, () => {}); } catch (e) { /* sem relacionamento */ }
+      try { db.collection('relacionamento').onSnapshot((sn) => { if (E.demo) return; E.rel = sn.docs.map((d) => Object.assign({ id: d.id }, d.data())); vigiarHubspot(); if (['plano', 'clientes', 'churn'].includes(E.rota.tela)) render(); }, () => {}); } catch (e) { /* sem relacionamento */ }
       E.clientesEmDb = true;
-      dbRef.onSnapshot((snap) => {
-        if (E.demo) return;
-        E.clientes = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
-        ordenarClientes(); E.clientesPronto = true;
-        render();   // cliente cadastrado por outra pessoa aparece na hora, em qualquer tela
-      }, () => { E.clientesEmDb = false; carregarClientesLocal(); if (E.rota.tela === 'clientes') render(); });
+      const semBase = () => { E.clientesEmDb = false; E.planCarregando = false; carregarClientesLocal(); render(); };
+      try {
+        dbRef.onSnapshot((snap) => {
+          if (E.demo) return;
+          E.clientes = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+          ordenarClientes(); E.clientesPronto = true;
+          render();   // cliente cadastrado por outra pessoa aparece na hora, em qualquer tela
+        }, semBase);
+      } catch (e) { semBase(); }
     } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); lerHubLocal(); render(); }
   }
   function carregarClientesLocal() {
@@ -6984,11 +6976,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   async function removerCliente(id) {
     const cli = E.clientes.find((c) => c.id === id);
-    if (cli) { apagarDadosCliente(cli.nome, 'motoristas', true); apagarDadosCliente(cli.nome, 'veiculos', true); }
+    // primeiro o cliente: se a remoção falhar (sem permissão), os dados dele continuam intactos
     try {
       if (E.clientesEmDb && dbRef) await dbRef.doc(id).delete();
       else { E.clientes = E.clientes.filter((c) => c.id !== id); salvarLocal(); }
     } catch (e) { toast('Não foi possível remover o cliente.', 'erro'); return; }
+    if (cli) {
+      apagarDadosCliente(cli.nome, 'motoristas', true); apagarDadosCliente(cli.nome, 'veiculos', true);
+      armazem.apagar(chaveToken(cli.nome)); armazem.apagar(chaveAuto(cli.nome));   // o token não fica para um cliente novo com o mesmo nome
+    }
     E.clienteRemover = null; if (cli && ckey(E.cliente) === ckey(cli.nome)) E.cliente = ''; if (E.rota.tela === 'cliente') location.hash = '#/config'; render(); toast('Cliente e dados removidos.');
   }
   // ---------- Planilhas compartilhadas (db): um documento por tipo, cliente e dia, dividido em partes se passar do limite ----------
@@ -7293,7 +7289,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         const dias = [];
         for (let d = f.ini; d <= fim; d = D.somar(d, 1)) dias.push(d);
         let veics = 0, comDados = 0, perfOk = true, perfErro = '', perfFalhas = 0;
-        E.importCli = cli; E.silencio = true;
+        E.silencio++;
         try {
           for (let i = 0; i < dias.length; i++) {
             passo('Estatísticas e performance por veículo: dia ' + (i + 1) + ' de ' + dias.length + ' (' + D.br(dias[i]) + ')');
@@ -7305,14 +7301,19 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
             if (perfOk) { try { perf = registros(await apiGet('v1/vehicle-performance', jan, token)); perfFalhas = 0; } catch (e) { if (!/respondeu 404/.test(e.message) && ++perfFalhas >= 3) { perfOk = false; perfErro = e.message; } } }
             const { csv, n, linhasMot, pendentes } = diaParaCSV(dias[i], recs, perf, cli, jan);
             if (!n) continue;
-            if (importarTexto(csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
+            if (importarPara(cli, csv, 'API Gobrax · estatísticas', true, 'veiculos')) { comDados++; veics = Math.max(veics, n); }
             if (pendentes.length) {
               passo('Motoristas do dia ' + D.br(dias[i]) + ': ' + pendentes.length + ' vínculo(s) com o veículo só em parte do dia');
               linhasMot.push(...await linhasDosVinculos(dias[i], pendentes, cli, token, perfOk));
             }
-            if (linhasMot.length) importarTexto([COLS_API.join(';')].concat(linhasMot).join('\n'), 'API Gobrax · motoristas', true);   // o relatório geral sai da API, sem planilha
+            if (linhasMot.length) importarPara(cli, [COLS_API.join(';')].concat(linhasMot).join('\n'), 'API Gobrax · motoristas', true);   // o relatório geral sai da API, sem planilha
           }
-        } finally { E.importCli = null; E.silencio = false; E.impVeic = null; E.importacao = null; }
+        } finally {
+          E.silencio--;
+          // tira só o aviso da própria busca; o de uma planilha que a pessoa anexou no meio continua
+          if (E.impVeic && /^API Gobrax/.test(E.impVeic.nome || '')) E.impVeic = null;
+          if (E.importacao && /^API Gobrax/.test(E.importacao.nome || '')) E.importacao = null;
+        }
         st.feito.push(comDados ? 'estatísticas' + (perfOk ? ' e performance' : '') + ' de ' + comDados + (comDados === 1 ? ' dia' : ' dias') + ' (até ' + veics + ' veículos)' : 'estatísticas: a API não trouxe veículos no período');
         if (!perfOk) st.feito.push('performance não veio (' + perfErro + ')');
       }
@@ -7495,7 +7496,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!c) return;
     Object.assign(c, campos);
     try {
-      if (E.clientesEmDb && dbRef) { const { id: _i, ...doc } = c; await dbRef.doc(id).set(doc); }
+      // update grava só os campos mudados: dois usuários editando ao mesmo tempo (UF e investimento, por ex.) não apagam um ao outro
+      if (E.clientesEmDb && dbRef) { const ref = dbRef.doc(id); if (ref.update) await ref.update(campos); else { const { id: _i, ...doc } = c; await ref.set(doc); } }
       else salvarLocal();
       toast(aviso || 'Estado salvo. O preço do diesel já segue ' + (campos.uf ? nomeUF(campos.uf) : 'o novo estado') + '.');
     } catch (e) { toast(aviso ? 'Não foi possível salvar.' : 'Não foi possível salvar o estado.', 'erro'); }
@@ -7556,7 +7558,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // Tela: Premiação (scores mensais dos motoristas, da API)
   function telaPremiacao() {
-    const docs = docsApi('premiacao', E.cliente).sort((a, b) => (a.data < b.data ? -1 : 1));
+    // vem da base compartilhada: só mês no formato 'AAAA-MM' entra no HTML
+    const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data))).sort((a, b) => (a.data < b.data ? -1 : 1));
     const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Premiação</h1><span class="sub">Nota, km e bonificação de cada motorista por mês, da API Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}.</span></div></div>`;
     if (!docs.length) return cab + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma premiação buscada ainda</span>
       <span class="apoio">No perfil do cliente, salve o token da API e busque "Scores e premiação".</span><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a></div></div></section>`;
@@ -7633,7 +7636,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const cs = contaSrv(), U = usu();
     if (!cs) return;
     U.carregando = true;
-    try { U.lista = await cs.chamar('GET', '/api/v1/usuarios'); }
+    try { U.lista = await cs.chamar('GET', '/api/v1/usuarios'); U.erro = ''; }
     catch (e) { U.lista = U.lista || []; U.erro = e.message; }
     U.carregando = false;
     if (naConfig()) render();
@@ -7716,11 +7719,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const cliSrv = (nome) => { const c = (msg().clientes || []).find((x) => ckey(x.nome) === ckey(nome)); return c ? String(c.id) : ''; };
   async function msgCarregar() {
     const M = msg(), cs = contaSrv();
-    if (!cs || !M.cli || M.carregando) return;
-    M.carregando = true;
-    try { M.lista = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens?dia=' + encodeURIComponent(M.dia)); M.erro = ''; }
-    catch (e) { M.lista = []; M.erro = e.message; }
-    M.carregando = false;
+    const pedido = M.cli + '|' + M.dia;
+    if (!cs || !M.cli || M.carregando === pedido) return;
+    M.carregando = pedido;   // guarda o que foi pedido: se a pessoa trocar cliente ou dia no meio, a resposta antiga é descartada
+    let lista, erro = '';
+    try { lista = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens?dia=' + encodeURIComponent(M.dia)); }
+    catch (e) { lista = []; erro = e.message; }
+    if (M.carregando === pedido) M.carregando = false;
+    if (M.cli + '|' + M.dia !== pedido) { if (E.rota.tela === 'mensagens') render(); return; }
+    M.lista = lista; M.erro = erro;
     if (E.rota.tela === 'mensagens') render();
   }
   // acompanha a busca do cliente de 10 em 10 s e, quando ela termina, atualiza a situação e recarrega as mensagens
@@ -7776,7 +7783,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
               <span class="pessoa">${avatar(m.motorista, 32)}<b style="font-weight:600">${esc(m.motorista)}</b></span>
               ${m.enviada ? `<span class="badge badge-ok" title="Marcada em ${esc(dataHoraBR(m.enviada))}">Enviada</span>` : '<span class="badge badge-vazio">Não enviada</span>'}</div></div>
             <div class="card-corpo" style="gap:12px">
-              ${m.foco_rotulo ? `<span class="apoio">Ponto de atenção: <b>${esc(m.foco_rotulo)}</b> · melhorou em ${m.melhorou} e piorou em ${m.piorou} de ${m.comparados} indicadores</span>` : m.comparados ? `<span class="apoio">Nenhum ponto piorou · melhorou em ${m.melhorou} de ${m.comparados} indicadores</span>` : ''}
+              ${m.foco_rotulo ? `<span class="apoio">Ponto de atenção: <b>${esc(m.foco_rotulo)}</b> · melhorou em ${esc(m.melhorou)} e piorou em ${esc(m.piorou)} de ${esc(m.comparados)} indicadores</span>` : m.comparados ? `<span class="apoio">Nenhum ponto piorou · melhorou em ${esc(m.melhorou)} de ${esc(m.comparados)} indicadores</span>` : ''}
               <p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55;padding:12px 14px;border-radius:12px;background:var(--apoio, rgba(127,127,127,.08))">${esc(m.texto)}</p>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn" data-acao="msg-copiar" data-i="${i}">Copiar</button>
@@ -7789,12 +7796,14 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // Motorista individual: dias com mensagem enviada e se ele melhorou no que foi apontado (vem do servidor)
   const RESULT_MSG = { melhorou: ['Melhorou', 'ok'], nao_melhorou: ['Não melhorou', 'critico'], aguardando: ['Aguardando dados', 'neutro'], sem_ponto: ['Sem ponto de atenção', 'vazio'] };
+  // resposta com erro fica guardada por 1 minuto (sem repetir a chamada a cada redesenho) e depois é buscada de novo
+  const podeRetentar = (o) => !!(o && o.erro && Date.now() - (o.em || 0) > 60000);
   async function msgAcomp(cli, nome) {
     const M = msg(), cs = contaSrv(), k = cli + '|' + nome;
-    if (!cs || M.acomp[k]) return;
+    if (!cs || (M.acomp[k] && !podeRetentar(M.acomp[k]))) return;
     M.acomp[k] = { carregando: true };
     try { M.acomp[k] = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/acompanhamento?motorista=' + encodeURIComponent(nome)); }
-    catch (e) { M.acomp[k] = { erro: e.message }; }
+    catch (e) { M.acomp[k] = { erro: e.message, em: Date.now() }; }
     if (E.rota.tela === 'individual') render();
   }
   function blocoMsgMotorista(nome) {
@@ -7804,7 +7813,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const cli = cliSrv(E.cliente);
     if (!cli) return '';
     const A = M.acomp[cli + '|' + nome];
-    if (!A) setTimeout(() => msgAcomp(cli, nome), 0);
+    if (!A || podeRetentar(A)) setTimeout(() => msgAcomp(cli, nome), 0);
     const pct = (v) => (v === null || v === undefined ? '—' : fmt(v, 1) + '%');
     let corpo;
     if (!A || A.carregando) corpo = '<div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando as mensagens…</span></div></div>';
@@ -7812,16 +7821,16 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     else if (!A.dias_enviada) corpo = '<div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma mensagem enviada ainda</span><span class="apoio">Em <a class="btn-link" href="#/mensagens">Mensagens do dia</a>, copie a análise, mande pelo WhatsApp e marque como enviada.</span></div></div>';
     else {
       const avaliados = A.envios.filter((e) => e.resultado === 'melhorou' || e.resultado === 'nao_melhorou'), melhorou = avaliados.filter((e) => e.resultado === 'melhorou').length;
-      const focos = A.focos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${A.focos.map((f) => `<span class="tag">${esc(f.rotulo)}: apontado ${f.vezes}x · melhorou depois em ${f.melhorou}${f.aguardando ? ' · ' + f.aguardando + ' aguardando' : ''}</span>`).join('')}</div>` : '';
+      const focos = A.focos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${A.focos.map((f) => `<span class="tag">${esc(f.rotulo)}: apontado ${esc(f.vezes)}x · melhorou depois em ${esc(f.melhorou)}${f.aguardando ? ' · ' + esc(f.aguardando) + ' aguardando' : ''}</span>`).join('')}</div>` : '';
       corpo = `<div class="card-corpo" style="gap:12px">
         <div style="display:flex;gap:28px;flex-wrap:wrap">
-          <div><span class="apoio">Dias com mensagem</span><div style="font-size:26px;font-weight:700">${A.dias_enviada}</div></div>
+          <div><span class="apoio">Dias com mensagem</span><div style="font-size:26px;font-weight:700">${esc(A.dias_enviada)}</div></div>
           <div><span class="apoio">Melhorou no ponto apontado</span><div style="font-size:26px;font-weight:700">${avaliados.length ? melhorou + ' de ' + avaliados.length : '—'}</div></div>
         </div>${focos}</div>
         <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Dia</th><th>Ponto apontado</th><th class="dir">No dia</th><th class="dir">Dia anterior</th><th class="dir">Depois (até 7 dias)</th><th>Resultado</th><th>Evolução no dia</th><th class="dir">Nota do mês</th></tr></thead><tbody>
         ${A.envios.map((e) => { const [r, c] = RESULT_MSG[e.resultado] || ['—', 'neutro']; return `<tr><td>${D.br(e.dia)}</td><td>${e.foco_rotulo ? esc(e.foco_rotulo) : '<span class="mudo">—</span>'}</td>
-          <td class="dir">${pct(e.foco_valor)}</td><td class="dir">${pct(e.foco_media)}</td><td class="dir">${e.foco ? pct(e.depois) + (e.dias_depois ? ` <span class="apoio">(${e.dias_depois}d)</span>` : '') : '—'}</td>
-          <td><span class="badge badge-${c}">${r}</span></td><td>${e.comparados ? `melhorou ${e.melhorou} · piorou ${e.piorou} de ${e.comparados}` : '—'}</td><td class="dir">${e.nota === null || e.nota === undefined ? '—' : fmt(e.nota, 1)}</td></tr>`; }).join('')}
+          <td class="dir">${pct(e.foco_valor)}</td><td class="dir">${pct(e.foco_media)}</td><td class="dir">${e.foco ? pct(e.depois) + (e.dias_depois ? ` <span class="apoio">(${esc(e.dias_depois)}d)</span>` : '') : '—'}</td>
+          <td><span class="badge badge-${c}">${r}</span></td><td>${e.comparados ? `melhorou ${esc(e.melhorou)} · piorou ${esc(e.piorou)} de ${esc(e.comparados)}` : '—'}</td><td class="dir">${e.nota === null || e.nota === undefined ? '—' : fmt(e.nota, 1)}</td></tr>`; }).join('')}
         </tbody></table></div>`;
     }
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Mensagens pelo WhatsApp</h2><span class="h2-sub">Dias em que este motorista recebeu a análise e, para o ponto apontado em cada uma (o que mais piorou contra o dia anterior), a média dele nos 7 dias seguintes comparada ao dia do aviso.</span></div></div>${corpo}</section>`;
@@ -7831,10 +7840,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // orientado a melhorar (o ponto da dica e os indicadores que pioraram contra o dia anterior) e a nota do mês em cada dia
   async function msgEnviadas(cli) {
     const M = msg(), cs = contaSrv();
-    if (!cs || M.enviadas[cli]) return;
+    if (!cs || (M.enviadas[cli] && !podeRetentar(M.enviadas[cli]))) return;
     M.enviadas[cli] = { carregando: true };
     try { M.enviadas[cli] = { lista: await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/enviadas') }; }
-    catch (e) { M.enviadas[cli] = { erro: e.message }; }
+    catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
     if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
   }
   function painelEnviadas(c) {
@@ -7845,7 +7854,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const cli = cliSrv(E.cliente);
     if (!cli) return vazio('Cliente sem dados no servidor', 'As mensagens existem para os clientes buscados pela API Gobrax no servidor.');
     const R = M.enviadas[cli];
-    if (!R) setTimeout(() => msgEnviadas(cli), 0);
+    if (!R || podeRetentar(R)) setTimeout(() => msgEnviadas(cli), 0);
     if (!R || R.carregando) return vazio('', 'Carregando as mensagens enviadas…');
     if (R.erro) return vazio('Não consegui carregar', esc(R.erro));
     if (!R.lista.length) return vazio('Nenhuma mensagem enviada ainda', 'Em Mensagens do dia, copie a análise, mande pelo WhatsApp e marque como enviada.');
@@ -7874,7 +7883,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       const inds = x.indicadores.length ? x.indicadores.map((i) => `<span class="tag">${esc(i.rotulo)} · ${i.vezes}x</span>`).join(' ') : '<span class="mudo">nenhum indicador piorou</span>';
       const dias = x.envios.map((e) => `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="num" style="min-width:42px">${D.br(e.dia).slice(0, 5)}</span><span class="num" style="min-width:74px">${nota(e.nota)}</span><span class="apoio">${e.indicadores.length ? e.indicadores.map((r) => (r === e.foco_rotulo ? `<b>${esc(r)}</b>` : esc(r))).join(', ') : 'nenhum indicador piorou'}</span></div>`).join('');
       const notas = x.envios.slice().reverse().map((e) => (e.nota === null || e.nota === undefined ? null : e.nota));
-      return `<tr><td><span class="pessoa">${avatar(x.motorista, 32)}${nome}</span></td><td class="dir num" style="font-size:18px;font-weight:700">${x.dias_enviada}</td><td title="Nota do mês em cada dia com mensagem, do primeiro ao último envio">${X.ui.sparkline(notas, '#FCB709')}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap;max-width:360px">${inds}</div></td><td><div style="display:flex;flex-direction:column;gap:4px">${dias}</div></td></tr>`;
+      return `<tr><td><span class="pessoa">${avatar(x.motorista, 32)}${nome}</span></td><td class="dir num" style="font-size:18px;font-weight:700">${esc(x.dias_enviada)}</td><td title="Nota do mês em cada dia com mensagem, do primeiro ao último envio">${X.ui.sparkline(notas, '#FCB709')}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap;max-width:360px">${inds}</div></td><td><div style="display:flex;flex-direction:column;gap:4px">${dias}</div></td></tr>`;
     }).join('');
     return card(`<div class="card-corpo" style="flex-direction:row;gap:28px;flex-wrap:wrap">
         <div><span class="apoio">Mensagens enviadas</span><div style="font-size:26px;font-weight:700">${total}</div></div>
@@ -8248,20 +8257,20 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Importação ----------
-  function lerArquivo(arq, alvo) {
+  function lerArquivo(arq, alvo, cli) {
     return new Promise((resolve) => {
       if (arq.size > 25 * 1024 * 1024) { toast('Arquivo maior que 25 MB: ' + arq.name + '.', 'erro'); resolve(false); return; }
       const leitor = new FileReader();
       const ehExcel = /\.xlsx?$/i.test(arq.name);
       leitor.onload = () => {
         if (ehExcel) {
-          try { resolve(importarTexto(xlsxParaCSV(leitor.result), arq.name, true, alvo)); } catch (e) { toast('Não foi possível ler ' + arq.name + ': ' + (e && e.message ? e.message : 'formato inválido') + '.', 'erro'); resolve(false); }
+          try { resolve(importarPara(cli, xlsxParaCSV(leitor.result), arq.name, true, alvo)); } catch (e) { toast('Não foi possível ler ' + arq.name + ': ' + (e && e.message ? e.message : 'formato inválido') + '.', 'erro'); resolve(false); }
           return;
         }
         // O Excel costuma salvar CSV em ANSI (windows-1252): se o UTF-8 trouxer caracteres inválidos, decodifica de novo
         let texto = new TextDecoder('utf-8').decode(leitor.result);
         if (texto.includes(String.fromCharCode(0xFFFD))) texto = new TextDecoder('windows-1252').decode(leitor.result);
-        resolve(importarTexto(texto, arq.name, true, alvo));
+        resolve(importarPara(cli, texto, arq.name, true, alvo));
       };
       leitor.onerror = () => { toast('Não foi possível ler ' + arq.name + '.', 'erro'); resolve(false); };
       leitor.readAsArrayBuffer(arq);
@@ -8271,21 +8280,20 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   async function lerArquivos(lista, alvo, cli) {
     const nome = cli || (E.rota.tela === 'cliente' && focoPorSlug(E.rota.id) ? focoPorSlug(E.rota.id).nome : '');
     if (!nome) { toast('Abra o perfil do cliente (Configurações → Clientes) para anexar a planilha.', 'erro'); return; }
-    E.importCli = nome;
-    try { await lerArquivosBase(lista, alvo); } finally { E.importCli = null; }
+    await lerArquivosBase(lista, alvo, nome);
   }
-  async function lerArquivosBase(lista, alvo) {
+  async function lerArquivosBase(lista, alvo, cli) {
     const arqs = Array.from(lista || []);
     if (!arqs.length) return;
-    if (arqs.length === 1) { await lerArquivo(arqs[0], alvo); return; }
-    E.silencio = true;
+    if (arqs.length === 1) { await lerArquivo(arqs[0], alvo, cli); return; }
+    E.silencio++;
     let novas = 0, atual = 0, ok = 0; const falhas = [];
     for (const a of arqs) {
-      const r = await lerArquivo(a, alvo);
+      const r = await lerArquivo(a, alvo, cli);
       const imp = alvo === 'veiculos' ? E.impVeic : E.importacao;
       if (r && imp && imp.ok) { ok++; novas += imp.novas; atual += imp.atualizadas; } else falhas.push(a.name);
     }
-    E.silencio = false;
+    E.silencio--;
     const imp = alvo === 'veiculos' ? E.impVeic : E.importacao;
     if (ok && imp && imp.ok) { imp.nome = ok + ' arquivos'; imp.novas = novas; imp.atualizadas = atual; }
     render();
@@ -8467,6 +8475,13 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   const uniao = (a, b) => [...new Set((a || []).concat(b || []))];
   const rotuloArquivos = (arqs) => (arqs.length > 1 ? arqs.length + ' arquivos importados' : arqs[0] || '');
+  // Importa já dizendo de qual cliente é a planilha. O cliente vale só durante a chamada (síncrona): a busca automática da API
+  // e um arquivo anexado pela pessoa podem rodar ao mesmo tempo sem um herdar o cliente do outro.
+  function importarPara(cli, ...args) {
+    const antes = E.importCli;
+    E.importCli = cli || null;
+    try { return importarTexto(...args); } finally { E.importCli = antes; }
+  }
   function importarTexto(texto, nome, salvar, alvo, guardados) {
     const r = X.importarCSV(texto);
     if (r.ok && E.importCli) {   // planilha anexada no perfil de um cliente: tudo vai para ele; empresa de outro cliente não entra
@@ -8515,7 +8530,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         if (E.base && sv.A && sv.A.ini >= E.base.inicio && sv.A.fim <= E.base.fim) { E.A = sv.A; E.B = sv.B; E.presetA = sv.p; E.modoComp = sv.m; E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; }
       }
       let salvoV = true;
-      if (salvar && planRef) enviarPlanilhas('veiculos', r.linhas, linhas, colunas, nome);
+      if (salvar && planRef) enviarPlanilhas('veiculos', r.linhas, linhas, colunas, nome).then((ok) => { if (!ok && E.impVeic && E.impVeic.nome === nome) { E.impVeic.salvo = false; render(); } });
       else if (salvar) salvoV = armazem.gravar(CHAVE_VEIC, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
       E.impVeic = { ok: true, nome, linhas: r.linhas.length, novas: res.novas, atualizadas: res.atualizadas, total: linhas.length, avisos: r.avisos, salvo: salvoV, grupos: gruposInfo, semGrupo, veiculos: placas.size };
       if (salvar) toast('Veículos: ' + res.novas + ' linhas novas' + (res.atualizadas ? ', ' + res.atualizadas + ' atualizadas' : '') + '. Total salvo: ' + linhas.length + '.');
@@ -8539,7 +8554,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const nMot = new Set(linhas.map((l) => l.motorista)).size;
     let salvo = true;
     // Guarda só as colunas reconhecidas, nunca o arquivo bruto (que pode ter colunas pessoais)
-    if (salvar && planRef) enviarPlanilhas('motoristas', r.linhas, linhas, colunas, nome);
+    if (salvar && planRef) enviarPlanilhas('motoristas', r.linhas, linhas, colunas, nome).then((ok) => { if (!ok && E.importacao && E.importacao.nome === nome) { E.importacao.salvo = false; render(); } });
     else if (salvar) salvo = armazem.gravar(CHAVE_CSV, JSON.stringify({ nome, arquivos: arqs, texto: X.paraCSV(linhas.slice(), colunas) }));
     E.importacao = { ok: true, nome, linhas: r.linhas.length, novas: res.novas, atualizadas: res.atualizadas, total: linhas.length, motoristas: nMot, avisos: r.avisos, salvo };
     if (salvar) toast('Motoristas: ' + res.novas + ' linhas novas' + (res.atualizadas ? ', ' + res.atualizadas + ' atualizadas' : '') + '. Total salvo: ' + linhas.length + '.');
@@ -8562,7 +8577,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Eventos ----------
   const acoes = {
     'ir': (el) => { location.hash = el.dataset.href; },
-    'imprimir': () => { try { window.print(); } catch (e) { toast('Não foi possível abrir a impressão neste navegador.', 'erro'); } },
     'abrir-motorista': (el, ev) => { if (ev.target.closest('a')) return; location.hash = linkMotorista(el.dataset.id); },
     'aba': (el) => { location.hash = linkMotorista(E.rota.id, el.dataset.aba); },
     'ind-graf': (el) => { E.indGraf = el.dataset.ind; render(); },
@@ -8584,14 +8598,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     // Calendário
     'cal-alternar': () => { const c = E.cal; c.aberto = !c.aberto; if (c.aberto) { c.rascA = { ...E.A }; c.rascB = { ...E.B }; c.editando = 'A'; c.pendente = null; c.preset = E.presetA; c.mes = D.somarMeses(D.inicioMes(E.A.fim), -1); } render(); },
     'cal-personalizado': () => { E.cal.preset = null; E.cal.pendente = null; render(); },
-    'cal-editar': (el) => {
-      const q = el.dataset.qual;
-      if (!E.cal.aberto) { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; }
-      E.cal.aberto = true; E.cal.editando = q; E.cal.pendente = null;
-      const r = q === 'A' ? E.cal.rascA : E.cal.rascB;
-      E.cal.mes = D.somarMeses(D.inicioMes(r.fim), -1);
-      render();
-    },
     'cal-mes': (el) => { E.cal.mes = D.somarMeses(E.cal.mes, Number(el.dataset.passo)); render(); },
     'cal-dia': (el) => {   // 1º clique marca o dia; 2º clique fecha o intervalo
       const d = el.dataset.dia, c = E.cal;
@@ -8616,16 +8622,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       render();
     },
     'cal-preset-aplicar': (el) => { acoes['cal-preset'](el); acoes['cal-aplicar'](); },
-    'cal-comp-anterior': () => { E.modoComp = 'anterior'; E.cal.rascB = anterior(E.cal.rascA); E.cal.pendente = null; render(); },
-    'cal-comp-mes': () => { E.modoComp = 'personalizado'; E.cal.rascB = deslocar(E.cal.rascA, 1, 0); E.cal.pendente = null; E.cal.mes = D.somarMeses(D.inicioMes(E.cal.rascB.fim), -1); render(); },
-    'cal-comp-ano': () => { E.modoComp = 'personalizado'; E.cal.rascB = deslocar(E.cal.rascA, 0, 1); E.cal.pendente = null; E.cal.mes = D.somarMeses(D.inicioMes(E.cal.rascB.fim), -1); render(); },
     'cal-cancelar': () => { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.pendente = null; E.cal.preset = E.presetA; E.cal.aberto = false; render(); },
-    'cal-gran': (el) => { const c = E.cal; c.gran = el.dataset.g; c.editando = 'A'; c.pendente = null; if (c.gran === c.comp) c.comp = 'auto'; render(); },
-    'cal-comp': (el) => {
-      const c = E.cal; c.comp = el.dataset.c; c.pendente = null;
-      if (c.comp === 'livre') { c.editando = 'B'; c.mes = D.somarMeses(D.inicioMes(c.rascB.fim), -1); } else { c.editando = 'A'; c.rascB = compPara(c.rascA, c.comp); }
-      render();
-    },
     'evo-gran': (el) => { E.evoGran = el.dataset.g; render(); },
     'cal-aplicar': () => {   // a comparação é sempre o período anterior equivalente
       const c = E.cal;
@@ -8636,12 +8633,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       salvarPeriodo();
       render();
       toast('Período aplicado: ' + D.periodoBR(E.A) + ', comparado com ' + D.periodoBR(E.B) + '.');
-    },
-    'modo-comp': (el) => {
-      E.modoComp = el.dataset.modo;
-      if (E.modoComp === 'anterior') { E.B = anterior(E.A); E.cal.rascB = anterior(E.cal.rascA || E.A); salvarPeriodo(); }
-      else { E.cal.aberto = true; E.cal.editando = 'B'; E.cal.rascA = E.cal.rascA || { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.mes = D.somarMeses(D.inicioMes(E.B.fim), -1); }
-      render();
     },
 
     // Exportações
@@ -8692,12 +8683,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     'baixar-modelo': () => { baixar('modelo_analise_frota.csv', X.COLUNAS.map((c) => c.key).join(';') + '\n'); },
 
     // Planilha
-    'remover-planilha': () => { E.confirmarRemocao = true; render(); },
-    'remover-cancelar': () => { E.confirmarRemocao = false; render(); },
-    'remover-confirmar': () => {
-      E.confirmarRemocao = false;
-      armazem.apagar(CHAVE_CSV); apagarPlanDb('motoristas'); E.importacao = null; limparBase(); render(); toast('Planilha removida.');
-    },
     'plan-enviar-local': () => enviarLocal(),
     // API Gobrax: o token vai só para o armazenamento deste navegador, nunca para a tela ou para a base
     'api-token-salvar': (el) => {
@@ -8898,9 +8883,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(x.texto).then(ok, selecionar);
       else selecionar();
     },
-    'remover-veic': () => { E.confirmarRemocaoVeic = true; render(); },
-    'remover-veic-cancelar': () => { E.confirmarRemocaoVeic = false; render(); },
-    'remover-veic-confirmar': () => { E.confirmarRemocaoVeic = false; armazem.apagar(CHAVE_VEIC); apagarPlanDb('veiculos'); E.veic = null; E.impVeic = null; E.veicVer++; baseVeicCache = null; reaplicarFiltro(); render(); toast('Planilha de veículos removida.'); },
     'ord-veic': (el) => { const c = el.dataset.col; E.veicOrd = E.veicOrd.col === c ? { col: c, dir: -E.veicOrd.dir } : { col: c, dir: c === 'placa' || ehDim(c) || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
     'ord-grupo': (el) => { const c = el.dataset.col; E.grupoOrd = E.grupoOrd.col === c ? { col: c, dir: -E.grupoOrd.dir } : { col: c, dir: c === 'nome' || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
     'grupo-por': (el) => { E.grupoPor = el.dataset.dim; render(); },
@@ -8980,10 +8962,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     'nav-alternar': () => { E.navAberto = !E.navAberto; render(); },
     'tema': () => { armazem.gravar('gbx-tema', temaAtual() === 'escuro' ? 'claro' : 'escuro'); aplicarTema(); render(); }
   };
-  function deslocar(p, meses, anos) {
-    const mover = (s) => { const d = D.deISO(s); d.setUTCFullYear(d.getUTCFullYear() - anos); d.setUTCMonth(d.getUTCMonth() - meses); return D.paraISO(d); };
-    return { ini: mover(p.ini), fim: mover(p.fim) };
-  }
   function salvarPeriodo() { armazem.gravar('gbx-frota-periodo', JSON.stringify({ A: E.A, B: E.B, modo: E.modoComp, preset: E.presetA })); }
 
   document.addEventListener('pointerdown', (ev) => { if (E.cal.aberto && !ev.target.closest('.dp-ancora')) acoes['cal-cancelar'](); }, true);
@@ -9091,6 +9069,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // ---------- Início ----------
   function iniciar() {
+    // rede de segurança: ação assíncrona que falhar sem tratamento (imagem, PDF, arquivo) avisa em vez de sumir em silêncio
+    window.addEventListener('unhandledrejection', (ev) => {
+      const e = ev.reason;
+      if (e && e.name === 'AbortError') return;   // a pessoa cancelou o compartilhamento
+      toast('Não foi possível concluir: ' + ((e && e.message) || 'erro inesperado') + '.', 'erro');
+    });
     // limpeza única dos dados antigos deste navegador (planilhas, clientes, tratativas, resultados da API); os tokens da API ficam
     if (!armazem.ler('gbx-reset-2026-10-21')) {
       [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo', CHAVE_TRAT, CHAVE_API_LOCAL, 'gbx-reset-2026-10-20'].forEach((k) => armazem.apagar(k));

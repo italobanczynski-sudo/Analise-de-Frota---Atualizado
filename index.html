@@ -6374,8 +6374,9 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
   }
   const mesSemIncompleta = (w) => w.fim > E.base.fim || D.dif(w.ini, w.fim) < 6;
   // barras da semana no indicador principal, com a linha tracejada do mês anterior
-  function graficoMesSemanal(S) {
-    const ind = IND_MAP[S.chave], vals = S.fr.map((r) => r[S.chave]), ref = S.frAnt[S.chave];
+  function graficoMesSemanal(S, k) {
+    // indicador somado (km): a linha do mês anterior não serve de referência para uma semana e a cor não compara semanas de tamanhos diferentes
+    const ind = IND_MAP[k], soma = ind.tipo === 'soma', vals = S.fr.map((r) => r[k]), ref = soma ? null : S.frAnt[k];
     const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
     if (!todos.length) return '';
@@ -6387,7 +6388,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     S.ws.forEach((w, i) => {
       const cx = m.l + i * bw + bw / 2, v = vals[i], inc = mesSemIncompleta(w);
       if (tem(v)) {
-        const y0 = y(v), v0 = S.frAntes[i][S.chave], x = tem(v0) ? X.variacao(ind, v, v0) : null;
+        const y0 = y(v), v0 = S.frAntes[i][k], x = !soma && tem(v0) ? X.variacao(ind, v, v0) : null;
         const cor = !x || x.semBase || x.estavel ? 'var(--dado)' : x.sentido === 'melhor' ? 'var(--ok, #1E8E3E)' : 'var(--critico, #D93025)';
         g += `<rect x="${(cx - larg / 2).toFixed(1)}" y="${y0.toFixed(1)}" width="${larg.toFixed(1)}" height="${(m.t + ih - y0).toFixed(1)}" rx="6" style="fill:${cor};opacity:${inc ? 0.55 : 0.95}"><title>${esc(semNomeSem(w))}: ${esc(fmtInd(ind, v))}${x && !x.semBase ? ' · ' + esc(x.texto) + ' vs semana anterior' : ''}</title></rect>`;
         g += `<text x="${cx.toFixed(1)}" y="${(y0 - 7).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--tinta)">${esc(fmtInd(ind, v))}</text>`;
@@ -6403,7 +6404,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const S = dadosMesSemanal();
     if (!S.ws.some((w) => X.filtrar(E.base.linhas, w).length)) return '';
     const nomeMes = D.nomeMes(S.mes), mesAnt = D.nomeMes(S.pAnt.ini).split(' ')[0];
-    const chaves = ['nota', 'kml', 'km_dia', 'inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'pressao_acelerador'].filter((k) => IND_MAP[k] && temInd(k));
+    const chaves = ['nota', 'km', 'kml', 'km_dia', 'inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'pressao_acelerador'].filter((k) => IND_MAP[k] && temInd(k));
     const cel = (ind, v, ant, ref) => `<td class="dir">${fmtInd(ind, v)}${v === null || v === undefined ? '' : `<span class="linha2">${variacao(X.variacao(ind, v, ant), ref)}</span>`}</td>`;
     const tabela = `<div class="tabela-wrap"><table class="tabela" style="min-width:${360 + S.ws.length * 120}px"><thead><tr><th>Indicador</th><th class="dir">${esc(mesAnt)}</th>
         ${S.ws.map((w) => `<th class="dir">Semana ${w.n}${mesSemIncompleta(w) ? '*' : ''}<span class="linha2" style="display:block;font-weight:400">${esc(D.periodoCurto(w))}</span></th>`).join('')}<th class="dir">${esc(nomeMes.split(' ')[0])} até agora</th></tr></thead><tbody>
@@ -6431,11 +6432,17 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     };
     const inc = S.ws.some(mesSemIncompleta);
     const x = S.chave ? X.variacao(IND_MAP[S.chave], S.frMes[S.chave], S.frAnt[S.chave]) : null;
+    const opG = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['kml', 'Média de consumo']].filter(([k]) => temInd(k) && S.fr.some((f) => Number.isFinite(f[k])));
+    const kG = opG.some(([k]) => k === E.semGrafInd) ? E.semGrafInd : (opG[0] || [])[0];
+    const pilG = opG.length > 1 ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${opG.map(([k, rot]) => `<button type="button" class="pilula ${k === kG ? 'ativa' : ''}" data-acao="sem-graf" data-k="${k}" aria-pressed="${k === kG}">${rot}</button>`).join('')}</div>` : '';
+    // sem nota nos dados do dia: a Nota Gobrax do mês vem da Premiação (mensal), contra o mês anterior
+    const pm = temInd('nota') ? null : notaFrotaPremiacao(S.pMes), pmA = pm ? notaFrotaPremiacao(S.pAnt) : null;
+    const notaMes = pm ? `<span class="apoio" style="white-space:nowrap">Nota Gobrax no mês (Premiação): <b>${fmt(pm.nota, 1)}</b> ${pmA ? variacao(X.variacao(IND_MAP.nota, pm.nota, pmA.nota), 'vs ' + mesAnt.toLowerCase()) : ''}</span>` : '';
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(nomeMes)} semana a semana <a class="btn-link peq" href="#/estudo" style="margin-left:8px;font-weight:500">Estudo de todo o projeto →</a></h2>
         <span class="h2-sub">Evolução do cliente no projeto Gobrax no mês atual: cada semana comparada à anterior e o mês comparado a ${esc(mesAnt.toLowerCase())}. Barra verde melhorou, vermelha piorou contra a semana anterior.</span></div>
-        ${x && !x.semBase ? `<span class="apoio" style="white-space:nowrap">${esc(IND_MAP[S.chave].label)} no mês: <b>${fmtInd(IND_MAP[S.chave], S.frMes[S.chave])}</b> ${variacao(x, 'vs ' + mesAnt.toLowerCase())}</span>` : ''}</div>
+        ${notaMes}${x && !x.semBase ? `<span class="apoio" style="white-space:nowrap">${esc(IND_MAP[S.chave].label)} no mês: <b>${fmtInd(IND_MAP[S.chave], S.frMes[S.chave])}</b> ${variacao(x, 'vs ' + mesAnt.toLowerCase())}</span>` : ''}</div>
       <div class="card-corpo" style="gap:16px">
-        ${S.chave ? `<div><span class="hb-bloco-t">${esc(IND_MAP[S.chave].label)} da frota por semana</span>${graficoMesSemanal(S)}${inc ? '<span class="apoio" style="font-size:12px">* semana incompleta (em andamento ou cortada pela virada do mês)</span>' : ''}</div>` : ''}
+        ${kG ? `<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="hb-bloco-t">${esc(IND_MAP[kG].label)} da frota por semana</span>${pilG}</div>${graficoMesSemanal(S, kG)}${inc ? '<span class="apoio" style="font-size:12px">* semana incompleta (em andamento ou cortada pela virada do mês)</span>' : ''}</div>` : ''}
         ${tabela}
         <div class="grade-2">${blocoQuem(S.mots, 'Motoristas')}${blocoQuem(S.veics, 'Veículos')}</div>
       </div></section>`;
@@ -6509,7 +6516,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     vals.forEach((v, i) => { if (tem(v)) g += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" style="fill:var(--dado)"><title>Semana de ${esc(D.periodoCurto(ws[i]))}: ${esc(fmtInd(ind, v))}</title></circle>`; });
     const u = pts[pts.length - 1];
     g += `<circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="6" style="fill:none;stroke:var(--dado)" stroke-width="2"/>`;
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} semana a semana" style="display:block">${g}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} semana a semana" style="display:block;max-height:${Math.round(H * 1.2)}px">${g}</svg>`;
   }
   // ---------- O projeto se paga? Mensalidade da Gobrax (valor por equipamento × quantidade) contra o diesel economizado ----------
   const CHAVE_INV = 'gbx-investimento';
@@ -6572,7 +6579,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     g += `<text x="${xe}" y="${ye.toFixed(1)}" font-size="12" font-weight="700" style="fill:${corE}">Economia<tspan x="${xe}" dy="14" font-weight="400">${esc(R(u.e))}</tspan></text>`;
     g += `<text x="${xe}" y="${yc.toFixed(1)}" font-size="12" font-weight="700" style="fill:var(--texto-2)">Investimento<tspan x="${xe}" dy="14" font-weight="400">${esc(R(u.c))}</tspan></text>`;
     if (cruzou) g += `<line x1="${x(pts.indexOf(cruzou)).toFixed(1)}" x2="${x(pts.indexOf(cruzou)).toFixed(1)}" y1="${m.t}" y2="${m.t + ih}" stroke-dasharray="3 4" style="stroke:var(--ok, #1E8E3E)"/>`;
-    const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block">${g}</svg>`;
+    const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block;max-height:${Math.round(H * 1.15)}px">${g}</svg>`;
 
     // barras mês a mês: investimento ao lado da economia, com saldo e cobertura embaixo
     const BW = 720, BH = 270, bm = { l: 70, r: 10, t: 24, b: 58 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
@@ -8554,6 +8561,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     'cal-preset-aplicar': (el) => { acoes['cal-preset'](el); acoes['cal-aplicar'](); },
     'cal-cancelar': () => { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.pendente = null; E.cal.preset = E.presetA; E.cal.aberto = false; render(); },
     'evo-gran': (el) => { E.evoGran = el.dataset.g; render(); },
+    'sem-graf': (el) => { E.semGrafInd = el.dataset.k; render(); },
     'cal-aplicar': () => {   // a comparação é sempre o período anterior equivalente
       const c = E.cal;
       c.pendente = null;

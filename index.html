@@ -2742,7 +2742,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     base: null,
     fonte: { tipo: 'vazio', nome: 'Sem dados' },
     cliente: '', linhasAll: null, colunasAll: null, semCliente: false, silencio: 0, importCli: null,
-    veic: null, impVeic: null, veicOrd: { col: 'nota', dir: -1 },
+    veic: null, impVeic: null,
     churnVista: 'cliente', trat: [], tratForm: null, tratRemover: null, tratInd: 'nota', tratEmDb: false,
     clientes: [], clientesPronto: false, clientesEmDb: false, clienteForm: { nome: '', grupo: '', obs: '' }, clienteRemover: null,
     A: null, B: null, modoComp: 'anterior', presetA: '30',
@@ -2756,8 +2756,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     preco: 6.1,
     importacao: null,
     filtro: { grupo: '', modelo: '', filial: '', tipo: '' },   // filtros por dados do veículo (valem para o painel todo)
-    veicLista: { busca: '', status: 'todos', pag: 1, por: 25 },
-    grupoPor: 'grupo', grupoOrd: { col: 'km', dir: -1 },
     veicVer: 0, gruposVer: 0, gruposAberto: null, gruposSel: {}, gruposBusca: '',
     graficos: {}
   };
@@ -2768,7 +2766,16 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const armazem = {
     ler(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     gravar(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
-    apagar(k) { try { localStorage.removeItem(k); } catch (e) { /* sem armazenamento */ } }
+    apagar(k) { try { localStorage.removeItem(k); } catch (e) { /* sem armazenamento */ } },
+    // JSON guardado; sem valor, quebrado ou de outro tipo (lista no lugar de objeto e vice-versa) devolve o padrão
+    lerJSON(k, padrao) {
+      let v = null;
+      try { v = JSON.parse(armazem.ler(k) || 'null'); } catch (e) { v = null; }
+      if (v === null || v === undefined) return padrao;
+      if (padrao !== null && padrao !== undefined && Array.isArray(padrao) !== Array.isArray(v)) return padrao;
+      if (padrao !== null && typeof padrao === 'object' && typeof v !== 'object') return padrao;
+      return v;
+    }
   };
 
   // ---------- Dados ----------
@@ -2823,10 +2830,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return m;
   }
   const dimDe = (l, k) => (k === 'grupo' && grupoManual(l)) || l[k] || ((mapaVeic()[nrm(l.veiculo || l.motorista)] || {})[k]) || '';
-  const filtroAtivo = () => DIMS.some((d) => E.filtro[d.key]);
   const passaFiltro = (l) => DIMS.every((d) => !E.filtro[d.key] || nrm(dimDe(l, d.key)) === nrm(E.filtro[d.key]));
   const doFiltro = (l) => doCliente(l) && passaFiltro(l);
-  const descFiltro = () => [E.cliente].concat(DIMS.filter((d) => E.filtro[d.key]).map((d) => d.label.toLowerCase() + ' ' + E.filtro[d.key])).filter(Boolean).join(' · ');
   function enriquecer(l) {
     const info = mapaVeic()[nrm(l.veiculo)];
     if (!info) return l;
@@ -2848,7 +2853,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     opcoesCache[ch] = r;
     return r;
   }
-  const dimsDoVeic = () => DIMS.filter((d) => opcoesDim(d.key, true).length);
   // Filtro que deixou de existir (dados trocados, outro cliente) volta para "todos"
   function validarFiltro() {
     DIMS.forEach((d) => { if (E.filtro[d.key] && !opcoesDim(d.key).some((o) => nrm(o) === nrm(E.filtro[d.key]))) E.filtro[d.key] = ''; });
@@ -2862,8 +2866,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       E.A = sv.A; E.B = sv.B; E.presetA = sv.p; E.modoComp = sv.m; E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B };
     }
     memo = null;
-    E.lista.pag = 1; E.veicLista.pag = 1;
-    E.comp.escopo = 'frota';   // o escopo é o id (posição) do motorista: com outra base apontaria para outra pessoa
+    E.lista.pag = 1;
+    E.comp.escopo = 'frota';   // o motorista escolhido no Comparativo pode não existir no novo cliente ou filtro
   }
 
   // Troca o cliente em análise sem perder o período escolhido
@@ -2970,6 +2974,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Utilidades de interface ----------
+  // Comparador das tabelas: val(x) dá o valor da coluna; vazio ('' / null) vai sempre para o fim e dois vazios empatam
+  function ordemPor(val, dir) {
+    const vazio = (v) => v === null || v === undefined || v === '' || (typeof v === 'number' && !Number.isFinite(v));
+    return (p, q) => {
+      const vp = val(p), vq = val(q), ep = vazio(vp), eq = vazio(vq);
+      if (ep || eq) return ep && eq ? 0 : ep ? 1 : -1;
+      return (typeof vp === 'string' ? vp.localeCompare(String(vq), 'pt-BR', { numeric: true }) : vp - vq) * dir;
+    };
+  }
   function refB() { return 'vs. ' + D.periodoCurto(E.B); }
   function nomeStatus(k) { return STATUS[k].rot; }
   function linkMotorista(id, aba) {
@@ -3523,7 +3536,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           <span class="h2-sub">Subiu ou desceu: a cor indica se a mudança foi boa ou ruim para cada indicador. Clique em um indicador para ver o gráfico.</span></div>
           <button type="button" class="btn" data-acao="exportar-frota">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
         <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaIndicadores(c.frotaA, c.frotaB)}</div>
-      </section>`;
+      </section>
+      ${cartaoGruposVeic()}
+      ${cartaoOdometro()}`;
   }
 
   // ---------- Painel: distribuição e ranking das notas ----------
@@ -3569,7 +3584,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { col: 'status', rot: 'Evolução' },
     { col: 'vinculo', rot: 'Dias vinculado', dir: true },
     { col: 'nota', rot: 'Nota Gobrax', ind: 'nota' },
-    { col: 'delta', rot: 'Variação da nota', ind: 'nota', dir: true },
+    { col: 'delta', rot: 'Variação', dir: true },   // o rótulo leva o indicador da evolução (ver telaMotoristas)
     { col: 'kml', rot: 'Média km/l', ind: 'kml', dir: true },
     { col: 'faixa_verde', rot: 'Faixa verde', ind: 'faixa_verde', dir: true },
     { col: 'motor_ocioso', rot: 'Motor ligado parado', ind: 'motor_ocioso', dir: true },
@@ -3596,12 +3611,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const { col, dir } = E.lista.ord;
     const ordemSt = { evoluiu: 3, estavel: 2, regrediu: 1, sembase: 0 };
     const val = (x) => (col === 'motorista' ? x.m.nome : col === 'status' ? ordemSt[x.st.status] : col === 'delta' ? x.st.delta : col === 'vinculo' ? vinculo(x).dias : x.a[col]);
-    arr.sort((p, q) => {
-      const vp = val(p), vq = val(q);
-      if (vp === null || vp === undefined) return 1;
-      if (vq === null || vq === undefined) return -1;
-      return (typeof vp === 'string' ? vp.localeCompare(vq, 'pt-BR') : vp - vq) * dir;
-    });
+    arr.sort(ordemPor(val, dir));
     return arr;
   }
   function telaMotoristas() {
@@ -3612,10 +3622,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const pagina = arr.slice((E.lista.pag - 1) * E.lista.por, E.lista.pag * E.lista.por);
     const cols = COLS_LISTA.filter((k) => !k.ind || temInd(k.ind));
     const nota = temInd('nota');
+    const indSt = IND_MAP[(c.mots.find((x) => x.st.ind) || { st: { ind: 'nota' } }).st.ind];
     const cab = cols.map((k) => {
       const ativo = E.lista.ord.col === k.col;
       const seta = ativo ? `<span class="seta-ord">${E.lista.ord.dir > 0 ? '▲' : '▼'}</span>` : '';
-      return k.semOrdem ? `<th>${k.rot}</th>` : `<th class="ord ${k.dir ? 'dir' : ''}" data-acao="ordenar" data-col="${k.col}" aria-sort="${ativo ? (E.lista.ord.dir > 0 ? 'ascending' : 'descending') : 'none'}">${k.rot}${seta}</th>`;
+      const rot = k.col === 'delta' ? 'Variação · ' + esc(indSt.label) : k.rot;
+      return k.semOrdem ? `<th>${rot}</th>` : `<th class="ord ${k.dir ? 'dir' : ''}" data-acao="ordenar" data-col="${k.col}" aria-sort="${ativo ? (E.lista.ord.dir > 0 ? 'ascending' : 'descending') : 'none'}">${rot}${seta}</th>`;
     }).join('');
     const celula = (x, k) => {
       const ind = IND_MAP[k.ind];
@@ -3739,7 +3751,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         const bom = indM.melhor > 0;
         const qx = num(ref) ? X_(ref) : m.l + iw / 2, qy = Y_(0);
         const q = { boaMelhora: 0, boaPiora: 0, baixaMelhora: 0, baixaPiora: 0 };
-        pts.forEach((p) => { const acima = bom ? p.a >= ref : p.a <= ref, melhora = (p.dv > 0) === bom; q[(acima ? 'boa' : 'baixa') + (melhora ? 'Melhora' : 'Piora')]++; });
+        // sem média da frota não há quadrante; quem não mudou (dv 0) não melhorou nem piorou
+        pts.forEach((p) => { if (!num(ref) || !p.dv) return; const acima = bom ? p.a >= ref : p.a <= ref, melhora = (p.dv > 0) === bom; q[(acima ? 'boa' : 'baixa') + (melhora ? 'Melhora' : 'Piora')]++; });
         const unY = indM.var === 'pct' ? '%' : indM.var === 'pp' ? ' p.p.' : ' pts';
         let g = '';
         // quadrantes: o bom (acima da média e melhorando) em verde, o crítico em vermelho
@@ -4249,7 +4262,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   const semChaveEnv = () => 'gbx-sem-env:' + ckey(E.cliente) + ':' + E.semana;
-  const semEnviados = () => { try { return new Set(JSON.parse(armazem.ler(semChaveEnv()) || '[]')); } catch (e) { return new Set(); } };
+  const semEnviados = () => new Set(armazem.lerJSON(semChaveEnv(), []));
   function semMarcar(id) { const s = semEnviados(); s.add(String(id)); armazem.gravar(semChaveEnv(), JSON.stringify([...s])); }
   const semChaveWhats = () => 'gbx-sem-whats:' + ckey(E.cliente);
   function semLinkWhats(texto) {
@@ -4489,11 +4502,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     })();
     const ind = IND_MAP[E.comp.ind];
     const linhas = c.mots.map((x) => ({ x, v: X.variacao(ind, x.a[ind.key], x.b[ind.key]) }))
-      .sort((p, q) => {
-        const dp = p.v.semBase ? null : p.v.delta * (ind.melhor || 1), dq = q.v.semBase ? null : q.v.delta * (ind.melhor || 1);
-        if (dp === null) return 1; if (dq === null) return -1;
-        return (dq - dp) * (E.comp.ord > 0 ? -1 : 1);
-      });
+      .sort(ordemPor((o) => (o.v.semBase ? null : o.v.delta * (ind.melhor || 1)), E.comp.ord > 0 ? 1 : -1));
     return `
       <div class="pag-cab"><div class="pag-cab-texto">
         <h1 class="h1">Comparativo de períodos</h1>
@@ -4586,30 +4595,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // ---------- Tela: Análise dos veículos (por veículo e agrupada por grupo, modelo, filial ou tipo) ----------
   // Roda com a base de veículos no lugar da de motoristas (ver comContexto): período, comparação e status usam o mesmo motor do resto do painel.
-  const COLS_VEIC = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['litros', 'Consumo (L)'], ['kml', 'Média km/l'], ['faixa_verde', 'Faixa verde'], ['embalo', 'Embalo'],
-    ['motor_ocioso', 'Motor ligado parado'], ['pressao_acelerador', 'Pedal no range crítico'], ['excesso_rotacao', 'Acima do verde'], ['tempo_excesso_velocidade', 'Excesso de velocidade (tempo)'],
-    ['inicio_faixa_verde', 'Início da faixa verde'], ['eco_roll', 'Eco Roll'], ['pressao_ideal', 'Pedal ideal'], ['pressao_atencao', 'Pedal em atenção'],
-    ['piloto_automatico', 'Piloto automático'], ['freio_motor', 'Freio motor'], ['frenagens', 'Freadas /100 km'],
-    ['frenagens_alta', 'Freadas em alta vel. /100 km'], ['velocidade_media', 'Velocidade média']];
-  const DIM_SEM = { grupo: 'Sem grupo', modelo: 'Sem modelo', filial: 'Sem filial', tipo: 'Sem tipo' };
-  const ORDEM_ST = { evoluiu: 3, estavel: 2, regrediu: 1, sembase: 0 };
-  const dimDoVeic = (x, k) => (x.m.dims && x.m.dims[k] && x.m.dims[k][0]) || '';
-  const ehDim = (k) => DIMS.some((d) => d.key === k);
 
-  function selectDim(d, idPrefix) {
-    const ops = opcoesDim(d.key, true);
-    return `<div class="campo-bloco" style="min-width:150px;max-width:240px"><label class="campo-rotulo" for="${idPrefix}-${d.key}">${d.label}</label>
-      <select class="campo" id="${idPrefix}-${d.key}" data-campo="filtro-dim" data-dim="${d.key}" style="height:32px">
-        <option value="">${d.plural === 'Filiais' ? 'Todas' : 'Todos'}</option>
-        ${ops.map((o) => `<option value="${esc(o)}" ${nrm(o) === nrm(E.filtro[d.key]) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
-      </select></div>`;
-  }
-  function barraFiltrosVeic() {
-    const dims = dimsDoVeic();
-    if (!dims.length) return '';
-    return `<div class="barra-filtros" style="align-items:flex-end;gap:12px;flex-wrap:wrap">${dims.map((d) => selectDim(d, 'fv')).join('')}
-      ${filtroAtivo() ? '<button type="button" class="btn-link peq" data-acao="limpar-dim" style="align-self:center">Limpar filtros de grupo</button>' : ''}</div>`;
-  }
 
   // Montar grupos: escolher o grupo de cada placa do cliente (fica salvo no cliente e vale para o painel inteiro)
   function placasDoCliente() {
@@ -4686,174 +4672,14 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // Resumo por grupo/modelo/filial/tipo: soma as linhas de todos os veículos do grupo (período analisado × comparação)
-  function agruparVeic(c, dim) {
-    const por = new Map();
-    c.mots.forEach((x) => {
-      const nome = dimDoVeic(x, dim) || DIM_SEM[dim];
-      let g = por.get(nome);
-      if (!g) { g = { nome, vazio: !dimDoVeic(x, dim), la: [], lb: [], n: 0, rod: 0, par: 0, ev: 0, es: 0, re: 0 }; por.set(nome, g); }
-      x.la.forEach((l) => g.la.push(l));
-      x.lb.forEach((l) => g.lb.push(l));
-      if (x.la.length) {
-        g.n++;
-        if (X.rodou(x.a)) g.rod++; else g.par++;
-        if (x.st.status === 'evoluiu') g.ev++; else if (x.st.status === 'regrediu') g.re++; else if (x.st.status === 'estavel') g.es++;
-      }
-    });
-    return [...por.values()].filter((g) => g.n > 0).map((g) => Object.assign(g, { a: X.resumo(g.la, E.base), b: X.resumo(g.lb, E.base) }));
-  }
   const celInd = (k, a, b) => {
     const ind = IND_MAP[k];
     if (k === 'nota') return `<td>${badgeNota(a.nota)}<span class="linha2">${variacao(X.variacao(ind, a.nota, b.nota))}</span></td>`;
     return `<td class="dir">${fmtInd(ind, a[k])}<span class="linha2">${variacao(X.variacao(ind, a[k], b[k]))}</span></td>`;
   };
-  function tabelaGrupos(c, grupos, dim) {
-    const cols = COLS_VEIC.filter(([k]) => temInd(k));
-    const { col, dir } = E.grupoOrd;
-    const val = (g) => (col === 'nome' ? g.nome : col === 'n' ? g.n : g.a[col]);
-    const arr = grupos.slice().sort((p, q) => {
-      const vp = val(p), vq = val(q);
-      if (vp === null || vp === undefined) return 1;
-      if (vq === null || vq === undefined) return -1;
-      return (typeof vp === 'string' ? vp.localeCompare(vq, 'pt-BR', { numeric: true }) : vp - vq) * dir;
-    });
-    const th = (k, rot, direita) => `<th class="ord ${direita ? 'dir' : ''}" data-acao="ord-grupo" data-col="${k}" aria-sort="${col === k ? (dir > 0 ? 'ascending' : 'descending') : 'none'}">${rot}${col === k ? `<span class="seta-ord">${dir > 0 ? '▲' : '▼'}</span>` : ''}</th>`;
-    const totalKm = c.frotaA.km || 0;
-    const evo = (g) => `<span style="color:#1E8E3E">▲ ${g.ev}</span> · <span style="color:#5F6368">▬ ${g.es}</span> · <span style="color:#D93025">▼ ${g.re}</span>`;
-    const linhas = arr.map((g) => {
-      const filtravel = !g.vazio;
-      const sel = nrm(E.filtro[dim]) === nrm(g.nome) && filtravel;
-      return `<tr class="${filtravel ? 'clicavel' : ''}" ${filtravel ? `data-acao="filtrar-dim" data-dim="${dim}" data-val="${esc(g.nome)}" title="Filtrar o painel por ${esc(g.nome)}"` : ''} ${sel ? 'aria-selected="true"' : ''}>
-        <td><b style="font-weight:600">${esc(g.nome)}</b></td>
-        <td class="dir">${g.n}<span class="linha2">${g.rod} rodando${g.par ? ' · ' + g.par + ' parado' + (g.par > 1 ? 's' : '') : ''}</span></td>
-        ${cols.map(([k]) => {
-          if (k === 'km') return `<td class="dir">${fmtInd(IND_MAP.km, g.a.km)}<span class="linha2">${totalKm > 0 && g.a.km !== null ? fmt((g.a.km / totalKm) * 100, 1) + '% do total' : '—'} · ${variacao(X.variacao(IND_MAP.km, g.a.km, g.b.km))}</span></td>`;
-          return celInd(k, g.a, g.b);
-        }).join('')}
-        <td class="dir">${g.ev + g.es + g.re ? evo(g) : '<span class="mudo">—</span>'}</td></tr>`;
-    }).join('');
-    const total = `<tr style="background:var(--sup-hover,#F8F9FA)"><td><b>Total da seleção</b></td>
-      <td class="dir">${grupos.reduce((t, g) => t + g.n, 0)}<span class="linha2">${grupos.reduce((t, g) => t + g.rod, 0)} rodando · ${grupos.reduce((t, g) => t + g.par, 0)} parado${grupos.reduce((t, g) => t + g.par, 0) === 1 ? '' : 's'}</span></td>
-      ${cols.map(([k]) => celInd(k, c.frotaA, c.frotaB)).join('')}<td></td></tr>`;
-    return `<div class="tabela-wrap"><table class="tabela" style="min-width:980px"><thead><tr>${th('nome', DIMS.find((d) => d.key === dim).label)}${th('n', 'Veículos', true)}${cols.map(([k, r]) => th(k, r, true)).join('')}<th>Evolução</th></tr></thead>
-      <tbody>${linhas}${total}</tbody></table></div>`;
-  }
 
-  function veiculosFiltrados(c) {
-    const busca = nrm(E.veicLista.busca);
-    let arr = c.mots.filter((x) => x.la.length > 0);
-    const st = E.veicLista.status;
-    if (st === 'parado') arr = arr.filter((x) => !X.rodou(x.a));
-    else if (st !== 'todos') arr = arr.filter((x) => X.rodou(x.a) && x.st.status === st);
-    if (busca) arr = arr.filter((x) => nrm([x.m.nome].concat(DIMS.map((d) => dimDoVeic(x, d.key))).join(' ')).includes(busca));
-    const { col, dir } = E.veicOrd;
-    const val = (x) => (col === 'placa' ? x.m.nome : ehDim(col) ? dimDoVeic(x, col) : col === 'status' ? ORDEM_ST[x.st.status] : x.a[col]);
-    arr.sort((p, q) => {
-      const vp = val(p), vq = val(q);
-      if (vp === null || vp === undefined || vp === '') return 1;
-      if (vq === null || vq === undefined || vq === '') return -1;
-      return (typeof vp === 'string' ? vp.localeCompare(vq, 'pt-BR', { numeric: true }) : vp - vq) * dir;
-    });
-    return arr;
-  }
 
   // Planilhas de período (1 linha = total de vários dias): somar duas que se cruzam conta km e litros em dobro
-  function avisoCobertura(bv) {
-    if (!temTotais(bv)) return '';
-    const ver = (p, rot) => {
-      const ls = X.filtrar(bv.linhas, p).filter((l) => l.dias_periodo > 1);
-      if (!ls.length) return '';
-      const datas = new Set(ls.map((l) => l.data));
-      const parcial = ls.some((l) => D.somar(l.data, -(l.dias_periodo - 1)) < p.ini);
-      if (datas.size > 1) return `${rot}: o período junta ${datas.size} planilhas (${[...datas].sort().map(D.br).join(', ')}) e soma os km e litros de cada uma. Para comparar planilhas, use “Última planilha”.`;
-      if (parcial) return `${rot}: a planilha de ${D.br([...datas][0])} cobre ${ls[0].dias_periodo} dias e começa antes do período escolhido; os números mostram a planilha inteira, não só os dias do período.`;
-      return '';
-    };
-    const msgs = [ver(E.A, 'Período analisado'), ver(E.B, 'Comparação')].filter(Boolean);
-    return msgs.length ? `<div class="alerta alerta-atencao" role="status"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Atenção ao período escolhido</span>${msgs.map((m) => `<span class="alerta-texto">${esc(m)}</span>`).join('')}
-      <div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="periodo-rapido" data-k="ultima">Ver a última planilha contra a anterior</button></div></div></div>` : '';
-  }
-  function telaVeiculos() {
-    const cab = (sub) => `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Veículos e grupos</h1><span class="sub">${sub}</span></div></div>`;
-    if (!E.veic) {
-      return cab('Busque os dados pela API Gobrax para ver o desempenho de cada caminhão e de cada grupo.') +
-        `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Nenhum dado de veículos importada</span>
-        <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Buscar dados pela API</a></div></div></section>${cartaoOdometro()}`;
-    }
-    const bv = baseVeic();
-    if (!bv || E.base !== bv) {
-      return cab(`Nenhum veículo encontrado${descFiltro() ? ' para ' + esc(descFiltro()) : ''}.`) +
-        `<section class="card"><div class="card-corpo" style="gap:12px">${barraFiltrosVeic()}<div class="vazio"><span class="vazio-titulo">Sem veículos com esses filtros</span>
-        <button type="button" class="btn" data-acao="limpar-dim">Limpar filtros</button></div></div></section>`;
-    }
-    const c = calc();
-    const todos = c.mots.filter((x) => x.la.length > 0);
-    const rodando = todos.filter((x) => X.rodou(x.a)), parados = todos.length - rodando.length;
-    const soAnterior = c.mots.length - todos.length;
-    const dims = dimsDoVeic();
-    if (!dims.some((d) => d.key === E.grupoPor)) E.grupoPor = dims.length ? dims[0].key : 'grupo';
-    const grupos = dims.length ? agruparVeic(c, E.grupoPor) : [];
-    const nGrupos = DIMS.find((d) => d.key === 'grupo') && dims.some((d) => d.key === 'grupo') ? new Set(todos.map((x) => dimDoVeic(x, 'grupo')).filter(Boolean)).size : 0;
-    const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, {})).join('');
-
-    // lista de veículos
-    const arr = veiculosFiltrados(c);
-    const L = E.veicLista;
-    const pags = Math.max(1, Math.ceil(arr.length / L.por));
-    if (L.pag > pags) L.pag = pags;
-    const pagina = arr.slice((L.pag - 1) * L.por, L.pag * L.por);
-    const colunas = [['placa', 'Veículo', false]].concat(dims.map((d) => [d.key, d.label, false]), [['status', 'Evolução', false]], COLS_VEIC.filter(([k]) => temInd(k)).map(([k, r]) => [k, r, k !== 'nota']));
-    const cabV = colunas.map(([k, r, d]) => `<th class="ord ${d ? 'dir' : ''}" data-acao="ord-veic" data-col="${k}" aria-sort="${E.veicOrd.col === k ? (E.veicOrd.dir > 0 ? 'ascending' : 'descending') : 'none'}">${r}${E.veicOrd.col === k ? `<span class="seta-ord">${E.veicOrd.dir > 0 ? '▲' : '▼'}</span>` : ''}</th>`).join('');
-    const celV = (x, k) => {
-      if (k === 'placa') return `<td>${veicNome(x.m.nome)}${X.rodou(x.a) ? (x.m.condutores && x.m.condutores.length ? `<span class="linha2">${esc(x.m.condutores.slice(0, 2).join(', '))}${x.m.condutores.length > 2 ? ' +' + (x.m.condutores.length - 2) : ''}</span>` : '') : '<span class="linha2">Sem rodagem no período</span>'}</td>`;
-      if (ehDim(k)) return `<td>${dimDoVeic(x, k) ? esc(dimDoVeic(x, k)) : '<span class="mudo">—</span>'}</td>`;
-      if (k === 'status') return `<td>${X.rodou(x.a) ? badgeStatus(x.st.status) : '<span class="badge badge-vazio">Parado</span>'}</td>`;
-      return celInd(k, x.a, x.b);
-    };
-    const corpo = pagina.length
-      ? pagina.map((x) => `<tr>${colunas.map(([k]) => celV(x, k)).join('')}</tr>`).join('')
-      : `<tr><td colspan="${colunas.length}"><div class="vazio"><span class="vazio-titulo">Nenhum veículo com esses filtros</span><button type="button" class="btn-link peq" data-acao="limpar-veic">Limpar busca e situação</button></div></td></tr>`;
-    const cont = { evoluiu: 0, estavel: 0, regrediu: 0 };
-    rodando.forEach((x) => { if (cont[x.st.status] !== undefined) cont[x.st.status]++; });
-    const pil = [['todos', 'Todos', todos.length], ['evoluiu', 'Evoluíram', cont.evoluiu], ['estavel', 'Estáveis', cont.estavel], ['regrediu', 'Regrediram', cont.regrediu], ['parado', 'Parados', parados]];
-    const rotDim = DIMS.find((d) => d.key === E.grupoPor);
-
-    return `${cab(`${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · ${esc(E.veic.nome)}${descFiltro() ? ' · ' + esc(descFiltro()) : ''}`)}
-      ${barraPeriodo()}
-      ${semDadosNoPeriodo(c.la.length)}
-      ${avisoCobertura(bv)}
-      ${cartaoGruposVeic()}
-      ${dims.length ? `<section class="card"><div class="card-corpo" style="gap:10px"><span class="campo-rotulo">Filtrar por</span>${barraFiltrosVeic()}</div></section>` : ''}
-      <section class="card"><div class="card-corpo"><div class="faixas">
-        <div class="faixa-item"><span class="rot">Veículos</span><span class="faixa-n">${todos.length}</span><span class="apoio">com registro no período${soAnterior ? ' · +' + soAnterior + ' só no período anterior' : ''}</span></div>
-        <div class="faixa-item"><span class="rot"><span class="ponto" style="background:#1E8E3E"></span>Rodando</span><span class="faixa-n">${rodando.length}</span><span class="apoio">com km no período</span></div>
-        <div class="faixa-item"><span class="rot"><span class="ponto" style="background:#F9AB00"></span>Parados</span><span class="faixa-n">${parados}</span><span class="apoio">registrados, sem km</span></div>
-        ${nGrupos ? `<div class="faixa-item"><span class="rot">Grupos</span><span class="faixa-n">${nGrupos}</span><span class="apoio">com veículos no período</span></div>` : ''}
-      </div></div></section>
-      <div class="grade-kpi">${kpis}${kpiEconomia(c.frotaA, c.frotaB)}</div>
-      ${dims.length ? `<section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Desempenho por ${rotDim.label.toLowerCase()}</h2>
-          <span class="h2-sub">Clique numa linha para filtrar o painel. Variação sempre contra ${D.periodoBR(E.B)}.</span></div>
-          <button type="button" class="btn" data-acao="exportar-grupos">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
-        <div class="card-corpo" style="gap:12px;padding-bottom:0"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span class="apoio">Agrupar por</span>
-          ${dims.map((d) => `<button type="button" class="pilula ${E.grupoPor === d.key ? 'ativa' : ''}" data-acao="grupo-por" data-dim="${d.key}" aria-pressed="${E.grupoPor === d.key}">${d.label}</button>`).join('')}</div></div>
-        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaGrupos(c, grupos, E.grupoPor)}</div></section>` : `<section class="card"><div class="card-corpo"><div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Os veículos ainda não têm grupo</span><span class="alerta-texto">Para separar a análise por grupo, crie os grupos em Veículos → Grupos de veículos (os mesmos Grupos de Bonificação da plataforma Gobrax).</span></div></div></div></section>`}
-      <section class="card">
-        <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-bottom:1px solid var(--apoio)">
-          <div class="barra-filtros">
-            <label class="campo campo-icone busca">${icone('busca', 14, '#5F6368')}
-              <input type="text" id="busca-veiculo" data-campo="busca-veic" value="${esc(L.busca)}" placeholder="Buscar placa${dims.length ? ', grupo, modelo…' : ''}" aria-label="Buscar veículo"></label>
-            ${pil.map(([k, rot, n]) => `<button type="button" class="pilula ${L.status === k && k !== 'todos' ? 'ativa' : ''}" data-acao="filtro-status-veic" data-status="${k}" aria-pressed="${L.status === k}">${rot}<span class="mudo num">${n}</span></button>`).join('')}
-            <span style="margin-left:auto;display:flex;align-items:center;gap:10px"><span class="apoio num">${arr.length} de ${todos.length} veículos</span>
-              ${L.busca || L.status !== 'todos' ? '<button type="button" class="btn-link peq" data-acao="limpar-veic">Limpar busca e situação</button>' : ''}
-              <button type="button" class="btn" data-acao="exportar-veic">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></span>
-          </div>
-        </div>
-        <div class="tabela-wrap"><table class="tabela" style="min-width:${760 + colunas.length * 60}px"><thead><tr>${cabV}</tr></thead><tbody>${corpo}</tbody></table></div>
-        ${X.ui.paginacao(L.pag, arr.length, L.por, 'veículos')}
-      </section>
-      ${cartaoOdometro()}`;
-  }
   // ---------- Tela: Dashboards (só gráficos) ----------
   function donut(partes, centro, sub) {
     const total = partes.reduce((t, p) => t + p.valor, 0);
@@ -5041,6 +4867,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Cliente no HubSpot: perfil, frota, nota CHS, contatos, histórico e suporte ----------
   // Lido ao vivo pelo conector do HubSpot de quem abre o painel; nada disso é gravado na base do painel.
   const HUB_PORTAL = '19655000';
+  // total e lista de uma leitura do HubSpot; total desconhecido (ex.: sem permissão de leitura) é null, nunca 0
+  const hubTot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : null), hubRes = (r) => (r && r.results) || [];
   const hubCli = {};   // chave do cliente -> { carregando, erro, id, comp, calls, emails, meets, tickets, abertos, contatos, em }
   const HUB_PROPS = ['name', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
     'nota_do_chs', 'chs_score', 'chs_aderencia', 'chs_nota_engajamento', 'chs_nota_adimplencia', 'chs_nota_usuario', 'chs_nota_motorista', 'chs_nota_tickets_positivos', 'tickets_suporte__chs_',
@@ -5139,7 +4967,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   function hubDetalhe(v, k) {
     if (!k) return '';
-    const res = (r) => (r && r.results) || [], tot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : 0);
+    const res = hubRes, tot = hubTot;
     const amostra = (r) => (tot(r) > res(r).length ? `<span class="apoio" style="font-size:12px">Análise dos ${res(r).length} mais recentes de ${fmt(tot(r), 0)}.</span>` : '');
     const linkObj = (tipo, id) => `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/${tipo}/${encodeURIComponent(id)}`;
     let corpo = '';
@@ -5194,7 +5022,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function estudoCliente(sel) {
     const v = hubCli[ckey(sel.nome)];
     if (!v || !v.comp) return '';
-    const p = v.comp, res = (r) => (r && r.results) || [], tot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : 0);
+    const p = v.comp, res = hubRes, tot = hubTot;
     const hoje = D.hoje(), mesesAtras = (n) => D.somarMeses(D.inicioMes(hoje), -n);
     const dims = [];   // { nome, nivel: 'bom'|'atencao'|'critico', texto, acoes[] }
     const nivel = (bom, ruim) => (bom ? 'bom' : ruim ? 'critico' : 'atencao');
@@ -5227,7 +5055,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (reab >= 3) acSup.push(`${reab} chamados foram reabertos: entender a causa raiz com o suporte em vez de fechar de novo.`);
     if (t3 > t3ant && t3 >= 3) acSup.push('Os chamados aumentaram nos últimos 3 meses. Ver se é instalação, equipamento ou dúvida de uso.');
     if (v.tickets && v.tickets.semDetalhe) dims.push({ nome: 'Suporte', nivel: 'atencao', texto: `${fmt(tot(v.tickets), 0)} chamados no histórico. A coleta não teve permissão para ler os chamados, então não dá para dizer quantos estão abertos nem os assuntos.`, acoes: ['Conferir no HubSpot os chamados em aberto deste cliente antes da próxima conversa.'] });
-    else dims.push({ nome: 'Suporte', nivel: nivel(!ab && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${fmt(ab, 0)} em aberto. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
+    else dims.push({ nome: 'Suporte', nivel: nivel(ab === 0 && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${ab === null ? 'abertos sem permissão de leitura' : fmt(ab, 0) + ' em aberto'}. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
     // 4. Contrato e frota
     const fc = hubNum(p.frota_contratada), comDados = E.veic ? placasDoCliente().length : null;   // todas as placas do cliente, sem o filtro de grupo
     const ini = hubDia(p.data_inicio_do_contrato_original), fim = hubDia(p.data_de_termino_do_contrato);
@@ -5270,7 +5098,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       return `<section class="card hb-card">${cab}<div class="card-corpo">${v.carregando ? '<div class="vazio"><span class="spinner"></span><span class="apoio">Consultando o HubSpot…</span></div>'
         : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span><span class="alerta-texto">Ou rode <code>node api/hubspot.mjs</code> com o token do HubSpot no api/.env e clique em <b>Importar arquivo</b>.</span></div></div>`}</div></section>`;
     }
-    const p = v.comp, tot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : null), res = (r) => (r && r.results) || [];
+    const p = v.comp, tot = hubTot, res = hubRes;
     // perfil
     const estados = String(p.estados_onde_opera || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
     const campo = (rot, val) => (val ? `<div class="hb-campo"><span>${rot}</span><b>${val}</b></div>` : '');
@@ -5393,7 +5221,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function cartaoRelacionamento(todosClientes) {
     const todos = E.rel || [];
     const sel = todosClientes ? '' : ckey(E.cliente || '');
-    const lista = sel ? todos.filter((r) => ckey(r.cliente) === sel || sel.includes(ckey(r.chave))) : todos;
+    // igual ao relDoCliente: casa o nome inteiro (chave curta ou vazia não casava com qualquer cliente)
+    const lista = sel ? todos.filter((r) => ckey(r.cliente) === sel || (!!r.chave && ckey(r.chave) === sel)) : todos;
     if (!lista.length) return '';
     const dt = (v) => (v ? D.br(v) : '—');
     const item = (r0) => {
@@ -5431,14 +5260,21 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const pos = (ord.length - 1) * 0.25, i = Math.floor(pos), fr = pos - i;
     return ord[i] + (ord[Math.min(ord.length - 1, i + 1)] - ord[i]) * fr;
   }
+  // Litros a mais de cada motorista contra uma meta de km/l, só nos dias com km e litros (os mesmos do km/l):
+  // litros × (1 − km/l do motorista ÷ meta). Quem já está na meta ou acima fica de fora.
+  function litrosAcimaDaMeta(lista, meta) {
+    if (!(meta > 0)) return [];
+    return lista.filter((x) => x.a.kml > 0 && x.a.litros > 0).map((x) => ({ x, litros: x.a.litros * (1 - x.a.kml / meta) }))
+      .filter((o) => o.litros > 0).sort((p, q) => q.litros - p.litros);
+  }
+  const metaKml = (lista) => (lista.length >= 4 ? metaQuartil(lista.map((x) => x.a.kml), 1) : null);
   function planoDados() {
     const c = calc();
     const A = c.frotaA, B = c.frotaB;
     const comKm = c.mots.filter((x) => x.a.km > 0 && x.a.kml > 0 && x.a.litros > 0);
     // Referência interna: o km/l que separa o quarto mais econômico dos motoristas do período (um valor absurdo não puxa a meta)
-    let ref = null;
-    if (comKm.length >= 4) ref = metaQuartil(comKm.map((x) => x.a.kml), 1);
-    const abaixo = ref ? comKm.map((x) => ({ x, litros: x.a.litros - x.a.km / ref })).filter((o) => o.litros > 0).sort((p, q) => q.litros - p.litros) : [];
+    const ref = metaKml(comKm);
+    const abaixo = litrosAcimaDaMeta(comKm, ref);
     const litrosPot = abaixo.reduce((s, o) => s + o.litros, 0);
     const dias = D.dias(E.A);
     const fator = dias > 0 ? 30 / dias : 0;
@@ -5646,12 +5482,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       const rel = gap / Math.max(Math.abs(meta), Math.abs(A[k]), 1e-9);   // 0 a 1: quanto do valor atual é distância até a meta (não explode com meta perto de zero)
       const fora = mots.filter((x) => num(x.a[k]) && (ind.melhor > 0 ? x.a[k] < A[k] : x.a[k] > A[k])).length;
       let reais = null;
-      if (k === 'kml' && num(A.km) && num(A.litros) && meta > 0) reais = (A.litros - A.km / meta) * E.preco;
+      if (k === 'kml') { const l = litrosAcimaDaMeta(mots, meta).reduce((t, o) => t + o.litros, 0); reais = l > 0 ? l * E.preco : null; }
       if (k === 'motor_ocioso' && num(da.ocioso_l) && A[k] > 0) reais = da.ocioso_l * (gap / A[k]) * E.preco;
       return { ind, meta, gap, rel, fora, reais };
     }).filter(Boolean).sort((p, q) => ((q.reais || 0) - (p.reais || 0)) || (q.rel - p.rel)).slice(0, 7);
     const maxRel = Math.max(0.0001, ...garg.map((g) => g.rel));
-    const totalReais = garg.reduce((t, g) => t + (g.reais || 0), 0);
+    const totalReais = (garg.find((g) => g.ind.key === 'kml') || {}).reais || 0;   // o diesel do motor ocioso já entra no consumo: somar os dois contaria em dobro
     const gargHtml = garg.map((g, i) => `<div class="pd-garg" role="button" tabindex="0" data-acao="ind-detalhe" data-k="${g.ind.key}" data-alvo="" title="Ver o gráfico de ${esc(g.ind.label)}">
       <span class="pd-garg-n">${i + 1}</span>
       <span class="pd-garg-txt"><b>${esc(g.ind.label)}</b><small>Frota ${esc(fmtInd(g.ind, A[g.ind.key]))} · meta ${esc(fmtInd(g.ind, g.meta))} · ${g.fora} de ${mots.length} condutores piores que a média</small><span class="pd-dica">${icone('grafico', 12)} ${esc(DICAS[g.ind.key] || '')}</span></span>
@@ -5674,7 +5510,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       </div>
       ${garg.length ? `<section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Gargalos operacionais</h2>
-          <span class="h2-sub">Onde a frota está mais longe da meta em ${D.periodoBR(pa)}. A meta é o valor que separa o quarto melhor dos condutores da própria operação.${totalReais >= 1 ? ` Só em consumo e motor ocioso, são cerca de <b class="txt-ruim">R$ ${fmt(totalReais, 0)}</b> em jogo.` : ''}</span></div></div>
+          <span class="h2-sub">Onde a frota está mais longe da meta em ${D.periodoBR(pa)}. A meta é o valor que separa o quarto melhor dos condutores da própria operação.${totalReais >= 1 ? ` Só em consumo (o motor ocioso já está dentro), são cerca de <b class="txt-ruim">R$ ${fmt(totalReais, 0)}</b> em jogo no período.` : ''}</span></div></div>
         <div class="card-corpo" style="gap:0">${gargHtml}</div></section>` : ''}`;
   }
 
@@ -5691,6 +5527,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const rot = (p) => (g === 'mes' ? D.nomeMes(p.ini) : g === 'semana' ? 'Semana ' + D.periodoCurto(p) : D.br(p.ini) + ' ' + D.semana(p.ini));
     const gran = `<div class="pd-chips">${[['dia', 'Dia a dia'], ['semana', 'Semana a semana'], ['mes', 'Mês a mês']].map(([k, r]) => `<button type="button" class="pilula ${g === k ? 'ativa' : ''}" data-acao="plano-gran" data-g="${k}" aria-pressed="${g === k}">${r}</button>`).join('')}</div>`;
     if (per.length < 2) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}<div class="vazio"><span class="vazio-titulo">Poucos ${g === 'dia' ? 'dias' : g === 'semana' ? 'semanas' : 'meses'} no período</span><span class="apoio">Amplie o período no campo de datas ou escolha uma visão menor.</span></div></div></section>`;
+    if (!inds.length) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}<div class="vazio"><span class="vazio-titulo">Sem indicadores para acompanhar</span><span class="apoio">Os dados deste cliente não trazem os indicadores de condução da evolução.</span></div></div></section>`;
     if (!inds.some((i) => i.key === E.planoEvoInd)) E.planoEvoInd = inds[0].key;
     const iG = IND_MAP[E.planoEvoInd];
     E.graficos['plano-evo'] = { tipo: 'linha', a: per.map((r) => ({ data: r.p.ini, valor: r.v[iG.key] })), b: [], ind: iG, titulo: iG.label + ' por período', altura: 240 };
@@ -5758,7 +5595,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   // Executa fn com a base do veículo no lugar da de motoristas (restaura sempre)
   function comContexto(fn) {
-    const veic = (E.rota.tela === 'individual' && E.rota.tipo === 'veiculo') || E.rota.tela === 'veiculos';
+    const veic = E.rota.tela === 'individual' && E.rota.tipo === 'veiculo';
     if (!veic) return fn();
     const salvo = E.base, bv = baseVeic();
     if (!bv) return fn();
@@ -5851,15 +5688,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const dD = ca === la ? rel(a.dias, b.dias) : null, dM = antes.size ? (ativosC.size - antes.size) / antes.size : null;
     if (dD !== null || dM !== null) {
       const rs = [dD, dM].filter((v) => v !== null).map((v) => clamp(-v * 280, 0, 100));
-      f.push({ k: 'engaj', nome: 'Engajamento dos motoristas', risco: rs.reduce((t, v) => t + v, 0) / rs.length, det: `${fmt(ativos.size, 0)} motoristas ativos${antes.size ? ' (antes ' + fmt(antes.size, 0) + ')' : ''} · ${fmt(a.dias, 0)} dias trabalhados` });
+      f.push({ k: 'engaj', nome: 'Engajamento dos motoristas', risco: rs.reduce((t, v) => t + v, 0) / rs.length, det: `${fmt(ativosC.size, 0)} motoristas ativos${antes.size ? ' (antes ' + fmt(antes.size, 0) + ')' : ''} · ${fmt(a.dias, 0)} dias trabalhados` });
     }
     if (a.nota > 0) {
       const nivel = clamp((70 - a.nota) * 2.5, 0, 100), dn = b.nota > 0 && aC.nota > 0 ? aC.nota - b.nota : null;
       const tend = dn === null ? null : clamp(-dn * 8, 0, 100);
-      f.push({ k: 'perf', nome: 'Performance (Nota Gobrax)', risco: tend === null ? nivel : nivel * 0.6 + tend * 0.4, det: `Nota ${fmt(a.nota, 1)}${dn === null ? '' : ' (' + (dn >= 0 ? '+' : '') + fmt(dn, 1) + ' pts)'}` });
+      f.push({ k: 'perf', nome: 'Performance (Nota Gobrax)', risco: tend === null ? nivel : nivel * 0.6 + tend * 0.4, det: `Nota ${fmt(a.nota, 1)}${dn === null ? '' : ' · ' + (dn >= 0 ? '+' : '') + fmt(dn, 1) + ' pts vs. ' + ref}` });
     }
     const dK = b.kml > 0 && aC.kml > 0 ? (aC.kml - b.kml) / b.kml : null;
-    if (dK !== null) f.push({ k: 'consumo', nome: 'Resultado de consumo', risco: dK < 0 ? clamp(-dK * 500, 0, 100) : 0, det: `Média ${fmt(a.kml, 2)} km/l (${dK >= 0 ? '+' : ''}${fmt(dK * 100, 1)}%)` });
+    if (dK !== null) f.push({ k: 'consumo', nome: 'Resultado de consumo', risco: dK < 0 ? clamp(-dK * 500, 0, 100) : 0, det: `Média ${fmt(aC.kml, 2)} km/l (${dK >= 0 ? '+' : ''}${fmt(dK * 100, 1)}% vs. ${ref})` });
     if (notas.length) f.push({ k: 'criticos', nome: 'Motoristas com nota crítica', risco: clamp((crit / notas.length) * 250, 0, 100), det: `${fmt(crit, 0)} de ${fmt(notas.length, 0)} motoristas com nota abaixo de 40` });
     // HubSpot (conector ou arquivo da API): nota CHS e último contato
     const hv = hubCli[ckey(nome)];
@@ -5929,7 +5766,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   function salvarTratLocal() { if (E.demo) return; armazem.gravar(CHAVE_TRAT, JSON.stringify(E.trat)); }
   function carregarTratLocal() {
-    try { E.trat = (JSON.parse(armazem.ler(CHAVE_TRAT) || '[]') || []); } catch (e) { E.trat = []; }
+    E.trat = armazem.lerJSON(CHAVE_TRAT, []);
   }
   function tratDoCliente(nome) {
     const k = ckey(nome);
@@ -5955,7 +5792,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const itens = EFEITO_IND.filter((k) => bt.indicadores.some((i) => i.key === k)).map((k) => {
       const ind = IND_MAP[k], a = ra[k], d = rd[k], v = X.variacao(ind, d, a);
       let sentido = v.semBase ? 'semBase' : v.sentido;
-      if (!v.semBase) { const peq = ind.var === 'pct' ? Math.abs(v.rel || 0) < 0.015 : Math.abs(v.delta) < 1; if (peq) sentido = 'estavel'; }
+      // nota, km/l e faixa verde: o mesmo limiar da evolução do motorista; os demais, a regra própria da tratativa
+      if (!v.semBase) { const peq = X.LIMIAR[k] !== undefined ? dentroDoLimiar(ind, v) : ind.var === 'pct' ? Math.abs(v.rel || 0) < 0.015 : Math.abs(v.delta) < 1; if (peq) sentido = 'estavel'; }
       return { ind, a, d, v, sentido, ctx: EFEITO_CONTEXTO.includes(k) };
     });
     const base = itens.filter((i) => !i.ctx);
@@ -6464,8 +6302,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
     if (!todos.length) return '';
     const W = 720, H = 230, m = { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const mn = Math.min(...todos), mx = Math.max(...todos), folga = Math.max((mx - mn) * 0.9, Math.abs(mx) * 0.03, 0.01);
-    const lo = Math.max(0, mn - folga), hi = mx + folga * 0.25;   // escala aproximada para a diferença entre semanas aparecer
+    const mn = Math.min(...todos), mx = Math.max(...todos);
+    const lo = Math.min(0, mn), hi = mx > 0 ? mx * 1.12 : 1;   // barra sempre a partir do zero (cortar a base exagera a diferença); o valor e a cor mostram a mudança
     const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih, bw = iw / S.ws.length, larg = Math.min(64, bw * 0.56);
     let g = '';
     S.ws.forEach((w, i) => {
@@ -6600,7 +6438,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function investimentoSalvo() {
     const c = cliAtual();
     if (c) return c.investimento || {};
-    try { return JSON.parse(armazem.ler(CHAVE_INV) || '{}') || {}; } catch (e) { return {}; }
+    return armazem.lerJSON(CHAVE_INV, {});
   }
   function investimento() {
     const s = investimentoSalvo(), placas = new Set(E.base.linhas.map((l) => l.veiculo).filter(Boolean)).size;
@@ -6952,7 +6790,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); lerHubLocal(); render(); }
   }
   function carregarClientesLocal() {
-    try { E.clientes = (JSON.parse(armazem.ler(CHAVE_CLIENTES) || '[]') || []); } catch (e) { E.clientes = []; }
+    E.clientes = armazem.lerJSON(CHAVE_CLIENTES, []);
     ordenarClientes(); E.clientesPronto = true;
   }
   async function salvarCliente() {
@@ -7004,7 +6842,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     ? 'A base compartilhada está cheia. Apague dados antigos de algum cliente para liberar espaço.'
     : 'Não foi possível gravar na base compartilhada. Você pode não ter permissão para editar este painel.');
   function periodoSalvo() {
-    try { const p = JSON.parse(armazem.ler('gbx-frota-periodo') || 'null'); return p && { A: p.A, B: p.B, p: p.preset, m: p.modo }; } catch (e) { return null; }
+    const p = armazem.lerJSON('gbx-frota-periodo', null);
+    return p && typeof p === 'object' ? { A: p.A, B: p.B, p: p.preset, m: p.modo } : null;
   }
   function iniciarPlanilhas(db) {
     planRef = db.collection('planilhas');
@@ -7357,7 +7196,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // Busca automática: logo que o token é salvo e, com o painel aberto, a cada hora (só os dias desde a última busca)
   const chaveAuto = (cli) => 'gbx-api-auto:' + slugCli(cli);
-  const lerAuto = (cli) => { try { return JSON.parse(armazem.ler(chaveAuto(cli)) || 'null') || {}; } catch (e) { return {}; } };
+  const lerAuto = (cli) => armazem.lerJSON(chaveAuto(cli), {});
   const marcarAuto = (cli, o) => armazem.gravar(chaveAuto(cli), JSON.stringify(Object.assign(lerAuto(cli), o)));
   const DIAS_AUTO = 30, HORA = 3600000;
   let filaApi = Promise.resolve(), apiBloqueada = false;   // no Claude a chamada é bloqueada: a busca automática para depois da primeira falha
@@ -7386,7 +7225,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       uso: 'Uma chamada por dia do período. Cada veículo vira uma linha da planilha de veículos do dia; quem rodou (km > 0) entra também na planilha de motoristas, que alimenta a Visão geral.',
       params: [['startDate', 'Início do dia de Brasília em UTC: <code>AAAA-MM-DD 03:00:00</code>'], ['endDate', 'Fim do dia em UTC: <code>AAAA-MM-DD+1 02:59:59</code>'], ['vehicleIdentification', 'Vazio = todos os veículos do token']],
       campos: [['vehicleIdentification', 'veiculo (placa)'], ['totalMileage', 'km'], ['totalConsumption', 'litros'], ['totalBreaking', 'frenagens'], ['totalBreakingOnHighSpeed', 'frenagens_alta'], ['averageSpeed', 'velocidade_media'], ['odometer', 'odometro']],
-      onde: 'Veículos e grupos, Veículo individual, Visão geral, Desenvolvimento da frota' },
+      onde: 'Veículo individual, Visão geral, Desenvolvimento da frota (grupos de veículos no fim da tela)' },
     { metodo: 'GET', caminho: 'v1/vehicle-performance', titulo: 'Performance por veículo',
       uso: 'Mesma janela diária das estatísticas, juntada pela placa. Se o token não tiver acesso ou a chamada falhar, as estatísticas do dia entram assim mesmo e o aviso aparece no perfil do cliente. Motorista não é veículo: o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado. Quando o vínculo não cobre o dia todo (ou há mais de um motorista), estatísticas e performance são consultadas de novo com a placa e o início e o fim de cada vínculo.',
       params: [['startDate / endDate', 'Iguais aos das estatísticas'], ['vehicleIdentification', 'Vazio = todos']],
@@ -7396,7 +7235,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       uso: 'Último odômetro de cada veículo nos últimos 30 dias. Guarda um documento por cliente, substituído a cada busca.',
       params: [['startDate / endDate', 'Agora − 30 dias até agora, em UTC'], ['vehicleIdentification', 'Vazio = todos']],
       campos: [['vehicleIdentification', 'placa'], ['odometer', 'odômetro'], ['lastUpdated', 'última comunicação']],
-      onde: 'Veículos e grupos → Odômetro e comunicação' },
+      onde: 'Desenvolvimento da frota → Odômetro e comunicação (no fim da tela)' },
     { metodo: 'GET', caminho: 'v2/driversOverview', titulo: 'Scores e premiação',
       uso: 'Nota, km e bonificação de cada motorista por mês. Guarda um documento por cliente e mês.',
       params: [['startDate / endDate', 'Mês no formato <code>MM-AAAA</code>'], ['documentNumbers', 'Vazio = todos os motoristas']],
@@ -8017,7 +7856,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
             </div>
             <span class="apoio">A exportação de Motoristas da plataforma não traz datas. Informe a que período ela se refere antes de anexar${vei.length ? ' (já veio da planilha de veículos deste cliente)' : ''}. Para comparar dia a dia, anexe uma planilha por dia, com início e fim no mesmo dia.</span></div>
           ${zona('motoristas', 'Planilha de motoristas de ' + esc(nome), 'Exportação de Motoristas da plataforma (.xlsx) ou CSV diário. Você pode escolher várias de uma vez; cada uma é somada às anteriores.')}
-          ${zona('veiculos', 'Planilha de veículos de ' + esc(nome), 'Exportação de Veículos da plataforma (.xlsx) ou CSV. O período é lido da primeira linha da planilha. Alimenta Veículos e grupos.')}
+          ${zona('veiculos', 'Planilha de veículos de ' + esc(nome), 'Exportação de Veículos da plataforma (.xlsx) ou CSV. O período é lido da primeira linha da planilha. Alimenta Desenvolvimento da frota, Veículo individual e os grupos de veículos.')}
           <button type="button" class="btn-link peq" data-acao="baixar-modelo" style="align-self:flex-start">Baixar modelo CSV diário (só cabeçalho)</button>
         </div></section>
         <section class="card">
@@ -8209,8 +8048,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
+    const telas = { estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'dashboards', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
@@ -8591,8 +8430,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       E.lista.ord = E.lista.ord.col === col ? { col, dir: -E.lista.ord.dir } : { col, dir: col === 'motorista' || IND_MAP[col] && IND_MAP[col].melhor < 0 ? 1 : -1 };
       render();
     },
-    'pagina': (el) => { (E.rota.tela === 'veiculos' ? E.veicLista : E.lista).pag = Number(el.dataset.pag); render(); },
-    'por-pagina': (el) => { const L = E.rota.tela === 'veiculos' ? E.veicLista : E.lista; L.por = Number(el.dataset.n); L.pag = 1; render(); },
+    'pagina': (el) => { E.lista.pag = Number(el.dataset.pag); render(); },
+    'por-pagina': (el) => { E.lista.por = Number(el.dataset.n); E.lista.pag = 1; render(); },
     'ord-comp': (el) => { E.comp.ord = Number(el.dataset.o); render(); },
 
     // Calendário
@@ -8883,37 +8722,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(x.texto).then(ok, selecionar);
       else selecionar();
     },
-    'ord-veic': (el) => { const c = el.dataset.col; E.veicOrd = E.veicOrd.col === c ? { col: c, dir: -E.veicOrd.dir } : { col: c, dir: c === 'placa' || ehDim(c) || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
-    'ord-grupo': (el) => { const c = el.dataset.col; E.grupoOrd = E.grupoOrd.col === c ? { col: c, dir: -E.grupoOrd.dir } : { col: c, dir: c === 'nome' || (IND_MAP[c] && IND_MAP[c].melhor < 0) ? 1 : -1 }; render(); },
-    'grupo-por': (el) => { E.grupoPor = el.dataset.dim; render(); },
-    'filtro-status-veic': (el) => { E.veicLista.status = el.dataset.status; E.veicLista.pag = 1; render(); },
-    'limpar-veic': () => { E.veicLista.busca = ''; E.veicLista.status = 'todos'; E.veicLista.pag = 1; render(); },
     'filtrar-dim': (el) => { E.filtro[el.dataset.dim] = el.dataset.val; reaplicarFiltro(); if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; } render(); window.scrollTo(0, 0); },
-    'limpar-dim': () => { DIMS.forEach((d) => { E.filtro[d.key] = ''; }); reaplicarFiltro(); if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; } render(); },
-    'exportar-veic': () => {
-      const c = calc(); const inds = COLS_VEIC.filter(([k]) => temInd(k)).map(([k]) => IND_MAP[k]);
-      const dimsV = dimsDoVeic();
-      const ls = [csvLinha(['Veículo'].concat(dimsV.map((d) => d.label), ['Situação', 'Evolução'], ...inds.map((i) => [i.label + ' (analisado)', i.label + ' (comparação)', i.label + ' (variação)'])))];
-      veiculosFiltrados(c).forEach((x) => {
-        ls.push(csvLinha([x.m.nome].concat(dimsV.map((d) => dimDoVeic(x, d.key)), [x.a.km > 0 ? 'Rodando' : 'Parado', x.a.km > 0 ? nomeStatus(x.st.status) : '—'], ...inds.map((i) => {
-          const v = X.variacao(i, x.a[i.key], x.b[i.key]);
-          return [numCSV(x.a[i.key], i.casas), numCSV(x.b[i.key], i.casas), v.semBase ? '' : v.texto];
-        }))));
-      });
-      baixar('analise_veiculos_' + sufixoArquivo() + '.csv', ls.join('\n'));
-    },
-    'exportar-grupos': () => {
-      const c = calc(); const inds = COLS_VEIC.filter(([k]) => temInd(k)).map(([k]) => IND_MAP[k]);
-      const rot = DIMS.find((d) => d.key === E.grupoPor).label;
-      const ls = [csvLinha([rot, 'Veículos', 'Rodando', 'Parados', 'Evoluíram', 'Estáveis', 'Regrediram'].concat(...inds.map((i) => [i.label + ' (analisado)', i.label + ' (comparação)', i.label + ' (variação)'])))];
-      agruparVeic(c, E.grupoPor).sort((p, q) => (q.a.km || 0) - (p.a.km || 0)).forEach((g) => {
-        ls.push(csvLinha([g.nome, g.n, g.rod, g.par, g.ev, g.es, g.re].concat(...inds.map((i) => {
-          const v = X.variacao(i, g.a[i.key], g.b[i.key]);
-          return [numCSV(g.a[i.key], i.casas), numCSV(g.b[i.key], i.casas), v.semBase ? '' : v.texto];
-        }))));
-      });
-      baixar('analise_por_' + E.grupoPor + '_' + sufixoArquivo() + '.csv', ls.join('\n'));
-    },
     'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli); },
     'trat-hub': (el) => { trazerTratHub(el.dataset.cli); },
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
@@ -8972,7 +8781,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!el || el.disabled) return;
     const f = acoes[el.dataset.acao];
     if (!f) return;
-    if (['filtrar-dim', 'limpar-dim', 'remover-veic-confirmar', 'remover-confirmar', 'churn-cliente', 'churn-todos', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
+    if (['filtrar-dim', 'churn-cliente', 'churn-todos', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
     else comContexto(() => f(el, ev));
   });
   document.addEventListener('keydown', (ev) => {
@@ -8984,7 +8793,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const k = ev.target.dataset.campo;
     if (k === 'busca') { E.lista.busca = ev.target.value; E.lista.pag = 1; render(); }
     else if (k === 'grp-busca') { E.gruposBusca = ev.target.value; render(); }
-    else if (k === 'busca-veic') { E.veicLista.busca = ev.target.value; E.veicLista.pag = 1; render(); }
     else if (k === 'per-ini' || k === 'per-fim') { if (E.perMot) { E.perMot[k.slice(4)] = ev.target.value; E.perMot.editado = true; } }
     else if (k && k.indexOf('cli-') === 0) E.clienteForm[k.slice(4)] = ev.target.value;
     else if (k && k.indexOf('usu-f-') === 0) usu().form[k.slice(6)] = ev.target.value;
@@ -9101,7 +8909,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       }
     } catch (e) { /* período salvo inválido: fica o padrão */ }
     E.planCarregando = !!(window.claude && window.claude.use);   // dentro do Claude: espera a base compartilhada
-    try { E.apiLocal = JSON.parse(armazem.ler(CHAVE_API_LOCAL) || '{}') || {}; } catch (e) { E.apiLocal = {}; }
+    E.apiLocal = armazem.lerJSON(CHAVE_API_LOCAL, {});
     lerRota();
     render();
     iniciarClientes();

@@ -2720,7 +2720,22 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     alvo.addEventListener('mouseleave', () => { guia.setAttribute('visibility', 'hidden'); dica(null); });
     el.appendChild(svg);
   }
-  G.GBX.ui = { miniArea, esc, avatar, iniciais, badgeNota, badgeStatus, STATUS, variacao, icone, calendarioMes, dica, graficoLinha, graficoBarras, graficoIndicador, sparkline, paginacao, curva, novoId };
+  // Barra de abas. itens: [chave, rótulo, contador?, href?]; com href a aba é um link (vai para outra tela), sem href dispara data-acao
+  function abas(itens, ativa, acao, rotulo) {
+    return `<div class="abas" role="tablist"${rotulo ? ` aria-label="${esc(rotulo)}"` : ''}>${itens.map(([k, rot, n, href]) => {
+      const at = k === ativa, cont = n !== undefined && n !== null ? `<span class="aba-cont">${n}</span>` : '';
+      const base = `role="tab" class="aba ${at ? 'ativa' : ''}" aria-selected="${at}"`;
+      return href ? `<a ${base} href="${href}" style="text-decoration:none"><span>${rot}</span>${cont}</a>`
+        : `<button type="button" ${base} data-acao="${acao}" data-aba="${esc(k)}"><span>${rot}</span>${cont}</button>`;
+    }).join('')}</div>`;
+  }
+
+  // Estado vazio: título, texto de apoio e uma ação opcional (link ou botão já montado)
+  function vazio(titulo, texto, acao) {
+    return `<div class="vazio">${titulo ? `<span class="vazio-titulo">${titulo}</span>` : ''}${texto ? `<span class="apoio">${texto}</span>` : ''}${acao || ''}</div>`;
+  }
+
+  G.GBX.ui = { abas, vazio, miniArea, esc, avatar, iniciais, badgeNota, badgeStatus, STATUS, variacao, icone, calendarioMes, dica, graficoLinha, graficoBarras, graficoIndicador, sparkline, paginacao, curva, novoId };
 })(window);
 
 </script>
@@ -2731,7 +2746,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   'use strict';
   const X = G.GBX;
   const { D, IND_MAP, GRUPOS, fmt, fmtInd } = X;
-  const { esc, avatar, badgeNota, badgeStatus, STATUS, variacao, icone } = X.ui;
+  const { esc, avatar, badgeNota, badgeStatus, STATUS, variacao, icone, abas } = X.ui;
+  const vazioUI = X.ui.vazio;   // 'vazio' já é nome de variável local em várias telas
+  // Abas da página Motoristas (a mesma lista na página e no Motorista individual, para nunca divergirem)
+  const ABAS_MOT = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['semanal', 'Resultado semanal'], ['enviadas', 'Mensagens enviadas'], ['lista', 'Lista de motoristas']];
+  const abasMot = (c, tem) => ABAS_MOT.filter(([k]) => tem(k)).map(([k, rot]) => [k, rot, k === 'lista' ? c.mots.length : undefined])
+    .concat([['individual', 'Motorista individual', undefined, '#/individual/motorista']]);
 
   const CHAVE_CSV = 'gbx-frota-csv';
   const CHAVE_CLIENTE_SEL = 'gbx-frota-cliente-sel';
@@ -2974,6 +2994,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Utilidades de interface ----------
+  // Cabeçalho de página: título (h1), subtítulo e ações à direita — o mesmo em todas as telas
+  const cabecalho = (titulo, sub, acoes) => `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1>${sub ? `<span class="sub">${sub}</span>` : ''}</div>${acoes || ''}</div>`;
   // Comparador das tabelas: val(x) dá o valor da coluna; vazio ('' / null) vai sempre para o fim e dois vazios empatam
   function ordemPor(val, dir) {
     const vazio = (v) => v === null || v === undefined || v === '' || (typeof v === 'number' && !Number.isFinite(v));
@@ -3501,12 +3523,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const dist = ['evoluiu', 'estavel', 'regrediu', 'sembase'].filter((k) => c.cont[k]);
 
     return `
-      <div class="pag-cab"><div class="pag-cab-texto">
-        <h1 class="h1">Desenvolvimento da frota</h1>
-        <span class="sub">${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}</span>
-      </div>
-      <a class="btn" href="#/comparativo" style="text-decoration:none">${icone('tabela', 14, '#5F6368')}Comparativo completo</a>
-      </div>
+      ${cabecalho(`Desenvolvimento da frota`, `${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`, `<a class="btn" href="#/comparativo" style="text-decoration:none">${icone('tabela', 14, '#5F6368')}Comparativo completo</a>`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
       ${radarAuto()}
@@ -3661,16 +3678,13 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (c.cont.sembase) pil.push(['sembase', 'Sem base', c.cont.sembase]);
     const aplicados = (E.lista.busca ? 1 : 0) + (E.lista.status !== 'todos' ? 1 : 0);
     return `
-      <div class="pag-cab"><div class="pag-cab-texto">
-        <h1 class="h1">Motoristas</h1>
-        <span class="sub">${E.motAba === 'enviadas' ? 'Quantas mensagens cada condutor recebeu, no que foi orientado a melhorar e a nota em cada dia' : E.motAba === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp' : `Evolução ou regressão de cada condutor · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`}</span>
-      </div></div>
+      ${cabecalho(`Motoristas`, `${E.motAba === 'enviadas' ? 'Quantas mensagens cada condutor recebeu, no que foi orientado a melhorar e a nota em cada dia' : E.motAba === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp' : `Evolução ou regressão de cada condutor · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`}`)}
       ${E.motAba === 'semanal' || E.motAba === 'enviadas' ? '' : barraPeriodo() + semDadosNoPeriodo(c.la.length)}
       ${(() => {
         const P = Object.assign(painelCondutores(c), { semanal: E.motAba === 'semanal' ? painelSemanal() : !!E.base.motoristas.length, enviadas: contaSrv() ? (E.motAba === 'enviadas' ? painelEnviadas(c) : true) : '' });
-        const abas = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['semanal', 'Resultado semanal'], ['enviadas', 'Mensagens enviadas'], ['lista', 'Lista de motoristas', c.mots.length]].filter(([k]) => k === 'lista' || P[k]);
-        if (!abas.some(([k]) => k === E.motAba)) E.motAba = abas[0][0];
-        return `<div class="abas" role="tablist" aria-label="Seções de Motoristas">${abas.map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.motAba === k ? 'ativa' : ''}" aria-selected="${E.motAba === k}" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<a role="tab" class="aba" aria-selected="false" href="#/individual/motorista" style="text-decoration:none"><span>Motorista individual</span></a></div>
+        const lista = abasMot(c, (k) => k === 'lista' || P[k]);
+        if (!lista.some(([k, , , href]) => k === E.motAba && !href)) E.motAba = lista[0][0];
+        return `${abas(lista, E.motAba, 'mot-aba', 'Seções de Motoristas')}
           ${E.motAba !== 'lista' ? P[E.motAba] : ''}`;
       })()}
       ${E.motAba === 'lista' ? `<section class="card">
@@ -4412,7 +4426,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const m = E.base.porId[E.rota.id];
     if (!m) {
       return `<button type="button" class="voltar" data-acao="ir" data-href="#/motoristas">‹ Motoristas</button>
-        <section class="card"><div class="vazio"><span class="vazio-titulo">Motorista não encontrado</span><span class="apoio">Ele pode não ter registros nos dados da API.</span></div></section>`;
+        <section class="card">${vazioUI(`Motorista não encontrado`, `Ele pode não ter registros nos dados da API.`)}</section>`;
     }
     const x = c.mots.find((y) => y.m.id === m.id) || { m, la: [], lb: [], a: X.resumo([], E.base), b: X.resumo([], E.base), st: { status: 'sembase' } };
     const aba = E.rota.aba;
@@ -4471,7 +4485,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
             const ls = porDia.get(d);
             const r = X.resumo(ls, E.base);
             return `<tr><td class="num">${D.br(d)} <span class="mudo">${D.semana(d)}</span></td><td>${esc([...new Set(ls.map((l) => l.veiculo).filter(Boolean))].join(', '))}</td>${cols.map((i) => `<td class="dir">${fmtInd(i, r[i.key], false)}</td>`).join('')}${temInd('nota') ? `<td>${badgeNota(r.nota)}</td>` : ''}</tr>`;
-          }).join('') : `<tr><td colspan="${cols.length + 3}"><div class="vazio"><span class="vazio-titulo">Sem registros no período analisado</span><span class="apoio">Escolha outros dias no calendário acima.</span></div></td></tr>`}</tbody></table></div></div></section>`;
+          }).join('') : `<tr><td colspan="${cols.length + 3}">${vazioUI(`Sem registros no período analisado`, `Escolha outros dias no calendário acima.`)}</td></tr>`}</tbody></table></div></div></section>`;
     }
     return `
       <button type="button" class="voltar" data-acao="ir" data-href="#/motoristas">‹ Motoristas</button>
@@ -4488,7 +4502,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         </div>
       </div>
       ${barraPeriodo()}
-      <div class="abas" role="tablist">${ABAS.map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${aba === k ? 'ativa' : ''}" aria-selected="${aba === k}" data-acao="aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}</div>
+      ${abas(ABAS, aba, 'aba', 'Seções do motorista')}
       ${corpo}`;
   }
 
@@ -4504,10 +4518,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const linhas = c.mots.map((x) => ({ x, v: X.variacao(ind, x.a[ind.key], x.b[ind.key]) }))
       .sort(ordemPor((o) => (o.v.semBase ? null : o.v.delta * (ind.melhor || 1)), E.comp.ord > 0 ? 1 : -1));
     return `
-      <div class="pag-cab"><div class="pag-cab-texto">
-        <h1 class="h1">Comparativo de períodos</h1>
-        <span class="sub">Todos os indicadores · ${D.periodoBR(E.A)} × ${D.periodoBR(E.B)}</span>
-      </div></div>
+      ${cabecalho(`Comparativo de períodos`, `Todos os indicadores · ${D.periodoBR(E.A)} × ${D.periodoBR(E.B)}`)}
       ${barraPeriodo()}
       <section class="card">
         <div class="card-cab">
@@ -4786,8 +4797,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <div class="grade-2">${cartaoConducao(c)}${cartaoKmDia(c)}</div>`;
     }
     corpo += cartoesVeiculos();
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Dashboards</h1>
-        <span class="sub">${E.base ? D.periodoBR(E.A) + ' comparado a ' + D.periodoBR(E.B) : 'Busque os dados pela API Gobrax para ver os gráficos da frota.'}</span></div></div>
+    return `${cabecalho(`Dashboards`, `${E.base ? D.periodoBR(E.A) + ' comparado a ' + D.periodoBR(E.B) : 'Busque os dados pela API Gobrax para ver os gráficos da frota.'}`)}
       ${E.base ? barraPeriodo() : ''}
       ${corpo}`;
   }
@@ -5393,11 +5403,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const conteudo = semAnterior
       ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Sem período anterior para comparar</span><span class="alerta-texto">A evolução (melhorou ou piorou) aparece quando houver dados do período anterior. As prioridades abaixo já usam o período atual.</span></div></div>'
       : '';
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Plano de ação</h1>
-        <span class="sub">Onde atuar para reduzir custo e aumentar produtividade</span></div></div>
+    return `${cabecalho(`Plano de ação`, `Onde atuar para reduzir custo e aumentar produtividade`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      <div class="abas" role="tablist" aria-label="Seções do Plano de ação">${[['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['evolucao', 'Evolução'], ['retorno', 'O projeto se paga?']].map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.planoAba === k ? 'ativa' : ''}" aria-selected="${E.planoAba === k}" data-acao="plano-aba" data-aba="${k}"><span>${rot}</span>${n ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}</div>
+      ${abas([['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['evolucao', 'Evolução'], ['retorno', 'O projeto se paga?']], E.planoAba, 'plano-aba', 'Seções do Plano de ação')}
       ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'evolucao' ? evolucaoPlano() : E.planoAba === 'retorno' ? retornoPlano() : `
       ${conteudo}
       ${faixa}
@@ -5526,8 +5535,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }
     const rot = (p) => (g === 'mes' ? D.nomeMes(p.ini) : g === 'semana' ? 'Semana ' + D.periodoCurto(p) : D.br(p.ini) + ' ' + D.semana(p.ini));
     const gran = `<div class="pd-chips">${[['dia', 'Dia a dia'], ['semana', 'Semana a semana'], ['mes', 'Mês a mês']].map(([k, r]) => `<button type="button" class="pilula ${g === k ? 'ativa' : ''}" data-acao="plano-gran" data-g="${k}" aria-pressed="${g === k}">${r}</button>`).join('')}</div>`;
-    if (per.length < 2) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}<div class="vazio"><span class="vazio-titulo">Poucos ${g === 'dia' ? 'dias' : g === 'semana' ? 'semanas' : 'meses'} no período</span><span class="apoio">Amplie o período no campo de datas ou escolha uma visão menor.</span></div></div></section>`;
-    if (!inds.length) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}<div class="vazio"><span class="vazio-titulo">Sem indicadores para acompanhar</span><span class="apoio">Os dados deste cliente não trazem os indicadores de condução da evolução.</span></div></div></section>`;
+    if (per.length < 2) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}${vazioUI(`Poucos ${g === 'dia' ? 'dias' : g === 'semana' ? 'semanas' : 'meses'} no período`, `Amplie o período no campo de datas ou escolha uma visão menor.`)}</div></section>`;
+    if (!inds.length) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}${vazioUI(`Sem indicadores para acompanhar`, `Os dados deste cliente não trazem os indicadores de condução da evolução.`)}</div></section>`;
     if (!inds.some((i) => i.key === E.planoEvoInd)) E.planoEvoInd = inds[0].key;
     const iG = IND_MAP[E.planoEvoInd];
     E.graficos['plano-evo'] = { tipo: 'linha', a: per.map((r) => ({ data: r.p.ini, valor: r.v[iG.key] })), b: [], ind: iG, titulo: iG.label + ' por período', altura: 240 };
@@ -5609,7 +5618,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const veic = E.rota.tipo === 'veiculo';
     const rotulo = veic ? 'veículo' : 'motorista', titulo = veic ? 'Veículo individual' : 'Motorista individual';
     if (!E.base) {
-      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">${veic ? 'Busque os dados pela API Gobrax para analisar cada caminhão.' : 'Busque os dados pela API Gobrax para analisar cada motorista.'}</span></div></div>
+      return `${cabecalho(`${titulo}`, `${veic ? 'Busque os dados pela API Gobrax para analisar cada caminhão.' : 'Busque os dados pela API Gobrax para analisar cada motorista.'}`)}
         <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-icone">${icone('subir', 15, '#5F6368')}</span><span class="vazio-titulo">Sem dados de ${rotulo}</span>
         <a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Buscar dados pela API</a></div></div></section>`;
     }
@@ -5630,11 +5639,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <span class="apoio">${fmt(lista.length, 0)} ${veic ? 'veículos' : 'motoristas'} com registro no período · use as abas abaixo para ver todos os indicadores, produtividade e o dia a dia.</span>
       ${(() => { const sel = c.mots.find((y) => y.m.id === id); if (!sel) return ''; const partes = DIMS.filter((d) => sel.m.dims[d.key].length).map((d) => `<span class="tag">${d.label}: ${esc(sel.m.dims[d.key].slice(0, 3).join(', '))}</span>`); return partes.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${partes.join('')}</div>` : ''; })()}</div></section>`;
     if (!veic) {   // Motorista individual é uma aba da página Motoristas
-      const abasMot = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo']].concat(contaSrv() ? [['enviadas', 'Mensagens enviadas']] : [], [['lista', 'Lista de motoristas', c.mots.length]]);
-      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Motoristas</h1><span class="sub">Um motorista por vez, comparado ao período anterior e à média da frota.</span></div></div>
-        <div class="abas" role="tablist" aria-label="Seções de Motoristas">${abasMot.map(([k, rot, n]) => `<button type="button" role="tab" class="aba" aria-selected="false" data-acao="mot-aba" data-aba="${k}"><span>${rot}</span>${n !== undefined ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}<span role="tab" class="aba ativa" aria-selected="true"><span>Motorista individual</span></span></div>${seletor}${blocoMsgMotorista((c.mots.find((y) => y.m.id === id) || { m: {} }).m.nome)}${corpo}`;
+      return `${cabecalho(`Motoristas`, `Um motorista por vez, comparado ao período anterior e à média da frota.`)}
+        ${abas(abasMot(c, (k) => k !== 'enviadas' || !!contaSrv()), 'individual', 'mot-aba', 'Seções de Motoristas')}${seletor}${blocoMsgMotorista((c.mots.find((y) => y.m.id === id) || { m: {} }).m.nome)}${corpo}`;
     }
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1><span class="sub">Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.</span></div></div>${seletor}${corpo}`;
+    return `${cabecalho(`${titulo}`, `Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.`)}${seletor}${corpo}`;
   }
 
 
@@ -5999,7 +6007,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const bt = baseTodos();
     const cart = churnCarteira();
     if (!cart.length) {
-      return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Saúde do cliente</h1><span class="sub">Sem dados da API para calcular o risco de cada cliente.</span></div></div>
+      return `${cabecalho(`Saúde do cliente`, `Sem dados da API para calcular o risco de cada cliente.`)}
         <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa rodagem, engajamento, nota, consumo e contato com o cliente.</span>
         <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div></div></section>`;
     }
@@ -6061,8 +6069,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const alterna = E.cliente ? `<div class="seg peq" role="group" aria-label="O que ver">
         <button type="button" class="${E.churnVista === 'cliente' ? 'ativo' : ''}" data-acao="churn-vista" data-v="cliente">${esc(E.cliente)}</button>
         <button type="button" class="${E.churnVista === 'carteira' ? 'ativo' : ''}" data-acao="churn-vista" data-v="carteira">Carteira</button></div>` : '';
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Saúde do cliente</h1>
-        <span class="sub">${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · histórico da retenção: o que foi combinado e o que mudou nos números</span></div>${alterna}</div>
+    return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · histórico da retenção: o que foi combinado e o que mudou nos números`, `${alterna}`)}
       ${barraPeriodo()}
       ${resumo}${E.churnVista === 'cliente' && !sel ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
       ${sel ? detalhe : ''}${tabela}${sel ? '' : detalhe}`;
@@ -6145,7 +6152,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   function dashboardIndividual(x, m, c) {
     const a = x.a, b = x.b, F = c.frotaA;
-    if (!x.la.length) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem registros no período analisado</span><span class="apoio">Escolha outro período acima.</span></div></div></section>`;
+    if (!x.la.length) return `<section class="card"><div class="card-corpo">${vazioUI(`Sem registros no período analisado`, `Escolha outro período acima.`)}</div></section>`;
     const veic = E.rota.tipo === 'veiculo';
     let nota = temInd('nota') && a.nota > 0 ? a.nota : null, rotNota = IND_MAP.nota.label, subNota = '', infoNota = '';
     const ranking = c.mots.filter((y) => y.a.nota > 0).sort((p, q) => q.a.nota - p.a.nota);
@@ -6199,8 +6206,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 
   // ---------- Configurações: clientes e anexo de planilhas (no perfil de cada cliente) ----------
   function abasConfig() {
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Configurações</h1>
-      <span class="sub">${ehAdmin() ? 'Usuários, clientes e dados da API.' : 'Clientes e dados da API.'} Para buscar os dados, abra o perfil do cliente.</span></div></div>`;
+    return `${cabecalho(`Configurações`, `${ehAdmin() ? 'Usuários, clientes e dados da API.' : 'Clientes e dados da API.'} Para buscar os dados, abra o perfil do cliente.`)}`;
   }
 
   // ---------- Tela: Visão geral — o relatório padrão para mostrar ao cliente ----------
@@ -6546,8 +6552,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
   function telaEstudo() {
     const S = dadosEstudo(), b = E.base;
-    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Estudo do projeto${E.cliente ? ' · ' + esc(E.cliente) : ''}</h1>
-      <span class="sub">Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = ${S.rotIni} (${D.periodoCurto(S.pIni)}); agora = ${S.rotAgora} (${D.periodoCurto(S.pAgora)}).</span></div></div>`;
+    const cab = `${cabecalho(`Estudo do projeto${E.cliente ? ' · ' + esc(E.cliente) : ''}`, `Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = ${S.rotIni} (${D.periodoCurto(S.pIni)}); agora = ${S.rotAgora} (${D.periodoCurto(S.pAgora)}).`)}`;
     if (S.ws.length < 2) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ainda pouco tempo de projeto</span><span class="apoio">O estudo precisa de pelo menos duas semanas de dados.</span></div></div></section>';
     const I = S.ini || {}, A = S.agora || {};
     const dv = (k) => { const v = X.variacao(IND_MAP[k], A[k], I[k]); return v.semBase ? '<span class="exec-neutro">sem base</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`; };
@@ -7259,8 +7264,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       return [`<b style="font-weight:600">${esc(c.nome)}</b>`, tem ? '<span class="badge badge-ok">Salvo</span>' : '<span class="badge badge-vazio">Sem token</span>', quando, sit, `<a class="btn-link peq" href="#/cliente/${encodeURIComponent(c.id)}">${tem ? 'Abrir perfil' : 'Salvar token'}</a>`];
     })) : '<p>Nenhum cliente cadastrado. Cadastre em <a class="btn-link" href="#/config">Configurações</a> e informe o token da API.</p>';
     const card = (titulo, sub, corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${titulo}</h2>${sub ? `<span class="h2-sub">${sub}</span>` : ''}</div></div><div class="card-corpo" style="gap:12px">${corpo}</div></section>`;
-    return `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${E.apiAba === 'hubspot' ? 'API HubSpot' : 'API Gobrax'}</h1><span class="sub">Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em docs/API.md.</span></div></div>
-      <div class="abas" role="tablist" aria-label="APIs">${[['gobrax', 'API Gobrax'], ['hubspot', 'API HubSpot']].map(([k, r]) => `<button type="button" role="tab" class="aba ${(E.apiAba || 'gobrax') === k ? 'ativa' : ''}" aria-selected="${(E.apiAba || 'gobrax') === k}" data-acao="api-aba" data-aba="${k}"><span>${r}</span></button>`).join('')}</div>
+    return `${cabecalho(`${E.apiAba === 'hubspot' ? 'API HubSpot' : 'API Gobrax'}`, `Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em docs/API.md.`)}
+      ${abas([['gobrax', 'API Gobrax'], ['hubspot', 'API HubSpot']], E.apiAba || 'gobrax', 'api-aba', 'APIs')}
       ${E.apiAba === 'hubspot' ? abaHubspot(card) : `<div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
       ${card('Situação por cliente', 'O token fica só neste navegador e nunca aparece na tela.', status)}
       ${card('Como funciona', '', `<ul>
@@ -7399,7 +7404,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function telaPremiacao() {
     // vem da base compartilhada: só mês no formato 'AAAA-MM' entra no HTML
     const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data))).sort((a, b) => (a.data < b.data ? -1 : 1));
-    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Premiação</h1><span class="sub">Nota, km e bonificação de cada motorista por mês, da API Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}.</span></div></div>`;
+    const cab = `${cabecalho(`Premiação`, `Nota, km e bonificação de cada motorista por mês, da API Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}.`)}`;
     if (!docs.length) return cab + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma premiação buscada ainda</span>
       <span class="apoio">No perfil do cliente, salve o token da API e busque "Scores e premiação".</span><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a></div></div></section>`;
     const meses = docs.map((d) => d.data);
@@ -7589,7 +7594,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     setTimeout(conferir, 10000);
   }
   function telaMensagens() {
-    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Mensagens do dia</h1><span class="sub">A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Copie, mande pelo seu WhatsApp e marque como enviada. O acompanhamento aparece no Motorista individual.</span></div></div>`;
+    const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Copie, mande pelo seu WhatsApp e marque como enviada. O acompanhamento aparece no Motorista individual.`)}`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
     const M = msg();
     if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
@@ -7778,7 +7783,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes</h2><span class="h2-sub">${E.clientes.length} ${E.clientes.length === 1 ? 'cliente' : 'clientes'} · ${E.planEmDb ? 'as planilhas ficam na base compartilhada: quem acessa o painel vê os mesmos dados, ao vivo.' : 'as planilhas ficam salvas neste navegador, separadas por cliente.'}</span></div></div>
         ${E.clientes.length
           ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Motoristas</th><th>Veículos</th><th>Token da API <span class="apoio" style="font-weight:400">(fica só neste navegador)</span></th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`
-          : `<div class="card-corpo"><div class="vazio"><span class="vazio-titulo">${E.clientesPronto ? 'Nenhum cliente cadastrado' : 'Carregando clientes…'}</span><span class="apoio">Cadastre o primeiro no formulário acima.</span></div></div>`}
+          : `<div class="card-corpo">${vazioUI(`${E.clientesPronto ? 'Nenhum cliente cadastrado' : 'Carregando clientes…'}`, `Cadastre o primeiro no formulário acima.`)}</div>`}
       </section>
       ${cartaoRelacionamento(true)}`;
   }

@@ -6546,8 +6546,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }
     for (let m = D.inicioMes(b.inicio); m <= b.fim; m = D.somarMeses(m, 1)) ms.push({ mes: m, ini: m < b.inicio ? b.inicio : m, fim: D.fimMes(m) > b.fim ? b.fim : D.fimMes(m) });
     const res = (p) => { const l = X.filtrar(b.linhas, p); return l.length ? X.resumo(l, b) : null; };
-    const pIni = { ini: b.inicio, fim: D.somar(b.inicio, 27) < b.fim ? D.somar(b.inicio, 27) : b.fim };
-    const pAgora = { ini: D.somar(b.fim, -27) > b.inicio ? D.somar(b.fim, -27) : b.inicio, fim: b.fim };
+    // com menos de 8 semanas, as 4 primeiras e as 4 últimas se sobrepõem: o início vira a primeira metade e agora a segunda
+    const curto = ws.length < 8, meio = D.somar(b.inicio, Math.floor((D.dif(b.inicio, b.fim) + 1) / 2) - 1);
+    const pIni = curto ? { ini: b.inicio, fim: meio } : { ini: b.inicio, fim: D.somar(b.inicio, 27) };
+    const pAgora = curto ? { ini: D.somar(meio, 1), fim: b.fim } : { ini: D.somar(b.fim, -27), fim: b.fim };
     const chave = temInd('nota') ? 'nota' : temInd('kml') ? 'kml' : null;
     const frW = ws.map(res), frM = ms.map(res);
     const mots = !chave ? [] : b.motoristas.map((m) => {
@@ -6561,7 +6563,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }).filter(Boolean);
     const cont = { evoluiu: 0, estavel: 0, regrediu: 0, sembase: 0 };
     mots.forEach((x) => { cont[x.st.status]++; });
-    memoEstudo = { b, ws, ms, frW, frM, chave, pIni, pAgora, ini: res(pIni), agora: res(pAgora), mots, cont };
+    memoEstudo = { b, ws, ms, frW, frM, chave, pIni, pAgora, ini: res(pIni), agora: res(pAgora), mots, cont,
+      rotIni: curto ? 'primeira metade do período' : 'primeiras 4 semanas', rotAgora: curto ? 'segunda metade' : 'últimas 4 semanas' };
     return memoEstudo;
   }
   // linha semana a semana de um indicador, com rótulo dos meses e, na nota, as faixas Bom (70+) e Crítico (abaixo de 40)
@@ -6597,10 +6600,99 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     g += `<circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="6" style="fill:none;stroke:var(--dado)" stroke-width="2"/>`;
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} semana a semana" style="display:block">${g}</svg>`;
   }
+  // ---------- O projeto se paga? Mensalidade da Gobrax (valor por equipamento × quantidade) contra o diesel economizado ----------
+  const CHAVE_INV = 'gbx-investimento';
+  function investimentoSalvo() {
+    const c = cliAtual();
+    if (c) return c.investimento || {};
+    try { return JSON.parse(armazem.ler(CHAVE_INV) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function investimento() {
+    const s = investimentoSalvo(), placas = new Set(E.base.linhas.map((l) => l.veiculo).filter(Boolean)).size;
+    const valor = Number(s.valor) > 0 ? Number(s.valor) : 159.9, qtd = Number(s.qtd) > 0 ? Number(s.qtd) : (placas || 1);
+    return { valor, qtd, mensal: valor * qtd, qtdAuto: !(Number(s.qtd) > 0) };
+  }
+  function salvarInvestimento(campos) {
+    const c = cliAtual(), novo = Object.assign({}, investimentoSalvo(), campos);
+    if (c) salvarEstado(c.id, { investimento: novo }, 'Investimento salvo para ' + c.nome + '.');
+    else { armazem.gravar(CHAVE_INV, JSON.stringify(novo)); render(); }
+  }
+  function blocoInvestimento(S) {
+    if (!temInd('kml') || !S.ini || !S.ini.kml) return '';
+    const inv = investimento(), base = S.ini.kml;
+    // a mensalidade entra por dia: cada dia custa a mensalidade dividida pelos dias daquele mês
+    const custo = (p) => { let t = 0; for (let d = p.ini; d <= p.fim; d = D.somar(d, 1)) t += inv.mensal / (D.dif(D.inicioMes(d), D.fimMes(d)) + 1); return t; };
+    const eco = (r) => { const e = r ? economia(r, S.ini) : null; return e ? e.reais : 0; };
+    let ae = 0, ac = 0;
+    const pts = S.ws.map((w, i) => { ae += eco(S.frW[i]); ac += custo(w); return { w, e: ae, c: ac }; });
+    const meses = S.ms.map((p, i) => ({ p, e: eco(S.frM[i]), c: custo(p) }));
+    const saldo = ae - ac, paga = saldo >= 0, retorno = ac ? ae / ac : null;
+    const eAg = S.agora ? economia(S.agora, S.ini) : null, ecoMes = eAg ? (eAg.reais / (D.dif(S.pAgora.ini, S.pAgora.fim) + 1)) * 30 : null;
+    const R = (v, d) => (v < 0 ? '− ' : '') + 'R$ ' + fmt(Math.abs(v), d === undefined ? 2 : d), R0 = (v) => R(v, 0);
+    const cruzou = pts.find((p) => p.e >= p.c && p.e > 0);
+
+    // gráfico: economia acumulada contra o investimento acumulado, semana a semana
+    const W = 720, H = 260, m = { l: 70, r: 120, t: 18, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const todos = pts.flatMap((p) => [p.e, p.c]);
+    let lo = Math.min(0, ...todos), hi = Math.max(...todos, 1);
+    const folga = (hi - lo) * 0.08; hi += folga; if (lo < 0) lo -= folga;
+    const x = (i) => m.l + (pts.length > 1 ? (i / (pts.length - 1)) * iw : iw / 2), y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    const corE = paga ? 'var(--ok, #1E8E3E)' : 'var(--critico, #D93025)';
+    let g = '';
+    [lo, (lo + hi) / 2, hi].concat(lo < 0 ? [0] : []).forEach((v) => {
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--apoio)" stroke-width="1"/>`;
+      g += `<text x="${m.l - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${R0(v)}</text>`;
+    });
+    let mesAnt = '';
+    pts.forEach((p, i) => { const mes = p.w.ini.slice(0, 7); if (mes !== mesAnt) { mesAnt = mes; g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i ? 'middle' : 'start'}" font-size="11" style="fill:var(--texto-2)">${mesCurto(p.w.ini)}</text>`; } });
+    // área entre as linhas: verde onde a economia passa o investimento, vermelha onde fica abaixo
+    pts.forEach((p, i) => {
+      if (!i) return;
+      const a = pts[i - 1], cor = (a.e + p.e) / 2 >= (a.c + p.c) / 2 ? 'rgba(30,142,62,.16)' : 'rgba(217,48,37,.12)';
+      g += `<path d="M${x(i - 1).toFixed(1)},${y(a.e).toFixed(1)} L${x(i).toFixed(1)},${y(p.e).toFixed(1)} L${x(i).toFixed(1)},${y(p.c).toFixed(1)} L${x(i - 1).toFixed(1)},${y(a.c).toFixed(1)} Z" style="fill:${cor}"/>`;
+    });
+    const linha = (k) => pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p[k]).toFixed(1)).join(' ');
+    g += `<path d="${linha('c')}" fill="none" stroke-dasharray="7 5" stroke-width="2" style="stroke:var(--texto-2)"/>`;
+    g += `<path d="${linha('e')}" fill="none" stroke-width="3" stroke-linejoin="round" style="stroke:${corE}"/>`;
+    pts.forEach((p, i) => { g += `<circle cx="${x(i).toFixed(1)}" cy="${y(p.e).toFixed(1)}" r="4" style="fill:${corE}"><title>Até ${esc(D.br(p.w.fim))}: economia ${esc(R(p.e))} · investimento ${esc(R(p.c))} · saldo ${esc(R(p.e - p.c))}</title></circle>`; });
+    const u = pts[pts.length - 1], xe = x(pts.length - 1) + 8;
+    let ye = y(u.e) + 4, yc = y(u.c) + 4;
+    if (Math.abs(ye - yc) < 30) { if (ye <= yc) { ye -= 15; yc += 15; } else { ye += 15; yc -= 15; } }
+    g += `<text x="${xe}" y="${ye.toFixed(1)}" font-size="12" font-weight="700" style="fill:${corE}">Economia<tspan x="${xe}" dy="14" font-weight="400">${esc(R(u.e))}</tspan></text>`;
+    g += `<text x="${xe}" y="${yc.toFixed(1)}" font-size="12" font-weight="700" style="fill:var(--texto-2)">Investimento<tspan x="${xe}" dy="14" font-weight="400">${esc(R(u.c))}</tspan></text>`;
+    if (cruzou) g += `<line x1="${x(pts.indexOf(cruzou)).toFixed(1)}" x2="${x(pts.indexOf(cruzou)).toFixed(1)}" y1="${m.t}" y2="${m.t + ih}" stroke-dasharray="3 4" style="stroke:var(--ok, #1E8E3E)"/>`;
+    const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block">${g}</svg>`;
+
+    const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
+    const itens = [
+      item('Investimento Gobrax por mês', R0(inv.mensal), '', fmt(inv.qtd, 0) + ' equipamentos × ' + R(inv.valor)),
+      item('Investido no período', R0(ac), '', D.periodoBR({ ini: S.ws[0].ini, fim: E.base.fim })),
+      item('Diesel economizado no período', R0(ae), '', 'contra o consumo do início (' + fmtInd(IND_MAP.kml, base) + ')'),
+      item(paga ? 'Ganho líquido' : 'Falta para se pagar', R0(Math.abs(saldo)), retorno !== null ? `<span class="exec-${paga ? 'bom' : 'ruim'}">retorno de ${fmt(retorno, 1)}×</span>` : '', paga ? 'economia menos o investimento' : 'investimento menos a economia')
+    ];
+    if (ecoMes !== null) itens.push(item('Ritmo atual por mês', R0(ecoMes), `<span class="exec-${ecoMes >= inv.mensal ? 'bom' : 'ruim'}">${ecoMes >= inv.mensal ? 'cobre' : 'não cobre'} a mensalidade</span>`, 'economia da ' + S.rotAgora + ' em 30 dias'));
+    const tabela = `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Mês</th><th class="dir">Investimento</th><th class="dir">Diesel economizado</th><th class="dir">Saldo</th><th class="dir">Cobertura</th></tr></thead><tbody>
+      ${meses.map((o) => `<tr><td><b style="font-weight:600">${esc(D.nomeMes(o.p.mes))}</b>${o.p.ini !== o.p.mes || o.p.fim !== D.fimMes(o.p.mes) ? `<span class="linha2">${D.periodoCurto(o.p)}</span>` : ''}</td><td class="dir num">${R(o.c)}</td><td class="dir num">${R(o.e)}</td>
+        <td class="dir num"><span class="exec-${o.e >= o.c ? 'bom' : 'ruim'}" style="font-weight:600">${R(o.e - o.c)}</span></td><td class="dir num">${o.c ? fmt((o.e / o.c) * 100, 0) + '%' : '—'}</td></tr>`).join('')}
+      </tbody></table></div>`;
+    const selo = paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O projeto Gobrax se paga?</h2>
+        <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado: o que a frota gastaria rodando os mesmos km com o consumo do início (${fmtInd(IND_MAP.kml, base)}, ${D.periodoCurto(S.pIni)}), ao diesel de R$ ${fmt(E.preco, 2)}/L.${cruzou ? ' A linha tracejada verde marca a semana em que a economia passou o investimento.' : ''}</span></div>${selo}</div>
+      <div class="card-corpo" style="gap:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label class="campo-bloco" style="max-width:220px"><span class="campo-rotulo">Valor por equipamento</span><span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="inv-valor" value="${fmt(inv.valor, 2)}" aria-label="Valor mensal por equipamento em reais"><span>R$/mês</span></span></label>
+          <label class="campo-bloco" style="max-width:180px"><span class="campo-rotulo">Equipamentos</span><span class="campo campo-sufixo"><input type="text" inputmode="numeric" data-campo="inv-qtd" value="${inv.qtd}" aria-label="Quantidade de equipamentos"><span>un.</span></span></label>
+          <span class="apoio" style="font-size:12px;padding-bottom:8px">${inv.qtdAuto ? 'Quantidade = veículos nos dados; digite a contratada. ' : ''}Mensalidade: <b>${R(inv.mensal)}</b></span>
+        </div>
+        <section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>
+        <div><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
+        ${tabela}
+      </div></section>`;
+  }
   function telaEstudo() {
     const S = dadosEstudo(), b = E.base;
     const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Estudo do projeto${E.cliente ? ' · ' + esc(E.cliente) : ''}</h1>
-      <span class="sub">Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = primeiras 4 semanas (${D.periodoCurto(S.pIni)}); agora = últimas 4 semanas (${D.periodoCurto(S.pAgora)}).</span></div></div>`;
+      <span class="sub">Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = ${S.rotIni} (${D.periodoCurto(S.pIni)}); agora = ${S.rotAgora} (${D.periodoCurto(S.pAgora)}).</span></div></div>`;
     if (S.ws.length < 2) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ainda pouco tempo de projeto</span><span class="apoio">O estudo precisa de pelo menos duas semanas de dados.</span></div></div></section>';
     const I = S.ini || {}, A = S.agora || {};
     const dv = (k) => { const v = X.variacao(IND_MAP[k], A[k], I[k]); return v.semBase ? '<span class="exec-neutro">sem base</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`; };
@@ -6609,7 +6701,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (temInd('nota')) itens.push(item('Nota Gobrax', fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'no início ' + fmtInd(IND_MAP.nota, I.nota)));
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'no início ' + fmtInd(IND_MAP.kml, I.kml)));
     const e = S.agora && S.ini ? economia(A, I) : null;
-    if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado (últimas 4 semanas)' : 'Diesel a mais (últimas 4 semanas)', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'mesmos km no consumo do início'));
+    if (e) itens.push(item((e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais') + ' (' + S.rotAgora + ')', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'mesmos km no consumo do início'));
     if (S.mots.length) itens.push(item('Motoristas que evoluíram', fmt(S.cont.evoluiu, 0) + ' de ' + fmt(S.mots.length - S.cont.sembase, 0), S.cont.regrediu ? `<span class="exec-ruim">${S.cont.regrediu} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', 'primeiro mês contra o último de cada um'));
     if (A.km) itens.push(item('Km monitorados no projeto', fmt(X.resumo(b.linhas, b).km || 0, 0), '', fmt(b.motoristas.length, 0) + ' motoristas'));
     const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Início do projeto → agora</span><span class="exec-sub">${D.periodoBR(S.pIni)} → ${D.periodoBR(S.pAgora)}</span></div><div class="exec-grade">${itens.join('')}</div></section>`;
@@ -6677,7 +6769,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const indicadores = chaves.length ? `<div class="pag-cab" style="margin-top:8px"><div class="pag-cab-texto"><h2 class="h2">Indicadores</h2><span class="sub">Cada indicador semana a semana desde o início do projeto, com o início contra agora e o melhor e o pior mês.</span></div></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px">${cards}</div>` : '';
 
-    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${faixa}${nota}${mots}${indicadores}</div>`;
+    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${faixa}${blocoInvestimento(S)}${nota}${mots}${indicadores}</div>`;
   }
 
   function telaGeral() {
@@ -7370,15 +7462,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           </tbody></table></div></div>` : '<span class="apoio">Nenhum grupo de veículos nos dados deste cliente. Quando a planilha de veículos trouxer a coluna Grupo, cada grupo poderá ter o seu estado aqui.</span>'}
       </div></section>`;
   }
-  async function salvarEstado(id, campos) {
+  async function salvarEstado(id, campos, aviso) {
     const c = E.clientes.find((x) => x.id === id);
     if (!c) return;
     Object.assign(c, campos);
     try {
       if (E.clientesEmDb && dbRef) { const { id: _i, ...doc } = c; await dbRef.doc(id).set(doc); }
       else salvarLocal();
-      toast('Estado salvo. O preço do diesel já segue ' + (campos.uf ? nomeUF(campos.uf) : 'o novo estado') + '.');
-    } catch (e) { toast('Não foi possível salvar o estado.', 'erro'); }
+      toast(aviso || 'Estado salvo. O preço do diesel já segue ' + (campos.uf ? nomeUF(campos.uf) : 'o novo estado') + '.');
+    } catch (e) { toast(aviso ? 'Não foi possível salvar.' : 'Não foi possível salvar o estado.', 'erro'); }
     render();
   }
   function cartaoApi(nome) {
@@ -8958,6 +9050,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       const n = Number(String(el.value).replace(/\./g, '').replace(',', '.'));
       if (Number.isFinite(n) && n > 0) { E.preco = n; E.precoManual = true; armazem.gravar(CHAVE_PRECO, String(n)); }
       render();
+    } else if (k === 'inv-valor' || k === 'inv-qtd') {
+      const n = Number(String(el.value).replace(/\./g, '').replace(',', '.'));
+      if (Number.isFinite(n) && n > 0) salvarInvestimento(k === 'inv-valor' ? { valor: n } : { qtd: Math.round(n) });
+      else render();
     } else if (k === 'arquivo-motoristas' && el.files.length) lerArquivos(el.files, 'motoristas', el.dataset.cli);
     else if (k === 'arquivo-veiculos' && el.files.length) lerArquivos(el.files, 'veiculos', el.dataset.cli);
   });

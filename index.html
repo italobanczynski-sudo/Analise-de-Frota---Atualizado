@@ -5454,6 +5454,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="plano-passo"><strong>Próximo passo</strong><span>${o.passo}</span></div>
     </section>`;
   }
+  // aba do Plano de ação com o mesmo bloco do Estudo do projeto: usa todo o projeto, não o período da barra
+  function retornoPlano() {
+    const S = dadosEstudo(), bloco = S.ws.length < 2 ? '' : blocoInvestimento(S);
+    return bloco ? `<span class="apoio" style="font-size:12px">Calculado com todo o projeto (${D.periodoBR({ ini: E.base.inicio, fim: E.base.fim })}), não só o período escolhido acima. <a class="btn-link peq" href="#/estudo">Ver o estudo completo →</a></span>${bloco}`
+      : '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para o retorno</span><span class="apoio">É preciso média de consumo (km e litros) em pelo menos duas semanas.</span></div></div></section>';
+  }
   function telaPlano() {
     const P = planoDados();
     const { c, A, B } = P;
@@ -5548,8 +5554,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <span class="sub">Onde atuar para reduzir custo e aumentar produtividade</span></div></div>
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      <div class="abas" role="tablist" aria-label="Seções do Plano de ação">${[['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['evolucao', 'Evolução']].map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.planoAba === k ? 'ativa' : ''}" aria-selected="${E.planoAba === k}" data-acao="plano-aba" data-aba="${k}"><span>${rot}</span>${n ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}</div>
-      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'evolucao' ? evolucaoPlano() : `
+      <div class="abas" role="tablist" aria-label="Seções do Plano de ação">${[['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['evolucao', 'Evolução'], ['retorno', 'O projeto se paga?']].map(([k, rot, n]) => `<button type="button" role="tab" class="aba ${E.planoAba === k ? 'ativa' : ''}" aria-selected="${E.planoAba === k}" data-acao="plano-aba" data-aba="${k}"><span>${rot}</span>${n ? `<span class="aba-cont">${n}</span>` : ''}</button>`).join('')}</div>
+      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'evolucao' ? evolucaoPlano() : E.planoAba === 'retorno' ? retornoPlano() : `
       ${conteudo}
       ${faixa}
       ${radarAuto()}
@@ -6663,6 +6669,27 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (cruzou) g += `<line x1="${x(pts.indexOf(cruzou)).toFixed(1)}" x2="${x(pts.indexOf(cruzou)).toFixed(1)}" y1="${m.t}" y2="${m.t + ih}" stroke-dasharray="3 4" style="stroke:var(--ok, #1E8E3E)"/>`;
     const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block">${g}</svg>`;
 
+    // barras mês a mês: investimento ao lado da economia, com saldo e cobertura embaixo
+    const BW = 720, BH = 270, bm = { l: 70, r: 10, t: 24, b: 58 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
+    const bvals = meses.flatMap((o) => [o.e, o.c]);
+    const blo = Math.min(0, ...bvals), bhi = Math.max(...bvals, 1) * 1.12;
+    const by = (v) => bm.t + bih - ((v - blo) / (bhi - blo)) * bih, bcol = biw / meses.length, bl = Math.min(56, bcol * 0.3);
+    let gb = '';
+    [blo, (blo + bhi) / 2, bhi].concat(blo < 0 ? [0] : []).forEach((v) => {
+      gb += `<line x1="${bm.l}" x2="${BW - bm.r}" y1="${by(v).toFixed(1)}" y2="${by(v).toFixed(1)}" style="stroke:var(--apoio)" stroke-width="1"/><text x="${bm.l - 6}" y="${(by(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${R0(v)}</text>`;
+    });
+    meses.forEach((o, i) => {
+      const cx = bm.l + i * bcol + bcol / 2, ok = o.e >= o.c, cor = ok ? 'var(--ok, #1E8E3E)' : 'var(--critico, #D93025)';
+      const barra = (x0, v, estilo, rot) => { const a = by(Math.max(v, 0)), z = by(Math.min(v, 0)); return `<rect x="${x0.toFixed(1)}" y="${a.toFixed(1)}" width="${bl.toFixed(1)}" height="${Math.max(z - a, 1).toFixed(1)}" rx="5" style="${estilo}"><title>${esc(D.nomeMes(o.p.mes))} · ${rot}: ${esc(R(v))}</title></rect><text x="${(x0 + bl / 2).toFixed(1)}" y="${(a - 6).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" style="fill:var(--tinta)">${R0(v)}</text>`; };
+      gb += barra(cx - bl - 3, o.c, 'fill:var(--texto-2);opacity:.45', 'investimento');
+      gb += barra(cx + 3, o.e, 'fill:' + cor, 'diesel economizado');
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 36}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(D.nomeMes(o.p.mes))}</text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 20}" text-anchor="middle" font-size="11" font-weight="600" style="fill:${cor}">saldo ${R0(o.e - o.c)}</text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 6}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${o.c ? 'cobre ' + fmt((o.e / o.c) * 100, 0) + '% da mensalidade' : ''}</text>`;
+    });
+    const legenda = `<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px" class="apoio"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--texto-2);opacity:.45;margin-right:6px"></i>Investimento Gobrax</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok, #1E8E3E);margin-right:6px"></i>Economia que pagou o mês</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--critico, #D93025);margin-right:6px"></i>Economia abaixo da mensalidade</span></div>`;
+    const graficoMes = `<svg viewBox="0 0 ${BW} ${BH}" width="100%" role="img" aria-label="Investimento e economia mês a mês" style="display:block;max-height:300px">${gb}</svg>`;
+
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const itens = [
       item('Investimento Gobrax por mês', R0(inv.mensal), '', fmt(inv.qtd, 0) + ' equipamentos × ' + R(inv.valor)),
@@ -6685,7 +6712,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           <span class="apoio" style="font-size:12px;padding-bottom:8px">${inv.qtdAuto ? 'Quantidade = veículos nos dados; digite a contratada. ' : ''}Mensalidade: <b>${R(inv.mensal)}</b></span>
         </div>
         <section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>
-        <div><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
         ${tabela}
       </div></section>`;
   }

@@ -919,6 +919,9 @@ button.pilula-diesel:hover, button.pilula-diesel[aria-expanded="true"] { border-
 .trat-ef-i { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 8px; background: var(--fundo); border-left: 3px solid #BDC1C6; }
 .trat-ef-i.ef-melhor { border-left-color: #1E8E3E; background: #F4FAF6; }
 .trat-ef-i.ef-pior { border-left-color: #D93025; background: #FDF3F2; }
+.trat-ef-i.ef-neutro { border-left-color: var(--texto-2, #9AA0A6); }
+/* Texto só para leitor de tela (rótulos de campos sem rótulo visível) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .trat-ef-i.ef-ctx { border-left-style: dashed; }
 .trat-ef-rot { font-size: 12px; color: #5F6368; font-weight: 600; }
 .trat-ef-rot em { font-style: normal; font-weight: 500; color: #80868B; }
@@ -2223,6 +2226,11 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (!cacheFmt[k]) cacheFmt[k] = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: k, maximumFractionDigits: k });
     return cacheFmt[k].format(v);
   }
+  // Valor em reais: fmtReais(1234.5) → 'R$ 1.235'; negativo sai '− R$ 1.235'
+  function fmtReais(v, casas) {
+    if (v === null || v === undefined || !Number.isFinite(v)) return 'R$ —';
+    return (v < 0 ? '− ' : '') + 'R$ ' + fmt(Math.abs(v), casas || 0);
+  }
   function fmtInd(ind, v, comUnidade) {
     if (v === null || v === undefined) return '—';
     const s = fmt(v, ind.casas);
@@ -2237,7 +2245,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   G.GBX = G.GBX || {};
   Object.assign(G.GBX, { rodou, rodouLinha,
     D, COLUNAS, TEXTO, DIMS, GRUPOS, IND, IND_MAP, numero, normalizar, metaColunas, importarCSV, paraCSV, criarBase, filtrar, agregar, resumo, serieDiaria,
-    variacao, statusEvolucao, regraEvolucao, textoDelta, faixaNota, fmt, fmtInd, gerarExemplo, LIMIAR
+    variacao, statusEvolucao, regraEvolucao, textoDelta, faixaNota, fmt, fmtReais, fmtInd, gerarExemplo, LIMIAR
   });
 })(window);
 
@@ -2745,7 +2753,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
 (function (G) {
   'use strict';
   const X = G.GBX;
-  const { D, IND_MAP, GRUPOS, fmt, fmtInd } = X;
+  const { D, IND_MAP, GRUPOS, fmt, fmtInd, fmtReais } = X;
   const { esc, avatar, badgeNota, badgeStatus, STATUS, variacao, icone, abas } = X.ui;
   const vazioUI = X.ui.vazio;   // 'vazio' já é nome de variável local em várias telas
   // Abas da página Motoristas (a mesma lista na página e no Motorista individual, para nunca divergirem)
@@ -3055,10 +3063,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const NAV = [
     { sec: 'Relatório' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
-    { tela: 'estudo', href: '#/estudo', icone: 'crescimento', rot: 'Estudo do projeto' },
+    { tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
     { tela: 'dashboards', href: '#/dashboards', icone: 'dashboards', rot: 'Dashboards' },
     { sec: 'Frota' },
-    { tela: 'visao', href: '#/visao', icone: 'dados-1', rot: 'Desenvolvimento da frota' },
+    { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Desenvolvimento da frota' },
     { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
     { sec: 'Motoristas' },
     { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
@@ -3115,19 +3123,19 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function pilulaDiesel() {
     if (E.dieselUF) {
       const { uf, de } = ufAtual(), p = precoUF(uf), usado = p ? uf : 'br';
-      return `<div class="dm"><button type="button" class="pilula-diesel auto" data-acao="diesel-menu" aria-haspopup="listbox" aria-expanded="${!!E.dieselMenu}" title="Clique para escolher o preço · Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${E.precoManual ? 'manual' : usado.toUpperCase()}</small><span class="dp-seta">▾</span></button>${E.dieselMenu ? menuDiesel() : ''}</div>`;
+      return `<div class="dm"><button type="button" class="pilula-diesel auto" data-acao="diesel-menu" aria-haspopup="listbox" aria-expanded="${!!E.dieselMenu}" title="Clique para escolher o preço · Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${E.precoManual ? 'manual' : usado.toUpperCase()}</small><span class="dp-seta">▾</span></button>${E.dieselMenu ? menuDiesel() : ''}</div>`;
     }
     const d = E.diesel;
-    if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel R$ ${fmt(E.preco, 2)}/L</a>`;
+    if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel ${fmtReais(E.preco, 2)}/L</a>`;
     const auto = !E.precoManual;
-    return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/comparativo" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: R$ ${fmt(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel R$ ${fmt(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
+    return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/comparativo" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: ${fmtReais(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
   }
   // Clique na pílula do diesel: lista para escolher o preço (automático, média Brasil ou um estado)
   function menuDiesel() {
     if (!E.dieselUF) return '';
     const auto = (() => { const s = E.ufDiesel; E.ufDiesel = ''; const u = ufAtual().uf; E.ufDiesel = s; return u; })();
     const sel = E.precoManual ? 'manual' : E.ufDiesel;
-    const op = (v, nome, preco, apoio) => `<button type="button" class="dm-op ${v === sel ? 'ativo' : ''}" data-acao="diesel-uf" data-uf="${v}" role="option" aria-selected="${v === sel}"><span class="dm-nome">${nome}${apoio ? `<small>${apoio}</small>` : ''}</span><b class="num">${preco ? 'R$ ' + fmt(preco, 2) : 'sem preço'}</b></button>`;
+    const op = (v, nome, preco, apoio) => `<button type="button" class="dm-op ${v === sel ? 'ativo' : ''}" data-acao="diesel-uf" data-uf="${v}" role="option" aria-selected="${v === sel}"><span class="dm-nome">${nome}${apoio ? `<small>${apoio}</small>` : ''}</span><b class="num">${preco ? fmtReais(preco, 2) : 'sem preço'}</b></button>`;
     const pa = precoUF(auto) || precoUF('br');
     return `<div class="sino-painel dm-painel" role="listbox" aria-label="Preço do diesel">
       <div class="sino-cab"><b>Preço do diesel</b><span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.dieselUF.coleta)}</span></div>
@@ -3141,7 +3149,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   function seletorCliente() {
     const ops = opcoesClientes();
     if (!ops.length) return '';
-    return `<label class="sr-only" for="cliente-filtro" style="position:absolute;left:-9999px">Cliente</label>
+    return `<label class="sr-only" for="cliente-filtro">Cliente</label>
       <select class="campo" id="cliente-filtro" data-campo="cliente-filtro" style="height:32px;max-width:260px;min-width:150px" title="Filtrar os dados por cliente">
         ${ops.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
       </select>`;
@@ -3150,7 +3158,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const d = DIMS[0];
     const ops = opcoesDim(d.key);
     if (!ops.length) return '';
-    return `<label class="sr-only" for="cab-filtro-grupo" style="position:absolute;left:-9999px">Grupo de veículos</label>
+    return `<label class="sr-only" for="cab-filtro-grupo">Grupo de veículos</label>
       <select class="campo" id="cab-filtro-grupo" data-campo="filtro-dim" data-dim="grupo" style="height:32px;max-width:220px;min-width:140px" title="Filtrar tudo por grupo de veículos">
         <option value="">Todos os grupos</option>
         ${ops.map((o) => `<option value="${esc(o)}" ${nrm(o) === nrm(E.filtro.grupo) ? 'selected' : ''}>${esc(o)}</option>`).join('')}
@@ -3374,8 +3382,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `<div class="kpi">
       <span class="kpi-titulo">${bom ? 'Economia estimada' : 'Custo adicional estimado'}</span>
       <span class="kpi-desc">Diesel no ritmo de consumo anterior</span>
-      <span class="kpi-valor">R$ ${fmt(Math.abs(e.reais), 0)}</span>
-      <span class="var"><span class="var-v ${bom ? 'var-bom' : 'var-ruim'}">${bom ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span><span class="var-ref">a R$ ${fmt(E.preco, 2)}/L</span></span>
+      <span class="kpi-valor">${fmtReais(Math.abs(e.reais), 0)}</span>
+      <span class="var"><span class="var-v ${bom ? 'var-bom' : 'var-ruim'}">${bom ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span><span class="var-ref">a ${fmtReais(E.preco, 2)}/L</span></span>
       <span class="kpi-ref">Mesmos km, média de ${fmtInd(IND_MAP.kml, b.kml)}</span>
     </div>`;
   }
@@ -3722,9 +3730,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const dist = ['evoluiu', 'estavel', 'regrediu', 'sembase'].filter((k) => c.cont[k]);
     const tiles = [
       tile('', 'pessoas', 'Condutores', fmt(ativos.length, 0), `<span class="txt-bom">${c.cont.evoluiu} evoluíram</span> · <span class="txt-ruim">${c.cont.regrediu} regrediram</span>${c.cont.estavel ? ' · ' + c.cont.estavel + ' estáveis' : ''}`),
-      eco.length ? tile('bom', 'subir', 'Ganhos', 'R$ ' + fmt(ganho, 0), `${nG} condutor(es) gastaram ${fmt(lG, 0)} L a menos`) : '',
-      eco.length ? tile('ruim', 'baixar', 'Perdas', 'R$ ' + fmt(perda, 0), `${nP} condutor(es) gastaram ${fmt(lP, 0)} L a mais`) : '',
-      eco.length ? tile(saldo >= 0 ? 'bom' : 'ruim', 'gota', 'Saldo do período', (saldo >= 0 ? '+' : '−') + ' R$ ' + fmt(Math.abs(saldo), 0), `ganhos menos perdas · diesel a R$ ${fmt(E.preco, 2)}/L`) : ''
+      eco.length ? tile('bom', 'subir', 'Ganhos', fmtReais(ganho, 0), `${nG} condutor(es) gastaram ${fmt(lG, 0)} L a menos`) : '',
+      eco.length ? tile('ruim', 'baixar', 'Perdas', fmtReais(perda, 0), `${nP} condutor(es) gastaram ${fmt(lP, 0)} L a mais`) : '',
+      eco.length ? tile(saldo >= 0 ? 'bom' : 'ruim', 'gota', 'Saldo do período', (saldo >= 0 ? '+' : '−') + ' R$ ' + fmt(Math.abs(saldo), 0), `ganhos menos perdas · diesel a ${fmtReais(E.preco, 2)}/L`) : ''
     ].join('');
 
     // barras divergentes: quem ganhou (verde, à direita) e quem perdeu (vermelho, à esquerda)
@@ -3732,10 +3740,10 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const maxAbs = Math.max(1, ...ordEco.map((o) => Math.abs(o.e.reais)));
     const barras = ordEco.map((o) => {
       const v = o.e.reais, w = (Math.abs(v) / maxAbs) * 100;
-      return `<a class="cd-linha" href="${linkMotorista(o.x.m.id)}" title="${esc(o.x.m.nome)}: ${v >= 0 ? 'economizou' : 'gastou a mais'} ${fmt(Math.abs(o.e.litros), 0)} L (R$ ${fmt(Math.abs(v), 0)}) · ${fmtInd(IND_MAP.kml, o.x.b.kml)} → ${fmtInd(IND_MAP.kml, o.x.a.kml)}">
+      return `<a class="cd-linha" href="${linkMotorista(o.x.m.id)}" title="${esc(o.x.m.nome)}: ${v >= 0 ? 'economizou' : 'gastou a mais'} ${fmt(Math.abs(o.e.litros), 0)} L (${fmtReais(Math.abs(v), 0)}) · ${fmtInd(IND_MAP.kml, o.x.b.kml)} → ${fmtInd(IND_MAP.kml, o.x.a.kml)}">
         <span class="cd-nome">${avatar(o.x.m.nome, 24)}<span>${esc(o.x.m.nome)}</span></span>
         <span class="cd-trilho"><span class="cd-lado neg">${v < 0 ? `<i style="width:${w}%"></i>` : ''}</span><span class="cd-lado pos">${v > 0 ? `<i style="width:${w}%"></i>` : ''}</span></span>
-        <span class="cd-val ${v >= 0 ? 'txt-bom' : 'txt-ruim'}">${v >= 0 ? '+' : '−'}R$ ${fmt(Math.abs(v), 0)}</span></a>`;
+        <span class="cd-val ${v >= 0 ? 'txt-bom' : 'txt-ruim'}">${v >= 0 ? '+' : '−'}${fmtReais(Math.abs(v), 0)}</span></a>`;
     }).join('');
 
     // mapa: valor atual × variação (quem está acima da média e quem está melhorando)
@@ -4530,13 +4538,13 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
                 ${c.mots.map((x) => `<option value="${esc(x.m.id)}" ${escopo === x.m.id ? 'selected' : ''}>${esc(x.m.nome)}</option>`).join('')}
               </select></label>
             <label class="campo-bloco" style="width:150px"><span class="campo-rotulo">Preço do diesel</span>
-              <span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="preco" id="preco-diesel" value="${fmt(E.preco, 2)}" aria-label="Preço do diesel em reais por litro"><span>R$/L</span></span>${E.diesel ? (E.precoManual ? `<button type="button" class="btn-link peq" data-acao="preco-auto">Usar o da Petrobras (R$ ${fmt(Number(E.diesel.preco_br), 2)})</button>` : `<span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.diesel.periodo || '')}</span>`) : ''}</label>
+              <span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="preco" id="preco-diesel" value="${fmt(E.preco, 2)}" aria-label="Preço do diesel em reais por litro"><span>R$/L</span></span>${E.diesel ? (E.precoManual ? `<button type="button" class="btn-link peq" data-acao="preco-auto">Usar o da Petrobras (${fmtReais(Number(E.diesel.preco_br), 2)})</button>` : `<span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.diesel.periodo || '')}</span>`) : ''}</label>
             <button type="button" class="btn btn-primario" data-acao="exportar-comparativo">${icone('baixar', 14, '#2B2B2B')}Exportar planilha</button>
           </div>
         </div>
         <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">
           ${tabelaIndicadores(alvo.a, alvo.b, null, escopo === 'frota' ? '' : escopo)}
-          ${(() => { const e = economia(alvo.a, alvo.b); return e ? `<div style="padding:12px 18px 10px" class="apoio">Com a média de consumo da comparação, os mesmos km teriam usado <b class="num">${fmt(alvo.a.km / alvo.b.kml, 0)} L</b>. ${e.reais >= 0 ? 'Economia' : 'Custo adicional'} estimado: <b class="num">R$ ${fmt(Math.abs(e.reais), 2)}</b> (${fmt(Math.abs(e.litros), 0)} L a R$ ${fmt(E.preco, 2)}/L).</div>` : ''; })()}
+          ${(() => { const e = economia(alvo.a, alvo.b); return e ? `<div style="padding:12px 18px 10px" class="apoio">Com a média de consumo da comparação, os mesmos km teriam usado <b class="num">${fmt(alvo.a.km / alvo.b.kml, 0)} L</b>. ${e.reais >= 0 ? 'Economia' : 'Custo adicional'} estimado: <b class="num">${fmtReais(Math.abs(e.reais), 2)}</b> (${fmt(Math.abs(e.litros), 0)} L a ${fmtReais(E.preco, 2)}/L).</div>` : ''; })()}
         </div>
       </section>
       ${cartaoEvolucaoDiaria(linhasEscopo(), alvo.nome)}
@@ -5080,7 +5088,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (E.base) {
       const c = calc(), e = economia(c.frotaA, c.frotaB), vk = X.variacao(IND_MAP.kml, c.frotaA.kml, c.frotaB.kml);
       const bomOp = (e && e.reais > 0) || (vk && vk.sentido === 'melhor');
-      dims.push({ nome: 'Resultado da operação', nivel: nivel(bomOp && c.cont.evoluiu >= c.cont.regrediu, e && e.reais < 0 && c.cont.regrediu > c.cont.evoluiu), texto: `${D.periodoBR(E.A)}: média de ${fmtInd(IND_MAP.kml, c.frotaA.kml)}${vk && !vk.semBase ? ' (' + vk.texto + ')' : ''}` + (e ? `, ${e.reais >= 0 ? 'economia' : 'custo a mais'} de R$ ${fmt(Math.abs(e.reais), 0)} em diesel` : '') + `. ${c.cont.evoluiu} motoristas evoluíram e ${c.cont.regrediu} regrediram.`, acoes: bomOp ? ['Levar esse resultado para o cliente: é o melhor argumento de renovação.'] : ['Abrir o Plano de ação e levar ao cliente os 3 gargalos com o valor em jogo.'] });
+      dims.push({ nome: 'Resultado da operação', nivel: nivel(bomOp && c.cont.evoluiu >= c.cont.regrediu, e && e.reais < 0 && c.cont.regrediu > c.cont.evoluiu), texto: `${D.periodoBR(E.A)}: média de ${fmtInd(IND_MAP.kml, c.frotaA.kml)}${vk && !vk.semBase ? ' (' + vk.texto + ')' : ''}` + (e ? `, ${e.reais >= 0 ? 'economia' : 'custo a mais'} de ${fmtReais(Math.abs(e.reais), 0)} em diesel` : '') + `. ${c.cont.evoluiu} motoristas evoluíram e ${c.cont.regrediu} regrediram.`, acoes: bomOp ? ['Levar esse resultado para o cliente: é o melhor argumento de renovação.'] : ['Abrir o Plano de ação e levar ao cliente os 3 gargalos com o valor em jogo.'] });
     }
     const pontos = { bom: 0, atencao: 1, critico: 2 };
     const geral = dims.reduce((t, d) => t + pontos[d.nivel], 0) / Math.max(1, dims.length);
@@ -5182,7 +5190,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const dv = (k) => X.variacao(IND_MAP[k], A[k], B[k]);
     const t = (cls, icone, html) => itens.push({ cls, icone, html });
     const e = economia(A, B);
-    if (e && Math.abs(e.reais) >= 1) t(e.reais >= 0 ? 'ok' : 'ruim', e.reais >= 0 ? '▼' : '▲', e.reais >= 0 ? `A frota <b>economizou R$ ${fmt(e.reais, 0)}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) em relação ao consumo do período anterior.` : `O consumo piorou e custou <b>R$ ${fmt(Math.abs(e.reais), 0)} a mais</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) frente ao período anterior.`);
+    if (e && Math.abs(e.reais) >= 1) t(e.reais >= 0 ? 'ok' : 'ruim', e.reais >= 0 ? '▼' : '▲', e.reais >= 0 ? `A frota <b>economizou ${fmtReais(e.reais, 0)}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) em relação ao consumo do período anterior.` : `O consumo piorou e custou <b>${fmtReais(Math.abs(e.reais), 0)} a mais</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) frente ao período anterior.`);
     const vk = dv('kml');
     if (!vk.semBase && !vk.estavel) t(vk.sentido === 'melhor' ? 'ok' : 'ruim', vk.sentido === 'melhor' ? '▲' : '▼', `Média de consumo em <b>${fmtInd(IND_MAP.kml, A.kml)}</b>, <b>${vk.texto}</b> vs. período anterior.`);
     if (c.cont.regrediu) t('ruim', '!', `<b>${c.cont.regrediu} ${c.cont.regrediu === 1 ? 'motorista piorou' : 'motoristas pioraram'}</b> a nota. Veja o Plano de ação para saber por onde começar.`);
@@ -5243,7 +5251,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         : `<span class="badge badge-neutro" title="Última cópia gravada no painel">${r0.simulado ? 'Simulação' : vivo[r0.chave] && vivo[r0.chave].carregando ? 'Buscando no HubSpot…' : 'Cópia gravada'}</span>`;
       const l = r.ligacoes || {}, em = r.emails || {};
       const churn = /churn/i.test(r.situacao || '');
-      const neg = (r.negocios || []).map((n) => `<tr><td>${esc(n.nome)}</td><td>${n.data ? D.br(n.data) : '—'}</td><td class="dir num">${n.valor === null || n.valor === undefined ? '—' : 'R$ ' + fmt(n.valor, 2)}</td><td><span class="badge ${n.resultado === 'Ganho' ? 'badge-ok' : n.resultado === 'Churn' ? 'badge-critico' : 'badge-neutro'}">${esc(n.resultado)}</span></td></tr>`).join('');
+      const neg = (r.negocios || []).map((n) => `<tr><td>${esc(n.nome)}</td><td>${n.data ? D.br(n.data) : '—'}</td><td class="dir num">${n.valor === null || n.valor === undefined ? '—' : fmtReais(n.valor, 2)}</td><td><span class="badge ${n.resultado === 'Ganho' ? 'badge-ok' : n.resultado === 'Churn' ? 'badge-critico' : 'badge-neutro'}">${esc(n.resultado)}</span></td></tr>`).join('');
       return `<section class="card rel-card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Relacionamento com o cliente · ${esc(r.cliente)}</h2>
           <span class="h2-sub">Fonte: ${esc(r.fonte || 'HubSpot')} · ${r.simulado ? 'dados simulados, não vêm do HubSpot' : r._vivo ? 'consultado no HubSpot às ' + new Date(r._em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'cópia gravada em ' + dt(r.atualizado)}</span></div>
@@ -5322,9 +5330,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     // ---- Faixa executiva ----
     const num = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const dv = (k, ap) => { const v = dif(k); return v.semBase ? '<span class="exec-neutro">sem período anterior</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto} ${ap || ''}</span>`; };
-    const resultado = e ? num(e.reais >= 0 ? 'Economia no período' : 'Custo adicional no período', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L de diesel</span>`, 'vs. consumo do período anterior')
+    const resultado = e ? num(e.reais >= 0 ? 'Economia no período' : 'Custo adicional no período', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L de diesel</span>`, 'vs. consumo do período anterior')
       : num('Economia no período', '—', '<span class="exec-neutro">sem período anterior</span>', 'precisa de dias anteriores');
-    const potencial = P.ref ? num('Potencial de economia', 'R$ ' + fmt(P.reaisPot, 0), `<span class="exec-bom">≈ R$ ${fmt(P.mensal, 0)} por mês</span>`, `${fmt(P.litrosPot, 0)} L se todos chegassem a ${fmt(P.ref, 2)} km/l`)
+    const potencial = P.ref ? num('Potencial de economia', fmtReais(P.reaisPot, 0), `<span class="exec-bom">≈ ${fmtReais(P.mensal, 0)} por mês</span>`, `${fmt(P.litrosPot, 0)} L se todos chegassem a ${fmt(P.ref, 2)} km/l`)
       : num('Potencial de economia', '—', '<span class="exec-neutro">poucos motoristas</span>', 'precisa de 4+ motoristas com consumo');
     const faixa = `<section class="exec">
       <div class="exec-cab"><span class="exec-tit">Resultado da operação</span><span class="exec-sub">${D.periodoBR(E.A)}${semAnterior ? '' : ' · comparado a ' + D.periodoBR(E.B)}</span></div>
@@ -5334,7 +5342,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ${num('Km por dia trabalhado', fmtInd(IND_MAP.km_dia, A.km_dia), dv('km_dia'), fmt(A.dias, 0) + ' dias trabalhados')}
         ${num(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.nAtivos, 0) + ' motoristas ativos')}
       </div>
-      <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a R$ ${fmt(E.preco, 2)}/L (ajuste na aba Comparativo). A referência é o km/l que separa o quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
+      <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a ${fmtReais(E.preco, 2)}/L (ajuste na aba Comparativo). A referência é o km/l que separa o quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
     </section>`;
 
     // ---- Ações priorizadas ----
@@ -5342,9 +5350,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (P.ref && P.abaixo.length) {
       const top = P.abaixo.slice(0, 5), mx = top[0].litros;
       ac.push({ ord: 100 + P.reaisPot, prio: 'Alta', tema: 'Rentabilidade', titulo: 'Consumo acima da referência',
-        grande: 'R$ ' + fmt(P.reaisPot, 0), pequeno: `no período · ${P.abaixo.length} de ${P.comKm.length} motoristas`,
+        grande: fmtReais(P.reaisPot, 0), pequeno: `no período · ${P.abaixo.length} de ${P.comKm.length} motoristas`,
         texto: `Esses motoristas gastaram mais diesel que o necessário para os mesmos km. A referência é ${fmt(P.ref, 2)} km/l.`,
-        linhas: top.map((o) => planoLinha(o.x, `${fmt(o.x.a.kml, 2)} km/l · R$ ${fmt(o.litros * E.preco, 0)}`, (o.litros / mx) * 100, 'var(--critico)')).join(''),
+        linhas: top.map((o) => planoLinha(o.x, `${fmt(o.x.a.kml, 2)} km/l · ${fmtReais(o.litros * E.preco, 0)}`, (o.litros / mx) * 100, 'var(--critico)')).join(''),
         passo: 'Acompanhar os primeiros da lista com o instrutor: revisar faixa verde, pressão do acelerador e motor ocioso de cada um.' });
     }
     const regr = c.mots.filter((x) => x.st.status === 'regrediu' && x.st.delta !== null).sort((p, q) => p.st.delta - q.st.delta);
@@ -5477,7 +5485,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     }).filter(Boolean).sort((p, q) => (Math.abs(q.reais || 0) - Math.abs(p.reais || 0)) || (q.rel - p.rel));
     const item = (o) => `<button type="button" class="pd-item" data-acao="ind-detalhe" data-k="${o.ind.key}" data-alvo="" title="Ver o gráfico de ${esc(o.ind.label)}">
       <span class="pd-item-nome">${esc(o.ind.label)}<small>${esc(fmtInd(o.ind, B[o.ind.key]))} → <b>${esc(fmtInd(o.ind, A[o.ind.key]))}</b></small></span>
-      <span class="pd-item-dir">${variacao(o.v)}${o.reais !== null && Math.abs(o.reais) >= 1 ? `<small class="${o.reais >= 0 ? 'txt-bom' : 'txt-ruim'}">${o.reais >= 0 ? '+' : '−'}R$ ${fmt(Math.abs(o.reais), 0)}</small>` : ''}</span></button>`;
+      <span class="pd-item-dir">${variacao(o.v)}${o.reais !== null && Math.abs(o.reais) >= 1 ? `<small class="${o.reais >= 0 ? 'txt-bom' : 'txt-ruim'}">${o.reais >= 0 ? '+' : '−'}${fmtReais(Math.abs(o.reais), 0)}</small>` : ''}</span></button>`;
     const ganhos = itens.filter((o) => o.bom), perdas = itens.filter((o) => !o.bom);
 
     // gargalos: distância da frota até a meta (o valor que separa o quarto melhor dos condutores no mesmo período)
@@ -5501,7 +5509,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <span class="pd-garg-n">${i + 1}</span>
       <span class="pd-garg-txt"><b>${esc(g.ind.label)}</b><small>Frota ${esc(fmtInd(g.ind, A[g.ind.key]))} · meta ${esc(fmtInd(g.ind, g.meta))} · ${g.fora} de ${mots.length} condutores piores que a média</small><span class="pd-dica">${icone('grafico', 12)} ${esc(DICAS[g.ind.key] || '')}</span></span>
       <span class="pd-garg-bar"><i style="width:${Math.max(4, (g.rel / maxRel) * 100)}%"></i></span>
-      <span class="pd-garg-val">${g.reais !== null && g.reais >= 1 ? `<b class="txt-ruim">R$ ${fmt(g.reais, 0)}</b><small>no período</small>` : (g.ind.var === 'pp' ? `<b>${fmt(g.gap, 1)} p.p.</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>` : `<b>${fmt(g.rel * 100, 0)}%</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>`)}</span></div>`).join('');
+      <span class="pd-garg-val">${g.reais !== null && g.reais >= 1 ? `<b class="txt-ruim">${fmtReais(g.reais, 0)}</b><small>no período</small>` : (g.ind.var === 'pp' ? `<b>${fmt(g.gap, 1)} p.p.</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>` : `<b>${fmt(g.rel * 100, 0)}%</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>`)}</span></div>`).join('');
 
     // dicas: o que fazer primeiro (gargalos com dinheiro e o que mais piorou)
     const dicas = [];
@@ -5515,11 +5523,11 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="pd-tres">
         ${col('Ganhos', 'bom', 'subir', ganhos.slice(0, 6).map(item).join(''), 'Nenhum indicador melhorou nesta comparação.')}
         ${col('Perdas', 'ruim', 'baixar', perdas.slice(0, 6).map(item).join(''), 'Nenhum indicador piorou nesta comparação.')}
-        ${col('Dicas', 'dica', 'filtro', dicas.slice(0, 5).map((x) => `<div class="pd-dica-item"><b>${esc(x.t)}</b><span>${esc(x.d)}</span>${x.r ? `<small class="txt-ruim">em jogo: R$ ${fmt(x.r, 0)}</small>` : ''}</div>`).join(''), 'Sem dicas para esta comparação.')}
+        ${col('Dicas', 'dica', 'filtro', dicas.slice(0, 5).map((x) => `<div class="pd-dica-item"><b>${esc(x.t)}</b><span>${esc(x.d)}</span>${x.r ? `<small class="txt-ruim">em jogo: ${fmtReais(x.r, 0)}</small>` : ''}</div>`).join(''), 'Sem dicas para esta comparação.')}
       </div>
       ${garg.length ? `<section class="card">
         <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Gargalos operacionais</h2>
-          <span class="h2-sub">Onde a frota está mais longe da meta em ${D.periodoBR(pa)}. A meta é o valor que separa o quarto melhor dos condutores da própria operação.${totalReais >= 1 ? ` Só em consumo (o motor ocioso já está dentro), são cerca de <b class="txt-ruim">R$ ${fmt(totalReais, 0)}</b> em jogo no período.` : ''}</span></div></div>
+          <span class="h2-sub">Onde a frota está mais longe da meta em ${D.periodoBR(pa)}. A meta é o valor que separa o quarto melhor dos condutores da própria operação.${totalReais >= 1 ? ` Só em consumo (o motor ocioso já está dentro), são cerca de <b class="txt-ruim">${fmtReais(totalReais, 0)}</b> em jogo no período.` : ''}</span></div></div>
         <div class="card-corpo" style="gap:0">${gargHtml}</div></section>` : ''}`;
   }
 
@@ -6169,7 +6177,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     // Insights do próprio condutor/veículo
     const itens = [];
     const ec = economia(a, F);
-    if (ec && Math.abs(ec.reais) >= 1) itens.push([ec.reais >= 0 ? 'ok' : 'ruim', ec.reais >= 0 ? '▼' : '▲', ec.reais >= 0 ? `Gastou <b>R$ ${fmt(ec.reais, 0)} a menos</b> em diesel (${fmt(Math.abs(ec.litros), 0)} L) que a média da frota para os mesmos km.` : `Gastou <b>R$ ${fmt(Math.abs(ec.reais), 0)} a mais</b> em diesel (${fmt(Math.abs(ec.litros), 0)} L) que a média da frota para os mesmos km, a R$ ${fmt(E.preco, 2)}/L.`]);
+    if (ec && Math.abs(ec.reais) >= 1) itens.push([ec.reais >= 0 ? 'ok' : 'ruim', ec.reais >= 0 ? '▼' : '▲', ec.reais >= 0 ? `Gastou <b>${fmtReais(ec.reais, 0)} a menos</b> em diesel (${fmt(Math.abs(ec.litros), 0)} L) que a média da frota para os mesmos km.` : `Gastou <b>${fmtReais(Math.abs(ec.reais), 0)} a mais</b> em diesel (${fmt(Math.abs(ec.litros), 0)} L) que a média da frota para os mesmos km, a ${fmtReais(E.preco, 2)}/L.`]);
     const dist = ['faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'frenagens'].filter(temInd).map((k) => ({ k, v: X.variacao(IND_MAP[k], a[k], F[k]) })).filter((o) => !o.v.semBase && o.v.sentido === 'pior' && o.v.rel !== null).sort((p, q) => Math.abs(q.v.rel) - Math.abs(p.v.rel));
     if (dist[0]) itens.push(['atencao', '!', `Ponto mais fraco: <b>${esc(IND_MAP[dist[0].k].label)}</b> em ${fmtInd(IND_MAP[dist[0].k], a[dist[0].k])}, contra ${fmtInd(IND_MAP[dist[0].k], F[dist[0].k])} da frota.`]);
     const forte = ['faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'frenagens'].filter(temInd).map((k) => ({ k, v: X.variacao(IND_MAP[k], a[k], F[k]) })).filter((o) => !o.v.semBase && o.v.sentido === 'melhor' && o.v.rel !== null).sort((p, q) => Math.abs(q.v.rel) - Math.abs(p.v.rel));
@@ -6467,7 +6475,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const meses = S.ms.map((p, i) => ({ p, e: eco(S.frM[i]), c: custo(p) }));
     const saldo = ae - ac, paga = saldo >= 0, retorno = ac ? ae / ac : null;
     const eAg = S.agora ? economia(S.agora, S.ini) : null, ecoMes = eAg ? (eAg.reais / (D.dif(S.pAgora.ini, S.pAgora.fim) + 1)) * 30 : null;
-    const R = (v, d) => (v < 0 ? '− ' : '') + 'R$ ' + fmt(Math.abs(v), d === undefined ? 2 : d), R0 = (v) => R(v, 0);
+    const R = (v, d) => fmtReais(v, d === undefined ? 2 : d), R0 = (v) => fmtReais(v, 0);
     const cruzou = pts.find((p) => p.e >= p.c && p.e > 0);
 
     // gráfico: economia acumulada contra o investimento acumulado, semana a semana
@@ -6537,7 +6545,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       </tbody></table></div>`;
     const selo = paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O projeto Gobrax se paga?</h2>
-        <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado: o que a frota gastaria rodando os mesmos km com o consumo do início (${fmtInd(IND_MAP.kml, base)}, ${D.periodoCurto(S.pIni)}), ao diesel de R$ ${fmt(E.preco, 2)}/L.${cruzou ? ' A linha tracejada verde marca a semana em que a economia passou o investimento.' : ''}</span></div>${selo}</div>
+        <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado: o que a frota gastaria rodando os mesmos km com o consumo do início (${fmtInd(IND_MAP.kml, base)}, ${D.periodoCurto(S.pIni)}), ao diesel de ${fmtReais(E.preco, 2)}/L.${cruzou ? ' A linha tracejada verde marca a semana em que a economia passou o investimento.' : ''}</span></div>${selo}</div>
       <div class="card-corpo" style="gap:16px">
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
           <label class="campo-bloco" style="max-width:220px"><span class="campo-rotulo">Valor por equipamento</span><span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="inv-valor" value="${fmt(inv.valor, 2)}" aria-label="Valor mensal por equipamento em reais"><span>R$/mês</span></span></label>
@@ -6561,7 +6569,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (temInd('nota')) itens.push(item('Nota Gobrax', fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'no início ' + fmtInd(IND_MAP.nota, I.nota)));
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'no início ' + fmtInd(IND_MAP.kml, I.kml)));
     const e = S.agora && S.ini ? economia(A, I) : null;
-    if (e) itens.push(item((e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais') + ' (' + S.rotAgora + ')', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'mesmos km no consumo do início'));
+    if (e) itens.push(item((e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais') + ' (' + S.rotAgora + ')', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'mesmos km no consumo do início'));
     if (S.mots.length) itens.push(item('Motoristas que evoluíram', fmt(S.cont.evoluiu, 0) + ' de ' + fmt(S.mots.length - S.cont.sembase, 0), S.cont.regrediu ? `<span class="exec-ruim">${S.cont.regrediu} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', 'primeiro mês contra o último de cada um'));
     if (A.km) itens.push(item('Km monitorados no projeto', fmt(X.resumo(b.linhas, b).km || 0, 0), '', fmt(b.motoristas.length, 0) + ' motoristas'));
     const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Início do projeto → agora</span><span class="exec-sub">${D.periodoBR(S.pIni)} → ${D.periodoBR(S.pAgora)}</span></div><div class="exec-grade">${itens.join('')}</div></section>`;
@@ -6662,7 +6670,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const e = economia(A, B);
     const itens = [];
-    if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'para os mesmos km do período anterior · R$ ' + fmt(E.preco, 2) + '/L'));
+    if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'para os mesmos km do período anterior · R$ ' + fmt(E.preco, 2) + '/L'));
     if (temInd('nota')) itens.push(item(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota)));
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml)));
     if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde)));
@@ -6685,9 +6693,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const ganhos = [];
     if (P.ref && P.abaixo.length) {
       const top = P.abaixo.slice(0, 3), mx = top[0].litros;
-      ganhos.push({ prio: 'Alta', tema: 'Rentabilidade', titulo: 'Consumo acima da referência', grande: 'R$ ' + fmt(P.mensal, 0), pequeno: 'por mês de potencial',
+      ganhos.push({ prio: 'Alta', tema: 'Rentabilidade', titulo: 'Consumo acima da referência', grande: fmtReais(P.mensal, 0), pequeno: 'por mês de potencial',
         texto: `${P.abaixo.length} de ${P.comKm.length} motoristas gastaram mais diesel que a referência de ${fmt(P.ref, 2)} km/l, o km/l que separa o quarto mais econômico da própria operação.`,
-        linhas: top.map((o) => planoLinha(o.x, `${fmt(o.x.a.kml, 2)} km/l · R$ ${fmt(o.litros * E.preco, 0)}`, (o.litros / mx) * 100, 'var(--critico)')).join(''),
+        linhas: top.map((o) => planoLinha(o.x, `${fmt(o.x.a.kml, 2)} km/l · ${fmtReais(o.litros * E.preco, 0)}`, (o.litros / mx) * 100, 'var(--critico)')).join(''),
         passo: 'Acompanhar esses motoristas com o instrutor: revisar faixa verde, pressão do acelerador e motor ocioso.' });
     }
     const ocio = temInd('motor_ocioso') ? c.mots.filter((x) => x.a.motor_ocioso > 0).sort((p, q) => q.a.motor_ocioso - p.a.motor_ocioso) : [];
@@ -7331,7 +7339,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ${grupos.length ? `<div class="campo-bloco"><span class="campo-rotulo">Estado por grupo de veículos</span>
           <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Grupo</th><th>Estado</th><th class="dir">Diesel</th></tr></thead><tbody>
           ${grupos.map((g) => { const uf = ufG[nrm(g)] || ''; const p = precoUF(uf || fc.uf || 'br') || precoUF('br');
-            return `<tr><td><b style="font-weight:600">${esc(g)}</b></td><td><select class="campo" data-campo="uf-grupo" data-cli="${esc(fc.id)}" data-grupo="${esc(g)}" aria-label="Estado do grupo ${esc(g)}">${opc(uf, 'Mesmo do cliente')}</select></td><td class="dir num">${p ? 'R$ ' + fmt(p, 2) : '—'}</td></tr>`; }).join('')}
+            return `<tr><td><b style="font-weight:600">${esc(g)}</b></td><td><select class="campo" data-campo="uf-grupo" data-cli="${esc(fc.id)}" data-grupo="${esc(g)}" aria-label="Estado do grupo ${esc(g)}">${opc(uf, 'Mesmo do cliente')}</select></td><td class="dir num">${p ? fmtReais(p, 2) : '—'}</td></tr>`; }).join('')}
           </tbody></table></div></div>` : '<span class="apoio">Nenhum grupo de veículos nos dados deste cliente. Quando a planilha de veículos trouxer a coluna Grupo, cada grupo poderá ter o seu estado aqui.</span>'}
       </div></section>`;
   }
@@ -7424,7 +7432,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="grade-kpi">
         ${kp('Nota média', notaMedia(atual.motoristas), ant && notaMedia(ant.motoristas), indN, fmt(notaMedia(atual.motoristas), 1))}
         ${kp('Km rodados', soma(atual.motoristas, 'km'), ant && soma(ant.motoristas, 'km'), indKm, fmt(soma(atual.motoristas, 'km'), 0) + '<small>km</small>')}
-        ${kp('Bonificação total', soma(atual.motoristas, 'premio'), ant && soma(ant.motoristas, 'premio'), indPrem, 'R$ ' + fmt(soma(atual.motoristas, 'premio'), 2))}
+        ${kp('Bonificação total', soma(atual.motoristas, 'premio'), ant && soma(ant.motoristas, 'premio'), indPrem, fmtReais(soma(atual.motoristas, 'premio'), 2))}
         <div class="kpi"><span class="kpi-titulo">Motoristas</span><span class="kpi-valor num">${ls.length}</span><span class="kpi-ref">${ls.filter((m) => (m.premio || 0) > 0).length} com bonificação</span></div>
       </div>
       <section class="card">
@@ -7435,7 +7443,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
           <tbody>${ls.map((m, n) => { const b = antPor.get(ckey(m.nome)); return `<tr><td class="num mudo">${n + 1}</td>
             <td><span class="pessoa">${avatar(m.nome, 28)}<span class="pessoa-nome">${esc(m.nome)}</span></span></td>
             <td>${badgeNota(m.nota)}</td><td class="dir">${b ? variacao(X.variacao(indN, m.nota, b.nota)) : '<span class="mudo">—</span>'}</td>
-            <td class="dir num">${fmt(m.km, 0)} km</td><td class="dir num">R$ ${fmt(m.premio || 0, 2)}</td></tr>`; }).join('')}</tbody></table></div></div>
+            <td class="dir num">${fmt(m.km, 0)} km</td><td class="dir num">${fmtReais(m.premio || 0, 2)}</td></tr>`; }).join('')}</tbody></table></div></div>
       </section>
       ${docs.length > 1 ? evolucaoPremiacao(docs) : ''}`;
   }
@@ -7454,8 +7462,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <tbody>${lista.map(([k, nome]) => `<tr><td><span class="pessoa">${avatar(nome, 28)}<span class="pessoa-nome">${esc(nome)}</span></span></td>
           ${por.map((mp, i) => { const m = mp.get(k), a = i > 0 ? por[i - 1].get(k) : null;
             if (!m) return '<td class="dir mudo">—</td>';
-            return `<td class="dir"><span style="display:block">${badgeNota(m.nota)}</span>${a && a.nota !== null && m.nota !== null ? variacao(X.variacao(indN, m.nota, a.nota)) : ''}<span class="linha2">${fmt(m.km, 0)} km · R$ ${fmt(m.premio || 0, 2)}</span></td>`; }).join('')}
-          <td class="dir num"><b style="font-weight:600">R$ ${fmt(totPremio(k), 2)}</b></td></tr>`).join('')}</tbody></table></div></div>
+            return `<td class="dir"><span style="display:block">${badgeNota(m.nota)}</span>${a && a.nota !== null && m.nota !== null ? variacao(X.variacao(indN, m.nota, a.nota)) : ''}<span class="linha2">${fmt(m.km, 0)} km · ${fmtReais(m.premio || 0, 2)}</span></td>`; }).join('')}
+          <td class="dir num"><b style="font-weight:600">${fmtReais(totPremio(k), 2)}</b></td></tr>`).join('')}</tbody></table></div></div>
     </section>`;
   }
 

@@ -3007,6 +3007,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   const NAV = [
     { sec: 'Relatório' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
+    { tela: 'estudo', href: '#/estudo', icone: 'crescimento', rot: 'Estudo do projeto' },
     { tela: 'dashboards', href: '#/dashboards', icone: 'dashboards', rot: 'Dashboards' },
     { sec: 'Frota' },
     { tela: 'visao', href: '#/visao', icone: 'dados-1', rot: 'Desenvolvimento da frota' },
@@ -6519,7 +6520,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     };
     const inc = S.ws.some(mesSemIncompleta);
     const x = S.chave ? X.variacao(IND_MAP[S.chave], S.frMes[S.chave], S.frAnt[S.chave]) : null;
-    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(nomeMes)} semana a semana</h2>
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(nomeMes)} semana a semana <a class="btn-link peq" href="#/estudo" style="margin-left:8px;font-weight:500">Estudo de todo o projeto →</a></h2>
         <span class="h2-sub">Evolução do cliente no projeto Gobrax no mês atual: cada semana comparada à anterior e o mês comparado a ${esc(mesAnt.toLowerCase())}. Barra verde melhorou, vermelha piorou contra a semana anterior.</span></div>
         ${x && !x.semBase ? `<span class="apoio" style="white-space:nowrap">${esc(IND_MAP[S.chave].label)} no mês: <b>${fmtInd(IND_MAP[S.chave], S.frMes[S.chave])}</b> ${variacao(x, 'vs ' + mesAnt.toLowerCase())}</span>` : ''}</div>
       <div class="card-corpo" style="gap:16px">
@@ -6527,6 +6528,156 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ${tabela}
         <div class="grade-2">${blocoQuem(S.mots, 'Motoristas')}${blocoQuem(S.veics, 'Veículos')}</div>
       </div></section>`;
+  }
+
+  // ---------- Estudo do projeto: a evolução do cliente no projeto Gobrax do primeiro ao último dia com dados ----------
+  // Nota Gobrax da frota semana a semana, nota de cada motorista mês a mês e cada indicador. "Início" são as primeiras
+  // 4 semanas com dados e "agora" as últimas 4; cada motorista é comparado entre o primeiro e o último mês em que rodou.
+  const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const mesCurto = (s) => MESES_CURTOS[Number(s.slice(5, 7)) - 1] + '/' + s.slice(2, 4);
+  let memoEstudo = null;
+  function dadosEstudo() {
+    const b = E.base;
+    if (memoEstudo && memoEstudo.b === b) return memoEstudo;
+    const ws = [], ms = [];
+    for (let seg = semIni(b.inicio); seg <= b.fim; seg = D.somar(seg, 7)) {
+      const fim = D.somar(seg, 6);
+      ws.push({ ini: seg < b.inicio ? b.inicio : seg, fim: fim > b.fim ? b.fim : fim });
+    }
+    for (let m = D.inicioMes(b.inicio); m <= b.fim; m = D.somarMeses(m, 1)) ms.push({ mes: m, ini: m < b.inicio ? b.inicio : m, fim: D.fimMes(m) > b.fim ? b.fim : D.fimMes(m) });
+    const res = (p) => { const l = X.filtrar(b.linhas, p); return l.length ? X.resumo(l, b) : null; };
+    const pIni = { ini: b.inicio, fim: D.somar(b.inicio, 27) < b.fim ? D.somar(b.inicio, 27) : b.fim };
+    const pAgora = { ini: D.somar(b.fim, -27) > b.inicio ? D.somar(b.fim, -27) : b.inicio, fim: b.fim };
+    const chave = temInd('nota') ? 'nota' : temInd('kml') ? 'kml' : null;
+    const frW = ws.map(res), frM = ms.map(res);
+    const mots = !chave ? [] : b.motoristas.map((m) => {
+      const val = (p) => { const l = X.filtrar(m.linhas, p); return l.length ? X.agregar(l, IND_MAP[chave], b) : null; };
+      const pm = ms.map(val), pw = ws.map(val);
+      const idx = pm.map((v, i) => (Number.isFinite(v) ? i : -1)).filter((i) => i >= 0);
+      if (!idx.length) return null;
+      const ini = pm[idx[0]], fim = pm[idx[idx.length - 1]];
+      const st = idx.length > 1 ? X.statusEvolucao(b, { [chave]: fim }, { [chave]: ini }) : { status: 'sembase' };
+      return { m, pm, pw, ini, fim, mesIni: ms[idx[0]].mes, mesFim: ms[idx[idx.length - 1]].mes, meses: idx.length, st };
+    }).filter(Boolean);
+    const cont = { evoluiu: 0, estavel: 0, regrediu: 0, sembase: 0 };
+    mots.forEach((x) => { cont[x.st.status]++; });
+    memoEstudo = { b, ws, ms, frW, frM, chave, pIni, pAgora, ini: res(pIni), agora: res(pAgora), mots, cont };
+    return memoEstudo;
+  }
+  // linha semana a semana de um indicador, com rótulo dos meses e, na nota, as faixas Bom (70+) e Crítico (abaixo de 40)
+  function linhaEstudo(vals, ws, ind, alto) {
+    const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
+    const ok = vals.filter(tem);
+    if (ok.length < 2) return '<span class="apoio">Poucas semanas com dado para desenhar a evolução.</span>';
+    const W = 720, H = alto || 200, m = { l: 44, r: 14, t: 16, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    let lo = Math.min(...ok), hi = Math.max(...ok);
+    const folga = Math.max((hi - lo) * 0.15, Math.abs(hi) * 0.02, 0.01);
+    lo = Math.max(0, lo - folga); hi += folga;
+    const x = (i) => m.l + (ws.length > 1 ? (i / (ws.length - 1)) * iw : iw / 2), y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    let g = '';
+    if (ind.key === 'nota') {
+      [[70, hi, 'rgba(30,142,62,.10)'], [lo, 40, 'rgba(217,48,37,.10)']].forEach(([a, z, cor]) => {
+        const y1 = y(Math.min(Math.max(z, lo), hi)), y0 = y(Math.min(Math.max(a, lo), hi));
+        if (y0 - y1 > 1) g += `<rect x="${m.l}" y="${y1.toFixed(1)}" width="${iw}" height="${(y0 - y1).toFixed(1)}" style="fill:${cor}"/>`;
+      });
+    }
+    [lo, (lo + hi) / 2, hi].forEach((v) => {
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" style="stroke:var(--apoio)" stroke-width="1"/>`;
+      g += `<text x="${m.l - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${esc(fmtInd(ind, v, false))}</text>`;
+    });
+    let mesAnt = '';
+    ws.forEach((w, i) => {
+      const mes = w.ini.slice(0, 7);
+      if (mes !== mesAnt) { mesAnt = mes; g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i ? 'middle' : 'start'}" font-size="11" style="fill:var(--texto-2)">${mesCurto(w.ini)}</text>`; }
+    });
+    const pts = vals.map((v, i) => (tem(v) ? [x(i), y(v)] : null)).filter(Boolean);
+    g += `<path d="${X.ui.curva(pts)}" fill="none" style="stroke:var(--dado)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    vals.forEach((v, i) => { if (tem(v)) g += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" style="fill:var(--dado)"><title>Semana de ${esc(D.periodoCurto(ws[i]))}: ${esc(fmtInd(ind, v))}</title></circle>`; });
+    const u = pts[pts.length - 1];
+    g += `<circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="6" style="fill:none;stroke:var(--dado)" stroke-width="2"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} semana a semana" style="display:block">${g}</svg>`;
+  }
+  function telaEstudo() {
+    const S = dadosEstudo(), b = E.base;
+    const cab = `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">Estudo do projeto${E.cliente ? ' · ' + esc(E.cliente) : ''}</h1>
+      <span class="sub">Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = primeiras 4 semanas (${D.periodoCurto(S.pIni)}); agora = últimas 4 semanas (${D.periodoCurto(S.pAgora)}).</span></div></div>`;
+    if (S.ws.length < 2) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ainda pouco tempo de projeto</span><span class="apoio">O estudo precisa de pelo menos duas semanas de dados.</span></div></div></section>';
+    const I = S.ini || {}, A = S.agora || {};
+    const dv = (k) => { const v = X.variacao(IND_MAP[k], A[k], I[k]); return v.semBase ? '<span class="exec-neutro">sem base</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`; };
+    const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
+    const itens = [];
+    if (temInd('nota')) itens.push(item('Nota Gobrax', fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'no início ' + fmtInd(IND_MAP.nota, I.nota)));
+    if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'no início ' + fmtInd(IND_MAP.kml, I.kml)));
+    const e = S.agora && S.ini ? economia(A, I) : null;
+    if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado (últimas 4 semanas)' : 'Diesel a mais (últimas 4 semanas)', 'R$ ' + fmt(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'mesmos km no consumo do início'));
+    if (S.mots.length) itens.push(item('Motoristas que evoluíram', fmt(S.cont.evoluiu, 0) + ' de ' + fmt(S.mots.length - S.cont.sembase, 0), S.cont.regrediu ? `<span class="exec-ruim">${S.cont.regrediu} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', 'primeiro mês contra o último de cada um'));
+    if (A.km) itens.push(item('Km monitorados no projeto', fmt(X.resumo(b.linhas, b).km || 0, 0), '', fmt(b.motoristas.length, 0) + ' motoristas'));
+    const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Início do projeto → agora</span><span class="exec-sub">${D.periodoBR(S.pIni)} → ${D.periodoBR(S.pAgora)}</span></div><div class="exec-grade">${itens.join('')}</div></section>`;
+
+    // ---- Nota Gobrax da frota ----
+    let nota = '';
+    if (S.chave) {
+      const ind = IND_MAP[S.chave];
+      const faixas = S.ms.map((p, i) => {
+        const c = { bom: 0, atencao: 0, critico: 0 };
+        if (S.chave === 'nota') S.mots.forEach((x) => { const f = X.faixaNota(x.pm[i]); if (f) c[f]++; });
+        return c;
+      });
+      const linhasMes = S.ms.map((p, i) => {
+        const v = S.frM[i] ? S.frM[i][S.chave] : null, ant = i && S.frM[i - 1] ? S.frM[i - 1][S.chave] : null, c = faixas[i], n = c.bom + c.atencao + c.critico;
+        const dist = n ? `<div style="display:flex;height:10px;border-radius:999px;overflow:hidden;min-width:140px" title="Bom ${c.bom} · Atenção ${c.atencao} · Crítico ${c.critico}">${[['bom', 'var(--ok)'], ['atencao', 'var(--atencao)'], ['critico', 'var(--critico)']].map(([k, cor]) => (c[k] ? `<i style="width:${(c[k] / n) * 100}%;background:${cor}"></i>` : '')).join('')}</div>` : '';
+        return `<tr><td><b style="font-weight:600">${esc(D.nomeMes(p.mes))}</b>${p.ini !== p.mes || p.fim !== D.fimMes(p.mes) ? `<span class="linha2">${D.periodoCurto(p)}</span>` : ''}</td><td class="dir">${fmtInd(ind, v)}</td><td class="dir">${i ? variacao(X.variacao(ind, v, ant)) : '<span class="mudo">início</span>'}</td>
+          ${S.chave === 'nota' ? `<td class="dir num">${c.bom}</td><td class="dir num">${c.atencao}</td><td class="dir num">${c.critico}</td><td>${dist}</td>` : ''}</tr>`;
+      }).join('');
+      nota = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(ind.label)} da frota</h2><span class="h2-sub">Semana a semana desde o início do projeto${S.chave === 'nota' ? '; faixa verde = Bom (70 ou mais), vermelha = Crítico (abaixo de 40)' : ''}. Passe o mouse nos pontos para ver cada semana.</span></div></div>
+        <div class="card-corpo" style="gap:16px">${linhaEstudo(S.frW.map((r) => (r ? r[S.chave] : null)), S.ws, ind, 240)}
+        <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Mês</th><th class="dir">${esc(ind.label)}</th><th class="dir">vs mês anterior</th>${S.chave === 'nota' ? '<th class="dir">Motoristas Bom</th><th class="dir">Atenção</th><th class="dir">Crítico</th><th>Distribuição</th>' : ''}</tr></thead><tbody>${linhasMes}</tbody></table></div></div></section>`;
+    }
+
+    // ---- Nota de cada motorista mês a mês ----
+    let mots = '';
+    if (S.mots.length) {
+      const ind = IND_MAP[S.chave];
+      const fundo = (v, i) => {
+        if (!Number.isFinite(v)) return '';
+        if (S.chave === 'nota') { const f = X.faixaNota(v); return f === 'bom' ? 'rgba(30,142,62,.20)' : f === 'atencao' ? 'rgba(249,171,0,.20)' : 'rgba(217,48,37,.22)'; }
+        const fr = S.frM[i] && S.frM[i].kml;
+        return fr ? (v >= fr ? 'rgba(30,142,62,.20)' : 'rgba(249,171,0,.20)') : '';
+      };
+      const ord = S.mots.slice().sort((p, q) => { const d = (x) => (x.st.status === 'sembase' ? -Infinity : x.fim - x.ini); return d(q) - d(p) || p.m.nome.localeCompare(q.m.nome, 'pt-BR'); });
+      const linhas = ord.map((x) => {
+        const v = x.st.status === 'sembase' ? null : X.variacao(ind, x.fim, x.ini);
+        return `<tr><td><span class="pessoa">${avatar(x.m.nome, 28)}<a class="pessoa-nome" href="${linkMotorista(x.m.id)}" style="text-decoration:none">${esc(x.m.nome)}</a></span></td>
+          ${x.pm.map((val, i) => `<td class="dir num" style="background:${fundo(val, i)}">${Number.isFinite(val) ? fmtInd(ind, val, false) : '<span class="mudo">—</span>'}</td>`).join('')}
+          <td class="dir">${fmtInd(ind, x.ini)} → <b>${fmtInd(ind, x.fim)}</b>${v ? `<span class="linha2">${variacao(v)}</span>` : '<span class="linha2 mudo">um mês só</span>'}</td>
+          <td>${badgeStatus(x.st.status)}</td><td title="${esc(ind.label)} semana a semana">${X.ui.sparkline(x.pw.map((p) => (Number.isFinite(p) ? p : null)), STATUS[x.st.status].cor)}</td></tr>`;
+      }).join('');
+      const pil = [['evoluiu', 'Evoluíram'], ['estavel', 'Estáveis'], ['regrediu', 'Regrediram'], ['sembase', 'Um mês só']].filter(([k]) => S.cont[k]).map(([k, r]) => `<span class="tag"><span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${STATUS[k].cor};margin-right:6px"></span>${r}: <b>${S.cont[k]}</b></span>`).join('');
+      mots = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${S.chave === 'nota' ? 'Nota dos motoristas' : 'Média de consumo dos motoristas'} mês a mês</h2>
+          <span class="h2-sub">Cada motorista do primeiro ao último mês em que rodou. ${S.chave === 'nota' ? 'Verde = Bom (70+), amarelo = Atenção (40 a 69), vermelho = Crítico (abaixo de 40).' : 'Verde = acima da média da frota no mês.'} Quem mais evoluiu aparece primeiro.</span></div></div>
+        <div class="card-corpo" style="flex-direction:row;gap:8px;flex-wrap:wrap">${pil}</div>
+        <div class="tabela-wrap"><table class="tabela" style="min-width:${420 + S.ms.length * 80}px"><thead><tr><th>Motorista</th>${S.ms.map((p) => `<th class="dir">${mesCurto(p.mes)}</th>`).join('')}<th class="dir">Primeiro → último mês</th><th>Resultado</th><th>Semanas</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
+    }
+
+    // ---- Indicadores ----
+    const chaves = ['kml', 'km_dia', 'inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'pressao_acelerador', 'excesso_velocidade', 'frenagens'].filter((k) => k !== S.chave && IND_MAP[k] && temInd(k));
+    const cards = chaves.map((k) => {
+      const ind = IND_MAP[k], v = X.variacao(ind, A[k], I[k]);
+      const mens = S.ms.map((p, i) => ({ p, v: S.frM[i] ? S.frM[i][k] : null })).filter((o) => Number.isFinite(o.v));
+      const melhor = mens.length ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor > 0 ? o : a)) : null;
+      const pior = mens.length ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor < 0 ? o : a)) : null;
+      const sel = v.semBase ? ['Sem base', 'vazio'] : v.estavel ? ['Estável', 'neutro'] : v.sentido === 'melhor' ? ['Melhorou', 'ok'] : v.sentido === 'pior' ? ['Piorou', 'critico'] : ['Mudou', 'neutro'];
+      return `<section class="card" style="gap:0"><div class="card-cab"><div class="card-cab-texto" style="flex-direction:row;justify-content:space-between;align-items:center;width:100%"><h2 class="h2" style="font-size:15px">${esc(ind.label)}</h2><span class="badge badge-${sel[1]}">${sel[0]}</span></div></div>
+        <div class="card-corpo" style="gap:10px">
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline"><span><span class="apoio">Início</span> <b class="num">${fmtInd(ind, I[k])}</b></span><span><span class="apoio">Agora</span> <b class="num" style="font-size:18px">${fmtInd(ind, A[k])}</b></span>${variacao(v)}</div>
+          ${linhaEstudo(S.frW.map((r) => (r ? r[k] : null)), S.ws, ind, 150)}
+          ${melhor && mens.length > 1 ? `<span class="apoio" style="font-size:12px">Melhor mês: <b>${esc(D.nomeMes(melhor.p.mes))}</b> (${fmtInd(ind, melhor.v)}) · pior mês: <b>${esc(D.nomeMes(pior.p.mes))}</b> (${fmtInd(ind, pior.v)})</span>` : ''}
+        </div></section>`;
+    }).join('');
+    const indicadores = chaves.length ? `<div class="pag-cab" style="margin-top:8px"><div class="pag-cab-texto"><h2 class="h2">Indicadores</h2><span class="sub">Cada indicador semana a semana desde o início do projeto, com o início contra agora e o melhor e o pior mês.</span></div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px">${cards}</div>` : '';
+
+    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${faixa}${nota}${mots}${indicadores}</div>`;
   }
 
   function telaGeral() {
@@ -7929,7 +8080,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
+    const telas = { estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, veiculos: telaVeiculos, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
     const livre = ['importar', 'config', 'clientes', 'cliente', 'veiculos', 'dashboards', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
@@ -7972,7 +8123,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api', 'mensagens'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 

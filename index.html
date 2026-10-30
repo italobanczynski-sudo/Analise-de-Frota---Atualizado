@@ -4861,8 +4861,8 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       <span class="rk-pos">${i + 1}</span><span class="rk-nome">${v.link ? veicNome(v.nome) : esc(v.nome)}</span>
       <span class="rk-trilho"><span class="rk-barra" style="width:${Math.max(2, (val(v) / max) * 100)}%;background:${cor(v)}"></span></span><span class="rk-valor num">${fmtv(val(v))}</span></div>`).join('');
     vs.forEach((v) => { v.link = true; });
-    const porNota = vs.filter((v) => v.a.nota !== null).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
-    const porKml = vs.filter((v) => v.a.kml !== null).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
+    const porNota = vs.filter((v) => Number.isFinite(v.a.nota)).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
+    const porKml = vs.filter((v) => Number.isFinite(v.a.kml)).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
     const maxKml = Math.max(...porKml.map((v) => v.a.kml), 1);
     // por grupo
     const por = new Map();
@@ -4873,8 +4873,8 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     });
     const gs = [...por.entries()].filter(([g]) => g).map(([g, ls]) => ({ nome: g, a: X.resumo(ls, bv), n: new Set(ls.map((l) => l.motorista)).size })).filter((g) => X.rodou(g.a));
     const cartaoGrupos = gs.length ? (() => {
-      const gNota = gs.filter((g) => g.a.nota !== null).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
-      const gKml = gs.filter((g) => g.a.kml !== null).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
+      const gNota = gs.filter((g) => Number.isFinite(g.a.nota)).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
+      const gKml = gs.filter((g) => Number.isFinite(g.a.kml)).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
       const maxG = Math.max(...gKml.map((g) => g.a.kml), 1);
       return `<div class="grade-2">
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Grupos por nota</h2><span class="h2-sub">Nota Gobrax ponderada por km${gs.length > 10 ? ' · 10 melhores de ' + gs.length : ''}.</span></div></div>
@@ -6195,6 +6195,22 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       <div class="graf-legenda" style="margin-top:10px"><span><i class="cal-leg" style="background:#1E8E3E"></i>${ci.leg[0]}</span><span><i class="cal-leg" style="background:#F9AB00"></i>${ci.leg[1]}</span><span><i class="cal-leg" style="background:#D93025"></i>${ci.leg[2]}</span><span><i class="cal-leg" style="background:#EEF0F2"></i>Sem registro</span></div>`;
   }
   // Nota oficial do motorista no mês do fim do período analisado (ou no último mês buscado antes dele), vinda da premiação da API
+  // Nota Gobrax da frota num período pela Premiação (scores mensais da API): média dos meses que tocam o período,
+  // ponderada pelos km de cada motorista. Serve quando os dados do dia não trazem a nota (a performance da API vem sem ela).
+  function notaFrotaPremiacao(p) {
+    if (!p) return null;
+    const ini = p.ini.slice(0, 7), fim = p.fim.slice(0, 7);
+    const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && d.data >= ini && d.data <= fim).sort((a, b) => (a.data < b.data ? -1 : 1));
+    let s = 0, w = 0, n = 0;
+    docs.forEach((d) => (d.motoristas || []).forEach((m) => {
+      if (!Number.isFinite(m.nota)) return;
+      const km = m.km > 0 ? m.km : 0;
+      s += m.nota * (km || 1); w += km || 1; n++;
+    }));
+    if (!w) return null;
+    const hoje = D.hoje().slice(0, 7);
+    return { nota: s / w, motoristas: n, meses: docs.map((d) => D.nomeMes(d.data + '-01').split(' ')[0] + (d.data === hoje ? ' (parcial)' : '')).join(', ') };
+  }
   function notaPremiacao(nome) {
     if (!nome) return null;
     const mes = E.A.fim.slice(0, 7);
@@ -6720,6 +6736,15 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const itens = [];
     if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'para os mesmos km do período anterior · R$ ' + fmt(E.preco, 2) + '/L'));
     if (temInd('nota')) itens.push(item(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota)));
+    else {   // sem nota nos dados do dia: a da Premiação (mensal) dos meses do período
+      const pa = notaFrotaPremiacao(E.A), pb = c.lb.length ? notaFrotaPremiacao(E.B) : null;
+      if (pa) {
+        const v = pb ? X.variacao(IND_MAP.nota, pa.nota, pb.nota) : { semBase: true };
+        const delta = v.semBase ? '<span class="exec-neutro">sem mês anterior na Premiação</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`;
+        itens.push(item(IND_MAP.nota.label, fmt(pa.nota, 1), delta, 'Premiação · ' + esc(pa.meses) + (pb ? ' · antes ' + fmt(pb.nota, 1) : '')));
+      } else itens.push(item(IND_MAP.nota.label, '—', '<span class="exec-neutro">sem nota nos dados</span>', 'busque "Scores e premiação" no perfil do cliente'));
+    }
+    if (temInd('km') && A.km) itens.push(item('Km rodados', fmtInd(IND_MAP.km, A.km), dv('km'), 'antes ' + fmtInd(IND_MAP.km, B.km)));
     if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml)));
     if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde)));
     if (temInd('motor_ocioso')) itens.push(item('Motor ligado parado', fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso), dv('motor_ocioso'), 'antes ' + fmtInd(IND_MAP.motor_ocioso, B.motor_ocioso)));

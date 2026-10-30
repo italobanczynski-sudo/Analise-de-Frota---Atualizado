@@ -3314,18 +3314,20 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const per = [];
     for (let d = granPeriodo(b.inicio, g).ini; d <= b.fim; d = D.somar(granPeriodo(d, g).fim, 1)) {
       const p = granPeriodo(d, g), ls = X.filtrar(b.linhas, p);
-      if (ls.length) per.push({ p, v: X.resumo(ls, b), mot: new Set(ls.map((l) => l.motorista)).size });
+      // parcial: a semana/mês começa antes ou termina depois dos dados (km e horas somados saem menores e a comparação engana)
+      if (ls.length) per.push({ p, v: X.resumo(ls, b), mot: new Set(ls.map((l) => l.motorista)).size, parcial: p.ini < b.inicio || p.fim > b.fim });
     }
     if (per.length < 2) return '';
     const comValor = inds.filter((ind) => per.some((r) => r.v[ind.key] !== null && r.v[ind.key] !== undefined && Number.isFinite(r.v[ind.key])));
     inds.length = 0; inds.push(...comValor);   // indicador sem nenhum valor (ex.: km quando a API só manda a performance) sai da tabela
     const rot = (p) => (g === 'mes' ? D.nomeMes(p.ini) : 'Semana ' + D.periodoCurto(p));
-    const pri = per[0], ult = per[per.length - 1];
+    const inteiros = per.filter((x) => !x.parcial), temParcial = inteiros.length < per.length;
+    const pri = inteiros.length >= 2 ? inteiros[0] : per[0], ult = inteiros.length >= 2 ? inteiros[inteiros.length - 1] : per[per.length - 1];
     const resumoInd = inds.map((ind) => `<div class="kpi"><span class="kpi-titulo">${esc(ind.label)}</span><span class="kpi-valor">${fmtInd(ind, ult.v[ind.key])}</span>${variacao(X.variacao(ind, ult.v[ind.key], pri.v[ind.key]), 'vs. ' + rot(pri.p))}<span class="kpi-ref">No início: ${fmtInd(ind, pri.v[ind.key])}</span></div>`).join('');
-    const linhas = per.slice().reverse().map((r, i, arr) => { const ant = arr[i + 1]; return `<tr><td style="white-space:nowrap"><span style="font-weight:500">${rot(r.p)}</span>${g === 'mes' ? '' : `<span class="linha2">${D.periodoBR(r.p)}</span>`}</td><td class="dir num">${fmt(r.mot, 0)}</td>
+    const linhas = per.slice().reverse().map((r, i, arr) => { const ant = arr[i + 1]; return `<tr><td style="white-space:nowrap"><span style="font-weight:500">${rot(r.p)}${r.parcial ? '*' : ''}</span>${g === 'mes' ? '' : `<span class="linha2">${D.periodoBR(r.p)}</span>`}</td><td class="dir num">${fmt(r.mot, 0)}</td>
       ${inds.map((ind) => `<td class="dir"><span style="display:block">${fmtInd(ind, r.v[ind.key])}</span>${ant ? variacao(X.variacao(ind, r.v[ind.key], ant.v[ind.key])) : ''}</td>`).join('')}</tr>`; }).join('');
     return `<section class="card">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução geral</h2><span class="h2-sub">Do início (${rot(pri.p)}) ao fim (${rot(ult.p)}) dos dados. Cada linha comparada à anterior; mais recente no topo.</span></div>
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução geral</h2><span class="h2-sub">Do início (${rot(pri.p)}) ao fim (${rot(ult.p)}) dos dados. Cada linha comparada à anterior; mais recente no topo.${temParcial ? ` * ${g === 'mes' ? 'mês' : 'semana'} incompleto nos dados: fica fora do início × fim.` : ''}</span></div>
         <div style="display:flex;gap:6px">${[['semana', 'Por semana'], ['mes', 'Por mês']].map(([k, r]) => `<button type="button" class="pilula ${g === k ? 'ativa' : ''}" data-acao="evo-gran" data-g="${k}" aria-pressed="${g === k}">${r}</button>`).join('')}</div></div>
       <div class="card-corpo" style="gap:14px"><div class="grade-kpi">${resumoInd}</div></div>
       <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">

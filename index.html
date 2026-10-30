@@ -6430,6 +6430,105 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       <div class="card-corpo"><div class="aneis">${ks.map(anel).join('')}</div></div></section>`;
   }
 
+  // ---------- Mês atual semana a semana: como o cliente evoluiu no projeto Gobrax, com frota, motoristas e veículos ----------
+  // O mês é o do último dia com dados. Cada semana (seg–dom, cortada no mês) é comparada à semana anterior e o mês ao mês anterior.
+  let memoMesSem = null;
+  function dadosMesSemanal() {
+    const b = E.base, bv = E.veic ? baseVeic() : null;
+    if (memoMesSem && memoMesSem.b === b && memoMesSem.bv === bv) return memoMesSem;
+    const mes = D.inicioMes(b.fim), ws = semanasDoMes(mes).filter((w) => w.ini <= b.fim);
+    const antes = (w) => ({ ini: D.somar(semIni(w.ini), -7), fim: D.somar(w.ini, -1) });
+    const pMes = { ini: mes, fim: b.fim }, pAnt = { ini: D.somarMeses(mes, -1), fim: D.somar(mes, -1) };
+    const chave = temInd('nota') ? 'nota' : temInd('kml') ? 'kml' : null;
+    const quem = (base) => {
+      if (!base) return null;
+      const sem = ws.map((w) => {
+        const c = { evoluiu: 0, estavel: 0, regrediu: 0, sembase: 0, n: 0, lista: [] };
+        base.motoristas.forEach((m) => {
+          const la = X.filtrar(m.linhas, w);
+          if (!la.length) return;
+          const a = X.resumo(la, base), st = X.statusEvolucao(base, a, X.resumo(X.filtrar(m.linhas, antes(w)), base));
+          c[st.status]++; c.n++; c.lista.push({ m, a, st });
+        });
+        return c;
+      });
+      return { sem };
+    };
+    memoMesSem = { b, bv, mes, ws, chave, pMes, pAnt,
+      fr: ws.map((w) => X.resumo(X.filtrar(b.linhas, w), b)), frAntes: ws.map((w) => X.resumo(X.filtrar(b.linhas, antes(w)), b)),
+      frMes: X.resumo(X.filtrar(b.linhas, pMes), b), frAnt: X.resumo(X.filtrar(b.linhas, pAnt), b),
+      mots: quem(b), veics: quem(bv) };
+    return memoMesSem;
+  }
+  const mesSemIncompleta = (w) => w.fim > E.base.fim || D.dif(w.ini, w.fim) < 6;
+  // barras da semana no indicador principal, com a linha tracejada do mês anterior
+  function graficoMesSemanal(S) {
+    const ind = IND_MAP[S.chave], vals = S.fr.map((r) => r[S.chave]), ref = S.frAnt[S.chave];
+    const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
+    const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
+    if (!todos.length) return '';
+    const W = 720, H = 230, m = { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const mn = Math.min(...todos), mx = Math.max(...todos), folga = Math.max((mx - mn) * 0.9, Math.abs(mx) * 0.03, 0.01);
+    const lo = Math.max(0, mn - folga), hi = mx + folga * 0.25;   // escala aproximada para a diferença entre semanas aparecer
+    const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih, bw = iw / S.ws.length, larg = Math.min(64, bw * 0.56);
+    let g = '';
+    S.ws.forEach((w, i) => {
+      const cx = m.l + i * bw + bw / 2, v = vals[i], inc = mesSemIncompleta(w);
+      if (tem(v)) {
+        const y0 = y(v), v0 = S.frAntes[i][S.chave], x = tem(v0) ? X.variacao(ind, v, v0) : null;
+        const cor = !x || x.semBase || x.estavel ? 'var(--dado)' : x.sentido === 'melhor' ? 'var(--ok, #1E8E3E)' : 'var(--critico, #D93025)';
+        g += `<rect x="${(cx - larg / 2).toFixed(1)}" y="${y0.toFixed(1)}" width="${larg.toFixed(1)}" height="${(m.t + ih - y0).toFixed(1)}" rx="6" style="fill:${cor};opacity:${inc ? 0.55 : 0.95}"><title>${esc(semNomeSem(w))}: ${esc(fmtInd(ind, v))}${x && !x.semBase ? ' · ' + esc(x.texto) + ' vs semana anterior' : ''}</title></rect>`;
+        g += `<text x="${cx.toFixed(1)}" y="${(y0 - 7).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--tinta)">${esc(fmtInd(ind, v))}</text>`;
+      } else g += `<text x="${cx.toFixed(1)}" y="${(m.t + ih - 6).toFixed(1)}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">sem dados</text>`;
+      g += `<text x="${cx.toFixed(1)}" y="${H - 24}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">Semana ${w.n}${inc ? '*' : ''}</text>`;
+      g += `<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${esc(D.periodoCurto(w))}</text>`;
+    });
+    if (tem(ref)) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke-dasharray="6 5" stroke-width="1.5" style="stroke:var(--texto-2)"/><text x="${W - m.r + 8}" y="${(y(ref) + 4).toFixed(1)}" text-anchor="start" font-size="11" style="fill:var(--texto-2)">${esc(D.nomeMes(S.pAnt.ini).split(' ')[0])}: ${esc(fmtInd(ind, ref))}</text>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} por semana em ${esc(D.nomeMes(S.mes))}" style="display:block;max-height:260px">${g}</svg>`;
+  }
+  function blocoMesSemanal() {
+    if (!E.base || !E.base.linhas.length) return '';
+    const S = dadosMesSemanal();
+    if (!S.ws.some((w) => X.filtrar(E.base.linhas, w).length)) return '';
+    const nomeMes = D.nomeMes(S.mes), mesAnt = D.nomeMes(S.pAnt.ini).split(' ')[0];
+    const chaves = ['nota', 'kml', 'km_dia', 'inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'pressao_acelerador'].filter((k) => IND_MAP[k] && temInd(k));
+    const cel = (ind, v, ant, ref) => `<td class="dir">${fmtInd(ind, v)}${v === null || v === undefined ? '' : `<span class="linha2">${variacao(X.variacao(ind, v, ant), ref)}</span>`}</td>`;
+    const tabela = `<div class="tabela-wrap"><table class="tabela" style="min-width:${360 + S.ws.length * 120}px"><thead><tr><th>Indicador</th><th class="dir">${esc(mesAnt)}</th>
+        ${S.ws.map((w) => `<th class="dir">Semana ${w.n}${mesSemIncompleta(w) ? '*' : ''}<span class="linha2" style="display:block;font-weight:400">${esc(D.periodoCurto(w))}</span></th>`).join('')}<th class="dir">${esc(nomeMes.split(' ')[0])} até agora</th></tr></thead><tbody>
+      ${chaves.map((k) => { const ind = IND_MAP[k]; return `<tr><td><b style="font-weight:600">${esc(ind.label)}</b></td><td class="dir" style="color:var(--texto-2)">${fmtInd(ind, S.frAnt[k])}</td>
+        ${S.fr.map((r, i) => cel(ind, r[k], S.frAntes[i][k])).join('')}${cel(ind, S.frMes[k], S.frAnt[k], 'vs ' + mesAnt.toLowerCase())}</tr>`; }).join('')}
+      </tbody></table></div>`;
+    // motoristas e veículos: quantos evoluíram contra a semana anterior e os destaques da última semana com dados
+    const blocoQuem = (Q, rot) => {
+      if (!Q) return '';
+      const k = S.chave, ind = k ? IND_MAP[k] : null;
+      const linhas = [['evoluiu', 'Evoluíram'], ['estavel', 'Estáveis'], ['regrediu', 'Regrediram'], ['sembase', 'Sem semana anterior']];
+      const ult = [...Q.sem].reverse().find((c) => c.n) || { lista: [] }, nUlt = Q.sem.indexOf(ult) + 1;
+      const ord = ult.lista.filter((x) => k && Number.isFinite(x.a[k])).sort((p, q) => q.a[k] - p.a[k]);
+      const top = ord.slice(0, 3), baixo = ord.slice(-3).reverse().filter((x) => !top.includes(x));
+      const lista = (arr) => arr.map((x) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.m.nome)}</span><span class="num" style="display:flex;gap:6px;align-items:center;white-space:nowrap">${fmtInd(ind, x.a[k])} ${badgeStatus(x.st.status)}</span></div>`).join('') || '<span class="apoio">—</span>';
+      return `<div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <span class="hb-bloco-t">${rot} · contra a semana anterior</span>
+        <div class="tabela-wrap"><table class="tabela"><thead><tr><th></th>${S.ws.map((w) => `<th class="dir">S${w.n}</th>`).join('')}</tr></thead><tbody>
+          <tr><td>Rodaram</td>${Q.sem.map((c) => `<td class="dir num"><b>${c.n}</b></td>`).join('')}</tr>
+          ${linhas.map(([st, r]) => `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${STATUS[st].cor};margin-right:6px"></span>${r}</td>${Q.sem.map((c) => `<td class="dir num">${c.n ? c[st] : '—'}</td>`).join('')}</tr>`).join('')}
+        </tbody></table></div>
+        ${ord.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><div><span class="apoio">Melhores na semana ${nUlt} · ${esc(ind.label)}</span>${lista(top)}</div>
+          <div><span class="apoio">Precisam de atenção na semana ${nUlt}</span>${lista(baixo)}</div></div>` : ''}
+      </div>`;
+    };
+    const inc = S.ws.some(mesSemIncompleta);
+    const x = S.chave ? X.variacao(IND_MAP[S.chave], S.frMes[S.chave], S.frAnt[S.chave]) : null;
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(nomeMes)} semana a semana</h2>
+        <span class="h2-sub">Evolução do cliente no projeto Gobrax no mês atual: cada semana comparada à anterior e o mês comparado a ${esc(mesAnt.toLowerCase())}. Barra verde melhorou, vermelha piorou contra a semana anterior.</span></div>
+        ${x && !x.semBase ? `<span class="apoio" style="white-space:nowrap">${esc(IND_MAP[S.chave].label)} no mês: <b>${fmtInd(IND_MAP[S.chave], S.frMes[S.chave])}</b> ${variacao(x, 'vs ' + mesAnt.toLowerCase())}</span>` : ''}</div>
+      <div class="card-corpo" style="gap:16px">
+        ${S.chave ? `<div><span class="hb-bloco-t">${esc(IND_MAP[S.chave].label)} da frota por semana</span>${graficoMesSemanal(S)}${inc ? '<span class="apoio" style="font-size:12px">* semana incompleta (em andamento ou cortada pela virada do mês)</span>' : ''}</div>` : ''}
+        ${tabela}
+        <div class="grade-2">${blocoQuem(S.mots, 'Motoristas')}${blocoQuem(S.veics, 'Veículos')}</div>
+      </div></section>`;
+  }
+
   function telaGeral() {
     const c = calc();
     const A = c.frotaA, B = c.frotaB;
@@ -6543,6 +6642,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       ${avisosPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
       ${faixa}
+      ${blocoMesSemanal()}
       ${radarAuto()}
       ${aneisDesempenho(c)}
       ${leitura}

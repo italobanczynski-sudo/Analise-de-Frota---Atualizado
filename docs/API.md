@@ -81,7 +81,7 @@ O painel faz uma chamada por dia do período. Cada veículo vira uma linha da pl
 | `averageSpeed` | `velocidade_media` |
 | `odometer` | `odometro` |
 
-Os dados aparecem em Veículos e grupos, Veículo individual, Visão geral e Desenvolvimento da frota.
+Os dados aparecem em Veículo individual, Visão geral e Desenvolvimento da frota (com os grupos de veículos).
 
 ### `GET v1/vehicle-performance`: performance por veículo
 
@@ -117,7 +117,7 @@ Busca o último odômetro de cada veículo nos últimos 30 dias. O painel guarda
 | `startDate` / `endDate` | agora − 30 dias até agora, em UTC (`AAAA-MM-DD HH:MM:SS`) |
 | `vehicleIdentification` | vazio = todos |
 
-Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles aparecem em Veículos e grupos, no card Odômetro e comunicação.
+Os campos usados são `vehicleIdentification`, `odometer` e `lastUpdated`. Eles aparecem no card Odômetro e comunicação, no fim de Desenvolvimento da frota.
 
 ### `GET v2/driversOverview`: scores e premiação
 

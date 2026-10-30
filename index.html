@@ -2777,7 +2777,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     cal: { aberto: false, editando: 'A', rascA: null, rascB: null, mes: null, pendente: null, preset: '30' },
     rota: { tela: 'visao', id: null, aba: 'resumo' },
     lista: { busca: '', status: 'todos', ord: { col: 'delta', dir: -1 }, pag: 1, por: 10 },
-    indGraf: 'nota', verTabela: false, motComp: 'kml', planoAba: 'diagnostico', planoComp: '', planoGran: '', planoEvoInd: 'kml', motAba: (() => { try { return localStorage.getItem('gbx-mot-aba') || 'resumo'; } catch (e) { return 'resumo'; } })(),
+    indGraf: 'nota', verTabela: false, motComp: 'kml', planoAba: 'diagnostico', planoComp: '', motAba: (() => { try { return localStorage.getItem('gbx-mot-aba') || 'resumo'; } catch (e) { return 'resumo'; } })(),
     semMes: null, semana: null, semComp: '', semEnvio: null, semPdfGerando: false,   // Resultado semanal: mês, semana analisada, semana comparada (mesmo mês) e o envio um por um
     detalhe: { indGraf: 'nota', verTabela: false },
     comp: { escopo: 'frota', ind: 'nota', ord: -1 },
@@ -3064,7 +3064,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { sec: 'Relatório' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
     { tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
-    { tela: 'dashboards', href: '#/dashboards', icone: 'dashboards', rot: 'Dashboards' },
     { sec: 'Frota' },
     { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Desenvolvimento da frota' },
     { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
@@ -3075,7 +3074,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     { sec: 'Retenção do cliente' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
-    { tela: 'comparativo', href: '#/comparativo', icone: 'documento', rot: 'Comparativo de períodos' },
     { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'APIs (Gobrax e HubSpot)' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente'] }
   ];
@@ -3126,9 +3124,9 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
       return `<div class="dm"><button type="button" class="pilula-diesel auto" data-acao="diesel-menu" aria-haspopup="listbox" aria-expanded="${!!E.dieselMenu}" title="Clique para escolher o preço · Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${E.precoManual ? 'manual' : usado.toUpperCase()}</small><span class="dp-seta">▾</span></button>${E.dieselMenu ? menuDiesel() : ''}</div>`;
     }
     const d = E.diesel;
-    if (!d) return `<a class="pilula-diesel" href="#/comparativo" title="Preço usado nas contas de economia">Diesel ${fmtReais(E.preco, 2)}/L</a>`;
+    if (!d) return `<a class="pilula-diesel" href="#/visao?aba=indicadores" title="Preço usado nas contas de economia">Diesel ${fmtReais(E.preco, 2)}/L</a>`;
     const auto = !E.precoManual;
-    return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/comparativo" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: ${fmtReais(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
+    return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/visao?aba=indicadores" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: ${fmtReais(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
   }
   // Clique na pílula do diesel: lista para escolher o preço (automático, média Brasil ou um estado)
   function menuDiesel() {
@@ -3167,6 +3165,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 61, data: '2026-10-30', titulo: 'Menos telas repetidas', texto: 'Dashboards e Comparativo de períodos viraram abas de Desenvolvimento da frota (Resumo, Gráficos e Todos os indicadores). A aba Evolução do Plano de ação saiu: a evolução está no Estudo do projeto e no mês da Visão geral. Na Visão geral, o "Onde ainda há ganho" virou um resumo com link para o Onde agir do Plano.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
+    { id: 60, data: '2026-10-30', titulo: 'Correções nos números', texto: 'Diesel economizado e diesel em jogo contam só os dias com km e litros; motoristas ativos contam só quem rodou no período; selo e card semanal usam a mesma regra de evolução; grupos de veículos e odômetro voltaram (no fim de Desenvolvimento da frota).', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
     { id: 59, data: '2026-10-27', titulo: 'Pedal e motor ligado parado iguais aos da plataforma', texto: 'Na API, cada indicador tem a sua base: o motor ligado parado é sobre o tempo de ignição ligada e os ranges do pedal (ideal, atenção e crítico) são sobre o tempo com o pé no acelerador. O painel juntava os dias pelas horas em movimento, e por isso o pedal no range crítico e o motor ligado parado de uma semana saíam diferentes da plataforma. Agora cada um é ponderado pela própria base. Vale para as próximas buscas na API.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 58, data: '2026-10-27', titulo: 'Indicadores do motorista corrigidos', texto: 'Quando o motorista dirigiu o veículo só em parte do dia, os indicadores dele (faixa verde, motor ligado parado, pedal no range crítico e os demais) eram recalculados sobre o tempo em movimento e podiam sair distorcidos, com o motor ligado parado passando de 100%. Agora cada indicador é a média dos percentuais da própria plataforma, ponderada pelas horas em movimento de cada trecho. Vale para as próximas buscas na API.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 57, data: '2026-10-27', titulo: 'Motorista é motorista, veículo é veículo', texto: 'Antes, o motorista que mais dirigiu um veículo no dia ficava com o dia inteiro do veículo, e os números do condutor saíam maiores que os da análise por motorista da plataforma. Agora o veículo fica com o dia inteiro e o motorista só com o tempo em que estava vinculado ao veículo. Vale para as próximas buscas na API. Os indicadores ganharam os nomes da plataforma: Motor ligado parado, Acelerando acima do verde, Pedal no range crítico e Freadas a cada 100 km (são as freadas totais, não só as bruscas).', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -3532,10 +3532,15 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const pct = (n) => (total ? (n / total) * 100 : 0);
     const dist = ['evoluiu', 'estavel', 'regrediu', 'sembase'].filter((k) => c.cont[k]);
 
-    return `
-      ${cabecalho(`Desenvolvimento da frota`, `${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`, `<a class="btn" href="#/comparativo" style="text-decoration:none">${icone('tabela', 14, '#5F6368')}Comparativo completo</a>`)}
+    const aba = ['graficos', 'indicadores'].includes(E.rota.aba) ? E.rota.aba : 'resumo';
+    const topo = `
+      ${cabecalho(`Desenvolvimento da frota`, `${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
+      ${abas([['resumo', 'Resumo', undefined, '#/visao'], ['graficos', 'Gráficos', undefined, '#/visao?aba=graficos'], ['indicadores', 'Todos os indicadores', undefined, '#/visao?aba=indicadores']], aba, '', 'Seções de Desenvolvimento da frota')}`;
+    if (aba === 'graficos') return topo + abaGraficosFrota(c);
+    if (aba === 'indicadores') return topo + abaIndicadoresFrota();
+    return `${topo}
       ${radarAuto()}
       <div class="grade-kpi">${kpis}${kpiEconomia(c.frotaA, c.frotaB)}</div>
       <div class="grade-2">
@@ -3558,12 +3563,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         ${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Média da frota dia a dia')}
       </div>
       ${painelNotas(c)}
-      <section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Todos os indicadores da frota</h2>
-          <span class="h2-sub">Subiu ou desceu: a cor indica se a mudança foi boa ou ruim para cada indicador. Clique em um indicador para ver o gráfico.</span></div>
-          <button type="button" class="btn" data-acao="exportar-frota">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
-        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaIndicadores(c.frotaA, c.frotaB)}</div>
-      </section>
+      <a class="btn" href="#/visao?aba=indicadores" style="text-decoration:none;align-self:flex-start">${icone('tabela', 14, '#5F6368')}Ver todos os indicadores da frota</a>
       ${cartaoGruposVeic()}
       ${cartaoOdometro()}`;
   }
@@ -4517,7 +4517,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Tela: Comparativo de períodos ----------
-  function telaComparativo() {
+  // Desenvolvimento da frota › Todos os indicadores (era a tela Comparativo de períodos)
+  function abaIndicadoresFrota() {
     const c = calc();
     const escopo = E.comp.escopo;
     const alvo = escopo === 'frota' ? { a: c.frotaA, b: c.frotaB, nome: 'Frota inteira' } : (() => {
@@ -4528,8 +4529,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const linhas = c.mots.map((x) => ({ x, v: X.variacao(ind, x.a[ind.key], x.b[ind.key]) }))
       .sort(ordemPor((o) => (o.v.semBase ? null : o.v.delta * (ind.melhor || 1)), E.comp.ord > 0 ? 1 : -1));
     return `
-      ${cabecalho(`Comparativo de períodos`, `Todos os indicadores · ${D.periodoBR(E.A)} × ${D.periodoBR(E.B)}`)}
-      ${barraPeriodo()}
       <section class="card">
         <div class="card-cab">
           <div class="card-cab-texto"><h2 class="h2">${esc(alvo.nome)}</h2><span class="h2-sub">Todos os indicadores, um por linha.</span></div>
@@ -4794,23 +4793,12 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         <div class="card-corpo"><div class="rk">${barras(porKml, (v) => v.a.kml, maxKml, (x) => fmt(x, 2), () => '#FCB709')}</div></div></section>
     </div>`;
   }
-  function telaDashboards() {
-    if (!E.base && !E.veic) return telaSemDados();
-    let corpo = '';
-    if (E.base) {
-      const c = calc();
-      const kpis = kpisPadrao().map((k) => kpi(k, c.frotaA, c.frotaB, { acao: 'ind-graf', sel: E.indGraf === k, linhas: c.la })).join('');
-      corpo += `${semDadosNoPeriodo(c.la.length)}
-        <div class="grade-kpi">${kpis}${kpiEconomia(c.frotaA, c.frotaB)}</div>
-        <div class="grade-2">${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Evolução da frota dia a dia')}${cartaoEvolucao(c)}</div>
-        ${painelNotas(c)}
-        <div class="grade-2">${cartaoConducao(c)}${cartaoKmDia(c)}</div>`;
-    }
-    corpo += cartoesVeiculos();
-    return `${cabecalho(`Dashboards`, `${E.base ? D.periodoBR(E.A) + ' comparado a ' + D.periodoBR(E.B) : 'Busque os dados pela API Gobrax para ver os gráficos da frota.'}`)}
-      ${E.base ? barraPeriodo() : ''}
-      ${corpo}`;
+  // Desenvolvimento da frota › Gráficos (era a tela Dashboards, sem o que o Resumo já mostra)
+  function abaGraficosFrota(c) {
+    return `<div class="grade-2">${cartaoConducao(c)}${cartaoKmDia(c)}</div>
+      ${cartoesVeiculos()}`;
   }
+
 
 
 
@@ -5416,8 +5404,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     return `${cabecalho(`Plano de ação`, `Onde atuar para reduzir custo e aumentar produtividade`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      ${abas([['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['evolucao', 'Evolução'], ['retorno', 'O projeto se paga?']], E.planoAba, 'plano-aba', 'Seções do Plano de ação')}
-      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'evolucao' ? evolucaoPlano() : E.planoAba === 'retorno' ? retornoPlano() : `
+      ${abas([['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['retorno', 'O projeto se paga?']], E.planoAba, 'plano-aba', 'Seções do Plano de ação')}
+      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'retorno' ? retornoPlano() : `
       ${conteudo}
       ${faixa}
       ${radarAuto()}
@@ -5534,47 +5522,7 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
   }
 
   // ---------- Evolução: o período analisado dia a dia, semana a semana ou mês a mês ----------
-  function evolucaoPlano() {
-    const b = E.base, A = E.A, nd = D.dias(A);
-    const g = E.planoGran || (nd > 120 ? 'mes' : nd > 21 ? 'semana' : 'dia');
-    const inds = ['kml', 'nota', 'faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'excesso_rotacao', 'tempo_excesso_velocidade', 'km', 'litros'].filter((k) => temInd(k) && IND_MAP[k]).map((k) => IND_MAP[k]);
-    const per = [];
-    for (let d = granPeriodo(A.ini, g).ini; d <= A.fim; d = D.somar(granPeriodo(d, g).fim, 1)) {
-      const gp = granPeriodo(d, g), p = { ini: gp.ini < A.ini ? A.ini : gp.ini, fim: gp.fim > A.fim ? A.fim : gp.fim }, ls = X.filtrar(b.linhas, p);
-      if (ls.length) per.push({ p, v: X.resumo(ls, b), dv: derivados(X.resumo(ls, b)) });
-    }
-    const rot = (p) => (g === 'mes' ? D.nomeMes(p.ini) : g === 'semana' ? 'Semana ' + D.periodoCurto(p) : D.br(p.ini) + ' ' + D.semana(p.ini));
-    const gran = `<div class="pd-chips">${[['dia', 'Dia a dia'], ['semana', 'Semana a semana'], ['mes', 'Mês a mês']].map(([k, r]) => `<button type="button" class="pilula ${g === k ? 'ativa' : ''}" data-acao="plano-gran" data-g="${k}" aria-pressed="${g === k}">${r}</button>`).join('')}</div>`;
-    if (per.length < 2) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}${vazioUI(`Poucos ${g === 'dia' ? 'dias' : g === 'semana' ? 'semanas' : 'meses'} no período`, `Amplie o período no campo de datas ou escolha uma visão menor.`)}</div></section>`;
-    if (!inds.length) return `<section class="card"><div class="card-corpo" style="gap:12px">${gran}${vazioUI(`Sem indicadores para acompanhar`, `Os dados deste cliente não trazem os indicadores de condução da evolução.`)}</div></section>`;
-    if (!inds.some((i) => i.key === E.planoEvoInd)) E.planoEvoInd = inds[0].key;
-    const iG = IND_MAP[E.planoEvoInd];
-    E.graficos['plano-evo'] = { tipo: 'linha', a: per.map((r) => ({ data: r.p.ini, valor: r.v[iG.key] })), b: [], ind: iG, titulo: iG.label + ' por período', altura: 240 };
-    const comV = per.filter((r) => r.v[iG.key] !== null && r.v[iG.key] !== undefined);
-    const ordV = comV.slice().sort((p, q) => (iG.melhor < 0 ? p.v[iG.key] - q.v[iG.key] : q.v[iG.key] - p.v[iG.key]));
-    const melhor = ordV[0], pior = ordV[ordV.length - 1], pri = per[0], ult = per[per.length - 1];
-    const vt = X.variacao(iG, ult.v[iG.key], pri.v[iG.key]);
-    const kp = (t, v, s) => `<div class="gi-kpi"><span class="gi-kpi-t">${t}</span><span class="gi-kpi-v">${v}</span><span class="gi-kpi-s">${s}</span></div>`;
-    const linhas = per.slice().reverse().map((r, i, arr) => { const ant = arr[i + 1]; return `<tr><td style="white-space:nowrap"><span style="font-weight:500">${rot(r.p)}</span></td>
-      ${inds.map((ind) => `<td class="dir"><span style="display:block">${fmtInd(ind, r.v[ind.key])}</span>${ant ? variacao(X.variacao(ind, r.v[ind.key], ant.v[ind.key])) : ''}</td>`).join('')}
-      <td class="dir">${r.dv.ocioso_l !== null ? fmt(r.dv.ocioso_l, 0) + ' L' : '—'}</td></tr>`; }).join('');
-    return `<section class="card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução no período</h2>
-          <span class="h2-sub">${D.periodoBR(A)}, ${g === 'dia' ? 'dia a dia' : g === 'semana' ? 'semana a semana' : 'mês a mês'}. Cada linha comparada com a anterior.</span></div>
-          <select class="campo" data-campo="plano-evo-ind" aria-label="Indicador do gráfico" style="width:auto;min-width:200px">${inds.map((i) => `<option value="${i.key}" ${i.key === iG.key ? 'selected' : ''}>${esc(i.label)}</option>`).join('')}</select></div>
-        <div class="card-corpo" style="gap:14px">${gran}
-          <div class="gi-kpis">
-            ${kp('Início', esc(fmtInd(iG, pri.v[iG.key])), rot(pri.p))}
-            ${kp('Agora', esc(fmtInd(iG, ult.v[iG.key])), variacao(vt, 'vs. início'))}
-            ${melhor ? kp(iG.melhor ? 'Melhor ' + (g === 'dia' ? 'dia' : g === 'semana' ? 'semana' : 'mês') : 'Maior', esc(fmtInd(iG, melhor.v[iG.key])), rot(melhor.p)) : ''}
-            ${pior && pior !== melhor ? kp(iG.melhor ? 'Pior ' + (g === 'dia' ? 'dia' : g === 'semana' ? 'semana' : 'mês') : 'Menor', esc(fmtInd(iG, pior.v[iG.key])), rot(pior.p)) : ''}
-          </div>
-          <div class="grafico" data-grafico="plano-evo" style="height:240px"></div></div>
-        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">
-          <table class="tabela" style="min-width:${240 + inds.length * 105}px"><thead><tr><th>${g === 'mes' ? 'Mês' : g === 'semana' ? 'Semana' : 'Dia'}</th>${inds.map((i) => `<th class="dir">${esc(i.label)}</th>`).join('')}<th class="dir">Diesel parado</th></tr></thead>
-          <tbody>${linhas}</tbody></table></div></div>
-      </section>`;
-  }
+
 
 
   // ---------- Análise individual: motorista e veículo em abas separadas (mesmos indicadores, base própria) ----------
@@ -6724,9 +6672,11 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
         linhas: top.map((x) => planoLinha(x, fmtInd(IND_MAP.nota, x.a.nota), x.a.nota, 'var(--critico)')).join(''),
         passo: 'Abrir plano individual com o instrutor e reavaliar em 7 dias.' });
     }
-    const blocoGanhos = ganhos.length ? `<section class="plano-sec"><h2 class="plano-h2">Onde ainda há ganho</h2>
-        <span class="h2-sub">Pontos que a Gobrax identifica a partir dos dados da operação. <a href="#/plano">Ver o plano de ação completo</a>.</span></section>
-      <div class="plano-grade">${ganhos.map(planoCartao).join('')}</div>` : '';
+    // o detalhe (motoristas, valores e passos) fica no Onde agir do Plano de ação; aqui só o resumo
+    const blocoGanhos = ganhos.length ? `<section class="card"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 16px">
+        <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:4px"><b>Onde ainda há ganho</b>
+          <span class="apoio">${ganhos.map((g) => `${esc(g.titulo)} (${g.grande} ${g.pequeno})`).join(' · ')}</span></div>
+        <a class="btn btn-primario" href="#/plano?aba=plano" style="text-decoration:none">Ver onde agir no Plano de ação</a></div></section>` : '';
 
     // ---- destaques de motoristas ----
     const ord = c.mots.filter((x) => x.st.delta !== null).sort((p, q) => q.st.delta - p.st.delta);
@@ -8063,8 +8013,8 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, comparativo: telaComparativo, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, dashboards: telaDashboards, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'dashboards', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
+    const telas = { estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
@@ -8103,10 +8053,13 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     const partes = caminho.split('/').filter(Boolean);
     const aba = (new URLSearchParams(qs || '')).get('aba') || 'dashboard';
     if (partes[0] === 'veiculos') partes[0] = 'visao';
+    // Dashboards e Comparativo de períodos viraram abas de Desenvolvimento da frota (links antigos continuam funcionando)
+    if (partes[0] === 'dashboards' || partes[0] === 'comparativo') { E.rota = { tela: 'visao', id: null, aba: partes[0] === 'dashboards' ? 'graficos' : 'indicadores' }; return; }
+    if (partes[0] === 'plano' && ['diagnostico', 'plano', 'retorno'].includes(aba)) E.planoAba = aba;
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'comparativo', 'importar', 'config', 'visao', 'clientes', 'veiculos', 'dashboards', 'plano', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'importar', 'config', 'visao', 'clientes', 'plano', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 
@@ -8490,7 +8443,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     },
 
     // Exportações
-    'exportar-frota': () => { const c = calc(); exportarIndicadores(c.frotaA, c.frotaB, 'indicadores_frota_' + sufixoArquivo() + '.csv'); },
     'exportar-comparativo': () => {
       const c = calc();
       const x = E.comp.escopo === 'frota' ? null : c.mots.find((y) => y.m.id === E.comp.escopo);
@@ -8568,7 +8520,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     'export-fechar': () => { E.exportacao = null; render(); },
     'plano-aba': (el) => { E.planoAba = el.dataset.aba; render(); },
     'plano-comp': (el) => { E.planoComp = el.dataset.c; render(); },
-    'plano-gran': (el) => { E.planoGran = el.dataset.g; render(); },
     'usu-convidar': async () => {
       const U = usu(), f = U.form, nome = f.nome.trim(), email = f.email.trim(), cs = contaSrv();
       if (!cs) return;
@@ -8835,7 +8786,6 @@ html[data-tema="escuro"] .app-lat .nav-marca svg { background: var(--apoio); }
     if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '' }); render(); return; }
     if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '' }); render(); return; }
     if (k === 'mot-comp') { E.motComp = el.value; render(); return; }
-    if (k === 'plano-evo-ind') { E.planoEvoInd = el.value; render(); return; }
     if (k === 'grp-placa') {
       const c = cliAtual(); if (!c) return;
       const man = Object.assign({}, c.gruposVeic || {});

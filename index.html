@@ -5115,7 +5115,7 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     const k = ckey(o.cliente), v = (hubCli[k] = hubCli[k] || {});
     const em = Date.parse(o.gerado) || Date.now();
     if (v.comp && v.em && v.em >= em && v.fonte !== 'arquivo') return;   // a leitura ao vivo é mais nova
-    Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos, contatos: o.contatos, porContato: o.porContato || [], em, fonte: 'arquivo', erro: null });
+    Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos, contatos: o.contatos, porContato: o.porContato || [], origem: o.origem || '', em, fonte: 'arquivo', erro: null });
     if (salvar) {
       const slug = ckey(o.cliente).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       if (hubRef) hubRef.doc(slug).set({ cliente: o.cliente, gerado: o.gerado, json: JSON.stringify(o) }).catch(() => toast('Não foi possível guardar o arquivo do HubSpot na base compartilhada.', 'erro'));
@@ -5332,7 +5332,7 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     const v = hubCli[k] || { carregando: true };
     const link = v.id ? `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/0-2/${encodeURIComponent(v.id)}` : '';
     const cab = `<div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Cliente no HubSpot</h2>
-        <span class="h2-sub">${v.em ? (v.fonte === 'arquivo' ? 'Lido pela API do HubSpot em ' + new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (arquivo importado)' : 'Lido ao vivo às ' + new Date(v.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (v.fonte === 'servidor' ? ' pelo servidor · atualiza sozinho a cada 10 min' : ' pelo seu conector do HubSpot')) : v.carregando ? 'Buscando no HubSpot…' : 'Perfil, contatos e histórico do cliente no CRM'}</span></div>
+        <span class="h2-sub">${v.em ? (v.fonte === 'arquivo' ? (v.origem === 'claude' ? 'Lido pelo Claude (conector do HubSpot) em ' : 'Lido pela API do HubSpot em ') + new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (arquivo importado)' : 'Lido ao vivo às ' + new Date(v.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (v.fonte === 'servidor' ? ' pelo servidor · atualiza sozinho a cada 10 min' : ' pelo seu conector do HubSpot')) : v.carregando ? 'Buscando no HubSpot…' : 'Perfil, contatos e histórico do cliente no CRM'}</span></div>
         <span style="display:flex;gap:8px;flex-wrap:wrap">${link ? `<a class="btn" href="${link}" target="_blank" rel="noopener">Abrir no HubSpot</a>` : ''}<label class="btn" title="Arquivo hubspot.json gerado pelo script api/hubspot.mjs">Importar arquivo<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label><button type="button" class="btn" data-acao="hubcli-atualizar" data-cli="${esc(nome)}" ${v.carregando ? 'disabled' : ''}>${v.carregando ? 'Buscando…' : 'Atualizar'}</button></span></div>`;
     if (!v.comp) {
       return `<section class="card hb-card">${cab}<div class="card-corpo">${v.carregando ? '<div class="vazio"><span class="spinner"></span><span class="apoio">Consultando o HubSpot…</span></div>'

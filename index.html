@@ -3100,6 +3100,14 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
   }
 
   // ---------- Utilidades de interface ----------
+  // Largura (px) para desenhar um gráfico SVG: a da área onde ele aparece (fracao = 0,5 num cartão de meia largura).
+  // Desenhado no tamanho real, o texto do gráfico fica do tamanho do resto da tela em vez de crescer com o monitor.
+  function larguraGrafico(fracao, min) {
+    const pag = document.getElementById('pagina');
+    const lateral = window.innerWidth >= 1100 ? 260 : 110;
+    const util = (pag && pag.clientWidth) || Math.max(360, window.innerWidth - lateral);
+    return Math.round(Math.max(min || 320, (util - 24) * (fracao || 1) - 48));
+  }
   // Cabeçalho de página: título (h1), subtítulo e ações à direita — o mesmo em todas as telas
   const cabecalho = (titulo, sub, acoes) => `<div class="pag-cab"><div class="pag-cab-texto"><h1 class="h1">${titulo}</h1>${sub ? `<span class="sub">${sub}</span>` : ''}</div>${acoes || ''}</div>`;
   // Comparador das tabelas: val(x) dá o valor da coluna; vazio ('' / null) vai sempre para o fim e dois vazios empatam
@@ -3875,7 +3883,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       });
       if (pts.length >= 2) {
         const ref = c.frotaA[indM.key];
-        const W = 560, H = 320, m = { l: 48, r: 16, t: 16, b: 34 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+        const W = larguraGrafico(0.5, 360), H = 300, m = { l: 48, r: 16, t: 16, b: 34 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
         // escala robusta: um valor absurdo (ex.: base anterior quase zero) não espreme os demais; ele fica na borda
         const quant = (arr, q) => { const o = arr.slice().sort((p, r) => p - r); return o[Math.round((o.length - 1) * q)]; };
         const faixa = (arr, extra) => {
@@ -5967,8 +5975,19 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     let lo = Math.min(...vals), hi = Math.max(...vals);
     const pad = (hi - lo) * 0.1 || Math.abs(hi) * 0.1 || 1; lo -= pad; hi += pad;
     if (lo < 0 && vals.every((v) => v >= 0)) lo = 0;
-    const W = 1000, H = 300, m = { l: 54, r: 18, t: 40, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const x = (i) => m.l + (n === 1 ? iw / 2 : (i / (n - 1)) * iw), y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    const W = larguraGrafico(1, 560), ml = 54, mr = 18, iwx = W - ml - mr, xi = (i) => ml + (n === 1 ? iwx / 2 : (i / (n - 1)) * iwx);
+    // tratativas em fileiras: marcador a menos de 26 px do anterior sobe uma fileira (antes um cobria o outro)
+    const marcas = [], fimFila = [];
+    trs.forEach((t, k) => {
+      if (t.data < p.ini || t.data > p.fim) return;
+      const xx = xi(serie.findIndex((q) => q.data >= t.data));
+      let f = 0;
+      while (fimFila[f] !== undefined && xx - fimFila[f] < 26) f++;
+      fimFila[f] = xx; marcas.push({ t, k, xx, f });
+    });
+    const filas = Math.max(1, fimFila.length);
+    const H = 250 + filas * 26, m = { l: ml, r: mr, t: 16 + filas * 26, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = xi, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(ind.label)} do cliente ao longo do tempo, com as tratativas marcadas" style="width:100%;height:auto;display:block">`;
     [0, 1, 2, 3].map((k) => lo + ((hi - lo) * k) / 3).forEach((t) => {
       s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="#F1F3F4"/><text x="${m.l - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end" font-size="12" fill="#9AA0A6">${fmt(t, ind.casas)}</text>`;
@@ -5980,10 +5999,9 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const idx = mm.map((v, i) => (v === null ? null : i)).filter((i) => i !== null);
     if (idx.length > 1) s += `<path d="${caminho(mm)}L${x(idx[idx.length - 1]).toFixed(1)},${m.t + ih}L${x(idx[0]).toFixed(1)},${m.t + ih}Z" fill="#FFF6BD" opacity=".6"/>`;
     s += `<path d="${caminho(mm)}" fill="none" stroke="#FCB709" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
-    trs.forEach((t, k) => {
-      if (t.data < p.ini || t.data > p.fim) return;
-      const i = serie.findIndex((q) => q.data >= t.data), et = ETAPA_MAP[t.etapa] || ETAPAS[1], xx = x(i).toFixed(1);
-      s += `<g><title>${k + 1} · ${D.br(t.data)} · ${esc(t.titulo)}</title><line x1="${xx}" x2="${xx}" y1="${m.t - 8}" y2="${m.t + ih}" stroke="${et.cor}" stroke-width="1.5" stroke-dasharray="4 4"/><circle cx="${xx}" cy="17" r="12" fill="${et.cor}" stroke="#fff" stroke-width="2"/><text x="${xx}" y="21.5" text-anchor="middle" font-size="13" font-weight="700" fill="${t.etapa === 'plataforma' ? '#2B2B2B' : '#fff'}">${k + 1}</text></g>`;
+    marcas.forEach(({ t, k, xx: xn, f }) => {
+      const et = ETAPA_MAP[t.etapa] || ETAPAS[1], xx = xn.toFixed(1), cy = 14 + f * 26;
+      s += `<g><title>${k + 1} · ${D.br(t.data)} · ${esc(t.titulo)}</title><line x1="${xx}" x2="${xx}" y1="${cy + 12}" y2="${m.t + ih}" stroke="${et.cor}" stroke-width="1.5" stroke-dasharray="4 4"/><circle cx="${xx}" cy="${cy}" r="12" fill="${et.cor}" stroke="#fff" stroke-width="2"/><text x="${xx}" y="${cy + 4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="${t.etapa === 'plataforma' ? '#2B2B2B' : '#fff'}">${k + 1}</text></g>`;
     });
     return s + '</svg>';
   }
@@ -6424,7 +6442,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
     if (!todos.length) return '';
-    const W = 720, H = 230, m = { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const W = larguraGrafico(1, 520), H = 230, m = { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
     const mn = Math.min(...todos), mx = Math.max(...todos);
     const lo = Math.min(0, mn), hi = mx > 0 ? mx * 1.12 : 1;   // barra sempre a partir do zero (cortar a base exagera a diferença); o valor e a cor mostram a mudança
     const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih, bw = iw / S.ws.length, larg = Math.min(64, bw * 0.56);
@@ -6534,7 +6552,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const ok = vals.filter(tem);
     if (ok.length < 2) return '<span class="apoio">Poucas semanas com dado para desenhar a evolução.</span>';
-    const W = 720, H = alto || 200, m = { l: 44, r: 14, t: 16, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const W = larguraGrafico(1, 520), H = alto || 200, m = { l: 44, r: 14, t: 16, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
     let lo = Math.min(...ok), hi = Math.max(...ok);
     const folga = Math.max((hi - lo) * 0.15, Math.abs(hi) * 0.02, 0.01);
     lo = Math.max(0, lo - folga); hi += folga;
@@ -6594,7 +6612,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const cruzou = pts.find((p) => p.e >= p.c && p.e > 0);
 
     // gráfico: economia acumulada contra o investimento acumulado, semana a semana
-    const W = 720, H = 260, m = { l: 70, r: 120, t: 18, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const W = larguraGrafico(1, 560), H = 260, m = { l: 70, r: 120, t: 18, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
     const todos = pts.flatMap((p) => [p.e, p.c]);
     let lo = Math.min(0, ...todos), hi = Math.max(...todos, 1);
     const folga = (hi - lo) * 0.08; hi += folga; if (lo < 0) lo -= folga;
@@ -6626,7 +6644,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block;max-height:${Math.round(H * 1.15)}px">${g}</svg>`;
 
     // barras mês a mês: investimento ao lado da economia, com saldo e cobertura embaixo
-    const BW = 720, BH = 270, bm = { l: 70, r: 10, t: 24, b: 58 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
+    const BW = larguraGrafico(1, 560), BH = 270, bm = { l: 70, r: 10, t: 24, b: 58 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
     const bvals = meses.flatMap((o) => [o.e, o.c]);
     const blo = Math.min(0, ...bvals), bhi = Math.max(...bvals, 1) * 1.12;
     const by = (v) => bm.t + bih - ((v - blo) / (bhi - blo)) * bih, bcol = biw / meses.length, bl = Math.min(56, bcol * 0.3);
@@ -9024,7 +9042,11 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     else if (k === 'arquivo-veiculos' && el.files.length) lerArquivos(el.files, 'veiculos', el.dataset.cli);
   });
   let tRedim;
-  window.addEventListener('resize', () => { clearTimeout(tRedim); tRedim = setTimeout(desenharGraficos, 120); });
+  let largRender = window.innerWidth;
+  window.addEventListener('resize', () => {
+    clearTimeout(tRedim);
+    tRedim = setTimeout(() => { if (Math.abs(window.innerWidth - largRender) > 80) { largRender = window.innerWidth; render(); } else desenharGraficos(); }, 150);
+  });
   window.addEventListener('hashchange', () => { E.navAberto = false; lerRota(); render(); window.scrollTo(0, 0); });
 
   // ---------- Início ----------

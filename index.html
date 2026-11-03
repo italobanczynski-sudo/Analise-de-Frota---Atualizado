@@ -3375,7 +3375,7 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
   // ---------- Alertas do sino: o que pede atenção agora, tirado dos dados ----------
   let memoAlertas = null;
   function alertasPainel() {
-    const chave = [E.linhasAll ? E.linhasAll.length : 0, E.A && E.A.ini, E.A && E.A.fim, E.cliente, E.clientes.length, planDocs.size,
+    const chave = [E.linhasAll ? E.linhasAll.length : 0, E.A && E.A.ini, E.A && E.A.fim, E.cliente, E.clientes.length, planDocs.size, (E.trat || []).length,
       (msg().clientes || []).map((c) => c.coleta && c.coleta.situacao).join(','), D.hoje()].join('|');
     if (memoAlertas && memoAlertas.chave === chave) return memoAlertas.lista;
     const out = [];
@@ -3389,6 +3389,8 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
         churnCarteira().filter((c) => c.faixa === 'Alto').forEach((c) => out.push({ nivel: 'critico', tit: `${c.nome}: risco alto de churn (${fmt(c.score, 0)})`, txt: c.principal ? 'Principal sinal: ' + c.principal.nome + '.' : '', href: '#/churn' }));
       } catch (e) { /* sem base para o índice */ }
     }
+    // tratativas com prazo vencido e ainda não entregues
+    (E.trat || []).filter((t) => t.prazo && t.status !== 'entregue' && t.prazo < D.hoje()).forEach((t) => out.push({ nivel: 'atencao', tit: `${t.cliente}: prazo vencido em ${D.br(t.prazo)}`, txt: t.titulo + (t.responsavel ? ' · ' + t.responsavel : ''), href: '#/churn' }));
     // veículos do cliente do topo sem comunicar há mais de 3 dias (odômetro da API)
     const odo = E.cliente ? docsApi('odometro', E.cliente)[0] : null;
     if (odo && odo.veiculos) {
@@ -6063,7 +6065,7 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
         : ` <button type="button" class="btn-link peq" data-acao="trat-remover" data-id="${esc(t.id)}">Remover</button>`);
     return `<article class="trat">
       <div class="trat-cab"><span class="trat-pin" style="background:${et.cor};color:${t.etapa === 'plataforma' ? '#2B2B2B' : '#fff'}">${n}</span>
-        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}${t.origem === 'HubSpot' ? ' · <span class="badge badge-neutro" style="font-size:11px">HubSpot</span>' : ''}</span></div>
+        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}${t.responsavel ? ' · por ' + esc(t.responsavel) : ''}${t.prazo ? ' · prazo ' + D.br(t.prazo) : ''}${t.origem === 'HubSpot' ? ' · <span class="badge badge-neutro" style="font-size:11px">HubSpot</span>' : ''}</span></div>
         <span class="trat-sel"><span class="badge ${BADGE_STATUS_TRAT[t.status] || 'badge-neutro'}">${STATUS_TRAT[t.status] || 'Combinado'}</span>${atrasada ? '<span class="badge badge-critico">Prazo vencido</span>' : ''}</span></div>
       ${t.combinado ? `<p class="trat-comb"><b>O que foi combinado:</b> ${esc(t.combinado)}</p>` : ''}
       ${t.prazo ? `<span class="apoio" style="font-size:12px">Prazo combinado: ${D.br(t.prazo)}</span>` : ''}
@@ -6217,7 +6219,9 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     const titulo = f.titulo.trim();
     if (!f.data) { toast('Informe a data da tratativa.', 'erro'); return; }
     if (!titulo) { toast('Diga em poucas palavras o que foi tratado.', 'erro'); return; }
-    const reg = { cliente: f.cliente, data: f.data, etapa: f.etapa, titulo, combinado: f.combinado.trim(), prazo: f.prazo || '', status: f.status, criado: D.hoje() };
+    // quem registrou: no painel com login, o nome de quem está logado
+    const quem = contaSrv() && contaSrv().eu ? String(contaSrv().eu.nome || '') : '';
+    const reg = { cliente: f.cliente, data: f.data, etapa: f.etapa, titulo, combinado: f.combinado.trim(), prazo: f.prazo || '', status: f.status, criado: D.hoje(), responsavel: quem };
     try {
       if (E.tratEmDb && tratRef && !E.demo) await tratRef.add(reg);
       else { E.trat.push(Object.assign({ id: 't' + Date.now() }, reg)); salvarTratLocal(); }

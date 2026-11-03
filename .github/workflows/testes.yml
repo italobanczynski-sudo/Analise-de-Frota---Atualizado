@@ -1,0 +1,41 @@
+# Testes a cada envio: o painel (todas as telas num Chrome sem janela, com dados sintéticos) e o servidor em Go
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  painel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Varredura das telas
+        run: node testes/painel/rodar.js
+
+  servidor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: servidor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: servidor/go.mod
+          cache-dependency-path: servidor/go.sum
+      - name: Compilar, vet e testes
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...

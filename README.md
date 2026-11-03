@@ -46,5 +46,14 @@ Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` par
 1. Envie estes arquivos na raiz do repositório.
 2. Settings → Pages → Source: "Deploy from a branch" → Branch `main` / pasta `/ (root)`.
 
+## Testes
+A cada envio para o GitHub rodam (aba Actions → Testes):
+- **Painel:** `node testes/painel/rodar.js` abre todas as telas e abas num Chrome sem janela, com dados sintéticos (com e sem Nota Gobrax), e falha se alguma tela der erro ou mostrar NaN/undefined.
+- **Servidor:** `go build`, `go vet` e `go test` em `servidor/`.
+
+## Hospedagem: atenção
+- O banco grátis do Render expira 30 dias depois de criado (criado em 25/10/2026). Antes disso, passe o banco para um plano pago no painel do Render, senão clientes, tokens e histórico se perdem.
+- O GitHub Actions chama `/saude` a cada 10 min para o servidor grátis não dormir (a busca automática de hora em hora só roda acordado).
+
 ## Observações
 - O repositório/Pages contém só o código; nenhuma planilha ou dado de cliente vai junto.

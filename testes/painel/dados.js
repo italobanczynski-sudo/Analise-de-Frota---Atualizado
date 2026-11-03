@@ -30,6 +30,15 @@ if (cli) {
   sets.push(['gbx-frota-veic', JSON.stringify({ nome: 'veiculos.csv', texto: csv })]);
   sets.push(['gbx-frota-clientes', JSON.stringify([{ id: 'l1', nome: 'Teste Cliente', grupo: '', obs: '', criado: '2026-09-01', metas: { nota: 75, kml: 2.6, motor_ocioso: 25 } }])]);
   sets.push(['gbx-frota-cliente-sel', 'Teste Cliente']);
+
+  // retenção: ficha, um combinado com prazo vencido e outro em acompanhamento, marcos e próximos passos (coleções locais)
+  const cb = (id, data, alvo, meta, prazo, fim, quem, base, valor) => ({ id, cliente: 'Teste Cliente', data, alvo, problema: alvo, meta, prazo, fim, combinado: 'Teste de combinado ' + id, executa: 'Gestor de frota', quemAvisa: quem, envio: '',
+    evidencia: { texto: 'evidência de teste ' + id }, base: { p: { ini: base, fim: data }, valor }, autor: 'teste', criado: data + 'T10:00:00Z' });
+  sets.push(['gbx-col-combinados', JSON.stringify([cb('cb1', '2026-10-10', 'motor_ocioso', 25, 14, '2026-10-24', 'cs', '2026-10-03', 30), cb('cb2', '2026-10-24', 'kml', 2.8, 14, '2026-11-07', 'cliente', '2026-10-17', 2.6)])]);
+  sets.push(['gbx-col-marcos', JSON.stringify([{ id: 'm1', cliente: 'Teste Cliente', data: '2026-10-10', tipo: 'reuniao', autor: 'teste' }, { id: 'm2', cliente: 'Teste Cliente', data: '2026-10-17', tipo: 'whatsapp', autor: 'teste' }, { id: 'm3', cliente: 'Teste Cliente', data: '2026-10-24', tipo: 'reuniao', autor: 'teste' }])]);
+  sets.push(['gbx-col-passos', JSON.stringify([{ id: 'p1', cliente: 'Teste Cliente', acao: 'Enviar o texto aos condutores', dono: 'Pessoa Teste', prazo: '2026-10-12', origem: { tipo: 'combinado', id: 'cb1', rotulo: 'Motor ligado parado' }, status: 'aberto', aviso: true },
+    { id: 'p2', cliente: 'Teste Cliente', acao: 'Levar o resultado ao cliente', dono: 'Pessoa Teste', prazo: '2026-12-01', origem: { tipo: 'combinado', id: 'cb2', rotulo: 'Consumo' }, status: 'aberto' }])]);
+  sets.push(['gbx-col-fichas', JSON.stringify([{ id: 'teste-cliente', cliente: 'Teste Cliente', motivos: ['preco', 'concorrente'], principal: 'preco', alternativa: 'Outro fornecedor', renovacao: '2026-12-15', equipamentos: 8, decisor: 'Diretor de operações', responsavel: 'Pessoa Teste', estagio: 2, proximo: '2026-10-30', historico: [{ em: '2026-10-20T10:00:00Z', por: 'teste', mudou: 'ficha criada' }] }])]);
   const et = ['estudar', 'plataforma', 'resultado'], dias = ['2026-10-02', '2026-10-09', '2026-10-15', '2026-10-15', '2026-10-16', '2026-10-21', '2026-10-21', '2026-10-22', '2026-10-27'];
   sets.push(['gbx-frota-tratativas', JSON.stringify(dias.map((d, i) => ({ id: 't' + i, cliente: 'Teste Cliente', data: d, etapa: et[i % 3], titulo: 'Teste ' + i, combinado: '', prazo: '', status: 'aberta', criado: d })))]);
 }

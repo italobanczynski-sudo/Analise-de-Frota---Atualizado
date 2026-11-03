@@ -6609,7 +6609,9 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const eco = (r) => { const e = r ? economia(r, S.ini) : null; return e ? e.reais : 0; };
     let ae = 0, ac = 0;
     const pts = S.ws.map((w, i) => { ae += eco(S.frW[i]); ac += custo(w); return { w, e: ae, c: ac }; });
-    const meses = S.ms.map((p, i) => ({ p, e: eco(S.frM[i]), c: custo(p) }));
+    // nota do mês: a dos dados do dia; sem ela, a da Premiação daquele mês. Km rodados = produtividade do mês
+    const notaMes = (p, f) => (Number.isFinite(f && f.nota) ? f.nota : ((notaFrotaPremiacao({ ini: p.mes, fim: D.fimMes(p.mes) }) || {}).nota));
+    const meses = S.ms.map((p, i) => ({ p, e: eco(S.frM[i]), c: custo(p), nota: notaMes(p, S.frM[i]), km: (S.frM[i] || {}).km, parcial: p.ini > p.mes || p.fim < D.fimMes(p.mes) }));
     const saldo = ae - ac, paga = saldo >= 0, retorno = ac ? ae / ac : null;
     const eAg = S.agora ? economia(S.agora, S.ini) : null, ecoMes = eAg ? (eAg.reais / (D.dif(S.pAgora.ini, S.pAgora.fim) + 1)) * 30 : null;
     const R = (v, d) => fmtReais(v, d === undefined ? 2 : d), R0 = (v) => fmtReais(v, 0);
@@ -6648,12 +6650,15 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block;max-height:${Math.round(H * 1.15)}px">${g}</svg>`;
 
     // barras mês a mês: investimento ao lado da economia, com saldo e cobertura embaixo
-    const BW = larguraGrafico(1, 560), BH = 270, bm = { l: 70, r: 10, t: 24, b: 58 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
+    const BW = larguraGrafico(1, 560), BH = 320, bm = { l: 70, r: 10, t: 24, b: 96 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
     const bvals = meses.flatMap((o) => [o.e, o.c]);
     const blo = Math.min(0, ...bvals), bhi = Math.max(...bvals, 1) * 1.12;
     const by = (v) => bm.t + bih - ((v - blo) / (bhi - blo)) * bih, bcol = biw / meses.length, bl = Math.min(56, bcol * 0.3);
     let gb = '';
-    [blo, (blo + bhi) / 2, bhi].concat(blo < 0 ? [0] : []).forEach((v) => {
+    // marcas do eixo sem sobrepor: a que fica a menos de 16 px de outra já desenhada sai
+    const marcasY = [];
+    [0, bhi, (blo + bhi) / 2].concat(blo < 0 ? [blo] : []).forEach((v) => { if (marcasY.every((u) => Math.abs(by(u) - by(v)) >= 16)) marcasY.push(v); });
+    marcasY.forEach((v) => {
       gb += `<line x1="${bm.l}" x2="${BW - bm.r}" y1="${by(v).toFixed(1)}" y2="${by(v).toFixed(1)}" style="stroke:var(--apoio)" stroke-width="1"/><text x="${bm.l - 6}" y="${(by(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${R0(v)}</text>`;
     });
     meses.forEach((o, i) => {
@@ -6661,12 +6666,15 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       const barra = (x0, v, estilo, rot) => { const a = by(Math.max(v, 0)), z = by(Math.min(v, 0)); return `<rect x="${x0.toFixed(1)}" y="${a.toFixed(1)}" width="${bl.toFixed(1)}" height="${Math.max(z - a, 1).toFixed(1)}" rx="5" style="${estilo}"><title>${esc(D.nomeMes(o.p.mes))} · ${rot}: ${esc(R(v))}</title></rect><text x="${(x0 + bl / 2).toFixed(1)}" y="${(a - 6).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" style="fill:var(--tinta)">${R0(v)}</text>`; };
       gb += barra(cx - bl - 3, o.c, 'fill:var(--texto-2);opacity:.45', 'investimento');
       gb += barra(cx + 3, o.e, 'fill:' + cor, 'diesel economizado');
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 36}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(D.nomeMes(o.p.mes))}</text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 20}" text-anchor="middle" font-size="11" font-weight="600" style="fill:${cor}">saldo ${R0(o.e - o.c)}</text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 6}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${o.c ? 'cobre ' + fmt((o.e / o.c) * 100, 0) + '% da mensalidade' : ''}</text>`;
+      const cobre = !o.c ? '' : o.e < 0 ? 'economia negativa no mês' : 'cobre ' + fmt((o.e / o.c) * 100, 0) + '% da mensalidade';
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 76}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(D.nomeMes(o.p.mes))}${o.parcial ? ' (parcial)' : ''}</text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 60}" text-anchor="middle" font-size="11" font-weight="600" style="fill:${cor}">saldo ${R0(o.e - o.c)}</text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 45}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${cobre}</text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 25}" text-anchor="middle" font-size="11" style="fill:var(--tinta)">Nota Gobrax <tspan font-weight="700">${Number.isFinite(o.nota) ? fmt(o.nota, 1) : '—'}</tspan></text>`;
+      gb += `<text x="${cx.toFixed(1)}" y="${BH - 9}" text-anchor="middle" font-size="11" style="fill:var(--tinta)"><tspan font-weight="700">${Number.isFinite(o.km) ? fmt(o.km, 0) : '—'}</tspan> km rodados</text>`;
     });
     const legenda = `<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px" class="apoio"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--texto-2);opacity:.45;margin-right:6px"></i>Investimento Gobrax</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok, #1E8E3E);margin-right:6px"></i>Economia que pagou o mês</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--critico, #D93025);margin-right:6px"></i>Economia abaixo da mensalidade</span></div>`;
-    const graficoMes = `<svg viewBox="0 0 ${BW} ${BH}" width="100%" role="img" aria-label="Investimento e economia mês a mês" style="display:block;max-height:300px">${gb}</svg>`;
+    const graficoMes = `<svg viewBox="0 0 ${BW} ${BH}" width="100%" role="img" aria-label="Investimento e economia mês a mês, com a Nota Gobrax e os km de cada mês" style="display:block;max-height:360px">${gb}</svg>`;
 
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const itens = [

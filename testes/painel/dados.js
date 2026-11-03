@@ -17,7 +17,7 @@ for (let d = 0; d < 30; d++) {
     // AAA8 para de rodar no 11º dia (caminhão parado ou unidade sem comunicar): registros com 0 km
     const parado = m === 8 && d >= 10;
     const km = parado ? 0 : 300 + r() * 300, kml = 2.3 + r() * 0.6 + d * 0.005;
-    const v = [br, 'Teste ' + String.fromCharCode(64 + m), 'AAA' + m, n(km), n(km / kml), n(r() * 20), n(r() * 3), n(55 + r() * 10), n(100000 + d * 400), parado ? '0' : n(8 + r() * 2),
+    const v = [br, 'Teste ' + String.fromCharCode(64 + m), 'AAA' + m, n(km), n(m === 3 && d === 5 ? km / 150 : km / kml),   /* AAA3 no 6º dia: litros quase zerados (dado suspeito) */ n(r() * 20), n(r() * 3), n(55 + r() * 10), n(100000 + d * 400), parado ? '0' : n(8 + r() * 2),
       semNota === '1' ? '' : n(50 + r() * 40), n(9 + r() * 2), n(6 + r() * 2)];
     for (let k = 13; k < 26; k++) v.push(n(r() * 60));
     if (cli) v.push('Teste Cliente', m <= 4 ? 'Grupo Norte' : 'Grupo Sul');

@@ -2917,7 +2917,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     fonte: { tipo: 'vazio', nome: 'Sem dados' },
     cliente: '', linhasAll: null, colunasAll: null, semCliente: false, silencio: 0, importCli: null,
     veic: null, impVeic: null,
-    churnVista: 'cliente', trat: [], tratForm: null, tratRemover: null, tratInd: 'nota', tratEmDb: false,
+    trat: [], tratForm: null, tratRemover: null, tratInd: 'nota', tratEmDb: false,
     clientes: [], clientesPronto: false, clientesEmDb: false, clienteForm: { nome: '', grupo: '', obs: '' }, clienteRemover: null,
     A: null, B: null, modoComp: 'anterior', presetA: '30',
     cal: { aberto: false, editando: 'A', rascA: null, rascB: null, mes: null, pendente: null, preset: '30' },
@@ -3320,6 +3320,8 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 64, data: '2026-11-03', titulo: 'Sem blocos repetidos', texto: 'Cada informação fica em um lugar só. Desenvolvimento da frota abre em Gráficos (o resumo já está na Visão geral). Veículo e motorista individual ficam com Dashboard, Todos os indicadores e Dia a dia. "O projeto se paga?" fica no Estudo do projeto. A Saúde do cliente mostra o cliente; a lista de todos os clientes fica na Carteira de clientes.' },
+    { id: 63, data: '2026-11-03', titulo: 'Gráficos animados', texto: 'Os gráficos animam quando aparecem na tela e quando os dados mudam; o último ponto de cada linha pulsa e o balão com os valores aparece na hora ao passar o mouse.' },
     { id: 62, data: '2026-11-03', titulo: 'Carteira, metas, alertas e relatório em PDF', texto: 'Nova tela Carteira de clientes (todos os clientes lado a lado, maior risco primeiro). Metas por cliente no perfil do cliente, mostradas nos cartões de indicador. O sino agora mostra alertas: cliente sem dados novos, risco alto, veículos sem comunicar, busca da API com erro e tratativa com prazo vencido. Na Visão geral, o botão Baixar relatório (PDF).', href: '#/carteira', link: 'Abrir a Carteira de clientes' },
     { id: 61, data: '2026-10-30', titulo: 'Menos telas repetidas', texto: 'Dashboards e Comparativo de períodos viraram abas de Desenvolvimento da frota (Resumo, Gráficos e Todos os indicadores). A aba Evolução do Plano de ação saiu: a evolução está no Estudo do projeto e no mês da Visão geral. Na Visão geral, o "Onde ainda há ganho" virou um resumo com link para o Onde agir do Plano.', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
     { id: 60, data: '2026-10-30', titulo: 'Correções nos números', texto: 'Diesel economizado e diesel em jogo contam só os dias com km e litros; motoristas ativos contam só quem rodou no período; selo e card semanal usam a mesma regra de evolução; grupos de veículos e odômetro voltaram (no fim de Desenvolvimento da frota).', href: '#/visao', link: 'Abrir Desenvolvimento da frota' },
@@ -3602,18 +3604,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
   // Cartões do topo: os cinco principais; o que não vem nos dados (ex.: nota e km pela API só de performance) cede lugar a outros indicadores
   const kpisPadrao = () => ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km', 'embalo', 'pressao_acelerador', 'excesso_rotacao', 'horas'].filter(temInd).slice(0, 5);
 
-  function kpiEconomia(a, b) {
-    const e = economia(a, b);
-    if (!e) return '';
-    const bom = e.reais >= 0;
-    return `<div class="kpi">
-      <span class="kpi-titulo">${bom ? 'Economia estimada' : 'Custo adicional estimado'}</span>
-      <span class="kpi-desc">Diesel no ritmo de consumo anterior</span>
-      <span class="kpi-valor">${fmtReais(Math.abs(e.reais), 0)}</span>
-      <span class="var"><span class="var-v ${bom ? 'var-bom' : 'var-ruim'}">${bom ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span><span class="var-ref">a ${fmtReais(E.preco, 2)}/L</span></span>
-      <span class="kpi-ref">Mesmos km, média de ${fmtInd(IND_MAP.kml, b.kml)}</span>
-    </div>`;
-  }
 
   function seletorIndicador(acao, atual) {
     return `<select class="campo" style="width:auto;min-width:200px" data-campo="${acao}" aria-label="Indicador do gráfico">
@@ -3757,40 +3747,14 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     const pct = (n) => (total ? (n / total) * 100 : 0);
     const dist = ['evoluiu', 'estavel', 'regrediu', 'sembase'].filter((k) => c.cont[k]);
 
-    const aba = ['graficos', 'indicadores'].includes(E.rota.aba) ? E.rota.aba : 'resumo';
+    const aba = E.rota.aba === 'indicadores' ? 'indicadores' : 'graficos';
     const topo = `
       ${cabecalho(`Desenvolvimento da frota`, `${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      ${abas([['resumo', 'Resumo', undefined, '#/visao'], ['graficos', 'Gráficos', undefined, '#/visao?aba=graficos'], ['indicadores', 'Todos os indicadores', undefined, '#/visao?aba=indicadores']], aba, '', 'Seções de Desenvolvimento da frota')}`;
-    if (aba === 'graficos') return topo + abaGraficosFrota(c);
+      ${abas([['graficos', 'Gráficos', undefined, '#/visao'], ['indicadores', 'Todos os indicadores', undefined, '#/visao?aba=indicadores']], aba, '', 'Seções de Desenvolvimento da frota')}`;
     if (aba === 'indicadores') return topo + abaIndicadoresFrota();
-    return `${topo}
-      ${radarAuto()}
-      <div class="grade-kpi">${kpis}${kpiEconomia(c.frotaA, c.frotaB)}</div>
-      <div class="grade-2">
-        <section class="card">
-          <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução dos motoristas</h2>
-            <span class="h2-sub">Evoluiu ou regrediu ${X.regraEvolucao(indSt.key)} entre os períodos.</span></div></div>
-          <div class="card-corpo">
-            <div class="dist" role="img" aria-label="${dist.map((k) => c.cont[k] + ' ' + nomeStatus(k)).join(', ')}">${dist.map((k) => `<span style="width:${pct(c.cont[k])}%;background:${STATUS[k].cor}"></span>`).join('')}</div>
-            <div class="dist-leg">${['evoluiu', 'estavel', 'regrediu'].map((k) => `<button type="button" class="dist-item" data-acao="ver-status" data-status="${k}">
-              <span class="rot"><span class="ponto" style="background:${STATUS[k].cor}"></span>${{ evoluiu: 'Evoluíram', estavel: 'Estáveis', regrediu: 'Regrediram' }[k]}</span>
-              <span class="val">${c.cont[k]}</span><span class="apoio num">${fmt(pct(c.cont[k]), 0)}% dos motoristas</span></button>`).join('')}</div>
-            ${c.cont.sembase ? `<span class="apoio">${c.cont.sembase} motorista(s) sem registro em um dos períodos — sem base de comparação.</span>` : ''}
-            <div class="grade-2" style="gap:12px 24px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))">
-              <div><span class="rotulo-11">Mais evoluíram</span><div class="ranking" style="margin-top:6px">${lista(evol, 1)}</div></div>
-              <div><span class="rotulo-11">Mais regrediram</span><div class="ranking" style="margin-top:6px">${lista(regr, -1)}</div></div>
-            </div>
-            <a class="btn-link peq" href="#/motoristas" style="align-self:flex-start">Ver todos os motoristas</a>
-          </div>
-        </section>
-        ${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Média da frota dia a dia')}
-      </div>
-      ${painelNotas(c)}
-      <a class="btn" href="#/visao?aba=indicadores" style="text-decoration:none;align-self:flex-start">${icone('tabela', 14, '#5F6368')}Ver todos os indicadores da frota</a>
-      ${cartaoGruposVeic()}
-      ${cartaoOdometro()}`;
+    return topo + abaGraficosFrota(c) + cartaoOdometro();
   }
 
   // ---------- Painel: distribuição e ranking das notas ----------
@@ -4664,47 +4628,17 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
         <section class="card">${vazioUI(`Motorista não encontrado`, `Ele pode não ter registros nos dados da API.`)}</section>`;
     }
     const x = c.mots.find((y) => y.m.id === m.id) || { m, la: [], lb: [], a: X.resumo([], E.base), b: X.resumo([], E.base), st: { status: 'sembase' } };
-    const aba = E.rota.aba;
-    const ABAS = [['dashboard', 'Dashboard'], ['resumo', 'Resumo'], ['indicadores', 'Todos os indicadores'], ['produtividade', 'Produtividade'], ['dia', 'Dia a dia', x.la.length]];
+    const aba = ['indicadores', 'dia'].includes(E.rota.aba) ? E.rota.aba : 'dashboard';
+    const ABAS = [['dashboard', 'Dashboard'], ['indicadores', 'Todos os indicadores'], ['dia', 'Dia a dia', x.la.length]];
     let corpo = '';
     if (aba === 'dashboard') {
       corpo = dashboardIndividual(x, m, c);
-    } else if (aba === 'resumo') {
-      const comp = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'embalo', 'pressao_acelerador', 'km_dia'].filter(temInd);
-      corpo = `
-        <div class="grade-kpi">${kpisPadrao().map((k) => kpi(k, x.a, x.b, { acao: 'ind-det', sel: E.detalhe.indGraf === k, linhas: x.la })).join('')}</div>
-        <div class="grade-2">
-          ${cartaoDiaADia('mot-dia', m.linhas, E.detalhe.indGraf, E.detalhe.verTabela, 'ind-det', 'vista-det', 'Evolução dia a dia')}
-          <section class="card">
-            <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Comparado à média da frota</h2><span class="h2-sub">Período analisado · ${D.periodoBR(E.A)}</span></div></div>
-            <div class="card-corpo" style="gap:0;padding-top:8px">
-              ${comp.map((k) => {
-                const ind = IND_MAP[k];
-                const v = X.variacao(ind, x.a[k], c.frotaA[k]);
-                return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--apoio)">
-                  <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font-weight:500">${esc(ind.label)}</span><span class="apoio num" style="font-size:11.5px">Frota: ${fmtInd(ind, c.frotaA[k])}</span></span>
-                  <span class="num" style="font-weight:600;min-width:72px;text-align:right">${fmtInd(ind, x.a[k])}</span>
-                  <span style="min-width:150px;text-align:right">${variacao(v, 'vs. frota')}</span></div>`;
-              }).join('')}
-            </div>
-          </section>
-        </div>`;
     } else if (aba === 'indicadores') {
       const extra = (ind) => fmtInd(ind, c.frotaA[ind.key]);
       extra.titulo = 'Média da frota';
       corpo = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Todos os indicadores</h2><span class="h2-sub">${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}</span></div>
           <button type="button" class="btn" data-acao="exportar-motorista">${icone('baixar', 14, '#5F6368')}Exportar CSV</button></div>
         <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">${tabelaIndicadores(x.a, x.b, extra, x.m.id)}</div></section>`;
-    } else if (aba === 'produtividade') {
-      const serie = X.serieDiaria(m.linhas, IND_MAP.km, E.A, E.base);
-      E.graficos['mot-km'] = { tipo: 'barras', serie, ind: IND_MAP.km, ref: x.b.km_dia, titulo: 'Km rodados por dia' };
-      corpo = `<div class="grade-kpi">${['km', 'horas', 'viagens', 'dias', 'km_dia'].map((k) => kpi(k, x.a, x.b)).join('')}</div>
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Km rodados por dia</h2><span class="h2-sub">Dias sem barra não têm registro.</span></div></div>
-          <div class="card-corpo">
-            <div class="graf-legenda"><span><span style="width:10px;height:10px;border-radius:3px;background:var(--dado);display:inline-block"></span>Km no dia · ${D.periodoCurto(E.A)}</span>
-              ${x.b.km_dia ? `<span><span class="leg-linha-b"></span>Média por dia trabalhado na comparação · ${fmtInd(IND_MAP.km_dia, x.b.km_dia)}</span>` : ''}</div>
-            <div class="grafico" data-grafico="mot-km" style="height:200px"></div>
-          </div></section>`;
     } else {
       const cols = ['km', 'litros', 'kml', 'horas', 'faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'excesso_rotacao', 'excesso_velocidade', 'frenagens'].filter(temInd).map((k) => IND_MAP[k]);
       const porDia = new Map();
@@ -4862,45 +4796,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     ((c && c.gruposLista) || []).concat(Object.values(man), opcoesDim('grupo', true)).forEach((g) => { if (g && !nomes.has(nrm(g))) nomes.set(nrm(g), g); });
     return [...nomes.values()].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
   }
-  function cartaoGruposVeic() {
-    const c = cliAtual();
-    if (!c) return '';
-    const placas = placasDoCliente();
-    if (!placas.length) return '';
-    const grupos = listaGrupos(), man = c.gruposVeic || {};
-    const grupoDe = (p) => man[p.k] || (mapaVeic()[p.k] || {}).grupo || '';
-    const cont = new Map(); placas.forEach((p) => { const g = grupoDe(p); cont.set(g, (cont.get(g) || 0) + 1); });
-    const semGrupo = cont.get('') || 0;
-    const aberto = E.gruposAberto === null ? !Object.keys(man).length && !opcoesDim('grupo', true).length : E.gruposAberto;
-    const busca = nrm(E.gruposBusca);
-    const vis = placas.filter((p) => !busca || nrm(p.placa).includes(busca) || nrm(grupoDe(p)).includes(busca) || [...p.cond.keys()].some((n) => nrm(n).includes(busca)));
-    const nSel = placas.filter((p) => E.gruposSel[p.k]).length;
-    const opc = (sel) => `<option value="">Sem grupo</option>${grupos.map((g) => `<option value="${esc(g)}" ${nrm(g) === nrm(sel) ? 'selected' : ''}>${esc(g)}</option>`).join('')}`;
-    const chips = grupos.map((g) => `<span class="grp-chip ${nrm(E.filtro.grupo) === nrm(g) ? 'ativo' : ''}"><button type="button" class="grp-chip-nome" data-acao="grp-ver" data-g="${esc(g)}" title="Ver só os veículos de ${esc(g)}">${esc(g)} <b>${cont.get(g) || 0}</b></button><button type="button" class="grp-chip-x" data-acao="grp-apagar" data-g="${esc(g)}" aria-label="Apagar o grupo ${esc(g)}" title="Apagar o grupo (os veículos ficam sem grupo)">${icone('fechar', 11)}</button></span>`).join('');
-    return `<section class="card" id="grupos-veic">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Grupos de veículos</h2>
-        <span class="h2-sub">${grupos.length ? `${grupos.length} grupo(s) · ${placas.length - semGrupo} de ${placas.length} veículos em um grupo. Clique num grupo para ver só os veículos dele.` : 'A API da Gobrax não informa o grupo. Crie os grupos e escolha o grupo de cada placa: fica salvo no cliente e vale para o painel inteiro.'}</span></div>
-        <button type="button" class="btn" data-acao="grp-alternar" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Montar grupos'}</button></div>
-      <div class="card-corpo" style="gap:12px">
-        <div class="grp-chips">${E.filtro.grupo ? '<button type="button" class="pilula" data-acao="grp-ver" data-g="">Todos os veículos</button>' : ''}${chips || '<span class="apoio">Nenhum grupo ainda.</span>'}</div>
-        ${aberto ? `
-        <div class="barra-filtros" style="gap:8px">
-          <span class="campo campo-sufixo" style="max-width:320px;flex:1 1 220px"><input type="text" id="grp-novo" placeholder="Nome do novo grupo (ex.: Graneleiros)" aria-label="Nome do novo grupo" maxlength="60"></span>
-          <button type="button" class="btn btn-primario" data-acao="grp-criar">Criar grupo</button>
-          <label class="campo campo-icone busca" style="margin-left:auto;max-width:260px">${icone('busca', 14, '#5F6368')}<input type="text" id="grp-busca" data-campo="grp-busca" value="${esc(E.gruposBusca)}" placeholder="Buscar placa, motorista ou grupo" aria-label="Buscar veículo"></label>
-        </div>
-        ${grupos.length ? `<div class="grp-lote ${nSel ? 'ativo' : ''}"><span><b>${nSel}</b> selecionado(s)</span>
-          <select class="campo" id="grp-lote" aria-label="Grupo para os selecionados" style="width:auto;min-width:180px">${opc('')}</select>
-          <button type="button" class="btn" data-acao="grp-lote" ${nSel ? '' : 'disabled'}>Mover selecionados</button>
-          ${nSel ? '<button type="button" class="btn-link peq" data-acao="grp-limpar-sel">Limpar seleção</button>' : ''}</div>` : '<span class="apoio">Crie o primeiro grupo para começar a ligar as placas.</span>'}
-        <div class="tabela-wrap" style="max-height:420px;overflow:auto;border:1px solid var(--hairline);border-radius:8px"><table class="tabela">
-          <thead><tr><th style="width:36px"><input type="checkbox" data-campo="grp-todos" aria-label="Selecionar todos" ${vis.length && vis.every((p) => E.gruposSel[p.k]) ? 'checked' : ''}></th><th>Placa</th><th>Motorista mais frequente</th><th>Último registro</th><th>Grupo</th></tr></thead>
-          <tbody>${vis.map((p) => { const cond = [...p.cond.entries()].sort((a, b) => b[1] - a[1])[0]; return `<tr>
-            <td><input type="checkbox" data-campo="grp-sel" data-k="${esc(p.k)}" aria-label="Selecionar ${esc(p.placa)}" ${E.gruposSel[p.k] ? 'checked' : ''}></td>
-            <td><b style="font-weight:600">${esc(p.placa)}</b></td><td>${cond ? esc(cond[0]) : '<span class="mudo">—</span>'}</td><td class="num">${p.ult ? D.br(p.ult) : '—'}</td>
-            <td><select class="campo" data-campo="grp-placa" data-k="${esc(p.k)}" aria-label="Grupo de ${esc(p.placa)}" style="min-width:170px" ${grupos.length ? '' : 'disabled'}>${opc(grupoDe(p))}</select></td></tr>`; }).join('') || '<tr><td colspan="5"><span class="apoio">Nenhum veículo com essa busca.</span></td></tr>'}</tbody></table></div>` : ''}
-      </div></section>`;
-  }
   async function salvarGrupos(campos, msg) {
     const c = cliAtual();
     if (!c) return;
@@ -4924,34 +4819,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
   };
 
 
-  // Planilhas de período (1 linha = total de vários dias): somar duas que se cruzam conta km e litros em dobro
-  // ---------- Tela: Dashboards (só gráficos) ----------
-  function donut(partes, centro, sub) {
-    const total = partes.reduce((t, p) => t + p.valor, 0);
-    if (!total) return '';
-    const R = 56, C = 2 * Math.PI * R, E2 = 16, vis = partes.filter((p) => p.valor), folga = vis.length > 1 ? E2 + 6 : 0;
-    let off = 0;
-    const arcos = vis.map((p) => {
-      const len = (p.valor / total) * C, des = Math.max(0.01, len - folga);
-      const el = `<circle cx="80" cy="80" r="${R}" fill="none" stroke="${p.cor}" stroke-width="${E2}" stroke-linecap="round" stroke-dasharray="${des.toFixed(2)} ${(C - des).toFixed(2)}" stroke-dashoffset="${(-off - folga / 2).toFixed(2)}" transform="rotate(-90 80 80)"><title>${esc(p.rot)}: ${p.valor}</title></circle>`;
-      off += len; return el;
-    }).join('');
-    return `<svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="${esc(partes.map((p) => p.valor + ' ' + p.rot).join(', '))}" style="flex:none">
-      <circle cx="80" cy="80" r="${R}" fill="none" style="stroke:var(--graf-hach)" stroke-width="${E2}" stroke-dasharray="2 5"/>${arcos}
-      <circle cx="80" cy="80" r="${R - 20}" style="fill:var(--graf-miolo)"/>
-      <text x="80" y="82" text-anchor="middle" font-size="30" font-weight="700" letter-spacing="-1" style="fill:var(--tinta)">${esc(centro)}</text>
-      <text x="80" y="100" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${esc(sub)}</text></svg>`;
-  }
-  function cartaoEvolucao(c) {
-    const total = c.mots.length;
-    const partes = [['evoluiu', 'Evoluíram'], ['estavel', 'Estáveis'], ['regrediu', 'Regrediram'], ['sembase', 'Sem base']].map(([k, rot]) => ({ valor: c.cont[k], cor: STATUS[k].cor, rot }));
-    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução dos motoristas</h2>
-        <span class="h2-sub">Melhorou ou piorou em relação ao período anterior.</span></div></div>
-      <div class="card-corpo"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px">
-        ${donut(partes, String(total), total === 1 ? 'motorista' : 'motoristas')}
-        <div class="faixas" style="margin:0;flex:1;grid-template-columns:1fr;min-width:180px">${partes.filter((p) => p.valor || p.rot !== 'Sem base').map((p) => `<div class="faixa-item" style="flex-direction:row;align-items:center;justify-content:space-between;padding:10px 14px"><span class="rot"><span class="ponto" style="background:${p.cor}"></span>${p.rot}</span><span class="faixa-n" style="font-size:22px">${p.valor}</span></div>`).join('')}</div>
-      </div></div></section>`;
-  }
   function cartaoConducao(c) {
     const keys = ['faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador'].filter(temInd);
     if (!keys.length) return '';
@@ -5672,12 +5539,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
       <div class="plano-passo"><strong>Próximo passo</strong><span>${o.passo}</span></div>
     </section>`;
   }
-  // aba do Plano de ação com o mesmo bloco do Estudo do projeto: usa todo o projeto, não o período da barra
-  function retornoPlano() {
-    const S = dadosEstudo(), bloco = S.ws.length < 2 ? '' : blocoInvestimento(S);
-    return bloco ? `<span class="apoio" style="font-size:12px">Calculado com todo o projeto (${D.periodoBR({ ini: E.base.inicio, fim: E.base.fim })}), não só o período escolhido acima. <a class="btn-link peq" href="#/estudo">Ver o estudo completo →</a></span>${bloco}`
-      : '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para o retorno</span><span class="apoio">É preciso média de consumo (km e litros) em pelo menos duas semanas.</span></div></div></section>';
-  }
   function telaPlano() {
     const P = planoDados();
     const { c, A, B } = P;
@@ -5695,9 +5556,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
       <div class="exec-cab"><span class="exec-tit">Resultado da operação</span><span class="exec-sub">${D.periodoBR(E.A)}${semAnterior ? '' : ' · comparado a ' + D.periodoBR(E.B)}</span></div>
       <div class="exec-grade">
         ${resultado}${potencial}
-        ${num('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), P.ref ? 'meta interna ' + fmt(P.ref, 2) + ' km/l' : '')}
         ${num('Km por dia trabalhado', fmtInd(IND_MAP.km_dia, A.km_dia), dv('km_dia'), fmt(A.dias, 0) + ' dias trabalhados')}
-        ${num(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), fmt(c.nAtivos, 0) + ' motoristas ativos')}
       </div>
       <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a ${fmtReais(E.preco, 2)}/L (o preço muda na pílula do diesel, no topo). A referência é o km/l que separa o quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
     </section>`;
@@ -5771,12 +5630,10 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     return `${cabecalho(`Plano de ação`, `Onde atuar para reduzir custo e aumentar produtividade`)}
       ${barraPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
-      ${abas([['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length], ['retorno', 'O projeto se paga?']], E.planoAba, 'plano-aba', 'Seções do Plano de ação')}
-      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : E.planoAba === 'retorno' ? retornoPlano() : `
+      ${abas([['diagnostico', 'Diagnóstico'], ['plano', 'Onde agir', ac.length]], E.planoAba, 'plano-aba', 'Seções do Plano de ação')}
+      ${E.planoAba === 'diagnostico' ? diagnosticoPlano(P) : `
       ${conteudo}
       ${faixa}
-      ${radarAuto()}
-      ${cartaoRelacionamento()}
       <div class="plano-sec"><h2 class="plano-h2">Onde trabalhar primeiro</h2><span class="apoio">Ordenado pelo impacto estimado e pelo que piorou. Clique no motorista para ver o detalhe.</span></div>
       ${ac.length ? `<div class="plano-grade">${ac.map(planoCartao).join('')}</div>` : '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nada crítico neste período</span><span class="apoio">Os indicadores não apontam pontos de atenção.</span></div></div></section>'}`}`;
   }
@@ -6406,14 +6263,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
         <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa rodagem, engajamento, nota, consumo e contato com o cliente.</span>
         <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div></div></section>`;
     }
-    const cont = (f) => cart.filter((c) => c.faixa === f).length;
-    const media = cart.reduce((t, c) => t + c.score, 0) / cart.length;
-    const resumo = `<div class="grade-kpi">
-      <div class="kpi"><span class="kpi-titulo">Clientes monitorados</span><span class="kpi-desc">Com dados no período</span><span class="kpi-valor">${fmt(cart.length, 0)}</span></div>
-      <div class="kpi kpi-ruim"><span class="kpi-titulo">Risco alto</span><span class="kpi-desc">Índice de 60 a 100</span><span class="kpi-valor">${fmt(cont('Alto'), 0)}</span></div>
-      <div class="kpi"><span class="kpi-titulo">Risco médio</span><span class="kpi-desc">Índice de 35 a 59</span><span class="kpi-valor">${fmt(cont('Médio'), 0)}</span></div>
-      <div class="kpi kpi-bom"><span class="kpi-titulo">Risco baixo</span><span class="kpi-desc">Índice abaixo de 35</span><span class="kpi-valor">${fmt(cont('Baixo'), 0)}</span></div>
-      <div class="kpi"><span class="kpi-titulo">Risco médio da carteira</span><span class="kpi-desc">Média simples dos clientes</span><span class="kpi-valor">${fmt(media, 0)}<small>/100</small></span></div></div>`;
     const linhas = cart.map((c) => `<tr class="linha-clicavel" data-acao="churn-cliente" data-cli="${esc(c.nome)}" tabindex="0">
       <td><span class="pessoa">${avatar(c.nome, 30)}<b style="font-weight:600">${esc(c.nome)}</b></span></td>
       <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b><span class="badge ${BADGE_RISCO[c.faixa]}">${c.faixa}</span></span></td>
@@ -6425,7 +6274,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
       <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de risco</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th><th>Tratativas</th><th>Último resultado medido</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
     // Detalhe do cliente selecionado
     let detalhe = '';
-    const sel = E.churnVista === 'cliente' ? cart.find((c) => ckey(c.nome) === ckey(E.cliente)) : null;
+    const sel = cart.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
     if (sel) {
       const fat = sel.fatores.slice().sort((p, q) => q.contrib - p.contrib);
       const barras = fat.map((x) => { const fx = x.risco >= 60 ? 'Alto' : x.risco >= 35 ? 'Médio' : 'Baixo'; return `<div class="churn-fat">
@@ -6456,18 +6305,13 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
           <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Plano de retenção</h2><span class="h2-sub">${alertas.length ? fmt(alertas.length, 0) + ' sinal(is) de alerta' : 'Sem sinais fortes. Manter o acompanhamento.'}</span></div></div>
             <div class="card-corpo">${passos.length ? passos.map((x, i) => `<div class="churn-passo"><span class="churn-passo-n">${i + 1}</span><div><b>${CHURN_ACAO[x.k][0]}</b><span class="churn-prazo">${prazos[i]}</span><p>${CHURN_ACAO[x.k][1]}</p><button type="button" class="btn-link peq" data-acao="trat-novo" data-cli="${esc(sel.nome)}" data-etapa="${ETAPA_DO_SINAL[x.k]}" data-titulo="${esc(CHURN_ACAO[x.k][0])}">Registrar como tratativa</button></div></div>`).join('') : '<span class="apoio">Nenhuma ação urgente. Continue acompanhando os indicadores.</span>'}</div></section>
         </div>
-        ${E.base ? cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Evolução do cliente dia a dia') : ''}
         ${cartaoRelacionamento()}`;
-    } else if (E.churnVista !== 'cliente') {
-      detalhe = cartaoRelacionamento(true);
     }
-    const alterna = E.cliente ? `<div class="seg peq" role="group" aria-label="O que ver">
-        <button type="button" class="${E.churnVista === 'cliente' ? 'ativo' : ''}" data-acao="churn-vista" data-v="cliente">${esc(E.cliente)}</button>
-        <button type="button" class="${E.churnVista === 'carteira' ? 'ativo' : ''}" data-acao="churn-vista" data-v="carteira">Carteira</button></div>` : '';
+    const alterna = `<a class="btn" href="#/carteira" style="text-decoration:none">Carteira de clientes</a>`;
     return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · histórico da retenção: o que foi combinado e o que mudou nos números`, `${alterna}`)}
       ${barraPeriodo()}
-      ${resumo}${E.churnVista === 'cliente' && !sel ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
-      ${sel ? detalhe : ''}${tabela}${sel ? '' : detalhe}`;
+      ${!sel && E.cliente ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
+      ${sel ? detalhe : tabela + detalhe}`;
   }
 
 
@@ -7156,7 +7000,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     const chaves = ['nota', 'kml', 'faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador', 'excesso_velocidade', 'frenagens'].filter(temInd);
     const leitura = chaves.length ? `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Como a frota se comportou</h2>
         <span class="h2-sub">Cada linha compara o período analisado com o anterior. Verde melhorou, vermelho piorou.</span></div>
-        <a class="btn" href="#/visao" style="text-decoration:none">Todos os indicadores</a></div>
+        <a class="btn" href="#/visao?aba=indicadores" style="text-decoration:none">Todos os indicadores</a></div>
       <div class="tabela-wrap"><table class="tabela" style="min-width:560px"><thead><tr><th>Indicador</th><th class="dir">Antes</th><th class="dir">Agora</th><th class="dir">Variação</th><th>Resultado</th></tr></thead><tbody>
         ${chaves.map((k) => { const ind = IND_MAP[k], v = dif(k); return `<tr><td><b style="font-weight:600">${esc(ind.label)}</b><span class="linha2">${esc(ind.desc)}</span></td><td class="dir" style="color:var(--texto-2)">${fmtInd(ind, B[k])}</td><td class="dir"><b style="font-weight:600">${fmtInd(ind, A[k])}</b></td><td class="dir">${variacao(v)}</td><td>${resultado(v, ind)}</td></tr>`; }).join('')}
       </tbody></table></div></section>` : '';
@@ -7201,24 +7045,8 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
           <span class="apoio">${ganhos.map((g) => `${esc(g.titulo)} (${g.grande} ${g.pequeno})`).join(' · ')}</span></div>
         <a class="btn btn-primario" href="#/plano?aba=plano" style="text-decoration:none">Ver onde agir no Plano de ação</a></div></section>` : '';
 
-    // ---- destaques de motoristas ----
-    const ord = c.mots.filter((x) => x.st.delta !== null).sort((p, q) => q.st.delta - p.st.delta);
-    let destaques = '';
-    if (ord.length) {
-      const indSt = IND_MAP[ord[0].st.ind];
-      const fmtD = (d) => X.textoDelta(indSt, d);
-      const mx = Math.max.apply(null, ord.map((x) => Math.abs(x.st.delta)).concat([1e-9]));
-      const lin = (arr, bom) => (arr.length ? arr.map((x) => planoLinha(x, fmtD(x.st.delta), (Math.abs(x.st.delta) / mx) * 100, bom ? 'var(--ok)' : 'var(--critico)')).join('') : '<span class="apoio" style="padding:6px 0">Nenhum motorista nesta situação.</span>');
-      const evol = ord.filter((x) => x.st.status === 'evoluiu').slice(0, 5);
-      const regr = ord.filter((x) => x.st.status === 'regrediu').reverse().slice(0, 5);
-      destaques = `<div class="grade-2">
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Quem mais evoluiu</h2><span class="h2-sub">${indSt.key === 'nota' ? 'Pela Nota Gobrax' : 'Pela média km/l'} · reconhecer quem melhorou.</span></div></div><div class="card-corpo"><div class="plano-lista">${lin(evol, true)}</div></div></section>
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Quem pede atenção</h2><span class="h2-sub">Maiores quedas contra o período anterior.</span></div></div><div class="card-corpo"><div class="plano-lista">${lin(regr, false)}</div></div></section>
-      </div>`;
-    }
-
     const aprof = `<section class="card"><div class="card-corpo"><div class="aprof">
-        <a class="aprof-i" href="#/visao"><b>Desenvolvimento da frota</b><span>Dia a dia, todos os indicadores e a evolução dos motoristas</span></a>
+        <a class="aprof-i" href="#/visao"><b>Desenvolvimento da frota</b><span>Gráficos por indicador, grupos e veículos, e todos os indicadores</span></a>
         <a class="aprof-i" href="#/motoristas"><b>Motoristas</b><span>Evolução de todos e o detalhe de cada condutor</span></a>
         <a class="aprof-i" href="#/individual/veiculo"><b>Veículo individual</b><span>Desempenho de cada caminhão</span></a>
         <a class="aprof-i" href="#/churn"><b>Saúde do cliente</b><span>Sinais de risco de cancelamento e plano de retenção (uso interno)</span></a>
@@ -7232,11 +7060,10 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
       ${radarAuto()}
       ${aneisDesempenho(c)}
       ${leitura}
-      <div class="grade-2">${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Evolução da frota dia a dia')}${cartaoEvolucao(c)}</div>
+      ${cartaoDiaADia('frota-dia', E.base.linhas, E.indGraf, E.verTabela, 'ind-graf', 'vista-frota', 'Evolução da frota dia a dia')}
       ${painelNotas(c)}
       ${blocoGruposGeral()}
       ${blocoGanhos}
-      ${destaques}
       ${aprof}`;
   }
 
@@ -8600,7 +8427,8 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     if (partes[0] === 'veiculos') partes[0] = 'visao';
     // Dashboards e Comparativo de períodos viraram abas de Desenvolvimento da frota (links antigos continuam funcionando)
     if (partes[0] === 'dashboards' || partes[0] === 'comparativo') { E.rota = { tela: 'visao', id: null, aba: partes[0] === 'dashboards' ? 'graficos' : 'indicadores' }; return; }
-    if (partes[0] === 'plano' && ['diagnostico', 'plano', 'retorno'].includes(aba)) E.planoAba = aba;
+    if (partes[0] === 'plano' && aba === 'retorno') { location.replace('#/estudo'); return lerRota(); }
+    if (partes[0] === 'plano' && ['diagnostico', 'plano'].includes(aba)) E.planoAba = aba;
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
@@ -9266,9 +9094,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
     'hub-atualizar': (el) => { const r = (E.rel || []).find((x) => x.chave === el.dataset.id); if (r) atualizarHub(r); },
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
-    'churn-cliente': (el) => { E.churnVista = 'cliente'; trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
-    'churn-vista': (el) => { E.churnVista = el.dataset.v === 'carteira' ? 'carteira' : 'cliente'; render(); window.scrollTo(0, 0); },
-    'churn-todos': () => { E.churnVista = 'carteira'; render(); window.scrollTo(0, 0); },
+    'churn-cliente': (el) => { trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'trat-novo': (el) => {
       E.tratForm = { cliente: el.dataset.cli, data: D.hoje(), etapa: el.dataset.etapa || 'plataforma', status: 'combinado', prazo: '', titulo: el.dataset.titulo || '', combinado: '' };
       render(); const e = document.getElementById('trat-titulo'); if (e) { try { e.scrollIntoView({ block: 'center' }); } catch (x) { /* sem rolagem */ } e.focus(); }
@@ -9318,7 +9144,7 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
     if (!el || el.disabled) return;
     const f = acoes[el.dataset.acao];
     if (!f) return;
-    if (['filtrar-dim', 'churn-cliente', 'churn-todos', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
+    if (['filtrar-dim', 'churn-cliente', 'grp-ver', 'grp-lote', 'grp-apagar', 'grp-criar'].includes(el.dataset.acao)) f(el, ev);
     else comContexto(() => f(el, ev));
   });
   document.addEventListener('keydown', (ev) => {
@@ -9383,7 +9209,6 @@ body.carregou::after { animation: gbx-carrega .9s cubic-bezier(.2,.7,.2,1) both;
       render();
     } else if (k === 'cliente-filtro') {
       trocarCliente(el.value);
-      if (E.rota.tela === 'churn') E.churnVista = 'cliente';
       if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; }
       render();
     } else if (k === 'ind-sel') { location.hash = '#/individual/' + E.rota.tipo + '/' + encodeURIComponent(el.value) + (E.rota.aba && E.rota.aba !== 'dashboard' ? '?aba=' + E.rota.aba : ''); }

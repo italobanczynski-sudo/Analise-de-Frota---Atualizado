@@ -37,5 +37,22 @@ for (const [semNota, comCliente] of [['0', '1'], ['1', '1'], ['1', '0']]) {
   ruins.forEach((x) => console.log('      ' + x.r + ' ' + JSON.stringify({ erros: x.erros, texto: x.ctx, atributos: x.attr })));
   falhas += ruins.length;
 }
+// 3) fluxos de retenção usados como uma pessoa: combinado, próximos passos, ficha, dado suspeito, resumo, fases, regras
+{
+  const pagina = path.join(tmp, 'fluxos.html');
+  execFileSync(process.execPath, [path.join(AQUI, 'dados.js'), path.join(RAIZ, 'index.html'), pagina, '0', '1']);
+  execFileSync(process.execPath, [path.join(AQUI, 'fluxos.js'), pagina]);
+  const dom = execFileSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--virtual-time-budget=60000', '--dump-dom', 'file://' + pagina + '#/geral'],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+  const m = dom.match(/<pre id="fluxos">([\s\S]*?)<\/pre>/);
+  if (!m) { console.log('XX  fluxos: o roteiro não terminou'); falhas++; }
+  else {
+    const rel = JSON.parse(decod(m[1]));
+    const ruins = rel.filter((x) => !x.ok || x.erros.length);
+    console.log(`${ruins.length ? 'XX' : 'ok'}  fluxos de retenção: ${rel.length} passos`);
+    ruins.forEach((x) => console.log('      ' + x.passo + ' ' + JSON.stringify({ msg: x.msg, conferencia: x.conf, erros: x.erros, mensagens: x.toasts })));
+    falhas += ruins.length;
+  }
+}
 fs.rmSync(tmp, { recursive: true, force: true });
 process.exit(falhas ? 1 : 0);

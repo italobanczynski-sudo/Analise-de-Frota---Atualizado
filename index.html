@@ -2010,7 +2010,11 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 .receita ul { margin: 10px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--texto-2); }
 /* Retenção: ficha, combinados (gaveta), próximos passos */
 .nav-item:has(.nav-novo) .nome { flex: 1; min-width: 0; }
-.nav-novo { margin-left: 6px; flex: none; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: #FEDB00; color: #2B2B2B; }
+/* menu recolhido (só ícones): o NOVO vira um ponto amarelo no ícone; com os nomes à mostra, volta a ser o selo */
+.nav-item { position: relative; }
+.nav-novo { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; padding: 0; font-size: 0; border-radius: 999px; background: #FEDB00; color: #2B2B2B; font-weight: 700; letter-spacing: .04em; box-shadow: 0 0 0 2px var(--superficie); }
+.app.nav-aberta .nav-novo { position: static; width: auto; height: auto; margin-left: 6px; flex: none; font-size: 10px; padding: 2px 7px; box-shadow: none; }
+@media (min-width: 1100px) { html:not([data-tema="escuro"]) .nav-novo { position: static; width: auto; height: auto; margin-left: 6px; flex: none; font-size: 10px; padding: 2px 7px; box-shadow: none; } }
 .ficha-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 20px; }
 .ficha-i { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .ficha-motivos { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2029,7 +2033,7 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 .comb-st { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .evid { font-size: 13px; line-height: 1.5; padding: 12px 14px; border-radius: 12px; background: rgba(252, 183, 9, .12); color: var(--tinta, #202124); }
 .gaveta-fundo { position: fixed; inset: 0; background: rgba(32, 33, 36, .45); z-index: 150; }
-.gaveta { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: var(--fundo-card, #fff); z-index: 151; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0, 0, 0, .18); animation: gbx-gaveta .25s cubic-bezier(.2,.7,.2,1); }
+.gaveta { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: var(--superficie); z-index: 151; display: flex; flex-direction: column; box-shadow: -12px 0 40px rgba(0, 0, 0, .18); animation: gbx-gaveta .25s cubic-bezier(.2,.7,.2,1); }
 @keyframes gbx-gaveta { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .gaveta-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 22px 24px 16px; border-bottom: 1px solid var(--apoio); }
 .gaveta-corpo { flex: 1; overflow: auto; padding: 18px 24px; display: flex; flex-direction: column; gap: 16px; }
@@ -2045,7 +2049,7 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 @media print { .gaveta, .gaveta-fundo { display: none !important; } }
 /* Comparação por fase e resumo da reunião */
 .fase-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-.fase-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--fundo-card, #fff); border: 1px solid var(--apoio); }
+.fase-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--apoio); }
 .fase-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .fase-val { font-size: 26px; font-weight: 700; }
 .fase-melhor { border-color: #A8DAB5; } .fase-pior { border-color: #F3B5B0; } .fase-sem_mudanca, .fase-inconclusiva { opacity: .92; }
@@ -2053,7 +2057,7 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 .resumo-nome { font-size: 28px; font-weight: 600; margin: 0; }
 .res-topo { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 14px; }
 @media (max-width: 900px) { .res-topo { grid-template-columns: 1fr; } }
-.res-eco, .res-ind { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-radius: 16px; background: var(--fundo-card, #fff); border: 1px solid var(--apoio); }
+.res-eco, .res-ind { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-radius: 16px; background: var(--superficie); border: 1px solid var(--apoio); }
 .res-eco { background: #FFFBEA; border-color: #F6DA6E; }
 .res-eco.res-cinza { background: var(--apoio); border-color: var(--apoio); }
 .res-eco.res-perda { background: rgba(217, 48, 37, .06); border-color: #F3B5B0; }
@@ -2327,6 +2331,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         if (l.km > LIMITES.kmDiaMax) {
           motivos.push(fmt(l.km, 0) + ' km em um dia (máximo plausível ' + fmt(LIMITES.kmDiaMax, 0) + ' km)');
           orig.km = l.km; orig.litros = l.litros; l.km = null; l.litros = null;
+        } else if (l.km >= LIMITES.kmMinConsumo && l.litros !== null && l.litros !== undefined && !(l.litros > 0)) {
+          motivos.push(fmt(l.km, 0) + ' km sem diesel registrado (' + fmt(l.litros, 1) + ' L)');
+          orig.litros = l.litros; l.litros = null;
         } else if (l.km >= LIMITES.kmMinConsumo && l.litros > 0) {
           const k = l.km / l.litros;
           if (k < LIMITES.kmlMin || k > LIMITES.kmlMax) {
@@ -3215,6 +3222,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (!ls.length) { E.base = null; E.semCliente = !!E.linhasAll; memo = null; return; }
     E.semCliente = false;
     carregarBase(ls, E.colunasAll, E.fonte);
+    restaurarConfirmados();
   }
   function opcoesClientes() {
     const mapa = new Map();
@@ -6093,11 +6101,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const fic = fichaDe(nome);
     if (fic && fic.renovacao) { const dr = D.dif(D.hoje(), fic.renovacao); f.push({ k: 'renov', nome: 'Renovação do contrato', risco: riscoRenovacao(dr), det: dr < 0 ? 'Contrato vencido há ' + -dr + ' dias' : 'Renova em ' + dr + ' dias (' + D.br(fic.renovacao) + ')' }); }
     if (!f.length) return null;
-    const pesoTot = f.reduce((t, x) => t + CHURN_PESOS[x.k], 0);
+    const pesoTot = f.reduce((t, x) => t + (CHURN_PESOS[x.k] || 0), 0);
+    if (!(pesoTot > 0)) return null;
     const calc0 = f.reduce((t, x) => t + CHURN_PESOS[x.k] * x.risco, 0) / pesoTot;
     f.forEach((x) => { x.contrib = (CHURN_PESOS[x.k] * x.risco) / pesoTot; x.peso = CHURN_PESOS[x.k] / pesoTot; });
     // pedido de cancelamento (situação de churn no relacionamento) leva à faixa alta, qualquer que seja o uso
-    const score = f.some((x) => x.forca) ? Math.max(calc0, CHURN_FAIXAS.alto) : calc0;
+    const relC = relDoCliente(nome), pedido = f.some((x) => x.forca) || !!(relC && /churn/i.test(relC.situacao || ''));
+    if (pedido && !f.some((x) => x.forca)) { const rx = f.find((x) => x.k === 'relac'); if (rx) rx.forca = true; }
+    const score = pedido ? Math.max(calc0, CHURN_FAIXAS.alto) : calc0;
     const faixa = score >= CHURN_FAIXAS.alto ? 'Alto' : score >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo';
     return { nome, score, faixa, fatores: f, a, b, km: a.km, dKm, nota: a.nota, motoristas: ativos.size, crit, principal: f.slice().sort((p, q) => q.contrib - p.contrib)[0] };
   }
@@ -7032,7 +7043,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       ${meses.map((o) => `<tr><td><b style="font-weight:600">${esc(D.nomeMes(o.p.mes))}</b>${o.p.ini !== o.p.mes || o.p.fim !== D.fimMes(o.p.mes) ? `<span class="linha2">${D.periodoCurto(o.p)}</span>` : ''}</td><td class="dir num">${R(o.c)}</td><td class="dir num">${R(o.e)}</td>
         <td class="dir num"><span class="exec-${o.e >= o.c ? 'bom' : 'ruim'}" style="font-weight:600">${R(o.e - o.c)}</span></td><td class="dir num">${!o.c ? '—' : o.e < 0 ? 'negativa' : fmt((o.e / o.c) * 100, 0) + '%'}</td></tr>`).join('')}
       </tbody></table></div>`;
-    const selo = bloq ? '<span class="badge badge-critico">R$ bloqueado</span>' : noRuido ? '<span class="badge badge-neutro">Sem mudança clara</span>' : paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
+    const semRuido = ruidoInfo.ruido === null, semRS = bloq || noRuido || semRuido;
+    const selo = bloq ? '<span class="badge badge-critico">R$ bloqueado</span>' : semRuido ? '<span class="badge badge-neutro">Ruído não calculável</span>' : noRuido ? '<span class="badge badge-neutro">Sem mudança clara</span>' : paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
     const avisoRuido = noRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A mudança de consumo (${dKml >= 0 ? '+' : '−'}${fmt(Math.abs(dKml), 2)} km/l) está dentro do ruído da linha de base (±${fmt(ruidoInfo.ruido, 2)} km/l): sem mudança clara, a economia não é contada como resultado.</span></div></div>` : '';
     const receita = `<details class="receita"><summary>Como este valor foi calculado</summary><ul>
       <li><b>Linha de base (travada):</b> ${esc(S.rotIni)}, ${D.periodoBR(S.pIni)}, consumo de ${fmtInd(IND_MAP.kml, base)} (km totais ÷ litros totais).</li>
@@ -7051,12 +7063,12 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           <label class="campo-bloco" style="max-width:180px"><span class="campo-rotulo">Equipamentos</span><span class="campo campo-sufixo"><input type="text" inputmode="numeric" data-campo="inv-qtd" value="${inv.qtd}" aria-label="Quantidade de equipamentos"><span>un.</span></span></label>
           <span class="apoio" style="font-size:12px;padding-bottom:8px">${inv.qtdAuto ? 'Quantidade = veículos nos dados; digite a contratada. ' : ''}Mensalidade: <b>${R(inv.mensal)}</b></span>
         </div>
-        ${bloq ? avisoBloqueios(bloqueios().filter((x) => x.tipo === 'idade'), 'Valor em R$') : avisoRuido}
-        ${bloq ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>`}
+        ${bloq ? avisoBloqueios(bloqueios().filter((x) => x.tipo === 'idade'), 'Valor em R$') : semRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A linha de base tem menos de ${X.LIMITES.faseDiasMin} dias válidos: sem o ruído não dá para dizer se a mudança é real, então nenhum valor em R$ é mostrado.</span></div></div>` : avisoRuido}
+        ${semRS ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>`}
         ${receita}
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}</div>
+        ${semRS ? '' : `<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}</div>
         <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
-        ${tabela}
+        ${tabela}`}
       </div></section>`;
   }
   function telaEstudo() {
@@ -7282,12 +7294,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Coleções compartilhadas novas (foto do risco, coaching, ocorrências, acessos): banco quando houver, senão este navegador ----------
   const COL = {};
   let dbCompart = null;
-  function colecao(nome) { return COL[nome] || (COL[nome] = { ref: null, docs: armazem.lerJSON('gbx-col-' + nome, []) }); }
+  function colecao(nome) { return COL[nome] || (COL[nome] = { ref: null, pronto: false, docs: armazem.lerJSON('gbx-col-' + nome, []) }); }
+  // coleção pronta para decidir algo automático: sem banco, já está; com banco, só depois do primeiro retrato dele
+  const colPronta = (nome) => !dbCompart || colecao(nome).pronto;
   function ligarColecao(db, nome, aoMudar) {
     const c = colecao(nome);
     try {
       c.ref = db.collection(nome);
-      c.ref.onSnapshot((sn) => { if (E.demo) return; c.docs = sn.docs.map((d) => Object.assign({}, d.data(), { id: d.id })); if (aoMudar) aoMudar(); }, () => { c.ref = null; });
+      c.ref.onSnapshot((sn) => { if (E.demo) return; c.docs = sn.docs.map((d) => Object.assign({}, d.data(), { id: d.id })); c.pronto = true; if (aoMudar) aoMudar(); }, () => { c.ref = null; c.pronto = true; });
     } catch (e) { c.ref = null; }
   }
   async function gravarDoc(nome, id, campos) {
@@ -7295,7 +7309,12 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const c = colecao(nome), i = c.docs.findIndex((d) => d.id === id);
     const doc = Object.assign({}, i >= 0 ? c.docs[i] : {}, campos, { id });
     if (i >= 0) c.docs[i] = doc; else c.docs.push(doc);
-    if (c.ref) { try { await c.ref.doc(id).set(doc); return; } catch (e) { /* sem banco: fica neste navegador */ } }
+    if (c.ref) {
+      try { await c.ref.doc(id).set(doc); return; } catch (e) {
+        armazem.gravar('gbx-col-' + nome, JSON.stringify(c.docs.slice(-3000)));
+        throw new Error('não foi possível gravar na base compartilhada (' + (e && e.message ? e.message : 'erro') + '); ficou só neste navegador');
+      }
+    }
     armazem.gravar('gbx-col-' + nome, JSON.stringify(c.docs.slice(-3000)));
   }
   const docsDe = (nome) => colecao(nome).docs;
@@ -7337,6 +7356,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     }
     if (nova.limites.kmlMin >= nova.limites.kmlMax) { toast('O consumo mínimo precisa ser menor que o máximo.', 'erro'); return; }
     if (nova.faixas.medio >= nova.faixas.alto) { toast('A faixa média precisa começar abaixo da alta.', 'erro'); return; }
+    if (!(Object.keys(CHURN_PESOS).reduce((t, k) => t + (Number.isFinite(nova.pesos[k]) ? nova.pesos[k] : CHURN_PESOS[k]), 0) > 0)) { toast('A soma dos pesos precisa ser maior que zero.', 'erro'); return; }
     if (!mudou.length) { toast('Nada mudou.'); return; }
     const quem = (contaSrv() && contaSrv().eu && contaSrv().eu.nome) || 'este navegador';
     nova.historico = [{ em: new Date().toISOString(), por: quem, mudou: mudou.join('; ') }].concat(atual.historico || []).slice(0, 40);
@@ -7367,22 +7387,31 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const idDoc = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 140);
   const tratSusp = (l) => docsDe('suspeitos_trat').find((d) => d.chave === (l.suspeito ? l.suspeito.chave : chaveRegistro(l)));
   const quemSou = () => (contaSrv() && contaSrv().eu && contaSrv().eu.nome) || 'este navegador';
-  // confirmados pelo analista voltam ao cálculo: restaura os valores na própria linha e limpa os resumos guardados
+  // confirmados pelo analista voltam ao cálculo: restaura os valores originais das linhas (as da base são cópias das de
+  // E.linhasAll), tira da lista de suspeitos e, quando algo mudou, reconstrói a base e limpa todos os resumos guardados
+  function restaurarConfirmados() {
+    const docs = docsDe('suspeitos_trat').filter((d) => d.acao === 'confirmar');
+    docs.forEach((d) => X.CONFIRMADOS.add(d.chave));
+    if (!docs.length) return 0;
+    const porChave = new Map(docs.map((d) => [d.chave, d]));
+    let n = 0;
+    [E.linhasAll || [], E.base ? E.base.linhas : [], (E.veic && E.veic.linhas) || []].forEach((arr) => arr.forEach((l) => {
+      const d = l.suspeito && porChave.get(l.suspeito.chave);
+      if (!d) {   // já entrou no cálculo ao carregar (confirmado antes): só marca
+        const c = !l.confirmado && porChave.get([l.data, l.motorista || '', l.veiculo || ''].join('|'));
+        if (c) l.confirmado = { motivo: c.motivo, por: c.por };
+        return;
+      }
+      Object.assign(l, l.suspeito.orig); l.confirmado = { motivo: d.motivo, por: d.por }; delete l.suspeito; n++;
+    }));
+    if (E.base && E.base.suspeitos) E.base.suspeitos = E.base.suspeitos.filter((l) => l.suspeito);
+    return n;
+  }
   function aplicarConfirmados() {
-    let mudou = false;
-    docsDe('suspeitos_trat').filter((d) => d.acao === 'confirmar').forEach((d) => {
-      if (X.CONFIRMADOS.has(d.chave)) return;
-      X.CONFIRMADOS.add(d.chave); mudou = true;
-      (E.linhasAll || []).concat(E.base ? E.base.linhas : []).forEach((l) => {
-        if (!l.suspeito || l.suspeito.chave !== d.chave) return;
-        Object.assign(l, l.suspeito.orig); l.confirmado = { motivo: d.motivo, por: d.por }; delete l.suspeito;
-      });
-    });
-    if (mudou) {
-      ['suspeitos'].forEach(() => { if (E.base) E.base.suspeitos = (E.base.suspeitos || []).filter((l) => l.suspeito); });
-      memoEstudo = null; baseTodosCache = null;
-      render();
-    }
+    if (!restaurarConfirmados()) return;
+    memo = null; memoAlertas = null; memoSem = null; memoMesSem = null; memoEstudo = null; baseTodosCache = null; baseVeicCache = null;
+    if (E.linhasAll) aplicarFiltroCliente();
+    render();
   }
   async function salvarTratSusp() {
     const f = E.suspForm; if (!f) return;
@@ -7402,13 +7431,16 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     toast('Liberado com motivo registrado.'); render();
   }
   // bloqueios do resumo (e, o de idade, também do R$): dado com mais de N dias, cobertura baixa, suspeito não tratado
-  function bloqueios() {
+  // o resumo passa a cobertura da fase comparada (o resto da tela usa a do período escolhido)
+  function bloqueios(o) {
     const q = infoQualidade();
     if (!q) return [];
+    const cob = o && Number.isFinite(o.cobPct) ? o.cobPct : q.cobPct;
+    const susp = o && o.p ? ((E.base && E.base.suspeitos) || []).filter((l) => l.data >= o.p.ini && l.data <= o.p.fim) : q.susp;
     const out = [];
     if (q.idade > X.LIMITES.idadeBloqueio) out.push({ tipo: 'idade', texto: `Dado com ${q.idade} dias (limite ${X.LIMITES.idadeBloqueio})` });
-    if (q.cobPct < X.LIMITES.coberturaMin) out.push({ tipo: 'cobertura', texto: `Cobertura de ${fmt(q.cobPct, 0)}% (mínimo ${X.LIMITES.coberturaMin}%)` });
-    const naoTrat = q.susp.filter((l) => !tratSusp(l)).length;
+    if (cob < X.LIMITES.coberturaMin) out.push({ tipo: 'cobertura', texto: `Cobertura de ${fmt(cob, 0)}% (mínimo ${X.LIMITES.coberturaMin}%)` });
+    const naoTrat = susp.filter((l) => !tratSusp(l)).length;
     if (naoTrat) out.push({ tipo: 'suspeito', texto: `${naoTrat} dado(s) suspeito(s) sem tratamento` });
     return out.map((b) => Object.assign(b, { lib: liberado(b.tipo) }));
   }
@@ -7468,16 +7500,16 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Foto diária do índice de risco: uma por cliente por dia, para calibrar os pesos com o churn real ----------
   let fotoRiscoDia = '';
   function fotografarRisco() {
-    if (E.demo || !E.linhasAll || !E.clientesPronto || fotoRiscoDia === D.hoje()) return;
+    if (E.demo || !E.linhasAll || !E.clientesPronto || fotoRiscoDia === D.hoje() || !colPronta('risco_foto') || !colPronta('diesel_hist')) return;
     fotoRiscoDia = D.hoje();
-    if (E.preco > 0 && !docsDe('diesel_hist').some((d) => d.id === D.hoje())) gravarDoc('diesel_hist', D.hoje(), { dia: D.hoje(), preco: E.preco, manual: !!E.precoManual });
+    if (E.preco > 0 && !docsDe('diesel_hist').some((d) => d.id === D.hoje())) gravarDoc('diesel_hist', D.hoje(), { dia: D.hoje(), preco: E.preco, manual: !!E.precoManual }).catch(() => {});
     let cart = [];
     try { cart = churnCarteira(); } catch (e) { return; }
     cart.forEach((c) => {
       const id = D.hoje() + '_' + ckey(c.nome).replace(/[^a-z0-9]+/g, '-');
       if (docsDe('risco_foto').some((d) => d.id === id)) return;
       gravarDoc('risco_foto', id, { cliente: c.nome, dia: D.hoje(), ini: E.A.ini, fim: E.A.fim, score: Math.round(c.score * 10) / 10, faixa: c.faixa,
-        principal: c.principal ? c.principal.k : null, fatores: c.fatores.map((x) => ({ k: x.k, risco: Math.round(x.risco), peso: CHURN_PESOS[x.k] })) });
+        principal: c.principal ? c.principal.k : null, fatores: c.fatores.map((x) => ({ k: x.k, risco: Math.round(x.risco), peso: CHURN_PESOS[x.k] })) }).catch(() => {});
     });
   }
   const fotosRisco = (nome) => docsDe('risco_foto').filter((d) => ckey(d.cliente) === ckey(nome)).sort((a, b) => (a.dia < b.dia ? -1 : 1));
@@ -7503,7 +7535,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // estágio só avança com registro que justifique: 2 pede um combinado (ou tratativa de ajuste), 3 pede um combinado com veredito
   function estagiosPermitidos(nome) {
     const cs = combinadosDe(nome), trs = tratDoCliente(nome);
-    const ok2 = cs.some((c) => c.estado !== 'cancelado') || trs.some((t) => t.etapa === 'plataforma');
+    const ok2 = cs.some((c) => !c.cancelado) || trs.some((t) => t.etapa === 'plataforma');
     const ok3 = cs.some((c) => ['confirmado', 'nao_confirmado'].includes(estadoCombinado(c).estado)) || trs.some((t) => t.etapa === 'resultado');
     return { 1: true, 2: ok2, 3: ok3 };
   }
@@ -7534,7 +7566,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const melhorDe = (k) => (k === 'comunicacao' ? 1 : (IND_MAP[k] || {}).melhor || 1);
   const fmtAlvo = (k, v) => (!Number.isFinite(v) ? '—' : k === 'comunicacao' ? fmt(v, 0) + '%' : fmtInd(IND_MAP[k], v));
   const fmtDif = (k, d) => (!Number.isFinite(d) ? '—' : (d >= 0 ? '+' : '−') + fmt(Math.abs(d), k === 'kml' ? 2 : 1) + (k === 'kml' ? ' km/l' : k === 'comunicacao' ? ' p.p.' : (IND_MAP[k] || {}).var === 'pts' ? ' pts' : ' p.p.'));
-  const linhasRet = (nome) => { const ls = linhasDoCliente(nome); return ls.length ? ls : (E.base ? E.base.linhas : []); };
+  const linhasRet = (nome) => { const ls = linhasDoCliente(nome); if (ls.length) return ls; return (E.linhasAll || []).some((l) => l.cliente) ? [] : (E.base ? E.base.linhas : []); };
   const baseCli = () => baseTodos() || E.base;
   const ultimoDadoCli = (nome) => linhasRet(nome).reduce((m, l) => (l.data > m ? l.data : m), '');
   const chaveVeic = (l) => l.veiculo || l.motorista;
@@ -7580,7 +7612,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (c.cancelado) return { estado: 'cancelado', texto: 'Cancelado: ' + (c.motivoCancel || '') };
     const ls = linhasRet(c.cliente), ult = ultimoDadoCli(c.cliente) || c.data, fim = c.fim;
     const ateAgora = ult < fim ? ult : fim, dia = Math.max(0, Math.min(c.prazo, D.dif(c.data, ateAgora)));
-    if (ult < fim || D.hoje() < fim) {
+    const aguarda = D.hoje() <= fim || (ult < fim && D.dif(fim, D.hoje()) <= X.LIMITES.idadeBloqueio);
+    if (aguarda) {
       const p = { ini: D.somar(ateAgora, -6) < c.data ? c.data : D.somar(ateAgora, -6), fim: ateAgora };
       const v = ateAgora >= c.data ? valorAlvo(ls, c.alvo, p) : null;
       return { estado: 'acompanhamento', dia, de: c.prazo, parcial: v, texto: `Em acompanhamento · dia ${dia} de ${c.prazo}` };
@@ -7659,6 +7692,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const el = document.getElementById('envio-' + id), dia = el ? el.value : '';
     if (!dia) { toast('Informe a data em que o texto foi enviado.', 'erro'); return; }
     const c = docsDe('combinados').find((x) => x.id === id); if (!c) return;
+    if (dia < c.data) { toast('O envio não pode ser antes da reunião (' + D.br(c.data) + ').', 'erro'); return; }
+    if (dia > D.hoje()) { toast('O envio não pode estar no futuro.', 'erro'); return; }
     await gravarDoc('combinados', id, { envio: dia });
     await gravarDoc('marcos', 'mw-' + id, { cliente: c.cliente, data: dia, tipo: 'whatsapp', autor: quemSou(), combinado: id, criado: new Date().toISOString() });
     for (const p of docsDe('passos').filter((x) => x.origem && x.origem.id === id && x.aviso && x.status === 'aberto')) await gravarDoc('passos', p.id, { status: 'feito', concluido: dia, envio: dia });
@@ -7686,7 +7721,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const abertosDe = (nome) => passosDe(nome).filter((p) => p.status === 'aberto').sort((a, b) => (a.prazo < b.prazo ? -1 : 1));
   const vencido = (p) => p.status === 'aberto' && p.prazo < D.hoje();
   const escalado = (p) => vencido(p) && D.dif(p.prazo, D.hoje()) > 7;
-  const comecaComVerbo = (t) => /^[A-Za-zÀ-ÿ]+(ar|er|ir|or|ôr)\b/i.test(String(t).trim());
+  const NAO_VERBOS = new Set(['motor', 'valor', 'lugar', 'setor', 'gestor', 'condutor', 'diretor', 'senhor', 'favor', 'calor', 'interior', 'exterior', 'anterior', 'posterior', 'maior', 'menor', 'melhor', 'pior', 'amor', 'humor', 'cor', 'dor', 'flor', 'par', 'mar', 'bar', 'ar', 'por', 'sobre', 'super']);
+  const comecaComVerbo = (t) => { const p = String(t).trim().split(/\s+/)[0].toLowerCase(); return /^[a-zà-ÿ]+(ar|er|ir|or|ôr)$/.test(p) && !NAO_VERBOS.has(p); };
   async function salvarPasso() {
     const f = E.passoForm; if (!f) return;
     const acao = String(f.acao || '').trim(), dono = String(f.dono || '').trim();
@@ -7716,9 +7752,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   function garantirItemSuspeito(nome) {
     const q = infoQualidade();
     if (!q || !nome || E.demo) return;
-    const n = q.susp.filter((l) => !tratSusp(l)).length;
-    if (!n || abertosDe(nome).some((p) => p.origem && p.origem.tipo === 'suspeito')) return;
-    gravarDoc('passos', 'ps-susp-' + idDoc(nome) + '-' + D.hoje(), { cliente: nome, acao: 'Tratar os dados suspeitos do período (' + n + ')', dono: (fichaDe(nome) || {}).responsavel || quemSou(), prazo: D.somar(D.hoje(), 1), origem: { tipo: 'suspeito', rotulo: 'Dado suspeito' }, status: 'aberto', autor: 'sistema', criado: new Date().toISOString() });
+    const n = q.susp.filter((l) => !tratSusp(l)).length, id = 'ps-susp-' + idDoc(nome) + '-' + D.hoje();
+    if (!n || !colPronta('passos') || docsDe('passos').some((p) => p.id === id) || abertosDe(nome).some((p) => p.origem && p.origem.tipo === 'suspeito')) return;
+    gravarDoc('passos', id, { cliente: nome, acao: 'Tratar os dados suspeitos do período (' + n + ')', dono: (fichaDe(nome) || {}).responsavel || quemSou(), prazo: D.somar(D.hoje(), 1), origem: { tipo: 'suspeito', rotulo: 'Dado suspeito' }, status: 'aberto', autor: 'sistema', criado: new Date().toISOString() }).catch(() => { /* tenta de novo na próxima abertura */ });
   }
 
   // ---------- Telas dos módulos B, C e F ----------
@@ -7991,7 +8027,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const cab0 = (h) => cabecalho('Resumo da reunião', h, `${E.demo ? '<span class="badge badge-critico">Dados simulados</span>' : ''}<button type="button" class="btn" data-acao="resumo-exportar">Exportar para o deck</button>`);
     if (!nome) return cab0('Escolha um cliente no topo da tela.') + `<section class="card"><div class="card-corpo">${vazioUI('Escolha um cliente', 'O resumo junta, em uma página, o que foi combinado, o que mudou e quanto isso vale.')}</div></section>`;
     setTimeout(() => garantirItemSuspeito(nome), 0);
-    const bl = bloqueios(), abertos = bl.filter((b) => !b.lib);
     const cK = compararFases(nome, 'kml'), cM = temInd('motor_ocioso') ? compararFases(nome, 'motor_ocioso') : null;
     if (!cK) return cab0(esc(nome)) + `<section class="card"><div class="card-corpo">${vazioUI('Sem fases ainda', 'Registre um combinado: a data da reunião vira o primeiro marco e trava a linha de base (Fase 1).')}<a class="btn btn-primario" href="#/combinados" style="text-decoration:none;align-self:center">Ir para Combinados</a></div></section>`;
     // fases: Fase 1 como base e, por padrão, a última fase completa
@@ -8001,6 +8036,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const pm = premissasDe(nome), preco = pm.preco || E.preco, lh = Number.isFinite(pm.lh) ? pm.lh : 5;
     const q = infoQualidade(), ult = ultimoDadoCli(nome), idade = ult ? Math.max(0, D.dif(ult, D.hoje())) : null;
     const veics = coberturaEm(linhasRet(nome), fa);
+    const bl = bloqueios({ cobPct: veics.pct, p: { ini: f1.ini, fim: fa.fim } }), abertos = bl.filter((b) => !b.lib);
     const cab = cab0(`Reunião de retenção · ${D.br(f1.ini)} a ${D.br(fa.fim)}`) + `<div class="resumo-capa"><h2 class="resumo-nome">${esc(nome)}</h2>
       <span class="apoio">${veics.vistos} veículos · ${veics.rep} reportando · dado ${idade === null ? '—' : idade === 0 ? 'de hoje' : idade === 1 ? 'de ontem' : 'de ' + D.br(ult)} · linha de base: Fase 1 (${D.periodoCurto(f1)}) · estimativa com as premissas listadas abaixo</span>
       ${cK.fases.length > 2 ? `<label class="mudo" style="font-size:12px">Comparar a Fase 1 com <select class="campo" data-campo="resumo-fase" style="width:auto;display:inline-block;height:30px">${cK.fases.filter((f) => f.n > 1).map((f) => `<option value="${f.n}" ${f.n === nAt ? 'selected' : ''}>Fase ${f.n} (${D.periodoCurto(f)})${f.incompleta ? ' · em andamento' : ''}</option>`).join('')}</select></label>` : ''}</div>`;
@@ -10225,6 +10261,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('input[data-campo^="cli-"]')) { ev.preventDefault(); salvarCliente(); return; }
     if (ev.key === 'Enter' && ev.target.matches('tr[data-acao], .cal-clic, .cd-ind, .mm-card, .pd-garg') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
+    if (ev.key === 'Escape' && E.combForm) { E.combForm = null; render(); return; }
     if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.navAberto) { E.navAberto = false; render(); } if (E.dieselMenu) { E.dieselMenu = false; render(); } if (E.semEnvio) { E.semEnvio = null; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
   });
   document.addEventListener('input', (ev) => {

@@ -5820,12 +5820,30 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     E.rota = Object.assign({}, E.rota, { tela: 'detalhe', id });
     let corpo;
     try { corpo = telaDetalhe(); } finally { E.rota = salvaRota; }
+    // não rodou no período escolhido: aviso no lugar dos cartões vazios
+    const selX = c.mots.find((y) => y.m.id === id);
+    if (selX && !X.rodou(selX.a)) {
+      const m = selX.m, comKm = m.linhas.filter((l) => X.rodouLinha(l)).map((l) => l.data).sort(), ult = comKm[comKm.length - 1] || null;
+      const nReg = selX.la.length;
+      let comunic = '';
+      if (veic) {
+        const odo = docsApi('odometro', E.cliente)[0], v = odo && (odo.veiculos || []).find((o) => nrm(o.placa) === nrm(m.nome));
+        if (v && v.coletado) comunic = `Última comunicação da unidade eletrônica: <b>${esc(String(v.coletado).slice(0, 16).replace('T', ' '))}</b>. `;
+      }
+      corpo = `${barraPeriodo()}<section class="card"><div class="card-corpo" style="gap:12px">
+        <div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo">
+          <span class="alerta-titulo">${esc(m.nome)} não rodou em ${esc(D.periodoBR(E.A))}</span>
+          <span class="alerta-texto">${nReg ? `Há ${nReg} registro(s) no período, todos sem km e sem horas de condução. ` : 'Não há nenhum registro no período. '}${ult ? `O último dia com rodagem foi <b>${D.br(ult)}</b>. ` : 'Não há nenhum dia com rodagem nos dados. '}${comunic}${veic ? 'Se o caminhão está operando, a unidade eletrônica pode estar sem comunicar: vale verificar a instalação.' : 'Ele pode estar afastado, de férias ou sem veículo vinculado.'}</span>
+        </div></div>
+        ${ult ? `<div><button type="button" class="btn btn-primario" data-acao="ver-ate" data-fim="${ult}">Ver os 30 dias até ${D.br(ult)}</button></div>` : ''}
+      </div></section>`;
+    }
     corpo = corpo.replace(/<button[^>]*class="voltar"[\s\S]*?<\/button>/, '');
     corpo = corpo.replace(/<button[^>]*data-acao="exportar-[^"]*"[\s\S]*?<\/button>/g, '');
     if (veic) corpo = corpo.replace('Motorista ·', 'Veículo ·');
     const seletor = `<section class="card ind-seletor"><div class="card-corpo" style="flex-direction:row;align-items:flex-end;gap:14px;flex-wrap:wrap">
       <div class="campo-bloco" style="flex:1;min-width:240px;max-width:420px"><label class="campo-rotulo" for="ind-sel">${veic ? 'Escolha o veículo (placa)' : 'Escolha o motorista'}</label>
-        <select class="campo" id="ind-sel" data-campo="ind-sel">${lista.map((x) => `<option value="${esc(x.m.id)}" ${x.m.id === id ? 'selected' : ''}>${esc(x.m.nome)}${veic && x.m.condutores && x.m.condutores.length ? ' · ' + esc(x.m.condutores[0]) + (x.m.condutores.length > 1 ? ' +' + (x.m.condutores.length - 1) : '') : ''}${veic && x.m.dims.grupo[0] ? ' · ' + esc(x.m.dims.grupo[0]) : ''}${x.a.nota ? ' · nota ' + fmt(x.a.nota, 1) : ''}</option>`).join('')}</select></div>
+        <select class="campo" id="ind-sel" data-campo="ind-sel">${lista.map((x) => `<option value="${esc(x.m.id)}" ${x.m.id === id ? 'selected' : ''}>${X.rodou(x.a) ? '' : '⚠ '}${esc(x.m.nome)}${veic && x.m.condutores && x.m.condutores.length ? ' · ' + esc(x.m.condutores[0]) + (x.m.condutores.length > 1 ? ' +' + (x.m.condutores.length - 1) : '') : ''}${veic && x.m.dims.grupo[0] ? ' · ' + esc(x.m.dims.grupo[0]) : ''}${x.a.nota ? ' · nota ' + fmt(x.a.nota, 1) : ''}</option>`).join('')}</select></div>
       <span class="apoio">${fmt(lista.length, 0)} ${veic ? 'veículos' : 'motoristas'} com registro no período · use as abas abaixo para ver todos os indicadores, produtividade e o dia a dia.</span>
       ${(() => { const sel = c.mots.find((y) => y.m.id === id); if (!sel) return ''; const partes = DIMS.filter((d) => sel.m.dims[d.key].length).map((d) => `<span class="tag">${d.label}: ${esc(sel.m.dims[d.key].slice(0, 3).join(', '))}</span>`); return partes.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">${partes.join('')}</div>` : ''; })()}</div></section>`;
     if (!veic) {   // Motorista individual é uma aba da página Motoristas
@@ -8821,6 +8839,14 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     'cal-preset-aplicar': (el) => { acoes['cal-preset'](el); acoes['cal-aplicar'](); },
     'cal-cancelar': () => { E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B }; E.cal.pendente = null; E.cal.preset = E.presetA; E.cal.aberto = false; render(); },
     'evo-gran': (el) => { E.evoGran = el.dataset.g; render(); },
+    'ver-ate': (el) => {
+      const fim = el.dataset.fim, b = E.base;
+      if (!fim || !b) return;
+      const ini = D.somar(fim, -29) < b.inicio ? b.inicio : D.somar(fim, -29);
+      E.A = { ini, fim }; E.B = anterior(E.A); E.presetA = null; E.modoComp = 'anterior';
+      E.cal.rascA = { ...E.A }; E.cal.rascB = { ...E.B };
+      salvarPeriodo(); render();
+    },
     // relatório em PDF: a janela de impressão do navegador (Salvar como PDF), com o nome do arquivo já pronto
     'relatorio-pdf': () => {
       const antes = document.title;

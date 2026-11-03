@@ -1861,6 +1861,8 @@ html:not([data-tema="escuro"]) .grade-kpi > .kpi {
 html:not([data-tema="escuro"]) .grade-kpi > .kpi:hover { transform: none; background: var(--apoio); }
 html:not([data-tema="escuro"]) .grade-kpi > .kpi.selecionado { background: #FFFBEA; box-shadow: inset 0 -3px 0 var(--amarelo); }
 html:not([data-tema="escuro"]) .kpi-valor { font-size: 24px; }
+/* números grandes numa linha só ("107.063 km" quebrava em duas); o tamanho acompanha a largura do cartão */
+html:not([data-tema="escuro"]) .exec-val { white-space: nowrap; font-size: clamp(22px, 2.1vw, 36px); }
 /* mini gráfico do indicador na própria linha, abaixo do texto (não cobre a variação) */
 html:not([data-tema="escuro"]) .grade-kpi > .kpi .kpi-spark { position: static; order: 10; align-self: flex-end; margin-top: 6px; opacity: .85; }
 
@@ -1893,7 +1895,9 @@ html:not([data-tema="escuro"]) .nav-item.ativo::after {
 
 /* topo sem cápsula: só os seletores e os botões redondos brancos */
 html:not([data-tema="escuro"]) .topo {
-  background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; margin-top: 8px;
+  /* fixo no alto ao rolar: com o fundo da página e encostado no topo, o conteúdo não aparece por trás do logo e dos botões */
+  background: var(--fundo); border-color: transparent; box-shadow: 0 1px 0 rgba(16, 18, 22, 0.06); -webkit-backdrop-filter: none; backdrop-filter: none;
+  margin-top: 0; top: env(safe-area-inset-top, 0px); border-radius: 0; height: 68px; padding-top: 4px;
 }
 html:not([data-tema="escuro"]) :is(.sino-btn, .btn-tema, .topo-lado select.campo, .pilula-diesel) {
   background-color: var(--superficie); box-shadow: 0 1px 2px rgba(16, 18, 22, 0.06); border: 1px solid var(--vidro-borda);

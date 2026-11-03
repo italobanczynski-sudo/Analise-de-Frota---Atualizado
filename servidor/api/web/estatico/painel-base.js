@@ -72,6 +72,12 @@
   }
 
   const colecoes = new Map();
+  // depois de uma busca terminar: lê de novo os dados do servidor e atualiza as planilhas na tela
+  async function recarregarDados() {
+    dadosEm = 0;
+    const c = colecoes.get('planilhas');
+    if (c) await c.atualizar();
+  }
   function colecao(nome) {
     if (colecoes.has(nome)) return colecoes.get(nome);
     const c = { nome, docs: new Map(), ouvintes: [], carregado: false, timer: null };
@@ -132,7 +138,7 @@
   // ---------- quem está logado: botão redondo com as iniciais no topo do painel; o menu (nome, Clientes e usuários, Sair) só abre no clique ----------
   function botaoConta(eu) {
     // o painel usa isto para mostrar a seção Usuários em Configurações (só para administradores)
-    window.GBX_CONTA = { eu, chamar };
+    window.GBX_CONTA = { eu, chamar, recarregarDados };
     dispatchEvent(new Event('gbx-conta'));
     const iniciais = String(eu.nome || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
     const caixa = document.createElement('div');

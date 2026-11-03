@@ -7,10 +7,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"analisefrota/adapters/hubspotapi"
 	"analisefrota/modules/base"
 	"analisefrota/modules/cliente"
 	"analisefrota/modules/coleta"
 	"analisefrota/modules/diario"
+	"analisefrota/modules/hubspot"
 	"analisefrota/modules/mensagem"
 	"analisefrota/modules/premiacao"
 	"analisefrota/modules/sessao"
@@ -42,8 +44,10 @@ var (
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}
-	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada}
-	errosConflito       = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
+	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, hubspot.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada}
+	// serviço externo fora do ar ou mal configurado: a mensagem diz o que acertar
+	errosIndisponivel = []error{hubspot.ErrDesligado, hubspotapi.ErrTokenInvalido, hubspotapi.ErrSemEscopo}
+	errosConflito     = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
 
 	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")
 	ErrMuitasTentativas = errors.New("muitas tentativas de entrar; espere 15 minutos e tente de novo")
@@ -55,7 +59,7 @@ func RetErro(err error) *Response_t {
 		lista  []error
 		status int
 	}{{errosDeEntrada, http.StatusBadRequest}, {errosNaoAutenticado, http.StatusUnauthorized}, {errosProibido, http.StatusForbidden},
-		{errosNaoEncontrado, http.StatusNotFound}, {errosConflito, http.StatusConflict}} {
+		{errosNaoEncontrado, http.StatusNotFound}, {errosConflito, http.StatusConflict}, {errosIndisponivel, http.StatusServiceUnavailable}} {
 		for _, e := range grupo.lista {
 			if errors.Is(err, e) {
 				return RetFail(grupo.status, err.Error())

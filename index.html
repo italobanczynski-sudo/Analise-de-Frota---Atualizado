@@ -3445,8 +3445,26 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       </div>`;
   }
   // Aviso de período ajustado e o cartão de evolução do "tudo", que ficam abaixo do seletor.
+  // Painel com login: situação da busca automática do cliente no servidor (o servidor busca de hora em hora; no plano
+  // grátis ele dorme sem uso e a busca só roda quando alguém abre). Busca rodando: acompanha e recarrega os dados ao terminar.
+  function situacaoBusca() {
+    const cs = contaSrv();
+    if (!cs || !E.cliente) return '';
+    const M = msg();
+    if (!M.clientes) { setTimeout(msgClientes, 0); return ''; }
+    const id = cliSrv(E.cliente), c = (M.clientes || []).find((x) => String(x.id) === id);
+    if (!c) return '';
+    const s = c.coleta || {}, rodando = s.situacao === 'rodando' || s.situacao === 'aguardando' || M.ocupado === '__coleta';
+    if (rodando) setTimeout(() => msgVigiarBusca(id), 0);
+    const quando = s.terminada_em ? ' em ' + dataHoraBR(s.terminada_em) : '';
+    const txt = rodando ? 'O servidor está buscando os dados da API agora; a tela se atualiza sozinha quando terminar.'
+      : s.situacao === 'erro' ? `A última busca do servidor deu erro${quando}: ${esc(s.mensagem || 'sem detalhe')}.`
+      : s.ultimo_dia ? `Última busca do servidor${quando}, até ${D.br(s.ultimo_dia)}.${s.mensagem ? ' ' + esc(s.mensagem) : ''}` : 'O servidor ainda não buscou este cliente.';
+    const botao = !rodando && podeMarcar() ? ` <button type="button" class="btn-link peq" data-acao="coleta-buscar" data-cli="${esc(id)}">Buscar agora</button>` : '';
+    return `<span class="alerta-texto">${txt}${botao}</span>`;
+  }
   function avisosPeriodo() {
-    return `${E.periodoAjustado && E.periodoAjustado.usado.ini === E.A.ini && E.periodoAjustado.usado.fim === E.A.fim ? `<div class="alerta alerta-atencao" style="margin-top:10px"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Não há dados de ${D.periodoBR(E.periodoAjustado.pedido)}. Mostrando o último período com dados: <b>${D.periodoBR(E.A)}</b>. Os dados da API vão até ${D.br(E.base.fim)}.</span></div></div>` : ''}${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
+    return `${E.periodoAjustado && E.periodoAjustado.usado.ini === E.A.ini && E.periodoAjustado.usado.fim === E.A.fim ? `<div class="alerta alerta-atencao" style="margin-top:10px"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Não há dados de ${D.periodoBR(E.periodoAjustado.pedido)}. Mostrando o último período com dados: <b>${D.periodoBR(E.A)}</b>. Os dados da API vão até ${D.br(E.base.fim)}.</span>${situacaoBusca()}</div></div>` : ''}${E.presetA === 'tudo' && !E.cal.aberto ? cartaoEvolucaoGeral() : ''}`;
   }
   function barraPeriodo() {
     return `<section class="card dp-barra" aria-label="Período">${campoPeriodo()}</section>${avisosPeriodo()}`;
@@ -4912,6 +4930,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     blocked_by_policy: 'O HubSpot está bloqueado pela política da organização.',
     selection_required: 'Escolha qual conector do HubSpot usar.',
     sem_mcp: 'Abra o painel no claude.ai com o conector do HubSpot conectado para buscar os dados.',
+    sem_cliente_srv: 'Este cliente não está cadastrado no servidor. Um administrador cadastra em Configurações.',
     upstream_error: 'Não foi possível consultar o HubSpot agora. Tente atualizar de novo.',
     server_unavailable: 'O HubSpot não respondeu. Tente atualizar de novo.',
     tool_error: 'O HubSpot recusou a consulta. Tente atualizar de novo.',
@@ -5015,11 +5034,32 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     redesenharRel();
   }
   function lerHubLocal() { try { Object.keys(localStorage).filter((x) => x.indexOf('gbx-hub-') === 0).forEach((x) => { const o = JSON.parse(localStorage.getItem(x)); if (o && o.comp) usarHubArquivo(o, false); }); } catch (e) { /* sem armazenamento */ } }
-  async function buscarHubCli(nome) {
+  // No painel com login o servidor lê o HubSpot (token só no servidor) e guarda a leitura por 10 min;
+  // fora dele (Claude) vale o conector do HubSpot de quem está vendo
+  const HUB_ATUALIZA_MS = 10 * 60 * 1000;
+  async function buscarHubSrv(nome, v, atualizar) {
+    const cs = contaSrv();
+    try {
+      if (!msg().clientes) await msgClientes();
+      for (let i = 0; i < 50 && msg().carregandoCli; i++) await esperar(200);   // outra tela já pediu a lista: espera ela chegar
+      const id = cliSrv(nome);
+      if (!id) throw { code: 'sem_cliente_srv' };
+      const o = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(id) + '/hubspot' + (atualizar ? '?atualizar=1' : ''));
+      Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos,
+        contatos: o.contatos, porContato: o.porContato || [], em: Date.parse(o.gerado) || Date.now(), lidoEm: Date.now(), erro: null, erroMsg: '', fonte: 'servidor' });
+      limparHub(v);
+    } catch (e) {
+      v.lidoEm = Date.now();   // não repete a cada redesenho; tenta de novo no próximo ciclo
+      if (e && e.code === 'sem_cliente_srv') v.erro = 'sem_cliente_srv';
+      else { v.erro = 'servidor'; v.erroMsg = (e && e.message) || ''; }
+    }
+  }
+  async function buscarHubCli(nome, atualizar) {
     const k = ckey(nome), v = (hubCli[k] = hubCli[k] || {});
     v.tentou = true;
     if (v.carregando) return;
     v.carregando = true; v.erro = null; redesenharRel();
+    if (contaSrv()) { await buscarHubSrv(nome, v, atualizar); v.carregando = false; redesenharRel(); return; }
     const mcp = await obterMcp();
     if (!mcp) { v.carregando = false; v.erro = v.comp ? null : 'sem_mcp'; redesenharRel(); return; }
     const ci = { userIntent: 'Mostrar o perfil e o relacionamento do cliente no painel de análise de frota', satisfaction: 'NEUTRAL' };
@@ -5194,15 +5234,17 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
   }
   function cartaoHubspot(nome) {
     const k = ckey(nome);
-    if (!hubCli[k] || !hubCli[k].tentou) { (hubCli[k] = hubCli[k] || {}).tentou = true; setTimeout(() => buscarHubCli(nome), 0); }   // primeira vez nesta sessão: busca já
+    const hv = hubCli[k];
+    const vencida = contaSrv() && hv && !hv.carregando && Date.now() - (hv.lidoEm || 0) > HUB_ATUALIZA_MS;
+    if (!hv || !hv.tentou || vencida) { (hubCli[k] = hubCli[k] || {}).tentou = true; setTimeout(() => buscarHubCli(nome), 0); }   // primeira vez nesta sessão ou leitura vencida: busca já
     const v = hubCli[k] || { carregando: true };
     const link = v.id ? `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/0-2/${encodeURIComponent(v.id)}` : '';
     const cab = `<div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Cliente no HubSpot</h2>
-        <span class="h2-sub">${v.em ? (v.fonte === 'arquivo' ? 'Lido pela API do HubSpot em ' + new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (arquivo importado)' : 'Lido ao vivo às ' + new Date(v.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' pelo seu conector do HubSpot') : v.carregando ? 'Buscando no HubSpot…' : 'Perfil, contatos e histórico do cliente no CRM'}</span></div>
+        <span class="h2-sub">${v.em ? (v.fonte === 'arquivo' ? 'Lido pela API do HubSpot em ' + new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (arquivo importado)' : 'Lido ao vivo às ' + new Date(v.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (v.fonte === 'servidor' ? ' pelo servidor · atualiza sozinho a cada 10 min' : ' pelo seu conector do HubSpot')) : v.carregando ? 'Buscando no HubSpot…' : 'Perfil, contatos e histórico do cliente no CRM'}</span></div>
         <span style="display:flex;gap:8px;flex-wrap:wrap">${link ? `<a class="btn" href="${link}" target="_blank" rel="noopener">Abrir no HubSpot</a>` : ''}<label class="btn" title="Arquivo hubspot.json gerado pelo script api/hubspot.mjs">Importar arquivo<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label><button type="button" class="btn" data-acao="hubcli-atualizar" data-cli="${esc(nome)}" ${v.carregando ? 'disabled' : ''}>${v.carregando ? 'Buscando…' : 'Atualizar'}</button></span></div>`;
     if (!v.comp) {
       return `<section class="card hb-card">${cab}<div class="card-corpo">${v.carregando ? '<div class="vazio"><span class="spinner"></span><span class="apoio">Consultando o HubSpot…</span></div>'
-        : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span><span class="alerta-texto">Ou rode <code>node api/hubspot.mjs</code> com o token do HubSpot no api/.env e clique em <b>Importar arquivo</b>.</span></div></div>`}</div></section>`;
+        : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(v.erro === 'servidor' ? (v.erroMsg || MSG_ERRO.upstream_error) : MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span>${contaSrv() ? (v.erro === 'servidor' && /HUBSPOT_TOKEN/.test(v.erroMsg || '') ? '<span class="alerta-texto">Um administrador coloca o token do app privado do HubSpot na variável <b>HUBSPOT_TOKEN</b> do servidor (Render → Environment).</span>' : '') : '<span class="alerta-texto">Ou rode <code>node api/hubspot.mjs</code> com o token do HubSpot no api/.env e clique em <b>Importar arquivo</b>.</span>'}</div></div>`}</div></section>`;
     }
     const p = v.comp, tot = hubTot, res = hubRes;
     // perfil
@@ -7679,7 +7721,8 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       } catch (e) { setTimeout(conferir, 15000); return; }   // tenta de novo na próxima
       M.vigiando = ''; M.ocupado = '';
       if (M.cli === cli) M.lista = null;
-      if (E.rota.tela === 'mensagens') render();
+      if (cs.recarregarDados) cs.recarregarDados().catch(() => {});   // os dias novos aparecem no painel sem esperar o ciclo de 10 min
+      render();
     };
     setTimeout(conferir, 10000);
   }
@@ -8693,6 +8736,14 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       } catch (e) { toast(e.message, 'erro'); }
       M.ocupado = ''; render();
     },
+    'coleta-buscar': async (el) => {
+      const M = msg(), cs = contaSrv(), id = el.dataset.cli;
+      if (!cs || !id) return;
+      M.ocupado = '__coleta'; render();
+      try { await cs.chamar('POST', '/api/v1/clientes/' + encodeURIComponent(id) + '/coleta'); toast('Busca iniciada. Os dados aparecem sozinhos quando terminar.'); }
+      catch (e) { toast(e.message, 'erro'); M.ocupado = ''; render(); return; }
+      msgVigiarBusca(id);
+    },
     'msg-buscar': async () => {
       const M = msg(), cs = contaSrv();
       if (!cs || !M.cli) return;
@@ -8820,7 +8871,7 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
       else selecionar();
     },
     'filtrar-dim': (el) => { E.filtro[el.dataset.dim] = el.dataset.val; reaplicarFiltro(); if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; } render(); window.scrollTo(0, 0); },
-    'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli); },
+    'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli, true); },
     'trat-hub': (el) => { trazerTratHub(el.dataset.cli); },
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
@@ -8973,6 +9024,8 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
 
   // ---------- Início ----------
   function iniciar() {
+    // Cliente no HubSpot: com o painel no servidor, relê o cliente da tela a cada 10 min (o cartão também relê ao abrir)
+    setInterval(() => { if (contaSrv() && E.cliente && E.rota.tela === 'churn' && document.visibilityState === 'visible') buscarHubCli(E.cliente); }, HUB_ATUALIZA_MS);
     // rede de segurança: ação assíncrona que falhar sem tratamento (imagem, PDF, arquivo) avisa em vez de sumir em silêncio
     window.addEventListener('unhandledrejection', (ev) => {
       const e = ev.reason;

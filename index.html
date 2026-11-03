@@ -5059,6 +5059,8 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     v.tentou = true;
     if (v.carregando) return;
     v.carregando = true; v.erro = null; redesenharRel();
+    // no painel do servidor o login chega logo depois da página: espera por ele em vez de cair no conector do Claude
+    if (window.GBX_SERVIDOR && !contaSrv()) await new Promise((ok) => { addEventListener('gbx-conta', ok, { once: true }); setTimeout(ok, 15000); });
     if (contaSrv()) { await buscarHubSrv(nome, v, atualizar); v.carregando = false; redesenharRel(); return; }
     const mcp = await obterMcp();
     if (!mcp) { v.carregando = false; v.erro = v.comp ? null : 'sem_mcp'; redesenharRel(); return; }
@@ -7675,7 +7677,10 @@ html:not([data-tema="escuro"]) .hero-v2 .hv-stat { background: var(--apoio); bor
     </section>`;
   }
   // com o login, o menu ganha as Mensagens do dia e o Motorista individual, o acompanhamento: redesenha se o painel já está na tela
-  window.addEventListener('gbx-conta', () => { const app = document.getElementById('app'); if (app && app.children.length) render(); });
+  window.addEventListener('gbx-conta', () => {
+    Object.values(hubCli).forEach((v) => { if (v.erro && !v.carregando) v.tentou = false; });   // leitura que falhou antes do login: busca de novo pelo servidor
+    const app = document.getElementById('app'); if (app && app.children.length) render();
+  });
 
   // ---------- Mensagens do dia: a análise de cada motorista pronta para copiar e mandar pelo WhatsApp ----------
   // Só no painel do servidor (/painel). A pessoa copia, manda do próprio WhatsApp e marca como enviada; cada marca guarda

@@ -5,6 +5,8 @@
 //   planilhas de veículos e motoristas, o odômetro e a premiação que o próprio painel gravaria.
 'use strict';
 (function () {
+  // avisa o painel, já no carregamento, que ele está no servidor (o login chega depois, no evento gbx-conta)
+  window.GBX_SERVIDOR = true;
   const ATUALIZA_MS = 30000, ATUALIZA_DADOS_MS = 10 * 60000;
 
   async function chamar(metodo, caminho, corpo) {

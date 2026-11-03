@@ -6968,9 +6968,21 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
     const dv = (k) => { const v = dif(k); return v.semBase ? '<span class="exec-neutro">sem período anterior</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`; };
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const e = economia(A, B);
+    // último dia com dados no período contra o dia anterior com dados (além da comparação do período todo)
+    const diasA = [...new Set(c.la.map((l) => l.data))].sort(), dU = diasA[diasA.length - 1] || null;
+    const dAnt = dU ? E.base.linhas.reduce((m, l) => (l.data < dU && (!m || l.data > m) ? l.data : m), null) : null;
+    const rU = dU ? X.resumo(X.filtrar(E.base.linhas, { ini: dU, fim: dU }), E.base) : null;
+    const rAnt = dAnt ? X.resumo(X.filtrar(E.base.linhas, { ini: dAnt, fim: dAnt }), E.base) : null;
+    const diaTxt = (k) => {
+      if (!rU || !rAnt) return '';
+      const ind = IND_MAP[k], v = X.variacao(ind, rU[k], rAnt[k]);
+      if (v.semBase) return '';
+      const cls = v.sentido === 'melhor' ? 'exec-bom' : v.sentido === 'pior' ? 'exec-ruim' : 'exec-neutro';
+      return `<span class="meta-linha" title="Último dia com dados no período contra o dia anterior com dados">${D.curta(dU)} vs ${D.curta(dAnt)}: <span class="${cls}">${v.texto}</span> (${esc(fmtInd(ind, rU[k]))})</span>`;
+    };
     const itens = [];
     if (e) itens.push(item(e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L</span>`, 'para os mesmos km do período anterior · R$ ' + fmt(E.preco, 2) + '/L'));
-    if (temInd('nota')) itens.push(item(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota) + metaTxt('nota', A.nota)));
+    if (temInd('nota')) itens.push(item(IND_MAP.nota.label, fmtInd(IND_MAP.nota, A.nota), dv('nota'), 'antes ' + fmtInd(IND_MAP.nota, B.nota) + metaTxt('nota', A.nota) + diaTxt('nota')));
     else {   // sem nota nos dados do dia: a da Premiação (mensal) dos meses do período
       const pa = notaFrotaPremiacao(E.A), pb = c.lb.length ? notaFrotaPremiacao(E.B) : null;
       if (pa) {
@@ -6979,10 +6991,10 @@ html[data-tema="escuro"] .pilula.ativa { color: #2B2B2B; }
         itens.push(item(IND_MAP.nota.label, fmt(pa.nota, 1), delta, 'Premiação · ' + esc(pa.meses) + (pb ? ' · antes ' + fmt(pb.nota, 1) : '') + metaTxt('nota', pa.nota)));
       } else itens.push(item(IND_MAP.nota.label, '—', '<span class="exec-neutro">sem nota nos dados</span>', 'busque "Scores e premiação" no perfil do cliente'));
     }
-    if (temInd('km') && A.km) itens.push(item('Km rodados', fmtInd(IND_MAP.km, A.km), dv('km'), 'antes ' + fmtInd(IND_MAP.km, B.km)));
-    if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml) + metaTxt('kml', A.kml)));
-    if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde) + metaTxt('faixa_verde', A.faixa_verde)));
-    if (temInd('motor_ocioso')) itens.push(item('Motor ligado parado', fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso), dv('motor_ocioso'), 'antes ' + fmtInd(IND_MAP.motor_ocioso, B.motor_ocioso) + metaTxt('motor_ocioso', A.motor_ocioso)));
+    if (temInd('km') && A.km) itens.push(item('Km rodados', fmtInd(IND_MAP.km, A.km), dv('km'), 'antes ' + fmtInd(IND_MAP.km, B.km) + diaTxt('km')));
+    if (temInd('kml')) itens.push(item('Média de consumo', fmtInd(IND_MAP.kml, A.kml), dv('kml'), 'antes ' + fmtInd(IND_MAP.kml, B.kml) + metaTxt('kml', A.kml) + diaTxt('kml')));
+    if (temInd('faixa_verde')) itens.push(item('Faixa verde', fmtInd(IND_MAP.faixa_verde, A.faixa_verde), dv('faixa_verde'), 'antes ' + fmtInd(IND_MAP.faixa_verde, B.faixa_verde) + metaTxt('faixa_verde', A.faixa_verde) + diaTxt('faixa_verde')));
+    if (temInd('motor_ocioso')) itens.push(item('Motor ligado parado', fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso), dv('motor_ocioso'), 'antes ' + fmtInd(IND_MAP.motor_ocioso, B.motor_ocioso) + metaTxt('motor_ocioso', A.motor_ocioso) + diaTxt('motor_ocioso')));
     if (c.lb.length) itens.push(item('Motoristas que evoluíram', fmt(c.cont.evoluiu, 0) + ' de ' + fmt(c.mots.length - c.cont.sembase, 0), c.cont.regrediu ? `<span class="exec-ruim">${fmt(c.cont.regrediu, 0)} regrediram</span>` : '<span class="exec-bom">nenhum regrediu</span>', critEvolucao(c)));
     const faixa = `<section class="exec"><div class="exec-cab"><span class="exec-tit">Resultado do período</span><span class="exec-sub">${D.periodoBR(E.A)}${c.lb.length ? ' · comparado a ' + D.periodoBR(E.B) : ''}</span></div>
       <div class="exec-grade">${itens.join('')}</div></section>`;

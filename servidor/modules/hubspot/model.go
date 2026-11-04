@@ -2,7 +2,7 @@ package hubspot
 
 import "analisefrota/adapters/hubspotapi"
 
-// Resumo_t é a leitura do cliente no HubSpot, no mesmo formato do arquivo do script api/hubspot.mjs
+// Resumo_t é a leitura do cliente no HubSpot, no mesmo formato do arquivo do script busca-de-dados/hubspot.mjs
 // ("gobrax-hubspot-1"), que o painel já sabe mostrar
 type Resumo_t struct {
 	Formato    string            `json:"formato"`

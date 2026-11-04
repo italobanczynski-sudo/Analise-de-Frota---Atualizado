@@ -1,7 +1,7 @@
-// Puxa os dados da API Gobrax de cada cliente listado em api/clientes.json, com o token lido de api/.env.
-// Gera em api/saida/ os documentos no formato da base compartilhada do painel (coleção "planilhas")
+// Puxa os dados da API Gobrax de cada cliente listado em busca-de-dados/clientes.json, com o token lido de busca-de-dados/.env.
+// Gera em busca-de-dados/saida/ os documentos no formato da base compartilhada do painel (coleção "planilhas")
 // e as planilhas CSV de motoristas e veículos, que também podem ser importadas no painel.
-// Uso: node api/puxar.mjs [--dias 30] [--cliente "Nome do cliente"]
+// Uso: node busca-de-dados/puxar.mjs [--dias 30] [--cliente "Nome do cliente"]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +14,7 @@ const arg = (nome, padrao) => { const i = process.argv.indexOf('--' + nome); ret
 const DIAS = Math.min(93, Math.max(1, Number(arg('dias', 30)) || 30));
 const SO_CLIENTE = arg('cliente', '');
 
-// ---------- Configuração: api/.env (tokens) e api/clientes.json (quem buscar) ----------
+// ---------- Configuração: busca-de-dados/.env (tokens) e busca-de-dados/clientes.json (quem buscar) ----------
 function lerEnv() {
   const f = path.join(PASTA, '.env');
   if (!fs.existsSync(f)) return {};
@@ -28,7 +28,7 @@ function lerEnv() {
 const ENV = Object.assign(lerEnv(), process.env);
 const fClientes = path.join(PASTA, 'clientes.json');
 if (!fs.existsSync(fClientes)) {
-  console.error('Falta api/clientes.json. Copie api/clientes.example.json para api/clientes.json e preencha.');
+  console.error('Falta busca-de-dados/clientes.json. Copie busca-de-dados/clientes.example.json para busca-de-dados/clientes.json e preencha.');
   process.exit(1);
 }
 const CLIENTES = JSON.parse(fs.readFileSync(fClientes, 'utf8'));
@@ -178,7 +178,7 @@ function partes(cab, ls) {
 async function puxar(c) {
   const cli = c.cliente, varToken = c.token;
   const token = limparToken(ENV[varToken]);
-  if (!token) throw new Error('sem token: preencha ' + varToken + ' em api/.env');
+  if (!token) throw new Error('sem token: preencha ' + varToken + ' em busca-de-dados/.env');
   const dir = path.join(SAIDA, slugCli(cli));
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -257,7 +257,7 @@ async function puxar(c) {
 }
 
 const alvos = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));
-if (!alvos.length) { console.error('Nenhum cliente em api/clientes.json' + (SO_CLIENTE ? ' com o nome ' + SO_CLIENTE : '') + '.'); process.exit(1); }
+if (!alvos.length) { console.error('Nenhum cliente em busca-de-dados/clientes.json' + (SO_CLIENTE ? ' com o nome ' + SO_CLIENTE : '') + '.'); process.exit(1); }
 let falhas = 0;
 for (const c of alvos) {
   console.log(c.cliente + ': últimos ' + DIAS + ' dias…');
@@ -279,5 +279,5 @@ try {
     console.log('Diesel por estado: ' + Object.keys(diesel).length + ' preços (coleta ' + j.data_coleta + ').');
   }
 } catch (e) { console.warn('Diesel por estado não veio: ' + e.message); }
-console.log('Arquivos em api/saida/.');
+console.log('Arquivos em busca-de-dados/saida/.');
 process.exit(falhas ? 1 : 0);

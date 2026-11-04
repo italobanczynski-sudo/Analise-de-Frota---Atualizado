@@ -19,7 +19,7 @@ if (!chrome) { console.error('Chrome não encontrado: defina CHROME com o caminh
 
 // 2) varredura das telas
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'painel-'));
-fs.cpSync(path.join(RAIZ, 'vendor'), path.join(tmp, 'vendor'), { recursive: true });
+fs.cpSync(path.join(RAIZ, 'bibliotecas'), path.join(tmp, 'bibliotecas'), { recursive: true });
 const decod = (t) => t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 let falhas = 0;
 for (const [semNota, comCliente] of [['0', '1'], ['1', '1'], ['1', '0']]) {

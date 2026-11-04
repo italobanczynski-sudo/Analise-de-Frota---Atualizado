@@ -42,7 +42,7 @@ const cspPainel = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-
 func Painel() gin.HandlerFunc {
 	html, err := painel.ReadFile("painel/index.html")
 	if err == nil {
-		html = bytes.Replace(html, []byte(`src="vendor/xlsx.full.min.js"`), []byte(`src="/painel/xlsx.full.min.js"`), 1)
+		html = bytes.Replace(html, []byte(`src="bibliotecas/xlsx.full.min.js"`), []byte(`src="/painel/xlsx.full.min.js"`), 1)
 		// ícone da Gobrax na aba do navegador (o index.html não declara um)
 		if !bytes.Contains(html, []byte(`rel="icon"`)) {
 			html = bytes.Replace(html, []byte("</head>"), []byte(`<link rel="icon" href="/estatico/icone.svg" type="image/svg+xml">`+"\n</head>"), 1)

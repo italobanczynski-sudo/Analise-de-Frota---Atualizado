@@ -5,8 +5,9 @@
     "servidor": "server",
     "api": "api",
     "scripts": "scripts",
-    "docs": "docs",
-    "vendor": "lib",
+    "documentacao": "docs",
+    "busca-de-dados": "scripts",
+    "bibliotecas": "lib",
     "adapters": "connection",
     "dbPostgres": "database",
     "migrations": "migrations",
@@ -44,7 +45,8 @@
     "estatico": "public",
     "painel": "app",
     "testes": "test",
-    "nginx": "nginx"
+    "nginx": "nginx",
+    "implantacao": "docker"
   },
 
   // Ícones dos arquivos de implantação e de dados (o tema não tem ícone próprio para eles)
@@ -82,7 +84,7 @@
 
   // Fora da busca: biblioteca de terceiros e dados gerados
   "search.exclude": {
-    "vendor/**": true,
-    "api/saida/**": true
+    "bibliotecas/**": true,
+    "busca-de-dados/saida/**": true
   }
 }

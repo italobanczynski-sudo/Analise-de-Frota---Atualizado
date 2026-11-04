@@ -1,8 +1,8 @@
-// Puxa do HubSpot (API oficial, app privado) o perfil e o relacionamento de cada cliente listado em api/clientes.json.
-// O token fica em api/.env como HUBSPOT_TOKEN (nunca no código nem em chat). Só leitura.
-// Gera api/saida/<cliente>/hubspot.json, que o painel importa na Saúde do cliente (botão "Importar arquivo do HubSpot").
-// Uso: node api/hubspot.mjs [--cliente "Nome do cliente"] [--trocar-token]
-// Na primeira vez (ou com --trocar-token) o script pede o token no terminal, sem mostrá-lo, testa e guarda no api/.env.
+// Puxa do HubSpot (API oficial, app privado) o perfil e o relacionamento de cada cliente listado em busca-de-dados/clientes.json.
+// O token fica em busca-de-dados/.env como HUBSPOT_TOKEN (nunca no código nem em chat). Só leitura.
+// Gera busca-de-dados/saida/<cliente>/hubspot.json, que o painel importa na Saúde do cliente (botão "Importar arquivo do HubSpot").
+// Uso: node busca-de-dados/hubspot.mjs [--cliente "Nome do cliente"] [--trocar-token]
+// Na primeira vez (ou com --trocar-token) o script pede o token no terminal, sem mostrá-lo, testa e guarda no busca-de-dados/.env.
 // Escopos do app privado: crm.objects.companies.read, crm.objects.contacts.read, tickets, e-mails/ligações/reuniões (sales-email-read e crm.objects.*.read).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,9 +26,9 @@ function lerEnv() {
 }
 const ENV = Object.assign(lerEnv(), process.env);
 let TOKEN = String(ENV.HUBSPOT_TOKEN || '').replace(/^\s*bearer\s+/i, '').trim();
-// Sem token no api/.env: pede no terminal (sem mostrar o que é digitado), testa e guarda no api/.env
+// Sem token no busca-de-dados/.env: pede no terminal (sem mostrar o que é digitado), testa e guarda no busca-de-dados/.env
 async function pedirToken() {
-  if (!process.stdin.isTTY) { console.error('Falta HUBSPOT_TOKEN no api/.env (token do app privado do HubSpot).'); process.exit(1); }
+  if (!process.stdin.isTTY) { console.error('Falta HUBSPOT_TOKEN no busca-de-dados/.env (token do app privado do HubSpot).'); process.exit(1); }
   process.stdout.write('Cole o token do app privado do HubSpot e aperte Enter (ele não aparece na tela): ');
   const t = await new Promise((ok) => {
     let buf = '';
@@ -50,11 +50,11 @@ async function pedirToken() {
   const atual = fs.existsSync(fEnv) ? fs.readFileSync(fEnv, 'utf8') : '';
   const novo = /^\s*HUBSPOT_TOKEN\s*=.*$/m.test(atual) ? atual.replace(/^\s*HUBSPOT_TOKEN\s*=.*$/m, 'HUBSPOT_TOKEN=' + tok) : atual.replace(/\s*$/, '') + (atual ? '\n' : '') + 'HUBSPOT_TOKEN=' + tok + '\n';
   fs.writeFileSync(fEnv, novo);
-  console.log('Token válido e guardado em api/.env (fora do Git).');
+  console.log('Token válido e guardado em busca-de-dados/.env (fora do Git).');
   return tok;
 }
 const fClientes = path.join(PASTA, 'clientes.json');
-if (!fs.existsSync(fClientes)) { console.error('Falta api/clientes.json.'); process.exit(1); }
+if (!fs.existsSync(fClientes)) { console.error('Falta busca-de-dados/clientes.json.'); process.exit(1); }
 const CLIENTES = JSON.parse(fs.readFileSync(fClientes, 'utf8'));
 
 const nrm = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -147,7 +147,7 @@ async function empresaId(c) {
 
 async function puxar(c) {
   const id = await empresaId(c);
-  if (!id) { console.log(`  ${c.cliente}: não encontrado no HubSpot (preencha "hubspot_id" no api/clientes.json).`); return; }
+  if (!id) { console.log(`  ${c.cliente}: não encontrado no HubSpot (preencha "hubspot_id" no busca-de-dados/clientes.json).`); return; }
   const comp = await hub('GET', `/crm/v3/objects/companies/${id}?properties=${PROPS.companies.join(',')}`);
   const tipos = ['calls', 'emails', 'meetings', 'notes', 'tickets', 'contacts'];
   const ids = {};
@@ -188,7 +188,7 @@ async function puxar(c) {
 (async () => {
   if (!TOKEN || process.argv.includes('--trocar-token')) TOKEN = await pedirToken();
   const lista = CLIENTES.filter((c) => !SO_CLIENTE || ckey(c.cliente) === ckey(SO_CLIENTE));
-  if (!lista.length) { console.error('Nenhum cliente no api/clientes.json com esse nome.'); process.exit(1); }
+  if (!lista.length) { console.error('Nenhum cliente no busca-de-dados/clientes.json com esse nome.'); process.exit(1); }
   console.log('HubSpot: ' + lista.length + ' cliente(s)');
   let falhas = 0;
   for (const c of lista) {

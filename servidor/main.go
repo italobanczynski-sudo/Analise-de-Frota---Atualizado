@@ -19,8 +19,8 @@ import (
 )
 
 func main() {
-	importar := flag.String("importar-clientes", "", "caminho do api/clientes.json do script antigo: cadastra os clientes e sai")
-	tokens := flag.String("tokens", "", "caminho do api/.env com os GOBRAX_TOKEN_* (usado com -importar-clientes)")
+	importar := flag.String("importar-clientes", "", "caminho do busca-de-dados/clientes.json do script antigo: cadastra os clientes e sai")
+	tokens := flag.String("tokens", "", "caminho do busca-de-dados/.env com os GOBRAX_TOKEN_* (usado com -importar-clientes)")
 	adminNome := flag.String("criar-admin", "", "nome do administrador a criar (com -email): mostra o link de convite e sai")
 	adminEmail := flag.String("email", "", "e-mail do administrador (usado com -criar-admin)")
 	novoConvite := flag.String("novo-convite", "", "e-mail de quem já está cadastrado: mostra um link novo para criar a senha e sai")

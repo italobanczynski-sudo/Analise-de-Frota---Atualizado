@@ -7,7 +7,7 @@ RUN go mod download
 COPY servidor/ .
 # o painel servido em /painel é o mesmo index.html do GitHub Pages
 COPY index.html api/web/painel/index.html
-COPY vendor/xlsx.full.min.js api/web/painel/xlsx.full.min.js
+COPY bibliotecas/xlsx.full.min.js api/web/painel/xlsx.full.min.js
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/servidor .
 
 FROM alpine:3.22

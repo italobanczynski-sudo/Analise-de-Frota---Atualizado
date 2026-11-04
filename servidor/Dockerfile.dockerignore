@@ -2,7 +2,7 @@
 *
 !servidor/
 !index.html
-!vendor/xlsx.full.min.js
+!bibliotecas/xlsx.full.min.js
 servidor/.env
 servidor/testes/
 servidor/**/*.md

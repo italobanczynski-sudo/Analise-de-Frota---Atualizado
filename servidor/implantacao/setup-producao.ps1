@@ -1,13 +1,15 @@
 # ============================================================
-# setup-producao.ps1
-# Coloca a plataforma no ar com HTTPS (Let's Encrypt) e e-mail.
+# implantacao/setup-producao.ps1
+# Coloca a plataforma no ar com HTTPS (Let's Encrypt) e e-mail. Pode ser rodado de qualquer pasta.
 # Pré-requisitos: Docker, DNS do domínio apontando para esta máquina, portas 80 e 443 abertas, .env preenchido.
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 $dominio = "analisefrota.gobrax.com.br"
-$envFile = Join-Path $PSScriptRoot ".env"
-Set-Location $PSScriptRoot
+# a pasta servidor/ (um nível acima deste script): é lá que ficam o .env e o docker-compose.yml
+$pasta = Split-Path $PSScriptRoot -Parent
+$envFile = Join-Path $pasta ".env"
+Set-Location $pasta
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan

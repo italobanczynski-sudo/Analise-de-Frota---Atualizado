@@ -13,8 +13,8 @@ import (
 	modcliente "analisefrota/modules/cliente"
 )
 
-// Importar traz os clientes do script antigo: api/clientes.json (nome, variável do token, HubSpot)
-// e os tokens do api/.env. Cria quem não existe e salva o token cifrado. Nenhum token vai para o log.
+// Importar traz os clientes do script antigo: busca-de-dados/clientes.json (nome, variável do token, HubSpot)
+// e os tokens do busca-de-dados/.env. Cria quem não existe e salva o token cifrado. Nenhum token vai para o log.
 func Importar(ctx context.Context, arqClientes, arqTokens string) ([]string, error) {
 	var lista []struct {
 		Cliente   string `json:"cliente"`
@@ -62,7 +62,7 @@ func Importar(ctx context.Context, arqClientes, arqTokens string) ([]string, err
 	return feito, nil
 }
 
-// lerEnv lê um arquivo CHAVE=valor (o api/.env do script antigo); não mexe nas variáveis do processo
+// lerEnv lê um arquivo CHAVE=valor (o busca-de-dados/.env do script antigo); não mexe nas variáveis do processo
 func lerEnv(arq string) (map[string]string, error) {
 	out := map[string]string{}
 	if arq == "" {

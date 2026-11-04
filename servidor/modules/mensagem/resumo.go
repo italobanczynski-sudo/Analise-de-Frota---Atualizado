@@ -43,7 +43,7 @@ const DiasComparacao = 7
 const pioraMinima = 2.0
 
 // indicadores da análise individual: os nomes da plataforma Gobrax. Ao juntar veículos do mesmo dia, cada percentual
-// é ponderado pela própria base, como a plataforma (docs/API.md): ignição ligada no motor ligado parado, pé no
+// é ponderado pela própria base, como a plataforma (documentacao/API.md): ignição ligada no motor ligado parado, pé no
 // acelerador no pedal crítico e tempo em movimento nos demais. A média de consumo (km/l) é soma dos km ÷ soma dos litros.
 type indicador_t struct {
 	chave    string // nome da coluna no diário (e no painel)

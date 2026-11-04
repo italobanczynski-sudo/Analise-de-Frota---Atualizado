@@ -1,7 +1,7 @@
 # Tokens e dados de clientes nunca vão para o repositório
-api/.env
-api/clientes.json
-api/saida/
+busca-de-dados/.env
+busca-de-dados/clientes.json
+busca-de-dados/saida/
 
 # Servidor (Go): configuração local com segredos
 servidor/.env
@@ -10,5 +10,5 @@ servidor/.env
 servidor/api/web/painel/index.html
 servidor/api/web/painel/xlsx.full.min.js
 
-# URL do banco na nuvem (copiar-dados-nuvem.sh)
+# URL do banco na nuvem (servidor/implantacao/copiar-dados-nuvem.sh)
 servidor/.banco-nuvem

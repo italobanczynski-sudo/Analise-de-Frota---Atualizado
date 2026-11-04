@@ -12,22 +12,22 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 | Pasta ou arquivo | O que é |
 |---|---|
 | `index.html` | O painel (telas, gráficos e regras), publicado no GitHub Pages e no Claude |
-| `vendor/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
-| `docs/` | Documentação da API Gobrax usada pelo painel |
-| `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `api/.env` e lista em `api/clientes.json`, ambos fora do Git |
+| `bibliotecas/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
+| `documentacao/` | Documentação da API Gobrax usada pelo painel |
+| `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `busca-de-dados/.env` e lista em `busca-de-dados/clientes.json`, ambos fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
 | `render.yaml` | Implantação na nuvem no Render (plano grátis: https://analise-de-frota.onrender.com) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
 
 ## Painel no Claude
 - As planilhas ficam na coleção `planilhas` do banco do Artifact: um documento por tipo (motoristas/veículos), cliente e dia, dividido em partes (`~p1`, `~p2`…) quando passa de 200 KB.
-- Para publicar, o leitor de Excel é carregado do cdnjs em vez de `vendor/` (troque o `src` do script ao gerar a cópia publicada).
+- Para publicar, o leitor de Excel é carregado do cdnjs em vez de `bibliotecas/` (troque o `src` do script ao gerar a cópia publicada).
 - Acesso pelo menu Compartilhar do Artifact: Colaborador (Contributor) anexa e apaga planilhas; Leitor (Viewer) só vê.
 
 ## API Gobrax
-Documentação completa em [docs/API.md](docs/API.md) e na aba **API Gobrax** do painel (`#/api`).
+Documentação completa em [documentacao/API.md](documentacao/API.md) e na aba **API Gobrax** do painel (`#/api`).
 
-Para puxar os dados fora do navegador (o painel no Claude bloqueia a chamada): token em `api/.env`, clientes em `api/clientes.json` e `node api/puxar.mjs`.
+Para puxar os dados fora do navegador (o painel no Claude bloqueia a chamada): token em `busca-de-dados/.env`, clientes em `busca-de-dados/clientes.json` e `node busca-de-dados/puxar.mjs`.
 
 No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway-v3.gobrax.com.br:8889/api/`, `Authorization: Bearer <token>`):
 - `v1/vehicle-statistics`: uma chamada por dia (dia de Brasília convertido para UTC), entra como planilha de veículos.
@@ -38,7 +38,7 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 - Limites da API: 10 chamadas/s e no máximo 31 dias por consulta.
 
 ## Plataforma com login (servidor em Go)
-A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `api/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
+A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `busca-de-dados/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
 
 Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
 

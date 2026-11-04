@@ -1,5 +1,5 @@
 # No computador:  docker compose up -d --build                     → banco + servidor em http://localhost:8080
-# No servidor:    docker compose --profile producao up -d --build   → + nginx com HTTPS (veja setup-producao.ps1)
+# No servidor:    docker compose --profile producao up -d --build   → + nginx com HTTPS (veja implantacao/setup-producao.ps1)
 # Testes:         docker compose --profile testes run --rm testes   (unitários)
 #                 bash testes/rodar-e2e.sh                          (ponta a ponta, em banco descartável)
 services:
@@ -36,7 +36,7 @@ services:
       - "127.0.0.1:${PORTA_LOCAL:-8080}:8080"
     volumes:
       # só leitura: para importar os clientes do script antigo (-importar-clientes /importar/clientes.json -tokens /importar/.env)
-      - ../api:/importar:ro
+      - ../busca-de-dados:/importar:ro
     restart: unless-stopped
 
   nginx:
@@ -46,7 +46,7 @@ services:
       - "443:443"
     volumes:
       # um site só: analisefrota (HTTPS, padrão) ou http-somente (antes de existir o certificado)
-      - ./nginx/${NGINX_SITE:-analisefrota}.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./implantacao/nginx/${NGINX_SITE:-analisefrota}.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot-www:/var/www/certbot:ro
       - certbot-certs:/etc/letsencrypt:ro
     depends_on:

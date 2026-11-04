@@ -2,7 +2,7 @@
 
 Como o painel busca os dados direto da plataforma Gobrax, sem planilha. O mesmo conteúdo aparece na aba **API Gobrax** do painel (`#/api`), junto com a situação da busca de cada cliente.
 
-O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `diaParaCSV`, `buscarApi` e `buscarAuto`). O script `api/puxar.mjs` repete as mesmas regras fora do navegador.
+O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `diaParaCSV`, `buscarApi` e `buscarAuto`). O script `busca-de-dados/puxar.mjs` repete as mesmas regras fora do navegador.
 
 ## Visão geral
 
@@ -27,37 +27,37 @@ O código fica em `index.html`, na seção `API Gobrax` (funções `apiGet`, `di
 - **Manual:** no perfil do cliente, o card "Buscar dados pela API Gobrax" busca até 93 dias por vez.
 - Todas as buscas entram numa fila e rodam uma de cada vez. O painel espera 120 ms entre chamadas.
 
-## Puxar pelo script do projeto (`api/puxar.mjs`)
+## Puxar pelo script do projeto (`busca-de-dados/puxar.mjs`)
 
 O painel no Claude não deixa a página chamar endereços de fora, então a busca pelo navegador falha lá. A API aceita chamadas de qualquer origem, por isso no GitHub Pages ela funciona. Para alimentar o painel no Claude, use o script do projeto. Ele precisa do Node 18 ou mais novo.
 
-1. Copie `api/.env.example` para `api/.env` e cole o token de cada cliente depois do `=`:
+1. Copie `busca-de-dados/.env.example` para `busca-de-dados/.env` e cole o token de cada cliente depois do `=`:
    ```
    GOBRAX_TOKEN_XTSUL=<token da Xtsul>
    GOBRAX_TOKEN_CAJU=<token da Caju>
    ```
-2. Copie `api/clientes.example.json` para `api/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token e o ID da empresa no HubSpot (o número no fim do link da empresa):
+2. Copie `busca-de-dados/clientes.example.json` para `busca-de-dados/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token e o ID da empresa no HubSpot (o número no fim do link da empresa):
    ```json
    [
      { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL", "hubspot_id": "<ID no HubSpot>" },
      { "cliente": "Caju Transportes", "token": "GOBRAX_TOKEN_CAJU", "hubspot_id": "<ID no HubSpot>" }
    ]
    ```
-3. Rode `node api/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente). O HubSpot segue o mesmo arquivo: `node api/hubspot.mjs --cliente "Caju Transportes"`.
+3. Rode `node busca-de-dados/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente). O HubSpot segue o mesmo arquivo: `node busca-de-dados/hubspot.mjs --cliente "Caju Transportes"`.
 
-Para incluir um cliente novo: uma linha `GOBRAX_TOKEN_<NOME>=` no `api/.env` e uma entrada no `api/clientes.json`. O cliente precisa existir no painel com o mesmo nome.
+Para incluir um cliente novo: uma linha `GOBRAX_TOKEN_<NOME>=` no `busca-de-dados/.env` e uma entrada no `busca-de-dados/clientes.json`. O cliente precisa existir no painel com o mesmo nome.
 
-Os arquivos `api/.env`, `api/clientes.json` e `api/saida/` ficam fora do Git (`.gitignore`). Nunca faça commit deles e nunca cole o token em chat.
+Os arquivos `busca-de-dados/.env`, `busca-de-dados/clientes.json` e `busca-de-dados/saida/` ficam fora do Git (`.gitignore`). Nunca faça commit deles e nunca cole o token em chat.
 
-O script gera em `api/saida/`:
-- `<cliente>/*.json`: um arquivo por documento, no formato da coleção `planilhas` da base compartilhada (motoristas e veículos por dia, odômetro, premiação por mês). Para carregar no painel do Claude, peça ao Claude Code: "carrega api/saida no painel". Ele grava os arquivos na base, e quem estiver com o painel aberto vê os dados na hora.
+O script gera em `busca-de-dados/saida/`:
+- `<cliente>/*.json`: um arquivo por documento, no formato da coleção `planilhas` da base compartilhada (motoristas e veículos por dia, odômetro, premiação por mês). Para carregar no painel do Claude, peça ao Claude Code: "carrega busca-de-dados/saida no painel". Ele grava os arquivos na base, e quem estiver com o painel aberto vê os dados na hora.
 - `<cliente>-veiculos.csv` e `<cliente>-motoristas.csv`: planilhas para importar no perfil do cliente, em qualquer versão do painel.
 
 Para rodar sozinho a cada hora no Windows, crie uma tarefa agendada:
 ```
 schtasks /Create /SC HOURLY /TN "Gobrax API" /TR "node \"C:\caminho\do\projeto\api\puxar.mjs\" --dias 2"
 ```
-A tarefa atualiza `api/saida/`. Para levar os dados ao painel do Claude, ainda é preciso pedir a carga ao Claude Code.
+A tarefa atualiza `busca-de-dados/saida/`. Para levar os dados ao painel do Claude, ainda é preciso pedir a carga ao Claude Code.
 
 ## Endpoints
 
@@ -170,7 +170,7 @@ Detalhes da resposta da performance:
 - No perfil do cliente, o cartão "Onde o cliente opera" guarda o estado do cliente (`uf`) e, se quiser, um estado por grupo de veículos (`ufGrupos`, chave = nome do grupo normalizado).
 - Na barra do topo, um clique na pílula verde do preço abre a lista para escolher: "Automático" (o padrão, regra abaixo), "Média Brasil (geral)" ou qualquer estado. A escolha vale só no navegador de quem escolheu (`gbx-diesel-uf`).
 - Preço usado nas contas no automático: o do estado do grupo filtrado; senão o do cliente; senão a média Brasil. Estado sem preço na fonte usa a média Brasil. Um preço digitado à mão continua valendo até voltar para o automático.
-- No GitHub Pages o painel busca ao abrir e a cada 6 horas. No Claude a página não chama fora: o script `api/puxar.mjs` grava `api/saida/diesel_uf.json`, carregado na base em `config/diesel_uf`.
+- No GitHub Pages o painel busca ao abrir e a cada 6 horas. No Claude a página não chama fora: o script `busca-de-dados/puxar.mjs` grava `busca-de-dados/saida/diesel_uf.json`, carregado na base em `config/diesel_uf`.
 
 ## Respostas e erros
 
@@ -193,11 +193,11 @@ Detalhes da resposta da performance:
 O cartão **Cliente no HubSpot** e o **Estudo do cliente** (Saúde do cliente) usam duas fontes, a que for mais recente:
 
 1. **Conector do HubSpot no claude.ai** (painel aberto dentro do Claude): lido ao vivo com a autorização de quem abre o painel. Não há token no painel.
-2. **API do HubSpot por script** (`api/hubspot.mjs`): para usar fora do Claude ou guardar uma leitura.
+2. **API do HubSpot por script** (`busca-de-dados/hubspot.mjs`): para usar fora do Claude ou guardar uma leitura.
    - Crie um app privado no HubSpot (Configurações → Integrações → Apps privados) só com escopos de leitura: empresas, contatos, tickets, e-mails, ligações e reuniões.
-   - Coloque o token no `api/.env` como `HUBSPOT_TOKEN=...` (o arquivo fica fora do Git; nunca cole o token em chat).
-   - No `api/clientes.json`, `hubspot_id` é o id da empresa no HubSpot (opcional; sem ele, busca pelo nome).
-   - Rode `node api/hubspot.mjs` (ou `--cliente "Nome"`). Gera `api/saida/<cliente>/hubspot.json`.
+   - Coloque o token no `busca-de-dados/.env` como `HUBSPOT_TOKEN=...` (o arquivo fica fora do Git; nunca cole o token em chat).
+   - No `busca-de-dados/clientes.json`, `hubspot_id` é o id da empresa no HubSpot (opcional; sem ele, busca pelo nome).
+   - Rode `node busca-de-dados/hubspot.mjs` (ou `--cliente "Nome"`). Gera `busca-de-dados/saida/<cliente>/hubspot.json`.
    - No painel, em Saúde do cliente → Cliente no HubSpot → **Importar arquivo**. A leitura fica guardada na base compartilhada (coleção `hubspot`) e vale até o conector trazer uma mais nova.
 
 Endpoints usados (só leitura): `GET /crm/v3/objects/companies/{id}`, `POST /crm/v3/objects/companies/search`, `GET /crm/v4/objects/{tipo}/{id}/associations/{tipo}` e `POST /crm/v3/objects/{tipo}/batch/read`.

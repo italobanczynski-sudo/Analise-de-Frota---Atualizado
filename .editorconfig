@@ -15,7 +15,7 @@ indent_style = tab
 [*.md]
 trim_trailing_whitespace = false
 
-[vendor/**]
+[bibliotecas/**]
 indent_style = unset
 indent_size = unset
 trim_trailing_whitespace = false

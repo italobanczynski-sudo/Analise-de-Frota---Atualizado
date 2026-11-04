@@ -1,6 +1,6 @@
 # Plataforma Análise de Frota: servidor (Go)
 
-Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela API HTTP e pelas telas da plataforma (login, clientes e usuários). Substitui o `api/puxar.mjs`. Segue o padrão Go da Gobrax (Clean Architecture: `adapters` → `modules` → `api` → `background`).
+Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela API HTTP e pelas telas da plataforma (login, clientes e usuários). Substitui o `busca-de-dados/puxar.mjs`. Segue o padrão Go da Gobrax (Clean Architecture: `adapters` → `modules` → `api` → `background`).
 
 ## Tecnologias
 
@@ -26,7 +26,8 @@ modules/       usuario, sessao, cliente, diario, odometro, premiacao, coleta (re
 api/           route.go (rotas e perfis), auth.go (filtros HTTP), controller (entrada), middleware (casos de uso)
 api/web/       telas: paginas/*.html, estatico/ (CSS, JS, imagens) e painel/ (cópia do index.html feita pelo Dockerfile)
 background/    tarefas automáticas
-nginx/         analisefrota.conf (HTTPS) e http-somente.conf (só para gerar o certificado)
+implantacao/   colocar no ar: nginx/ (analisefrota.conf com HTTPS e http-somente.conf só para gerar o certificado),
+               setup-producao.ps1 (HTTPS + e-mail) e copiar-dados-nuvem.sh (copia o banco local para a nuvem)
 testes/        teste ponta a ponta (e2e.sh) e o ambiente descartável dele
 ```
 
@@ -49,7 +50,7 @@ Precisa só do Docker Desktop.
    ```bash
    docker compose run --rm app -novo-convite pessoa@gobrax.com
    ```
-4. Opcional: traga os clientes do script antigo (`api/clientes.json` e os tokens do `api/.env`):
+4. Opcional: traga os clientes do script antigo (`busca-de-dados/clientes.json` e os tokens do `busca-de-dados/.env`):
    ```bash
    docker compose run --rm app -importar-clientes /importar/clientes.json -tokens /importar/.env
    ```
@@ -163,7 +164,7 @@ O ponta a ponta sobe um projeto Docker separado (`analisefrota-e2e`, porta 18080
 Pré-requisitos: DNS de `analisefrota.gobrax.com.br` apontando para a máquina, portas 80 e 443 abertas, `.env` preenchido com `URL_PUBLICA=https://analisefrota.gobrax.com.br`.
 
 ```powershell
-./setup-producao.ps1
+./implantacao/setup-producao.ps1
 ```
 
 O script sobe tudo com o nginx em HTTP (`NGINX_SITE=http-somente`), gera o certificado com o Certbot, troca o nginx para HTTPS (`analisefrota.conf`, o padrão) e confere `/saude`. Depois disso, para atualizar: `docker compose --profile producao up -d --build`.
@@ -184,7 +185,7 @@ Guarde a `CHAVE_TOKENS` junto do plano de backup, em um cofre de senhas e nunca 
 | Sintoma | Causa e saída |
 |---|---|
 | Login aceita a senha e volta para a tela de entrada | Página aberta por `http://` com `URL_PUBLICA` em `https://` (a tela agora explica isso). Abra por `https://` ou, no computador, use `http://localhost:8080` |
-| nginx reiniciando sem parar | `analisefrota.conf` sem certificado. Rode `setup-producao.ps1` ou suba com `NGINX_SITE=http-somente` |
+| nginx reiniciando sem parar | `analisefrota.conf` sem certificado. Rode `implantacao/setup-producao.ps1` ou suba com `NGINX_SITE=http-somente` |
 | "muitas tentativas" para todo mundo | Proxy na frente sem `PROXIES_CONFIAVEIS`, ou seja, todos com o mesmo IP. Configure a variável; a trava some sozinha em 15 min ou ao reiniciar o app |
 | Código por e-mail não chega | Veja `docker compose logs app`: "SMTP não configurado" ou erro de login no SMTP (senha de app do Gmail) |
 | "erro interno; veja o log do servidor" | Detalhe em `docker compose logs app` |

@@ -50,7 +50,6 @@
   // Ícones dos arquivos de implantação e de dados (o tema não tem ícone próprio para eles)
   "material-icon-theme.files.associations": {
     "render.yaml": "settings",
-    "railway.json": "settings",
     ".banco-nuvem": "lock",
     "copiar-dados-nuvem.sh": "database",
     "rodar-e2e.sh": "console",
@@ -64,9 +63,8 @@
     "go.mod": "go.sum",
     "Dockerfile": "Dockerfile.dockerignore, .dockerignore, docker-compose.yml, docker-compose.*.yml",
     ".env": ".env.example, .banco-nuvem",
-    "render.yaml": "railway.json",
     "clientes.json": "clientes.example.json",
-    ".gitignore": ".gitattributes, .editorconfig, .nojekyll, *.code-workspace",
+    ".gitignore": ".gitattributes, .editorconfig, .nojekyll",
     "*.go": "${capture}_test.go"
   },
 

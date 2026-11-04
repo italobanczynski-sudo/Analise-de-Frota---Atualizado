@@ -13,7 +13,7 @@ Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela 
 | Senhas e segredos | bcrypt (custo 12), AES-256-GCM para tokens de clientes, HMAC-SHA256 para códigos por e-mail |
 | E-mail | SMTP (Gmail com senha de app, Workspace, Office 365...) |
 | Telas | HTML, CSS e JS puros, embutidos no binário (`api/web`) |
-| Implantação | Docker Compose (+ nginx e Let's Encrypt) ou Railway |
+| Implantação | Docker Compose (+ nginx e Let's Encrypt) ou Render |
 
 ## Estrutura
 
@@ -61,7 +61,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
 | `POSTGRES_PASSWORD` | sim (Compose) | Senha do Postgres do Compose |
-| `DATABASE_URL` | sim | Montada pelo Compose; no Railway, vem do Postgres do projeto |
+| `DATABASE_URL` | sim | Montada pelo Compose; no Render, vem do banco do projeto |
 | `CHAVE_TOKENS` | sim | 32 bytes em base64 (`openssl rand -base64 32`). Cifra os tokens dos clientes e assina os códigos por e-mail. Trocar a chave invalida os tokens salvos e os códigos pendentes |
 | `URL_PUBLICA` | não | Começo dos links de convite. Se começar com `https://`, o cookie de login é `Secure` (veja "Login só por HTTPS"). Padrão `http://localhost:8080` |
 | `ORIGENS_PERMITIDAS` | não | Origens liberadas no CORS, separadas por vírgula |
@@ -170,9 +170,6 @@ O script sobe tudo com o nginx em HTTP (`NGINX_SITE=http-somente`), gera o certi
 
 Renovar o certificado (a cada ~60 dias; agende): `docker compose --profile certbot run --rm certbot renew` e depois `docker compose --profile producao restart nginx`.
 
-### Railway
-`railway.json` usa o `Dockerfile` e confere `/saude`. Configure no Railway: `DATABASE_URL` (do Postgres do projeto), `CHAVE_TOKENS`, `URL_PUBLICA`, `ORIGENS_PERMITIDAS`, SMTP e `PROXIES_CONFIAVEIS` com a faixa do proxy do Railway. **Não verificado nesta auditoria** (sem acesso à conta). Sem `PROXIES_CONFIAVEIS`, a trava por IP vale para todos juntos.
-
 ## Backup e recuperação
 
 ```bash
@@ -201,7 +198,7 @@ Guarde a `CHAVE_TOKENS` junto do plano de backup, em um cofre de senhas e nunca 
 - As telas da plataforma mostram clientes e usuários, mas ainda não os gráficos e indicadores (estes continuam no painel `index.html`).
 - O painel em `/painel` usa scripts dentro do HTML, então a CSP dele libera `'unsafe-inline'`; as demais telas continuam com a CSP estrita.
 - Apagar no painel um dado que veio da API (não importado à mão) não tem efeito: ele volta na próxima atualização.
-- A imagem é construída a partir da raiz do repositório (`docker build -f servidor/Dockerfile .`); no Railway, a pasta raiz do serviço precisa ser a raiz do repositório.
+- A imagem é construída a partir da raiz do repositório (`docker build -f servidor/Dockerfile .`).
 - A fonte Inter vem do Google Fonts (liberado na CSP); sem internet, cai para a fonte do sistema.
 
 ## Próximas fases

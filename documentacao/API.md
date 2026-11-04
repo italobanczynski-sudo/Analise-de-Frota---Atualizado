@@ -108,6 +108,8 @@ Usa a mesma janela diária das estatísticas e é juntada a elas pela placa. Se 
 
 Motorista não é veículo: na plataforma, a análise por motorista mostra só o tempo em que ele estava no veículo. Antes, o painel dava ao motorista o dia inteiro do veículo (quem dirigiu mais tempo ficava com tudo), e os números do condutor saíam maiores que os da plataforma.
 
+O servidor segue a mesma regra (`modules/diario/motoristas.go`, tabela `registros_motoristas`): quem ficou o dia todo no veículo usa a linha do veículo; cada vínculo parcial é consultado na API só nos trechos daquele motorista, e os trechos são juntados com cada indicador ponderado pela própria base (tempo em movimento; ignição ligada no motor ligado parado; pé no acelerador nos três ranges do pedal). A linha do veículo guarda o motorista que mais o dirigiu só como rótulo. Dias gravados antes dessa tabela existir continuam, no painel, com o dia inteiro do veículo para esse motorista.
+
 ### `GET v2/vehicle-odometer`: odômetro
 
 Busca o último odômetro de cada veículo nos últimos 30 dias. O painel guarda um documento por cliente (`alvo: 'odometro'`) e o substitui a cada busca.
@@ -138,6 +140,21 @@ Traz a nota, o km e a bonificação de cada motorista por mês. O painel guarda 
 | `DocumentNumber`, `Id` | descartados antes de gravar |
 
 Os dados aparecem na tela Premiação.
+
+### `GET v1/vehicle-last-position`: última posição do veículo
+
+Documentado à parte na coleção "Gobrax API - Posições" do Postman. Devolve só a **última** posição coletada do veículo no intervalo pedido: não há endpoint de trajeto, histórico, velocidade, direção ou ignição. Uma placa por chamada; no máximo 10 chamadas por segundo. O equipamento manda a posição a cada 30 s e, numa área sem sinal, entrega o histórico quando volta a comunicar.
+
+| Parâmetro | Valor enviado |
+|---|---|
+| `startDate` / `endDate` | `AAAA-MM-DD HH:MM:SS` em UTC (00:00 de Brasília = 03:00 UTC) |
+| `vehicleIdentification` | placa, só letras e números |
+
+Resposta: `{"records":[{"vehicleIdentification", "startDate", "endDate", "lastPosition":{"date":"AAAA-MM-DD HH:MM:SS", "lat", "lon"}}]}`. Placa desconhecida: 400 com `{"errorCode":"400-1","errorDescription":"Vehicle not found"}` (400-2 e 400-3 = falta `startDate` ou `endDate`). A tabela de campos da documentação chama a longitude de `percentage`, mas os exemplos trazem `lon`: o servidor lê `lon`.
+
+**Trajeto do dia:** como só vem a última posição de cada intervalo, o servidor pergunta o dia de Brasília em janelas de 5 minutos (288 chamadas no dia inteiro, cerca de 35 s) e liga os pontos em ordem. Veículo parado repete a mesma coleta em várias janelas: vira um ponto só. Cada janela fica guardada em `posicoes_amostradas` e só é pedida de novo se ainda não tinha acabado havia 10 minutos quando foi buscada. A data de `lastPosition.date` é tratada como UTC, como as datas de entrada.
+
+**Porta:** a coleção de posições usa `http://gateway-v3.gobrax.com.br:8888`; os demais endpoints usam `https://...:8889`, que é a base configurada (`GOBRAX_API_BASE`). Se a posição não responder na 8889, confirme a base com a Gobrax.
 
 ## O que a API respondeu de verdade (token da Xtsul, 21/10/2026)
 

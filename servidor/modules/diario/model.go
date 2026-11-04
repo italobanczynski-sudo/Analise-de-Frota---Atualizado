@@ -1,6 +1,13 @@
 package diario
 
-// Registro_t é um veículo num dia de Brasília: estatísticas + indicadores de condução.
+import (
+	"time"
+
+	"analisefrota/adapters/gobraxapi"
+)
+
+// Registro_t é um veículo num dia de Brasília: estatísticas + indicadores de condução. A mesma estrutura serve à
+// linha de um motorista (registros_motoristas): aí os números são só do tempo do vínculo dele com o veículo.
 // Campo nil = a API não trouxe o dado. Motorista vazio = nenhum motorista vinculado no dia.
 type Registro_t struct {
 	ClienteID              int64    `json:"cliente_id"`
@@ -31,4 +38,30 @@ type Registro_t struct {
 	TempoExcessoVelocidade *float64 `json:"tempo_excesso_velocidade"`
 	PilotoAutomatico       *float64 `json:"piloto_automatico"`
 	FreioMotor             *float64 `json:"freio_motor"`
+}
+
+// Janela_t é um trecho do dia (UTC) em que um motorista estava vinculado ao veículo
+type Janela_t struct {
+	Ini time.Time
+	Fim time.Time
+}
+
+// Pendente_t é um vínculo parcial: o motorista ficou só parte do dia no veículo e o dado dele vem da API
+// consultada nos trechos dele (Janelas)
+type Pendente_t struct {
+	Placa     string
+	Motorista string
+	Janelas   []Janela_t
+}
+
+// PlanoMotoristas_t: as linhas prontas de quem ficou o dia todo no veículo (Inteiros) e os vínculos parciais a consultar
+type PlanoMotoristas_t struct {
+	Inteiros  []Registro_t
+	Pendentes []Pendente_t
+}
+
+// Parte_t é o que a API devolveu para um trecho de um vínculo parcial
+type Parte_t struct {
+	Estat []gobraxapi.EstatisticaRec_t
+	Perf  []gobraxapi.PerformanceRec_t
 }

@@ -15,8 +15,16 @@ type Service_I interface {
 	// SalvarDia substitui o dia inteiro do cliente pelos registros dados
 	SalvarDia(ctx context.Context, clienteID int64, dia string, regs []Registro_t) error
 	Listar(ctx context.Context, clienteID int64, ini, fim string) ([]Registro_t, error)
-	// DiasComIndicadores devolve os dias do período (AAAA-MM-DD) que já têm a performance gravada
+	// DiasComIndicadores devolve os dias do período (AAAA-MM-DD) que já têm a performance (e as linhas dos motoristas) gravadas
 	DiasComIndicadores(ctx context.Context, clienteID int64, ini, fim string) (map[string]bool, error)
+
+	// PlanoMotoristas separa, de um dia montado, quem ficou o dia todo no veículo (linha pronta) e os vínculos parciais a consultar
+	PlanoMotoristas(dia string, regs []Registro_t, perf []gobraxapi.PerformanceRec_t) PlanoMotoristas_t
+	// MontarMotorista junta os trechos consultados de um vínculo parcial; ok = false quando ele não rodou neles
+	MontarMotorista(clienteID int64, dia string, p Pendente_t, partes []Parte_t) (Registro_t, bool)
+	// SalvarMotoristasDia substitui as linhas dos motoristas do dia
+	SalvarMotoristasDia(ctx context.Context, clienteID int64, dia string, regs []Registro_t) error
+	ListarMotoristas(ctx context.Context, clienteID int64, ini, fim string) ([]Registro_t, error)
 }
 
 type diario_t struct {
@@ -119,11 +127,15 @@ func (d *diario_t) SalvarDia(ctx context.Context, clienteID int64, dia string, r
 	if err := validarPeriodo(dia, dia); err != nil {
 		return err
 	}
+	return d.repo.SubstituirDia(ctx, clienteID, dia, paraRows(regs))
+}
+
+func paraRows(regs []Registro_t) []diario_repo.RegistroRow_t {
 	rows := make([]diario_repo.RegistroRow_t, len(regs))
 	for i, r := range regs {
 		rows[i] = paraRow(r)
 	}
-	return d.repo.SubstituirDia(ctx, clienteID, dia, rows)
+	return rows
 }
 
 func (d *diario_t) Listar(ctx context.Context, clienteID int64, ini, fim string) ([]Registro_t, error) {

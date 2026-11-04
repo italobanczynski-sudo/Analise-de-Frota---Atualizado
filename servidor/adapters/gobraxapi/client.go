@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -149,6 +150,7 @@ func erroDaResposta(status int, corpo []byte) error {
 		Code             json.Number     `json:"code"`
 		Description      string          `json:"description"`
 		ErrorDescription string          `json:"errorDescription"`
+		ErrorCode        json.RawMessage `json:"errorCode"` // "400-1" (texto) na API de posições
 	}
 	_ = json.Unmarshal(corpo, &env)
 	var dados struct {
@@ -167,7 +169,10 @@ func erroDaResposta(status int, corpo []byte) error {
 	if desc == "" {
 		desc = env.ErrorDescription
 	}
+	codErro := strings.Trim(strings.TrimSpace(string(env.ErrorCode)), `"`)
 	switch {
+	case codErro == "400-1":
+		return ErrVeiculoNaoEncontrado
 	case cod == "61" || status == http.StatusUnauthorized:
 		return ErrTokenInvalido
 	case cod == "71" || status == http.StatusForbidden:
@@ -178,11 +183,11 @@ func erroDaResposta(status int, corpo []byte) error {
 	return ErroAPI_t{Status: status, Descricao: desc}
 }
 
-// janela monta os parâmetros startDate/endDate (UTC) com todos os veículos do token
-func janela(ini, fim time.Time) url.Values {
+// janela monta os parâmetros startDate/endDate (UTC); placa vazia = todos os veículos do token
+func janela(ini, fim time.Time, placa string) url.Values {
 	return url.Values{
 		"startDate":             {ini.UTC().Format("2006-01-02 15:04:05")},
 		"endDate":               {fim.UTC().Format("2006-01-02 15:04:05")},
-		"vehicleIdentification": {""},
+		"vehicleIdentification": {placa},
 	}
 }

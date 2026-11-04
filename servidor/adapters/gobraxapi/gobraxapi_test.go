@@ -42,6 +42,22 @@ func (s *GobraxAPISuite) TestEstatisticasLeRecordsENumerosComoTexto() {
 	s.Equal(1000.0, *recs[0].Odometer.Valor)
 }
 
+func (s *GobraxAPISuite) TestPerformanceVeiculoPedeSoAPlacaNoTrechoDoVinculo() {
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		s.Equal("/api/v1/vehicle-performance", r.URL.Path)
+		q := r.URL.Query()
+		s.Equal("ABC1D23", q.Get("vehicleIdentification"))
+		s.Equal("2026-10-23 05:00:00", q.Get("startDate"))
+		s.Equal("2026-10-23 15:00:00", q.Get("endDate"))
+		_, _ = w.Write([]byte(`{"records":[{"vehicleIdentification":"ABC1D23","indicators":{"movement":{"duration":300}}}]}`))
+	}
+	ini := time.Date(2026, 10, 23, 5, 0, 0, 0, time.UTC)
+	recs, err := s.api.PerformanceVeiculo(context.Background(), "tk", "ABC1D23", ini, ini.Add(10*time.Hour))
+	s.Require().NoError(err)
+	s.Require().Len(recs, 1)
+	s.Equal(300.0, *recs[0].Indicators["movement"].Duration.Valor)
+}
+
 func (s *GobraxAPISuite) TestPremiacaoLeData() {
 	s.handler = func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"success":true,"data":[{"ID":1,"Name":"Motorista Exemplo","DocumentNumber":"<cpf>","Overview":[{"Date":"09-2026","Score":88,"TotalKM":1200,"Reward":150}]}]}`))
@@ -110,4 +126,42 @@ func (s *GobraxAPISuite) TestEsperaLongaDesisteEBloqueiaOCaminho() {
 	s.ErrorIs(err, gobraxapi.ErrLimite)
 	s.Equal(1, chamadas, "não chama de novo antes do prazo que a API pediu")
 }
+func (s *GobraxAPISuite) posicoes() gobraxapi.Posicoes_I {
+	return gobraxapi.NewPosicoesCom(s.srv.URL+"/api/", s.srv.Client(), 0)
+}
+
+func (s *GobraxAPISuite) TestUltimaPosicaoPedeAPlacaNaJanelaELeLatLon() {
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		s.Equal("/api/v1/vehicle-last-position", r.URL.Path)
+		q := r.URL.Query()
+		s.Equal("ABC1D23", q.Get("vehicleIdentification"))
+		s.Equal("2026-10-20 03:00:00", q.Get("startDate"))
+		s.Equal("2026-10-20 03:04:59", q.Get("endDate"))
+		_, _ = w.Write([]byte(`{"records":[{"vehicleIdentification":"ABC1D23","startDate":"2026-10-20 03:00:00","endDate":"2026-10-20 03:04:59","lastPosition":{"date":"2026-10-20 03:04:30","lat":-25.441105,"lon":-49.276855}}]}`))
+	}
+	ini := time.Date(2026, 10, 20, 3, 0, 0, 0, time.UTC)
+	p, err := s.posicoes().UltimaPosicao(context.Background(), "tk", "ABC1D23", ini, ini.Add(5*time.Minute-time.Second))
+	s.Require().NoError(err)
+	s.Require().NotNil(p)
+	s.Equal("2026-10-20 03:04:30", p.Data)
+	s.Equal(-25.441105, p.Lat)
+	s.Equal(-49.276855, p.Lon)
+}
+
+func (s *GobraxAPISuite) TestUltimaPosicaoSemRegistroDevolveNil() {
+	s.handler = func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"records":[]}`)) }
+	p, err := s.posicoes().UltimaPosicao(context.Background(), "tk", "ABC1D23", time.Now(), time.Now())
+	s.Require().NoError(err)
+	s.Nil(p)
+}
+
+func (s *GobraxAPISuite) TestUltimaPosicaoPlacaDesconhecida() {
+	s.handler = func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"errorCode":"400-1","errorDescription":"Vehicle not found"}`))
+	}
+	_, err := s.posicoes().UltimaPosicao(context.Background(), "tk", "ZZZ9999", time.Now(), time.Now())
+	s.ErrorIs(err, gobraxapi.ErrVeiculoNaoEncontrado)
+}
+
 func TestGobraxAPISuite(t *testing.T) { suite.Run(t, new(GobraxAPISuite)) }

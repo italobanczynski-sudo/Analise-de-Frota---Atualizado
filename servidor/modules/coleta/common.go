@@ -73,6 +73,17 @@ func (f *falhas_t) avisos() []string {
 	return a
 }
 
+// marcarPausa guarda em res até quando a API pediu para não chamar (o prazo mais longo entre estatísticas e performance)
+func marcarPausa(res *Resultado_t, fe, fp *falhas_t) {
+	for _, e := range []error{fe.ultimoErr, fp.ultimoErr} {
+		var lim gobraxapi.ErroLimite_t
+		if errors.As(e, &lim) && (res.AguardarAte == nil || lim.Ate.After(*res.AguardarAte)) {
+			ate := lim.Ate
+			res.AguardarAte = &ate
+		}
+	}
+}
+
 func resumo(r Resultado_t) string {
 	partes := []string{fmt.Sprintf("%d dia(s) com dados, até %d veículos", r.DiasComDados, r.Veiculos)}
 	if !r.Performance {

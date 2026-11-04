@@ -45,12 +45,20 @@
   }
   function docsDoServidor(dados) {
     const out = new Map(), em = new Date().toISOString(), cab = COLS.join(';');
+    const agrupar = (lista) => {
+      const m = new Map();
+      (lista || []).forEach((r) => { const k = String(r.dia).slice(0, 10); (m.get(k) || m.set(k, []).get(k)).push(Object.assign({}, r, { dia: k })); });
+      return m;
+    };
     dados.forEach((c) => {
-      const porDia = new Map();
-      (c.registros || []).forEach((r) => { const k = String(r.dia).slice(0, 10); (porDia.get(k) || porDia.set(k, []).get(k)).push(Object.assign({}, r, { dia: k })); });
+      const porDia = agrupar(c.registros);
+      // planilha de motoristas: cada um só no tempo do vínculo dele com o veículo (registros_motoristas, montadas pelo
+      // servidor como o diaParaCSV do painel). Dia gravado antes dessas linhas existirem: a linha do veículo com o motorista
+      // que mais o dirigiu, como era antes.
+      const motPorDia = agrupar(c.motoristas);
       porDia.forEach((rs, dia) => {
         const veic = rs.map((r) => linhaCSV(r, c.nome));
-        const mot = rs.filter((r) => r.rodou && r.motorista).map((r) => linhaCSV(r, c.nome));
+        const mot = (motPorDia.get(dia) || rs.filter((r) => r.rodou && r.motorista)).map((r) => linhaCSV(r, c.nome));
         out.set(idPlan('veiculos', c.nome, dia, 1), { alvo: 'veiculos', cliente: c.nome, data: dia, colunas: COLS, texto: [cab].concat(veic).join('\n'), parte: 1, partes: 1, arquivo: 'API Gobrax · estatísticas', em });
         if (mot.length) out.set(idPlan('motoristas', c.nome, dia, 1), { alvo: 'motoristas', cliente: c.nome, data: dia, colunas: COLS, texto: [cab].concat(mot).join('\n'), parte: 1, partes: 1, arquivo: 'API Gobrax · motoristas', em });
       });

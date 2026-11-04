@@ -177,13 +177,7 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		// limite de uso: para aqui; o que já veio fica salvo e este dia em diante volta na próxima busca
 		if fe.limite || fp.limite {
 			fp.perdidos = append(fp.perdidos, dias[i:]...) // este dia e os mais antigos que ficaram sem buscar
-			for _, e := range []error{fe.ultimoErr, fp.ultimoErr} {
-				var lim gobraxapi.ErroLimite_t
-				if errors.As(e, &lim) && (res.AguardarAte == nil || lim.Ate.After(*res.AguardarAte)) {
-					ate := lim.Ate
-					res.AguardarAte = &ate
-				}
-			}
+			marcarPausa(&res, fe, fp)
 			break
 		}
 		if fe.desligado && fp.desligado && !fp.semAcesso {
@@ -207,6 +201,20 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		res.DiasComDados++
 		if len(regs) > res.Veiculos {
 			res.Veiculos = len(regs)
+		}
+		// motoristas: só quando a performance do dia veio (é ela que traz os vínculos de cada veículo)
+		if perfPediu && !perfFalhou {
+			plano := c.d.Diario.PlanoMotoristas(dia, regs, perf)
+			salvou, err := c.motoristasDoDia(ctx, token, clienteID, dia, plano, fe, fp)
+			if err != nil {
+				return res, "", err
+			}
+			if !salvou && (fe.limite || fp.limite) {
+				// este dia já está em perdidos (falhas_t.errou); os seguintes ficam para a próxima busca
+				fp.perdidos = append(fp.perdidos, dias[i+1:]...)
+				marcarPausa(&res, fe, fp)
+				break
+			}
 		}
 	}
 	res.Performance = !fp.desligado

@@ -46,3 +46,23 @@ func Premiacoes(c *gin.Context) {
 	}
 	controller.Response(c, mwfrota.Frota_t{ClienteID: id, Mes: req.Mes}.Premiacoes(c.Request.Context()))
 }
+
+// Trajeto: GET /api/v1/clientes/:id/trajeto?placa=ABC1D23&dia=AAAA-MM-DD&de=0&ate=24
+// Um ponto a cada 5 minutos (a API só dá a última posição de cada intervalo). Um pedido do dia inteiro pode
+// voltar com completo=false: as janelas já buscadas ficam no banco e o próximo pedido continua de onde parou.
+func Trajeto(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	var req TrajetoRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		controller.RetFail(c, "informe placa, dia (AAAA-MM-DD) e, se quiser, de e ate em horas (0 a 24)")
+		return
+	}
+	if err := utils.ValidateStruct(req); err != nil {
+		controller.RetFail(c, "informe placa, dia (AAAA-MM-DD) e, se quiser, de e ate em horas (0 a 24)")
+		return
+	}
+	controller.Response(c, mwfrota.Trajeto_t{ClienteID: id, Placa: req.Placa, Dia: req.Dia, De: req.De, Ate: req.Ate}.Buscar(c.Request.Context()))
+}

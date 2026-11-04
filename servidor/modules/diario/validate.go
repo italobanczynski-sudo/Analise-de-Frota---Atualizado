@@ -11,6 +11,7 @@ var (
 	ErrDiaInvalido      = errors.New("data inválida: use AAAA-MM-DD")
 	ErrPeriodoInvertido = errors.New("o início do período é depois do fim")
 	ErrPeriodoLongo     = errors.New("consulte no máximo 400 dias por vez")
+	ErrSemMotorista     = errors.New("linha de motorista sem o nome do motorista")
 )
 
 func validarPeriodo(ini, fim string) error {

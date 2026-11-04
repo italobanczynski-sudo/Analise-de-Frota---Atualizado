@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"analisefrota/adapters/gobraxapi"
 	"analisefrota/adapters/hubspotapi"
 	"analisefrota/modules/base"
 	"analisefrota/modules/cliente"
@@ -16,6 +17,7 @@ import (
 	"analisefrota/modules/mensagem"
 	"analisefrota/modules/premiacao"
 	"analisefrota/modules/sessao"
+	"analisefrota/modules/trajeto"
 	"analisefrota/modules/usuario"
 )
 
@@ -41,13 +43,15 @@ var (
 		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
 		usuario.ErrCodigoInvalido, base.ErrColecao, base.ErrID, base.ErrDados, base.ErrGrande,
 		mensagem.ErrDiaFuturo, mensagem.ErrMotoristaSemDia,
+		trajeto.ErrPlaca, trajeto.ErrDia, trajeto.ErrDiaFuturo, trajeto.ErrDiaAntigo, trajeto.ErrHoras,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}
-	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, hubspot.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada}
+	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, hubspot.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada, gobraxapi.ErrVeiculoNaoEncontrado}
 	// serviço externo fora do ar ou mal configurado: a mensagem diz o que acertar
-	errosIndisponivel = []error{hubspot.ErrDesligado, hubspotapi.ErrTokenInvalido, hubspotapi.ErrSemEscopo}
-	errosConflito     = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
+	errosIndisponivel = []error{hubspot.ErrDesligado, hubspotapi.ErrTokenInvalido, hubspotapi.ErrSemEscopo,
+		gobraxapi.ErrTokenInvalido, gobraxapi.ErrSemAcesso, gobraxapi.ErrLimite}
+	errosConflito = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
 
 	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")
 	ErrMuitasTentativas = errors.New("muitas tentativas de entrar; espere 15 minutos e tente de novo")

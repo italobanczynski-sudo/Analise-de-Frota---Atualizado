@@ -50,6 +50,16 @@ func (m *APIMock_t) Performance(ctx context.Context, token string, ini, fim time
 	r, _ := a.Get(0).([]gobraxapi.PerformanceRec_t)
 	return r, a.Error(1)
 }
+func (m *APIMock_t) EstatisticasVeiculo(ctx context.Context, token, placa string, ini, fim time.Time) ([]gobraxapi.EstatisticaRec_t, error) {
+	a := m.Called(ctx, token, placa, ini, fim)
+	r, _ := a.Get(0).([]gobraxapi.EstatisticaRec_t)
+	return r, a.Error(1)
+}
+func (m *APIMock_t) PerformanceVeiculo(ctx context.Context, token, placa string, ini, fim time.Time) ([]gobraxapi.PerformanceRec_t, error) {
+	a := m.Called(ctx, token, placa, ini, fim)
+	r, _ := a.Get(0).([]gobraxapi.PerformanceRec_t)
+	return r, a.Error(1)
+}
 func (m *APIMock_t) Odometro(ctx context.Context, token string, ini, fim time.Time) ([]gobraxapi.OdometroRec_t, error) {
 	a := m.Called(ctx, token, ini, fim)
 	r, _ := a.Get(0).([]gobraxapi.OdometroRec_t)
@@ -104,6 +114,27 @@ func (m *DiarioMock_t) Listar(ctx context.Context, clienteID int64, ini, fim str
 	return a.Get(0).([]diario.Registro_t), a.Error(1)
 }
 
+func (m *DiarioMock_t) PlanoMotoristas(dia string, regs []diario.Registro_t, perf []gobraxapi.PerformanceRec_t) diario.PlanoMotoristas_t {
+	return m.Called(dia, regs, perf).Get(0).(diario.PlanoMotoristas_t)
+}
+func (m *DiarioMock_t) MontarMotorista(clienteID int64, dia string, p diario.Pendente_t, partes []diario.Parte_t) (diario.Registro_t, bool) {
+	a := m.Called(clienteID, dia, p, partes)
+	return a.Get(0).(diario.Registro_t), a.Bool(1)
+}
+func (m *DiarioMock_t) SalvarMotoristasDia(ctx context.Context, clienteID int64, dia string, regs []diario.Registro_t) error {
+	return m.Called(ctx, clienteID, dia, regs).Error(0)
+}
+func (m *DiarioMock_t) ListarMotoristas(ctx context.Context, clienteID int64, ini, fim string) ([]diario.Registro_t, error) {
+	a := m.Called(ctx, clienteID, ini, fim)
+	return a.Get(0).([]diario.Registro_t), a.Error(1)
+}
+
+// semMotoristas: dia sem vínculo parcial (o padrão dos testes que não olham os motoristas)
+func semMotoristas(d *DiarioMock_t) {
+	d.On("PlanoMotoristas", mock.Anything, mock.Anything, mock.Anything).Return(diario.PlanoMotoristas_t{}).Maybe()
+	d.On("SalvarMotoristasDia", mock.Anything, int64(1), mock.Anything, mock.Anything).Return(nil).Maybe()
+}
+
 type OdometroMock_t struct{ mock.Mock }
 
 func (m *OdometroMock_t) Substituir(ctx context.Context, clienteID int64, recs []gobraxapi.OdometroRec_t) (int, error) {
@@ -153,6 +184,7 @@ func (s *ColetaSuite) SetupTest() {
 	s.diario.On("MontarDia", int64(1), mock.Anything, mock.Anything, mock.Anything).Return([]diario.Registro_t{{Placa: "ABC1D23"}}).Maybe()
 	s.diario.On("SalvarDia", mock.Anything, int64(1), mock.Anything, mock.Anything).Return(nil).Maybe()
 	s.diario.On("DiasComIndicadores", mock.Anything, int64(1), mock.Anything, mock.Anything).Return(map[string]bool{}, nil).Maybe()
+	semMotoristas(s.diario)
 	s.api.On("Odometro", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.OdometroRec_t{}, nil).Maybe()
 	s.odo.On("Substituir", mock.Anything, int64(1), mock.Anything).Return(15, nil).Maybe()
 	s.api.On("Premiacao", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.PremiacaoRec_t{}, nil).Maybe()
@@ -321,6 +353,7 @@ func (s *ColetaSuite) TestFalhaDaPerformanceNaoGravaODiaSemIndicadores() {
 
 func (s *ColetaSuite) TestNaoBuscaDeNovoDiaAntigoJaCompletoEComecaPorOntem() {
 	s.diario = new(DiarioMock_t)
+	semMotoristas(s.diario)
 	s.svc = coleta.NewColetaCom(coleta.Deps_t{Repo: s.repo, API: s.api, Clientes: s.cli, Diario: s.diario, Odometro: s.odo, Premiacao: s.prem,
 		Agora: func() time.Time { return s.agora }, Dias: 5})
 	s.repo.On("Buscar", mock.Anything, int64(1)).Return(coleta_repo.SituacaoRow_t{}, nil)
@@ -337,4 +370,59 @@ func (s *ColetaSuite) TestNaoBuscaDeNovoDiaAntigoJaCompletoEComecaPorOntem() {
 	s.Require().NoError(err)
 	s.Equal([]string{"2026-10-23", "2026-10-20", "2026-10-24"}, ordem, "ontem, depois o antigo que faltava, hoje por último")
 	s.api.AssertNumberOfCalls(s.T(), "Performance", 3)
+}
+
+// diarioComPlano troca o diário por um mock novo cujo dia tem o plano de motoristas dado (busca de 1 dia: hoje, 24/10)
+func (s *ColetaSuite) diarioComPlano(plano diario.PlanoMotoristas_t) {
+	s.diario = new(DiarioMock_t)
+	s.svc = coleta.NewColetaCom(coleta.Deps_t{Repo: s.repo, API: s.api, Clientes: s.cli, Diario: s.diario, Odometro: s.odo, Premiacao: s.prem,
+		Agora: func() time.Time { return s.agora }, Dias: 1})
+	s.diario.On("MontarDia", int64(1), mock.Anything, mock.Anything, mock.Anything).Return([]diario.Registro_t{{Placa: "ABC1D23", Rodou: true}})
+	s.diario.On("SalvarDia", mock.Anything, int64(1), mock.Anything, mock.Anything).Return(nil)
+	s.diario.On("PlanoMotoristas", "2026-10-24", mock.Anything, mock.Anything).Return(plano)
+	s.repo.On("Buscar", mock.Anything, int64(1)).Return(coleta_repo.SituacaoRow_t{}, nil)
+	s.api.On("Estatisticas", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.EstatisticaRec_t{}, nil)
+	s.api.On("Performance", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.PerformanceRec_t{}, nil)
+}
+
+func (s *ColetaSuite) TestVinculoParcialConsultaSoOTrechoDoMotoristaEGravaComOsInteiros() {
+	trecho := diario.Janela_t{Ini: s.diaUTC("2026-10-24").Add(2 * time.Hour), Fim: s.diaUTC("2026-10-24").Add(6 * time.Hour)}
+	inteiro := diario.Registro_t{Placa: "XYZ9K87", Motorista: "Ana", Rodou: true}
+	pend := diario.Pendente_t{Placa: "ABC1D23", Motorista: "Beto", Janelas: []diario.Janela_t{trecho}}
+	s.diarioComPlano(diario.PlanoMotoristas_t{Inteiros: []diario.Registro_t{inteiro}, Pendentes: []diario.Pendente_t{pend}})
+	e := []gobraxapi.EstatisticaRec_t{{VehicleIdentification: "ABC1D23"}}
+	p := []gobraxapi.PerformanceRec_t{{VehicleIdentification: "ABC1D23"}}
+	s.api.On("EstatisticasVeiculo", mock.Anything, "tk", "ABC1D23", trecho.Ini, trecho.Fim).Return(e, nil).Once()
+	s.api.On("PerformanceVeiculo", mock.Anything, "tk", "ABC1D23", trecho.Ini, trecho.Fim).Return(p, nil).Once()
+	beto := diario.Registro_t{Placa: "ABC1D23", Motorista: "Beto", Rodou: true}
+	s.diario.On("MontarMotorista", int64(1), "2026-10-24", pend, []diario.Parte_t{{Estat: e, Perf: p}}).Return(beto, true)
+	var gravados []diario.Registro_t
+	s.diario.On("SalvarMotoristasDia", mock.Anything, int64(1), "2026-10-24", mock.Anything).Run(func(a mock.Arguments) { gravados = a.Get(3).([]diario.Registro_t) }).Return(nil)
+	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoOk, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	_, err := s.svc.Executar(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.Equal([]diario.Registro_t{inteiro, beto}, gravados, "quem ficou o dia todo e o vínculo parcial juntado")
+	s.api.AssertExpectations(s.T())
+}
+
+func (s *ColetaSuite) TestLimiteNoTrechoDoMotoristaNaoTrocaAsLinhasEDeixaODiaParaAProxima() {
+	trecho := diario.Janela_t{Ini: s.diaUTC("2026-10-24").Add(2 * time.Hour), Fim: s.diaUTC("2026-10-24").Add(6 * time.Hour)}
+	s.diarioComPlano(diario.PlanoMotoristas_t{Pendentes: []diario.Pendente_t{{Placa: "ABC1D23", Motorista: "Beto", Janelas: []diario.Janela_t{trecho}}}})
+	limite := gobraxapi.ErroLimite_t{Caminho: "v1/vehicle-performance", Ate: s.agora.Add(20 * time.Minute)}
+	s.api.On("EstatisticasVeiculo", mock.Anything, "tk", "ABC1D23", trecho.Ini, trecho.Fim).Return([]gobraxapi.EstatisticaRec_t{}, nil)
+	s.api.On("PerformanceVeiculo", mock.Anything, "tk", "ABC1D23", trecho.Ini, trecho.Fim).Return(nil, limite)
+	var ultimo *string
+	s.repo.On("MarcarFim", mock.Anything, int64(1), coleta.SituacaoAguardando, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Run(func(a mock.Arguments) { ultimo = a.Get(5).(*string) }).Return(nil)
+
+	res, err := s.svc.Executar(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.diario.AssertNotCalled(s.T(), "SalvarMotoristasDia", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.Require().NotNil(res.AguardarAte)
+	s.Equal(limite.Ate, *res.AguardarAte)
+	s.Require().NotNil(ultimo)
+	s.Equal("2026-10-23", *ultimo, "24/10 volta inteiro na próxima busca")
 }

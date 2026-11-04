@@ -2043,6 +2043,18 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 .radio { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 4px 0; cursor: pointer; }
 @media print { .gaveta, .gaveta-fundo { display: none !important; } }
 /* Comparação por fase e resumo da reunião */
+.traj-mapa { height: 440px; border-radius: 12px; overflow: hidden; border: 1px solid var(--borda); position: relative; z-index: 0; isolation: isolate; background: var(--apoio); }
+.traj-ctl { display: flex; align-items: center; gap: 12px; }
+.traj-ctl input[type=range] { flex: 1; accent-color: #FCB709; }
+.jornada { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
+.jornada-et { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 5px; border-radius: 999px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2); font-size: 12.5px; text-decoration: none; }
+.jornada-et:hover { border-color: var(--borda-hover); }
+.jornada-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--apoio); font-size: 11px; font-weight: 700; color: var(--corpo); }
+.jornada-et.feita .jornada-n { background: #E3F2E6; color: #1E8E3E; }
+.jornada-et.atual { border-color: var(--amarelo-hover); color: var(--tinta); font-weight: 600; }
+.jornada-et.atual .jornada-n { background: var(--amarelo); color: var(--tinta-amarelo); }
+.jornada-et.aqui { box-shadow: 0 0 0 2px var(--amarelo) inset; }
+.jornada-prox { flex-basis: 100%; font-size: 12.5px; color: var(--texto-2); padding-left: 4px; }
 .fase-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .fase-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--apoio); }
 .fase-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -3370,23 +3382,23 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
 
   // ---------- Shell ----------
   const NAV = [
-    { sec: 'Relatório' },
+    { sec: 'Carteira' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
-    { tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
     { tela: 'carteira', href: '#/carteira', icone: 'clientes', rot: 'Carteira de clientes' },
-    { sec: 'Frota' },
-    { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Desenvolvimento da frota' },
-    { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
-    { sec: 'Motoristas' },
-    { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
-    { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
-    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
-    { sec: 'Retenção do cliente' },
+    { sec: 'Cliente' },
+    { tela: 'jornada', href: '#/jornada', icone: 'dados-1', rot: 'Linha do tempo' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'combinados', href: '#/combinados', icone: 'escrita', rot: 'Combinados' },
     { tela: 'fases', href: '#/fases', icone: 'dados-1', rot: 'Comparação por fase' },
     { tela: 'resumo', href: '#/resumo', icone: 'documento', rot: 'Resumo da reunião' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
+    { sec: 'Detalhe da operação' },
+    { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Desenvolvimento da frota' },
+    { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
+    { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
+    { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
+    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
+    { rodape: true, tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
     { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'APIs (Gobrax e HubSpot)' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente'] }
   ];
@@ -6011,7 +6023,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       return `${cabecalho(`Motoristas`, `Um motorista por vez, comparado ao período anterior e à média da frota.`)}
         ${abas(abasMot(c, (k) => k !== 'enviadas' || !!contaSrv()), 'individual', 'mot-aba', 'Seções de Motoristas')}${seletor}${blocoMsgMotorista((c.mots.find((y) => y.m.id === id) || { m: {} }).m.nome)}${corpo}`;
     }
-    return `${cabecalho(`${titulo}`, `Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.`)}${seletor}${corpo}`;
+    const selV = (c.mots.find((y) => y.m.id === id) || { m: {} }).m;
+    return `${cabecalho(`${titulo}`, `Todos os indicadores de um ${rotulo} por vez, comparados ao período anterior e à média da frota.`)}${seletor}${cartaoTrajeto(selV.nome)}${corpo}`;
   }
 
 
@@ -8085,6 +8098,345 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     </div></section>`;
   }
 
+  // ================= G · Trajeto do dia no mapa =================
+  // A API de localização (v1/vehicle-last-position) devolve só a ÚLTIMA posição do veículo no intervalo pedido: o trajeto
+  // é montado pedindo uma janela de 5 minutos por vez, das 00:00 às 23:59 de Brasília (288 chamadas). A API não traz
+  // velocidade nem direção: a distância é a soma das retas entre pontos (fica um pouco abaixo do km real).
+  // No GitHub Pages o navegador chama a API com o token salvo; na plataforma, o servidor busca (GET /clientes/:id/trajeto).
+  const TRAJ_PASSO_MIN = 5, LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/', CHAVE_TRAJ = 'gbx-traj:';
+  E.traj = null;   // { chave, cli, placa, dia, pontos [{m: minuto do dia, lat, lon}], feitas, total, carregando, erro, min, tocando, vista }
+  let leafletPronto = null, mapaTraj = null, timerTraj = null;
+  function carregarLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (leafletPronto) return leafletPronto;
+    leafletPronto = new Promise((ok, falha) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.min.css'; document.head.appendChild(css);
+      const s = document.createElement('script'); s.src = LEAFLET + 'leaflet.min.js';
+      s.onload = () => ok(window.L);
+      s.onerror = () => { leafletPronto = null; falha(new Error('não foi possível carregar o mapa (sem internet ou bloqueado nesta página)')); };
+      document.head.appendChild(s);
+    });
+    return leafletPronto;
+  }
+  const placaPos = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
+  // minutos desde 00:00 de Brasília de uma data UTC "AAAA-MM-DD HH:MM:SS" da API
+  const minBR = (dataUtc, dia) => { const t = Date.parse(String(dataUtc).replace(' ', 'T') + 'Z'); return Number.isFinite(t) ? Math.round((t - Date.parse(dia + 'T03:00:00Z')) / 60000) : null; };
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  function pontoDe(rec, dia) {
+    const lp = rec && rec.lastPosition, lat = lp ? Number(lp.lat) : NaN, lon = lp ? Number(lp.lon) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return null;
+    const m = minBR(lp.date, dia);
+    return m === null || m < 0 || m > 1439 ? null : { m, lat, lon };
+  }
+  function juntarPontos(arr) {   // em ordem no dia, sem repetir a mesma posição no mesmo minuto
+    const vistos = new Set();
+    return arr.filter((p) => { const k = p.m + '|' + p.lat + '|' + p.lon; if (vistos.has(k)) return false; vistos.add(k); return true; }).sort((a, b) => a.m - b.m);
+  }
+  const distKm = (a, b) => { const R = 6371, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r; const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+  const kmTrajeto = (ps) => ps.reduce((t, p, i) => (i ? t + distKm(ps[i - 1], p) : 0), 0);
+  // posição no minuto m: entre dois pontos, na reta que os liga
+  function posEm(ps, m) {
+    if (!ps.length) return null;
+    if (m <= ps[0].m) return ps[0];
+    for (let i = 1; i < ps.length; i++) {
+      if (ps[i].m >= m) { const a = ps[i - 1], b = ps[i], f = b.m === a.m ? 1 : (m - a.m) / (b.m - a.m); return { m, lat: a.lat + (b.lat - a.lat) * f, lon: a.lon + (b.lon - a.lon) * f }; }
+    }
+    return ps[ps.length - 1];
+  }
+  const chaveTraj = (cli, placa, dia) => [ckey(cli), placaPos(placa), dia].join('|');
+  async function carregarTrajeto(placa, dia) {
+    const cli = E.cliente, hoje = D.hoje();
+    if (!placa || !/^\d{4}-\d{2}-\d{2}$/.test(String(dia || '')) || dia > hoje) { toast('Escolha um dia até hoje.', 'erro'); return; }
+    if (E.traj && E.traj.carregando) return;
+    const ate = dia === hoje ? Math.max(0, Math.min(1440, minBR(utc(Date.now()), dia))) : 1440;
+    const T = E.traj = { chave: chaveTraj(cli, placa, dia), cli, placa, dia, pontos: [], feitas: 0, total: Math.ceil(ate / TRAJ_PASSO_MIN), carregando: true, erro: null, min: 0, tocando: false, vista: null };
+    pararTrajeto(); render();
+    const cs = contaSrv();
+    try {
+      if (cs) {
+        const id = cliSrv(cli);
+        if (!id) throw new Error('este cliente não está cadastrado no servidor');
+        for (let h = 0; h < 24 && T.feitas < T.total; h += 2) {
+          // o servidor para de chamar a API depois de ~40 s e responde completo:false; as janelas já buscadas ficam no banco,
+          // então pedir o mesmo bloco de novo continua de onde parou
+          let r = null;
+          for (let tent = 0; tent < 4; tent++) {
+            r = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(id) + '/trajeto?placa=' + encodeURIComponent(placaPos(placa)) + '&dia=' + dia + '&de=' + h + '&ate=' + (h + 2));
+            if (E.traj !== T) return;
+            if (!r || r.completo !== false) break;
+          }
+          const novos = ((r && r.pontos) || []).map((p) => pontoDe({ lastPosition: { date: p.data, lat: p.lat, lon: p.lon } }, dia)).filter(Boolean);
+          T.pontos = juntarPontos(T.pontos.concat(novos));
+          T.feitas = Math.min(T.total, ((h + 2) * 60) / TRAJ_PASSO_MIN);
+          atualizarMapaTrajeto();
+        }
+      } else {
+        const tok = tokenDe(cli);
+        if (!tok) throw new Error('salve o token da API deste cliente em Configurações');
+        const ini = Date.parse(dia + 'T03:00:00Z'), passo = TRAJ_PASSO_MIN * 60000;
+        for (let i = 0; i < T.total; i++) {
+          let recs;
+          try { recs = registros(await apiGet('v1/vehicle-last-position', { startDate: utc(ini + i * passo), endDate: utc(ini + (i + 1) * passo - 1000), vehicleIdentification: placaPos(placa) }, tok)); }
+          catch (e) { throw /vehicle not found/i.test(e.message) ? new Error('a API não encontrou a placa ' + placaPos(placa)) : e; }
+          if (E.traj !== T) return;
+          const p = recs.map((x) => pontoDe(x, dia)).find(Boolean);
+          if (p) T.pontos = juntarPontos(T.pontos.concat([p]));
+          T.feitas = i + 1;
+          if (i % 6 === 5 || i === T.total - 1) atualizarMapaTrajeto();
+        }
+      }
+      T.min = T.pontos.length ? T.pontos[0].m : 0;
+      if (dia < hoje) armazem.gravar(CHAVE_TRAJ + T.chave, JSON.stringify(T.pontos));   // dia fechado: não muda mais
+    } catch (e) { T.erro = (e && e.message) || 'erro desconhecido'; }
+    T.carregando = false;
+    if (E.traj === T) render();
+  }
+  function cartaoTrajeto(placa) {
+    if (!placa) return '';
+    const hoje = D.hoje(), dia = E.trajDia && E.trajDia <= hoje ? E.trajDia : (E.A && E.A.fim && E.A.fim < hoje ? E.A.fim : hoje);
+    const chave = chaveTraj(E.cliente, placa, dia);
+    if (!E.traj || E.traj.chave !== chave) {
+      if (E.traj && E.traj.carregando) E.traj = null;   // trocou de veículo ou de dia: a busca em andamento para
+      pararTrajeto();
+      const cache = armazem.lerJSON(CHAVE_TRAJ + chave, null);
+      E.traj = Array.isArray(cache) ? { chave, cli: E.cliente, placa, dia, pontos: cache, feitas: 1, total: 1, carregando: false, erro: null, min: cache.length ? cache[0].m : 0, tocando: false, vista: null } : null;
+    }
+    const T = E.traj, ps = T ? T.pontos : [], pronto = T && !T.carregando;
+    const ctl = pronto && ps.length ? `<div class="traj-ctl"><button type="button" class="btn peq" data-acao="traj-tocar">${T.tocando ? 'Pausar' : 'Reproduzir o dia'}</button><input type="range" id="traj-min" min="${ps[0].m}" max="${ps[ps.length - 1].m}" step="1" value="${T.min}" aria-label="Hora do dia"><b class="num" id="traj-hora">${hhmm(T.min)}</b></div>
+      <span class="apoio" style="font-size:12px">${ps.length} pontos entre ${hhmm(ps[0].m)} e ${hhmm(ps[ps.length - 1].m)} · cerca de ${fmt(kmTrajeto(ps), 0)} km somando as retas entre os pontos (fica abaixo do km real) · verde = início, vermelho = fim, amarelo = onde estava na hora escolhida</span>` : '';
+    return `<section class="card" id="trajeto"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Trajeto do dia</h2><span class="h2-sub">${esc(placa)} · das 00:00 às 23:59 · um ponto a cada ${TRAJ_PASSO_MIN} minutos, com a última posição que a API tem em cada janela.</span></div>
+      <div class="susp-form"><input class="campo" type="date" id="traj-dia" data-campo="traj-dia" max="${hoje}" value="${dia}" aria-label="Dia do trajeto"><button type="button" class="btn ${T ? '' : 'btn-primario'} peq" data-acao="traj-carregar" data-placa="${esc(placa)}" data-dia="${dia}" ${T && T.carregando ? 'disabled' : ''}>${pronto && !T.erro ? 'Buscar de novo' : 'Carregar trajeto'}</button></div></div>
+      <div class="card-corpo">
+        ${T && T.erro ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">O trajeto não veio: ${esc(T.erro)}.</span></div></div>` : ''}
+        ${T ? '<div id="traj-mapa" class="traj-mapa" role="region" aria-label="Mapa do trajeto do dia"></div>' : '<div class="vazio"><span class="apoio">Escolha o dia e clique em Carregar trajeto. A busca leva cerca de meio minuto, e o caminho vai aparecendo no mapa enquanto chega.</span></div>'}
+        ${T && T.carregando ? `<span class="apoio" id="traj-prog">Buscando posições… ${T.feitas} de ${T.total} janelas · ${ps.length} pontos</span>` : ''}
+        ${pronto && !T.erro && !ps.length ? '<span class="apoio">Nenhuma posição neste dia: o veículo não comunicou ou ficou sem sinal.</span>' : ''}
+        ${ctl}</div></section>`;
+  }
+  // o mapa é refeito a cada render (o HTML da tela é trocado inteiro); o enquadramento escolhido fica em E.traj.vista
+  function montarMapaTrajeto() {
+    const el = document.getElementById('traj-mapa');
+    const rg = document.getElementById('traj-min');
+    if (rg) rg.addEventListener('input', () => { if (!E.traj) return; pararTrajeto(); const b = document.querySelector('[data-acao="traj-tocar"]'); if (b) b.textContent = 'Reproduzir o dia'; E.traj.min = Number(rg.value); atualizarMapaTrajeto(); });
+    if (!el || !E.traj) { mapaTraj = null; return; }
+    carregarLeaflet().then((L) => {
+      if (!document.body.contains(el)) return;
+      const map = L.map(el, { zoomControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map);
+      const ponto = (cor, r) => L.circleMarker([0, 0], { radius: r, color: r > 7 ? '#2B2B2B' : cor, weight: 2, fillColor: cor, fillOpacity: 1 });
+      mapaTraj = { el, map, feito: L.polyline([], { color: '#202124', weight: 4, opacity: 0.85 }).addTo(map),
+        resto: L.polyline([], { color: '#5F6368', weight: 3, opacity: 0.6, dashArray: '4 6' }).addTo(map),
+        ini: ponto('#1E8E3E', 6), fim: ponto('#D93025', 6), veic: ponto('#FEDB00', 9), enquadrado: false };
+      map.setView([-15.8, -47.9], 4);
+      atualizarMapaTrajeto();
+      map.on('moveend', () => { if (mapaTraj && mapaTraj.map === map && mapaTraj.enquadrado && E.traj && !E.traj.carregando) E.traj.vista = { c: map.getCenter(), z: map.getZoom() }; });
+    }).catch((e) => { el.innerHTML = '<div class="vazio"><span class="apoio">' + esc(e.message) + '.</span></div>'; });
+  }
+  function atualizarMapaTrajeto() {
+    const T = E.traj, M = mapaTraj, pg = document.getElementById('traj-prog');
+    if (pg && T && T.carregando) pg.textContent = `Buscando posições… ${T.feitas} de ${T.total} janelas · ${T.pontos.length} pontos`;
+    if (!T || !M || !window.L || !document.body.contains(M.el) || !T.pontos.length) return;
+    const ps = T.pontos, m = T.carregando ? 1440 : T.min, pos = posEm(ps, m), u = ps[ps.length - 1];
+    const ll = (p) => [p.lat, p.lon];
+    M.feito.setLatLngs(ps.filter((p) => p.m <= m).map(ll).concat(T.carregando ? [] : [ll(pos)]));
+    M.resto.setLatLngs(T.carregando ? [] : [ll(pos)].concat(ps.filter((p) => p.m > m).map(ll)));
+    M.ini.setLatLng(ll(ps[0])).bindTooltip('Início · ' + hhmm(ps[0].m)).addTo(M.map);
+    M.fim.setLatLng(ll(u)).bindTooltip('Fim · ' + hhmm(u.m)).addTo(M.map);
+    M.veic.setLatLng(ll(T.carregando ? u : pos)).addTo(M.map);
+    if (T.vista && !M.enquadrado) { M.map.setView(T.vista.c, T.vista.z); M.enquadrado = true; }
+    else if (!M.enquadrado || T.carregando) { M.map.fitBounds(window.L.latLngBounds(ps.map(ll)).pad(0.15), { maxZoom: 15 }); M.enquadrado = !T.carregando; }
+    const hr = document.getElementById('traj-hora'); if (hr) hr.textContent = hhmm(Math.min(1439, m));
+  }
+  function pararTrajeto() { if (timerTraj) clearInterval(timerTraj); timerTraj = null; if (E.traj) E.traj.tocando = false; }
+  // reproduz o dia: 2 minutos do dia a cada 40 ms (um dia inteiro em cerca de 30 s)
+  function tocarTrajeto() {
+    const T = E.traj;
+    if (!T || !T.pontos.length || T.carregando) return;
+    const botao = (t) => { const b = document.querySelector('[data-acao="traj-tocar"]'); if (b) b.textContent = t; };
+    if (T.tocando) { pararTrajeto(); botao('Reproduzir o dia'); return; }
+    const ps = T.pontos, ini = ps[0].m, fim = ps[ps.length - 1].m;
+    if (T.min >= fim) T.min = ini;
+    T.tocando = true; botao('Pausar');
+    timerTraj = setInterval(() => {
+      if (E.traj !== T || !document.getElementById('traj-mapa')) { pararTrajeto(); return; }
+      T.min = Math.min(fim, T.min + 2);
+      const r = document.getElementById('traj-min'); if (r) r.value = T.min;
+      atualizarMapaTrajeto();
+      if (T.min >= fim) { pararTrajeto(); botao('Reproduzir o dia'); }
+    }, 40);
+  }
+
+  // ================= F · Linha do tempo do cliente: como éramos × como estamos =================
+  // Marco zero = início da gestão Gobrax (campo inicioGestao no cadastro do cliente); sem ele, o primeiro dia com dado.
+  // Linha de base = os 28 dias antes do marco zero (ou as 4 primeiras semanas, se não houver dado antes); atual = os
+  // últimos 28 dias com dado. Resultado compara só os veículos que rodaram nas duas janelas, ponderado como no resto do
+  // painel, e só conta acima do ruído (2 × erro-padrão da linha de base). Engajamento compara a adesão nas duas janelas.
+  const JANELA_EVO = 28;
+  const EVO_RES = ['kml', 'motor_ocioso', 'faixa_verde', 'embalo', 'pressao_acelerador'];
+  const lsEvo = (nome) => { const v = linhasCli('veiculos', nome); return v.length ? v : linhasRet(nome); };
+  function marcoZeroDe(nome) {
+    const c = E.clientes.find((x) => ckey(x.nome) === ckey(nome));
+    if (c && /^\d{4}-\d{2}-\d{2}$/.test(String(c.inicioGestao || ''))) return { data: c.inicioGestao, definido: true };
+    const d = lsEvo(nome).reduce((m, l) => (l.data && (!m || l.data < m) ? l.data : m), '');
+    return d ? { data: d, definido: false } : null;
+  }
+  const diasRodados = (ls, p) => new Set(X.filtrar(ls, p).filter(X.rodouLinha).map((l) => l.data)).size;
+  function janelasEvo(nome) {
+    const mz = marcoZeroDe(nome), ls = lsEvo(nome);
+    const ult = ls.reduce((m, l) => (l.data > m ? l.data : m), ''), prim = ls.reduce((m, l) => (l.data && (!m || l.data < m) ? l.data : m), '');
+    if (!mz || !ult) return null;
+    const N = JANELA_EVO, antes = { ini: D.somar(mz.data, -N), fim: D.somar(mz.data, -1) };
+    const base = diasRodados(ls, antes) >= X.LIMITES.faseDiasMin ? Object.assign(antes, { tipo: 'antes' }) : { ini: mz.data, fim: D.somar(mz.data, N - 1), tipo: 'inicio' };
+    const atual = { ini: D.somar(ult, -(N - 1)), fim: ult };
+    // os mesmos veículos nas duas janelas: entrada e saída de veículo não viram melhora nem piora
+    const em = (p) => new Set(X.filtrar(ls, p).filter(X.rodouLinha).map(chaveVeic).filter(Boolean));
+    const sb = em(base), sa = em(atual), ambos = new Set([...sb].filter((k) => sa.has(k)));
+    return { mz, base, atual, ult, prim, ls, cedo: atual.ini <= base.fim, mv: { ls: ls.filter((l) => ambos.has(chaveVeic(l))), n: ambos.size, nb: sb.size, na: sa.size } };
+  }
+  function compararEvo(J, k) {
+    const vb = valorAlvo(J.mv.ls, k, J.base), va = valorAlvo(J.mv.ls, k, J.atual);
+    const ru = ruidoBase(J.mv.ls, J.base, IND_MAP[k], baseCli()).ruido;
+    const dif = Number.isFinite(va) && Number.isFinite(vb) ? va - vb : null;
+    const cls = J.cedo || dif === null || ru === null ? 'inconclusiva' : Math.abs(dif) <= ru ? 'sem_mudanca' : dif * melhorDe(k) > 0 ? 'melhor' : 'pior';
+    return { k, vb, va, dif, ru, cls };
+  }
+  // engajamento numa janela: adesão ao equipamento, à identificação do motorista e ao programa de premiação
+  function premiadosEm(p, nome) {
+    const ini = p.ini.slice(0, 7), fim = p.fim.slice(0, 7);
+    let tot = 0, prem = 0;
+    docsApi('premiacao', nome).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && d.data >= ini && d.data <= fim)
+      .forEach((d) => (d.motoristas || []).forEach((m) => { if (!(m.km > 0)) return; tot++; if (m.premio > 0) prem++; }));
+    return tot ? (prem / tot) * 100 : null;
+  }
+  function engajamentoEm(nome, p) {
+    const lv = linhasCli('veiculos', nome), ls = lsEvo(nome), cob = coberturaEm(ls, p);
+    const rod = X.filtrar(lv, p).filter(X.rodouLinha);
+    const ident = rod.length ? (rod.filter((l) => l.motorista && l.motorista !== l.veiculo).length / rod.length) * 100 : null;
+    const ativos = new Set(X.filtrar(linhasRet(nome), p).filter(X.rodouLinha).map((l) => l.motorista).filter(Boolean)).size;
+    const nota = notaFrotaPremiacao(p, nome);
+    return { comunicando: cob.vistos ? cob.pct : null, ident, ativos: ativos || null, nota: nota ? nota.nota : null, premiados: premiadosEm(p, nome) };
+  }
+  // limiar de "estável" no engajamento: 2 p.p. nos percentuais, 2 pontos na nota, 5% nos motoristas ativos
+  const EVO_ENG = [
+    { k: 'comunicando', rot: 'Veículos comunicando', un: '%', lim: 2, desc: 'veículos com dado no período, entre os vistos nos últimos 90 dias' },
+    { k: 'ident', rot: 'Dias com motorista identificado', un: '%', lim: 2, desc: 'dias rodados em que o veículo tinha motorista vinculado' },
+    { k: 'ativos', rot: 'Motoristas ativos', un: '', lim: 0.05, rel: true, desc: 'motoristas diferentes que rodaram no período' },
+    { k: 'nota', rot: 'Nota média da premiação', un: 'pts', lim: 2, desc: 'nota mensal da API, ponderada pelos km' },
+    { k: 'premiados', rot: 'Motoristas premiados', un: '%', lim: 2, desc: 'motoristas com prêmio entre os que rodaram no mês' }
+  ];
+  const fmtEng = (e, v) => (!Number.isFinite(v) ? '—' : e.un === '%' ? fmt(v, 0) + '%' : e.un === 'pts' ? fmt(v, 1) : fmt(v, 0));
+  function clsEng(e, vb, va, cedo) {
+    if (cedo || !Number.isFinite(vb) || !Number.isFinite(va)) return 'inconclusiva';
+    const d = va - vb, lim = e.rel ? Math.max(1, vb * e.lim) : e.lim;
+    return Math.abs(d) <= lim ? 'sem_mudanca' : d > 0 ? 'melhor' : 'pior';
+  }
+  // as sete etapas do ciclo de vida: a primeira que falta é a etapa atual
+  function etapasCliente(nome) {
+    const J = janelasEvo(nome), f = fichaDe(nome), cs = combinadosDe(nome).filter((c) => !c.cancelado), est = cs.map(estadoCombinado);
+    const nAcomp = est.filter((s) => s.estado === 'acompanhamento').length, nVer = est.filter((s) => ['confirmado', 'nao_confirmado', 'inconclusivo'].includes(s.estado)).length;
+    const nConf = est.filter((s) => s.estado === 'confirmado').length;
+    const e = [
+      { n: 1, rot: 'Entrada', href: '#/config', ok: !!J, txt: J ? 'dados desde ' + D.br(J.prim) : 'sem dados da API' },
+      { n: 2, rot: 'Linha de base', href: '#/jornada', ok: !!(J && J.mz.definido), txt: J && J.mz.definido ? 'marco zero em ' + D.br(J.mz.data) : 'marco zero não definido' },
+      { n: 3, rot: 'Estudo', href: '#/churn', ok: !!f || cs.length > 0 || tratDoCliente(nome).length > 0, txt: f ? 'ficha de retenção feita' : 'Saúde do cliente' },
+      { n: 4, rot: 'Ajuste', href: '#/combinados', ok: cs.length > 0, txt: cs.length ? cs.length + (cs.length === 1 ? ' combinado' : ' combinados') : 'nenhum combinado' },
+      { n: 5, rot: 'Acompanhamento', href: '#/fases', ok: nVer > 0, txt: nAcomp ? nAcomp + ' em acompanhamento' : nVer ? nVer + ' com veredito' : 'aguardando combinado' },
+      { n: 6, rot: 'Resultado', href: '#/resumo', ok: nConf > 0, txt: nConf ? nConf + ' confirmado(s)' : 'nenhum resultado confirmado' },
+      { n: 7, rot: 'Renovação', href: '#/churn', ok: !!(f && f.renovacao && f.renovacao <= D.hoje()), txt: f && f.renovacao ? 'renovação em ' + D.br(f.renovacao) : 'sem data de renovação' }
+    ];
+    return { e, atual: e.find((x) => !x.ok) || e[e.length - 1] };
+  }
+  // faixa "onde estou" no topo das telas do cliente: as sete etapas, a atual em destaque e o próximo passo
+  const TELAS_JORNADA = ['jornada', 'churn', 'combinados', 'fases', 'resumo', 'plano'];
+  function faixaJornada(nome) {
+    if (!nome || !E.base) return '';
+    const { e, atual } = etapasCliente(nome), aqui = '#/' + E.rota.tela;
+    return `<nav class="jornada" aria-label="Etapas do cliente">${e.map((x) => `<a class="jornada-et ${x.ok ? 'feita' : ''} ${x === atual ? 'atual' : ''} ${x.href === aqui ? 'aqui' : ''}" href="${x.href}" title="${esc(x.txt)}"${x.href === aqui ? ' aria-current="page"' : ''}><span class="jornada-n">${x.ok ? '✓' : x.n}</span><span>${esc(x.rot)}</span></a>`).join('')}
+      <span class="jornada-prox">Próximo passo: <a href="${atual.href}">${esc(atual.n + '. ' + atual.rot)}</a> · ${esc(atual.txt)}</span></nav>`;
+  }
+  // gráfico semanal desde a linha de base: faixa da base e da janela atual, traço no marco zero, círculos nos marcos
+  function graficoEvo(nome, J, k, eng) {
+    const ini = J.base.ini < J.mz.data ? J.base.ini : J.mz.data, dias = D.dif(ini, J.ult) + 1;
+    const passo = 7 * Math.max(1, Math.ceil(dias / 7 / 52)), sem = [];
+    for (let fim = J.ult; fim >= ini; fim = D.somar(fim, -passo)) sem.unshift({ ini: D.somar(fim, -(passo - 1)), fim });
+    const val = (p) => (eng ? engajamentoEm(nome, p)[k] : valorAlvo(J.ls, k, p));
+    const pts = sem.map((p) => ({ p, v: val(p) }));
+    const vals = pts.map((q) => q.v).filter(Number.isFinite);
+    if (pts.length < 2 || vals.length < 2) return '<div class="vazio"><span class="apoio">Ainda não há semanas suficientes para o gráfico.</span></div>';
+    let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || 1; lo -= pad; hi += pad;
+    const W = larguraGrafico(1, 520), H = 260, m = { l: 72, r: 14, t: 26, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = pts.length;
+    const x = (i) => m.l + (i / (n - 1)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    const xd = (d) => m.l + Math.max(0, Math.min(1, D.dif(sem[0].fim, d) / Math.max(1, D.dif(sem[0].fim, sem[n - 1].fim)))) * iw;
+    const ef = eng ? EVO_ENG.find((q) => q.k === k) : null, rotV = (v) => (eng ? fmtEng(ef, v) : fmtAlvo(k, v));
+    let g = '';
+    // rótulos nas pontas de fora das faixas: base à esquerda, atual à direita (as duas podem se cruzar no início da gestão)
+    [[J.base, 'Como éramos', '#E8EAED', 'start'], [J.atual, 'Como estamos', '#FFF6C7', 'end']].forEach(([p, r, cor, lado]) => {
+      const a = xd(p.ini), b = Math.max(a + 6, xd(p.fim));
+      g += `<rect x="${a.toFixed(1)}" y="${m.t}" width="${(b - a).toFixed(1)}" height="${ih}" fill="${cor}" opacity=".8"/><text x="${(lado === 'start' ? a + 2 : b - 2).toFixed(1)}" y="${m.t - 8}" text-anchor="${lado}" font-size="11" style="fill:var(--texto-2)">${r}</text>`;
+    });
+    [0, 1, 2, 3].map((q) => lo + ((hi - lo) * q) / 3).forEach((t) => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="var(--hairline)"/><text x="${m.l - 6}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${esc(rotV(t))}</text>`; });
+    const xm = xd(J.mz.data);
+    g += `<line x1="${xm.toFixed(1)}" x2="${xm.toFixed(1)}" y1="${m.t}" y2="${m.t + ih}" stroke="#202124" stroke-dasharray="4 4"/><text x="${(xm + 4).toFixed(1)}" y="${m.t + 12}" font-size="11" font-weight="700" style="fill:var(--tinta)">marco zero</text>`;
+    let d = '';
+    pts.forEach((q, i) => { if (!Number.isFinite(q.v)) return; d += (d ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(q.v).toFixed(1); });
+    g += `<path d="${d}" fill="none" stroke="#7A869A" stroke-width="2" stroke-linejoin="round"/>`;
+    pts.forEach((q, i) => { if (Number.isFinite(q.v)) g += `<circle cx="${x(i).toFixed(1)}" cy="${y(q.v).toFixed(1)}" r="3" fill="#7A869A"><title>${D.periodoCurto(q.p)}: ${esc(rotV(q.v))}</title></circle>`; });
+    marcosDe(nome).filter((mc) => mc.data >= sem[0].ini && mc.data <= J.ult).forEach((mc, i) => {
+      const cx = xd(mc.data);
+      g += `<g><title>${D.br(mc.data)} · ${esc(TIPOS_MARCO[mc.tipo] || mc.tipo)}</title><circle cx="${cx.toFixed(1)}" cy="${(m.t + ih + 14).toFixed(1)}" r="8" fill="#FCB709" stroke="#fff" stroke-width="2"/><text x="${cx.toFixed(1)}" y="${(m.t + ih + 18).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#2B2B2B">${i + 1}</text></g>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolução semanal desde a linha de base" style="display:block">${g}</svg>`;
+  }
+  async function salvarMarcoZero() {
+    const c = cliAtual(), d = (document.getElementById('mz-data') || {}).value;
+    if (!c) { toast('Escolha um cliente cadastrado.', 'erro'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) || d > D.hoje()) { toast('Escolha uma data até hoje.', 'erro'); return; }
+    await salvarEstado(c.id, { inicioGestao: d }, 'Marco zero salvo: ' + D.br(d) + '.');
+  }
+  function telaJornada() {
+    const nome = E.cliente;
+    const cab = cabecalho('Linha do tempo do cliente', nome ? `${esc(nome)} · como éramos × como estamos, desde o início da gestão Gobrax. "Associado a", não "causado por".` : 'Escolha um cliente no topo da tela.');
+    if (!nome) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Escolha um cliente', 'A linha do tempo compara o cliente com ele mesmo, antes e depois do início da gestão.')}</div></section>`;
+    const J = janelasEvo(nome);
+    if (!J) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Sem dados deste cliente', 'Salve o token da API do cliente em Configurações: a linha do tempo começa no primeiro dia com dado.')}<a class="btn btn-primario" href="#/config" style="text-decoration:none;align-self:center">Ir para Configurações</a></div></section>`;
+    const cli = cliAtual();
+    const mzCard = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Marco zero: início da gestão Gobrax</h2><span class="h2-sub">${J.mz.definido ? 'Definido em ' + D.br(J.mz.data) + '.' : 'Ainda não definido: usando o primeiro dia com dado (' + D.br(J.mz.data) + ').'} Linha de base: ${J.base.tipo === 'antes' ? 'os ' + JANELA_EVO + ' dias antes do marco zero' : 'as 4 primeiras semanas de gestão (não há dado antes do marco zero)'}, ${D.periodoCurto(J.base)}. Atual: ${D.periodoCurto(J.atual)}.</span></div></div>
+      <div class="card-corpo">${cli ? `<div class="susp-form"><label class="mudo">Data <input class="campo" type="date" id="mz-data" max="${D.hoje()}" value="${esc(J.mz.definido ? J.mz.data : '')}"></label><button type="button" class="btn peq" data-acao="mz-salvar">Salvar marco zero</button></div>` : '<span class="apoio">Cadastre o cliente em Configurações para guardar o marco zero.</span>'}
+      ${J.cedo ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A janela atual ainda se sobrepõe à linha de base: a comparação fica inconclusiva até ${D.br(D.somar(J.base.fim, JANELA_EVO))}.</span></div></div>` : ''}</div></section>`;
+    // eixo 1: resultado (mesmos veículos)
+    const res = EVO_RES.filter(temInd).map((k) => compararEvo(J, k));
+    const kml = res.find((r) => r.k === 'kml'), pm = premissasDe(nome), preco = pm.preco || E.preco;
+    const kmAt = X.filtrar(J.mv.ls, J.atual).reduce((t, l) => t + (l.km || 0), 0);
+    const eco = kml && ['melhor', 'pior'].includes(kml.cls) && kml.vb > 0 && kml.va > 0 ? kmAt * (1 / kml.vb - 1 / kml.va) * preco : null;
+    const cartaoRes = (r) => { const [rot, cls] = ROT_CLS[r.cls];
+      return `<div class="fase-card fase-${r.cls}"><div class="fase-cab"><b>${esc(rotAlvo(r.k))}</b><span class="badge ${cls}">${rot}</span></div>
+        <span class="fase-val num">${esc(fmtAlvo(r.k, r.va))}</span>
+        <span class="apoio">era ${esc(fmtAlvo(r.k, r.vb))}${r.dif !== null ? ' · ' + esc(fmtDif(r.k, r.dif)) : ''}</span>
+        <span class="apoio" style="font-size:12px">${r.ru !== null ? 'ruído ±' + fmt(r.ru, r.k === 'kml' ? 2 : 1) + ' (2 × erro-padrão da linha de base)' : 'ruído não calculável: poucos dias na linha de base'}</span></div>`; };
+    const ecoCard = `<div class="fase-card ${eco === null ? 'fase-inconclusiva' : eco >= 0 ? 'fase-melhor' : 'fase-pior'}"><div class="fase-cab"><b>${eco !== null && eco < 0 ? 'Perda' : 'Economia'} nas últimas 4 semanas</b></div>
+      <span class="fase-val num">${eco === null ? '—' : fmtReais(Math.abs(eco), 0)}</span>
+      <span class="apoio" style="font-size:12px">${eco === null ? 'só aparece quando o km/l muda acima do ruído' : fmt(kmAt, 0) + ' km × (1/' + fmt(kml.vb, 2) + ' − 1/' + fmt(kml.va, 2) + ') × ' + fmtReais(preco, 2) + '/L'}</span></div>`;
+    // eixo 2: engajamento (todos os veículos e motoristas do cliente)
+    const eb = engajamentoEm(nome, J.base), ea = engajamentoEm(nome, J.atual);
+    const cartaoEng = (e) => { const c = clsEng(e, eb[e.k], ea[e.k], J.cedo), [rot, cls] = ROT_CLS[c], dv = Number.isFinite(ea[e.k]) && Number.isFinite(eb[e.k]) ? ea[e.k] - eb[e.k] : null;
+      return `<div class="fase-card fase-${c}"><div class="fase-cab"><b>${esc(e.rot)}</b><span class="badge ${cls}">${c === 'sem_mudanca' ? 'Estável' : rot}</span></div>
+        <span class="fase-val num">${esc(fmtEng(e, ea[e.k]))}</span>
+        <span class="apoio">era ${esc(fmtEng(e, eb[e.k]))}${dv !== null ? ' · ' + (dv >= 0 ? '+' : '−') + fmt(Math.abs(dv), e.un === 'pts' ? 1 : 0) + (e.un === '%' ? ' p.p.' : e.un === 'pts' ? ' pts' : '') : ''}</span>
+        <span class="apoio" style="font-size:12px">${esc(e.desc)}</span></div>`; };
+    const engs = EVO_ENG.filter((e) => Number.isFinite(eb[e.k]) || Number.isFinite(ea[e.k]));
+    // gráfico: um indicador de cada vez, de qualquer um dos dois eixos
+    const opcoes = res.map((r) => ({ k: r.k, rot: rotAlvo(r.k), eng: false })).concat(engs.map((e) => ({ k: e.k, rot: e.rot, eng: true })));
+    const sel = opcoes.find((o) => o.k === E.evoInd) || opcoes[0];
+    const seg = opcoes.length ? `<select class="campo" data-campo="evo-ind" style="width:auto;height:32px" aria-label="Indicador do gráfico">${opcoes.map((o) => `<option value="${o.k}" ${o === sel ? 'selected' : ''}>${esc(o.rot)}</option>`).join('')}</select>` : '';
+    return `${cab}${mzCard}
+      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Resultado operacional</h2><span class="h2-sub">Os ${J.mv.n} veículos que rodaram nas duas janelas (${J.mv.nb} na linha de base, ${J.mv.na} agora). Melhorou ou piorou só acima do ruído.</span></div></div>
+        <div class="card-corpo"><div class="fase-grade">${res.map(cartaoRes).join('')}${kml ? ecoCard : ''}</div></div></section>
+      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Engajamento</h2><span class="h2-sub">O engajamento costuma subir antes do resultado: equipamento comunicando e motorista identificado vêm antes do consumo melhorar.</span></div></div>
+        <div class="card-corpo">${engs.length ? `<div class="fase-grade">${engs.map(cartaoEng).join('')}</div>` : '<span class="apoio">Sem dados de engajamento ainda.</span>'}</div></section>
+      ${sel ? `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(sel.rot)} semana a semana</h2><span class="h2-sub">Faixa cinza = como éramos; faixa amarela = como estamos; traço = marco zero; círculos = marcos registrados em Combinados.</span></div>${seg}</div>
+        <div class="card-corpo">${graficoEvo(nome, J, sel.k, sel.eng)}</div></section>` : ''}`;
+  }
+
   // ---------- Clientes: cadastro compartilhado (db) com cópia local quando o banco não está disponível ----------
   const CHAVE_CLIENTES = 'gbx-frota-clientes';
   let dbRef = null, hubRef = null;
@@ -9446,10 +9798,10 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, fases: telaFases, resumo: telaResumo };
+    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, fases: telaFases, resumo: telaResumo, jornada: telaJornada };
     const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'carteira', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
-    const html = shell(comContexto(() => tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
+    const html = shell(comContexto(() => (TELAS_JORNADA.includes(E.rota.tela) && E.base ? faixaJornada(E.cliente) : '') + tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
     const tokDigitados = [...document.querySelectorAll('#api-token, input[data-token]')].filter((i) => i.value).map((i) => [i.id, i.value]);
     document.getElementById('app').innerHTML = html;
@@ -9459,6 +9811,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const entrou = pag && chaveAnim !== ultimaAnim;
     if (entrou) { ultimaAnim = chaveAnim; pag.classList.add('anima'); animarNumeros(pag); document.body.classList.remove('carregou'); void document.body.offsetWidth; document.body.classList.add('carregou'); } else if (pag) pag.classList.add('sem-anima');
     desenharGraficos();
+    montarMapaTrajeto();
     animarGraficos(pag, entrou);
     setTimeout(fotografarRisco, 1500);
     preencherImagensSemanais();
@@ -9496,7 +9849,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'importar', 'config', 'visao', 'clientes', 'plano', 'carteira', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo', 'combinados', 'fases', 'resumo'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'importar', 'config', 'visao', 'clientes', 'plano', 'carteira', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo', 'combinados', 'fases', 'resumo', 'jornada'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 
@@ -10164,6 +10517,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     'regras-salvar': () => salvarRegras(),
     'fase-ind': (el) => { E.faseInd = el.dataset.k; render(); },
     'excl-salvar': () => excluirDia(),
+    'mz-salvar': () => salvarMarcoZero(),
+    'traj-carregar': (el) => carregarTrajeto(el.dataset.placa, (document.getElementById('traj-dia') || {}).value || el.dataset.dia),
+    'traj-tocar': () => tocarTrajeto(),
     'premissas-salvar': () => salvarPremissas(),
     'resumo-exportar': () => {   // deck/PDF: só o resumo (sem nomes de motoristas, contatos nem valor de contrato)
       document.body.classList.add('imprime-resumo');
@@ -10284,6 +10640,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     }
     if (k === 'sem-comp') { E.semComp = el.value; E.semEnvio = null; render(); return; }
     if (k === 'resumo-fase') { E.resumoFase = el.value; render(); return; }
+    if (k === 'evo-ind') { E.evoInd = el.value; render(); return; }
+    if (k === 'traj-dia') { E.trajDia = el.value; render(); return; }
     if (k === 'hub-arquivo' && el.files && el.files[0]) {
       el.files[0].text().then((t) => {
         let o = null; try { o = JSON.parse(t); } catch (e) { o = null; }

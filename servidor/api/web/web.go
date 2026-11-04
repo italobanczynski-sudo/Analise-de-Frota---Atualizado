@@ -33,8 +33,10 @@ func Pagina(nome string) gin.HandlerFunc {
 	}
 }
 
-// O painel tem scripts e estilos dentro do próprio HTML e busca o preço do diesel e a API Gobrax direto do navegador
-const cspPainel = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+// O painel tem scripts e estilos dentro do próprio HTML e busca o preço do diesel e a API Gobrax direto do navegador.
+// O mapa do trajeto usa o Leaflet do cdnjs (script e estilo); os quadros do mapa (OpenStreetMap) já entram em img-src https:.
+const cspPainel = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
+	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
 	"font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
 	"connect-src 'self' https://combustivelapi.com.br https://gateway-v3.gobrax.com.br:8889; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 

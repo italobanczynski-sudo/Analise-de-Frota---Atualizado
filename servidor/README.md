@@ -22,7 +22,7 @@ main.go        sobe tudo; também tem os comandos -criar-admin e -importar-clien
 environment/   única leitura de variáveis de ambiente (Config_t carregado uma vez)
 adapters/      Postgres (Singleton), migrações SQL, cliente da API Gobrax, e-mail, log
 common/        datas de Brasília, placas, limpeza de token, validação, criptografia
-modules/       usuario, sessao, cliente, diario, odometro, premiacao, coleta (regras + repositórios)
+modules/       usuario, sessao, cliente, diario, odometro, premiacao, coleta, trajeto (regras + repositórios)
 api/           route.go (rotas e perfis), auth.go (filtros HTTP), controller (entrada), middleware (casos de uso)
 api/web/       telas: paginas/*.html, estatico/ (CSS, JS, imagens) e painel/ (cópia do index.html feita pelo Dockerfile)
 background/    tarefas automáticas
@@ -79,7 +79,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 - **Clientes**: lista com a situação da última busca; administrador cadastra e troca o token; colaborador e administrador pedem uma busca na hora.
 - **Usuários** (só administrador): convidar, trocar perfil, desativar/reativar, gerar novo link de convite ou de senha.
 - **Busca automática** (`v1/vehicle-statistics`, `v1/vehicle-performance`, `v2/vehicle-odometer`, `v2/driversOverview`): logo que sobe e a cada `COLETA_INTERVALO_MIN`. Na primeira vez, os últimos `COLETA_DIAS`; depois, do último dia buscado (refeito) até hoje. 404 é dia sem dado; falha pontual pula o dia sem apagar o que já havia; três falhas seguidas desligam aquele tipo na rodada.
-- **Painel completo em `/painel`** (o mesmo `index.html` do GitHub Pages, com todas as telas): depois do login a pessoa cai nele. A ponte `api/web/estatico/painel-base.js` oferece ao painel a mesma "base compartilhada" do Artifact, guardada no Postgres (`base_documentos`: clientes, tratativas, HubSpot, configurações e planilhas importadas). Os dados que o servidor busca na API Gobrax chegam ao painel montados como as planilhas de veículos e motoristas, o odômetro e a premiação (último ano). O que alguém importou à mão para o mesmo cliente e dia vale mais. O leitor só lê; colaborador e admin gravam.
+- **Painel completo em `/painel`** (o mesmo `index.html` do GitHub Pages, com todas as telas): depois do login a pessoa cai nele. A ponte `api/web/estatico/painel-base.js` oferece ao painel a mesma "base compartilhada" do Artifact, guardada no Postgres (`base_documentos`: clientes, tratativas, HubSpot, configurações e planilhas importadas). Os dados que o servidor busca na API Gobrax chegam ao painel montados como as planilhas de veículos e motoristas, o odômetro e a premiação (último ano). Na planilha de motoristas, cada um tem só o tempo do vínculo dele com o veículo (`registros_motoristas`): quem ficou o dia todo usa a linha do veículo, e os vínculos parciais são buscados na API só nos trechos daquele motorista, como o painel faz. Isso gasta mais chamadas à performance nos dias com troca de motorista. O que alguém importou à mão para o mesmo cliente e dia vale mais. O leitor só lê; colaborador e admin gravam.
 - **Mensagens do dia** (painel, menu Motoristas → Mensagens do dia): a análise de cada motorista que rodou no dia (km, média km/l e os indicadores da plataforma Gobrax: Início de Faixa Verde, Aproveitamento de Embalo, Motor Ligado Parado, Acelerando acima do Verde, Excesso de Velocidade, Piloto Automático e Pedal Crítico, cada um contra o dia anterior em que ele rodou; nota do mês contra o mês anterior, evolução e o que melhorar; com mais de um veículo no dia, cada percentual é ponderado pela própria base, como a plataforma), pronta para copiar e mandar pelo WhatsApp. Não há integração: quem manda marca como enviada. Cada marca guarda um retrato da análise (`mensagens_enviadas`), e o **Motorista individual** mostra os dias com mensagem e se ele melhorou, nos 7 dias seguintes, no ponto apontado.
 - Em 25/10/2026 os 447 documentos da base do Artifact (2 clientes, 194 tratativas, HubSpot, diesel e 248 planilhas) foram copiados para o banco local.
 
@@ -122,6 +122,7 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/registros?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` | logado | Dia a dia de cada veículo |
 | `GET /api/v1/clientes/:id/odometros` | logado | Último odômetro de cada veículo |
 | `GET /api/v1/clientes/:id/premiacoes?mes=AAAA-MM` | logado | Premiação (sem `mes`: todos) |
+| `GET /api/v1/clientes/:id/trajeto?placa=ABC1D23&dia=AAAA-MM-DD&de=0&ate=24` | logado | Trajeto do dia: um ponto a cada 5 min (horas de Brasília). `completo: false` = o tempo do pedido acabou; peça de novo, o que já veio fica no banco |
 | `GET /painel` | logado (senão volta para `/`) | Painel completo |
 | `GET /api/v1/painel/dados` | logado | Dados da API de cada cliente (último ano), para o painel |
 | `GET /api/v1/base/:colecao` | logado | Documentos da base do painel |
@@ -143,7 +144,7 @@ A documentação da API Gobrax (externa) está em [../docs/API.md](../docs/API.m
 
 ## Banco e migrações
 
-As migrações ficam em `adapters/migrations/*.sql` e rodam sozinhas ao subir, em ordem, uma vez cada (controle em `schema_migrations`). Tabelas: `clientes`, `registros_diarios`, `odometros`, `premiacoes`, `coletas`, `usuarios`, `convites`, `sessoes`, `codigos_acesso`. O CPF que a API Gobrax devolve nunca é lido (os structs nem declaram o campo); só o nome do motorista é guardado.
+As migrações ficam em `adapters/migrations/*.sql` e rodam sozinhas ao subir, em ordem, uma vez cada (controle em `schema_migrations`). Tabelas: `clientes`, `registros_diarios`, `registros_motoristas`, `odometros`, `premiacoes`, `coletas`, `posicoes_amostradas`, `usuarios`, `convites`, `sessoes`, `codigos_acesso`. O CPF que a API Gobrax devolve nunca é lido (os structs nem declaram o campo); só o nome do motorista é guardado.
 
 Para mudar o banco, crie um arquivo novo (`004_...sql`); nunca edite um que já rodou.
 
@@ -201,6 +202,8 @@ Guarde a `CHAVE_TOKENS` junto do plano de backup, em um cofre de senhas e nunca 
 - Apagar no painel um dado que veio da API (não importado à mão) não tem efeito: ele volta na próxima atualização.
 - A imagem é construída a partir da raiz do repositório (`docker build -f servidor/Dockerfile .`).
 - A fonte Inter vem do Google Fonts (liberado na CSP); sem internet, cai para a fonte do sistema.
+- O trajeto do dia é amostrado: a API de posições só dá a última posição de cada intervalo, então o servidor pergunta janelas de 5 minutos (288 chamadas no dia). Essas chamadas entram na mesma fila da busca de hora em hora: com a busca rodando, o trajeto espera. A coleção de posições da Gobrax cita a porta 8888 (http); o servidor usa a mesma base dos outros endpoints (8889, https) até a Gobrax confirmar.
+- O mapa do painel usa o Leaflet do cdnjs (liberado na CSP do `/painel`) e os quadros do OpenStreetMap.
 
 ## Próximas fases
 

@@ -57,10 +57,12 @@ const DiasPainel = 365
 
 // DadosCliente_t é o que o servidor buscou na API Gobrax para um cliente, no formato que o painel monta em planilhas
 type DadosCliente_t struct {
-	ID         int64                   `json:"id"`
-	Nome       string                  `json:"nome"`
-	HubspotID  string                  `json:"hubspot_id"`
-	Registros  []diario.Registro_t     `json:"registros"`
+	ID        int64               `json:"id"`
+	Nome      string              `json:"nome"`
+	HubspotID string              `json:"hubspot_id"`
+	Registros []diario.Registro_t `json:"registros"`
+	// Motoristas: o dado de cada motorista só no tempo do vínculo dele com o veículo (a planilha de motoristas do painel)
+	Motoristas []diario.Registro_t     `json:"motoristas"`
 	Odometros  []odometro.Odometro_t   `json:"odometros"`
 	Premiacoes []premiacao.Premiacao_t `json:"premiacoes"`
 }
@@ -78,6 +80,9 @@ func (m Base_t) Dados(ctx context.Context) *middleware.Response_t {
 	for _, c := range clis {
 		d := DadosCliente_t{ID: c.ID, Nome: c.Nome, HubspotID: c.HubspotID}
 		if d.Registros, err = dia.Listar(ctx, c.ID, ini, hoje); err != nil {
+			return middleware.RetErro(err)
+		}
+		if d.Motoristas, err = dia.ListarMotoristas(ctx, c.ID, ini, hoje); err != nil {
 			return middleware.RetErro(err)
 		}
 		if d.Odometros, err = odo.Listar(ctx, c.ID); err != nil {

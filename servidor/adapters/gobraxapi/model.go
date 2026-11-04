@@ -96,3 +96,22 @@ type PremiacaoMes_t struct {
 	Score   Numero_t        `json:"Score"`
 	Err     json.RawMessage `json:"Err"`
 }
+
+// GET v1/vehicle-last-position: a última posição do veículo na janela pedida
+type PosicaoRec_t struct {
+	VehicleIdentification string         `json:"vehicleIdentification"`
+	LastPosition          PosicaoBruta_t `json:"lastPosition"`
+}
+
+type PosicaoBruta_t struct {
+	Date string   `json:"date"` // "AAAA-MM-DD HH:MM:SS", quando a posição foi coletada
+	Lat  Numero_t `json:"lat"`
+	Lon  Numero_t `json:"lon"`
+}
+
+// Posicao_t é a posição já lida, com latitude e longitude válidas
+type Posicao_t struct {
+	Data string
+	Lat  float64
+	Lon  float64
+}

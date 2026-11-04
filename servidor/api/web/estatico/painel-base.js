@@ -33,14 +33,15 @@
   const escC = (s) => (/[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
   const PERF = ['faixa_verde', 'inicio_faixa_verde', 'final_faixa_verde', 'eco_roll', 'pressao_ideal', 'pressao_atencao', 'embalo', 'motor_ocioso',
     'pressao_acelerador', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'freio_motor'];
-  const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota'].concat(PERF, ['cliente', 'dias_periodo']);
+  const COLS = ['data', 'motorista', 'veiculo', 'km', 'litros', 'frenagens', 'frenagens_alta', 'velocidade_media', 'odometro', 'horas', 'nota', 'horas_motor', 'horas_pedal'].concat(PERF, ['cliente', 'dias_periodo']);
 
   // um dia de um cliente → as duas planilhas, no mesmo layout de diaParaCSV do painel
   function linhaCSV(r, cli) {
     const rodou = !!r.rodou, so = (v) => (rodou ? num(v) : '');
     const nota = r.nota !== null && r.nota >= 0 && r.nota <= 100 ? num(r.nota) : '';
     return [br(r.dia), escC(r.motorista || r.placa), escC(r.placa), num(r.km || 0), so(r.litros), so(r.frenagens), so(r.frenagens_alta), so(r.velocidade_media), num(r.odometro),
-      num(r.horas), nota].concat(PERF.map((k) => num(r[k])), [escC(cli), '1']).join(';');
+      // horas_motor (ignição ligada) e horas_pedal (pé no acelerador): bases do motor ocioso e do pedal, como no diaParaCSV
+      num(r.horas), nota, num(r.horas_motor), num(r.horas_pedal)].concat(PERF.map((k) => num(r[k])), [escC(cli), '1']).join(';');
   }
   function docsDoServidor(dados) {
     const out = new Map(), em = new Date().toISOString(), cab = COLS.join(';');

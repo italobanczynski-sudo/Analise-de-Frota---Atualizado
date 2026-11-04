@@ -236,7 +236,9 @@ async function puxar(c) {
   if (veiculos.length) gravar(idPlan('odometro', cli, 'atual', 1), { alvo: 'odometro', cliente: cli, data: fim, veiculos, em });
   const mes = (s) => s.slice(5, 7) + '-' + s.slice(0, 4);
   let j = [];
-  try { j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(ini), endDate: mes(fim) }, token); } catch (e) { avisos.push('premiação não veio: ' + e.message); }
+  // a API recusa início e fim no mesmo mês (ex.: --dias 2): nesse caso começa no mês anterior
+  const iniPrem = mes(ini) === mes(fim) ? somar(fim.slice(0, 8) + '01', -1) : ini;
+  try { j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(iniPrem), endDate: mes(fim) }, token); } catch (e) { avisos.push('premiação não veio: ' + e.message); }
   // só nome, nota, km e bonificação: CPF e id do motorista são descartados antes de gravar
   const porMes = {};
   registros(j).forEach((m) => {

@@ -8510,7 +8510,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (f.prem) {
         passo('Scores e premiação dos motoristas…');
         const mes = (iso) => iso.slice(5, 7) + '-' + iso.slice(0, 4);
-        const j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(f.ini), endDate: mes(fim) }, token);
+        // a API recusa início e fim no mesmo mês (como no servidor, coleta.go): nesse caso começa no mês anterior
+        const iniPrem = mes(f.ini) === mes(fim) ? D.somarMeses(fim, -1) : f.ini;
+        const j = await apiGet('v2/driversOverview', { documentNumbers: '', startDate: mes(iniPrem), endDate: mes(fim) }, token);
         // só nome, nota, km e bonificação: CPF e id do motorista são descartados aqui, antes de qualquer gravação
         const porMes = {};
         registros(j).forEach((m) => {

@@ -8362,7 +8362,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const val = (p) => (eng ? engajamentoEm(nome, p)[k] : valorAlvo(J.ls, k, p));
     const pts = sem.map((p) => ({ p, v: val(p) }));
     const vals = pts.map((q) => q.v).filter(Number.isFinite);
-    if (pts.length < 2 || vals.length < 2) return '<div class="vazio"><span class="apoio">Ainda não há semanas suficientes para o gráfico.</span></div>';
+    if (pts.length < 2 || vals.length < 2) return `<div class="vazio"><span class="apoio">Ainda não há semanas suficientes para o gráfico: ${vals.length === 1 ? 'só 1 semana tem' : vals.length ? vals.length + ' semanas têm' : 'nenhuma semana tem'} valor deste indicador (dados de ${D.br(J.prim)} a ${D.br(J.ult)}, ${D.dif(J.prim, J.ult) + 1} dias). O gráfico precisa de pelo menos 2 semanas com dado.</span></div>`;
     let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || 1; lo -= pad; hi += pad;
     const W = larguraGrafico(1, 520), H = 260, m = { l: 72, r: 14, t: 26, b: 30 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = pts.length;
     const x = (i) => m.l + (i / (n - 1)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
@@ -8428,13 +8428,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const opcoes = res.map((r) => ({ k: r.k, rot: rotAlvo(r.k), eng: false })).concat(engs.map((e) => ({ k: e.k, rot: e.rot, eng: true })));
     const sel = opcoes.find((o) => o.k === E.evoInd) || opcoes[0];
     const seg = opcoes.length ? `<select class="campo" data-campo="evo-ind" style="width:auto;height:32px" aria-label="Indicador do gráfico">${opcoes.map((o) => `<option value="${o.k}" ${o === sel ? 'selected' : ''}>${esc(o.rot)}</option>`).join('')}</select>` : '';
-    return `${cab}${mzCard}
+    const grafCard = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${sel ? esc(sel.rot) + ' semana a semana' : 'Evolução semana a semana'}</h2><span class="h2-sub">Faixa cinza = como éramos; faixa amarela = como estamos; traço = marco zero; círculos = marcos registrados em Combinados.</span></div>${seg}</div>
+        <div class="card-corpo">${sel ? graficoEvo(nome, J, sel.k, sel.eng) : `<div class="vazio"><span class="apoio">Nenhum indicador tem valor ainda (dados de ${D.br(J.prim)} a ${D.br(J.ult)}). O gráfico aparece quando a API trouxer km/l, faixa verde ou os outros indicadores deste cliente.</span></div>`}</div></section>`;
+    return `${cab}${mzCard}${grafCard}
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Resultado operacional</h2><span class="h2-sub">Os ${J.mv.n} veículos que rodaram nas duas janelas (${J.mv.nb} na linha de base, ${J.mv.na} agora). Melhorou ou piorou só acima do ruído.</span></div></div>
         <div class="card-corpo"><div class="fase-grade">${res.map(cartaoRes).join('')}${kml ? ecoCard : ''}</div></div></section>
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Engajamento</h2><span class="h2-sub">O engajamento costuma subir antes do resultado: equipamento comunicando e motorista identificado vêm antes do consumo melhorar.</span></div></div>
-        <div class="card-corpo">${engs.length ? `<div class="fase-grade">${engs.map(cartaoEng).join('')}</div>` : '<span class="apoio">Sem dados de engajamento ainda.</span>'}</div></section>
-      ${sel ? `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(sel.rot)} semana a semana</h2><span class="h2-sub">Faixa cinza = como éramos; faixa amarela = como estamos; traço = marco zero; círculos = marcos registrados em Combinados.</span></div>${seg}</div>
-        <div class="card-corpo">${graficoEvo(nome, J, sel.k, sel.eng)}</div></section>` : ''}`;
+        <div class="card-corpo">${engs.length ? `<div class="fase-grade">${engs.map(cartaoEng).join('')}</div>` : '<span class="apoio">Sem dados de engajamento ainda.</span>'}</div></section>`;
   }
 
   // ---------- Clientes: cadastro compartilhado (db) com cópia local quando o banco não está disponível ----------

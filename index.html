@@ -5454,7 +5454,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         <span style="display:flex;gap:8px;flex-wrap:wrap">${link ? `<a class="btn" href="${link}" target="_blank" rel="noopener">Abrir no HubSpot</a>` : ''}<label class="btn" title="Arquivo hubspot.json gerado pelo script busca-de-dados/hubspot.mjs">Importar arquivo<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label><button type="button" class="btn" data-acao="hubcli-atualizar" data-cli="${esc(nome)}" ${v.carregando ? 'disabled' : ''}>${v.carregando ? 'Buscando…' : 'Atualizar'}</button></span></div>`;
     if (!v.comp) {
       return `<section class="card hb-card">${cab}<div class="card-corpo">${v.carregando ? '<div class="vazio"><span class="spinner"></span><span class="apoio">Consultando o HubSpot…</span></div>'
-        : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(v.erro === 'servidor' ? (v.erroMsg || MSG_ERRO.upstream_error) : MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span>${contaSrv() ? (v.erro === 'servidor' && /HUBSPOT_TOKEN/.test(v.erroMsg || '') ? '<span class="alerta-texto">Um administrador coloca o token do app privado do HubSpot na variável <b>HUBSPOT_TOKEN</b> do servidor (arquivo .env do servidor).</span>' : '') : '<span class="alerta-texto">Ou rode <code>node busca-de-dados/hubspot.mjs</code> com o token do HubSpot no busca-de-dados/.env e clique em <b>Importar arquivo</b>.</span>'}</div></div>`}</div></section>`;
+        : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(v.erro === 'servidor' ? (v.erroMsg || MSG_ERRO.upstream_error) : MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span>${contaSrv() ? (v.erro === 'servidor' && /HUBSPOT_TOKEN/.test(v.erroMsg || '') ? '<span class="alerta-texto">Um administrador coloca o token do app privado do HubSpot na variável <b>HUBSPOT_TOKEN</b> do servidor (Render → Environment).</span>' : '') : '<span class="alerta-texto">Ou rode <code>node busca-de-dados/hubspot.mjs</code> com o token do HubSpot no busca-de-dados/.env e clique em <b>Importar arquivo</b>.</span>'}</div></div>`}</div></section>`;
     }
     const p = v.comp, tot = hubTot, res = hubRes;
     // perfil
@@ -8986,7 +8986,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
 
   // ---------- API Gobrax: estatísticas por veículo (dia a dia), odômetro e premiação ----------
   // O token de cada cliente fica só no navegador de quem o digitou: nunca vai para a base compartilhada nem para o código.
-  const PLATAFORMA = 'https://analisefrota.gobrax.com.br';   // plataforma online (servidor da Gobrax)
   const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
   const CHAVE_API_LOCAL = 'gbx-frota-api';
   const chaveToken = (cli) => 'gbx-api-token:' + slugCli(cli);
@@ -11185,11 +11184,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (e && e.name === 'AbortError') return;   // a pessoa cancelou o compartilhamento
       toast('Não foi possível concluir: ' + ((e && e.message) || 'erro inesperado') + '.', 'erro');
     });
-    // GitHub Pages: com a plataforma online da Gobrax no ar (login, base compartilhada, busca automática e rastro),
-    // o endereço do GitHub leva direto para ela. Fora do ar, o painel segue aqui no navegador. ?local=1 fica no GitHub.
-    if (/\.github\.io$/.test(location.hostname) && !/[?&]local=1/.test(location.search)) {
-      fetch(PLATAFORMA + '/saude', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j && j.ok === true) location.replace(PLATAFORMA + '/painel' + location.hash); }).catch(() => {});
-    }
     // limpeza única dos dados antigos deste navegador (planilhas, clientes, tratativas, resultados da API); os tokens da API ficam
     if (!armazem.ler('gbx-reset-2026-10-21')) {
       [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo', CHAVE_TRAT, CHAVE_API_LOCAL, 'gbx-reset-2026-10-20'].forEach((k) => armazem.apagar(k));

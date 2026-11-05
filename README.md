@@ -1,6 +1,6 @@
 # Análise de Frota (Gobrax)
 
-Painel estático (HTML + JS) com endereço no **GitHub Pages**: https://italobanczynski-sudo.github.io/Analise-de-Frota---Atualizado/ . A parte online (login, base compartilhada, busca automática e rastro da frota) fica no servidor da Gobrax, em https://analisefrota.gobrax.com.br: quando ele está no ar, o endereço do GitHub leva direto para lá (`?local=1` fica no GitHub). Implantação em [servidor/README.md](servidor/README.md#implantação). O mesmo `index.html` roda em:
+Painel estático (HTML + JS). A plataforma online (login, base compartilhada, busca automática e rastro da frota) está no **Render**: https://analise-de-frota.onrender.com . O mesmo `index.html` também roda em:
 
 | Onde | Dados (clientes e planilhas) |
 |---|---|
@@ -16,6 +16,7 @@ Painel estático (HTML + JS) com endereço no **GitHub Pages**: https://italoban
 | `documentacao/` | Documentação da API Gobrax usada pelo painel |
 | `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `busca-de-dados/.env` e lista em `busca-de-dados/clientes.json`, ambos fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
+| `render.yaml` | Implantação na nuvem no Render (plano grátis: https://analise-de-frota.onrender.com) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
 
 ## Painel no Claude
@@ -39,7 +40,7 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 ## Plataforma com login (servidor em Go)
 A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `busca-de-dados/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
 
-Ela não roda no GitHub (o Pages só hospeda páginas estáticas): fica no servidor da Gobrax. Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
+Ela está no ar no Render (o GitHub Pages só hospeda páginas estáticas). Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
 
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.
@@ -48,7 +49,11 @@ Ela não roda no GitHub (o Pages só hospeda páginas estáticas): fica no servi
 
 Para trazer os dados da plataforma antiga: entre nela, abra **Configurações → Levar os dados para outro lugar → Exportar tudo** e, no GitHub Pages, use **Importar arquivo** no mesmo cartão. Os tokens não vão no arquivo: salve o de cada cliente de novo no perfil dele.
 
-O Render deixou de ser usado em 05/11/2026 (`render.yaml` e a tarefa que mantinha o servidor acordado foram removidos).
+
+## Hospedagem: atenção
+- O banco grátis do Render expira 30 dias depois de criado (criado em 25/10/2026). Antes disso, passe o banco para um plano pago no painel do Render, senão clientes, tokens e histórico se perdem.
+- O GitHub Actions chama `/saude` a cada 10 min para o servidor grátis não dormir (a busca automática de hora em hora só roda acordado).
+- Para mudar depois para um servidor da Gobrax, o passo a passo (com a cópia dos dados do Render) está em [servidor/README.md](servidor/README.md#implantação).
 
 ## Testes
 A cada envio para o GitHub rodam (aba Actions → Testes):

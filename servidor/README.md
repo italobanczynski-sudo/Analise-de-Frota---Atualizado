@@ -13,7 +13,7 @@ Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela 
 | Senhas e segredos | bcrypt (custo 12), AES-256-GCM para tokens de clientes, HMAC-SHA256 para códigos por e-mail |
 | E-mail | SMTP (Gmail com senha de app, Workspace, Office 365...) |
 | Telas | HTML, CSS e JS puros, embutidos no binário (`api/web`) |
-| Implantação | Docker Compose (+ nginx e Let's Encrypt) |
+| Implantação | Render (atual) ou Docker Compose (+ nginx e Let's Encrypt) |
 
 ## Estrutura
 
@@ -62,7 +62,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
 | `POSTGRES_PASSWORD` | sim (Compose) | Senha do Postgres do Compose |
-| `DATABASE_URL` | sim | Montada pelo Compose |
+| `DATABASE_URL` | sim | Montada pelo Compose; no Render, vem do banco do projeto |
 | `CHAVE_TOKENS` | sim | 32 bytes em base64 (`openssl rand -base64 32`). Cifra os tokens dos clientes e assina os códigos por e-mail. Trocar a chave invalida os tokens salvos e os códigos pendentes |
 | `URL_PUBLICA` | não | Começo dos links de convite. Se começar com `https://`, o cookie de login é `Secure` (veja "Login só por HTTPS"). Padrão `http://localhost:8080` |
 | `ORIGENS_PERMITIDAS` | não | Origens liberadas no CORS, separadas por vírgula |
@@ -164,8 +164,10 @@ O ponta a ponta sobe um projeto Docker separado (`analisefrota-e2e`, porta 18080
 
 ## Implantação
 
-### Servidor da Gobrax (Docker + nginx + HTTPS): onde a plataforma fica online
-O painel continua com endereço no GitHub Pages: quando `https://analisefrota.gobrax.com.br/saude` responde, o GitHub Pages leva a pessoa direto para a plataforma (`/painel`). Com `?local=1` no endereço, fica no GitHub.
+### Hoje: Render
+A plataforma está em https://analise-de-frota.onrender.com (`render.yaml` na raiz). Cada envio para a `main` é implantado sozinho.
+
+### Para o futuro: servidor da Gobrax (Docker + nginx + HTTPS)
 
 **O que a TI precisa providenciar (uma vez):**
 1. Uma máquina Linux sempre ligada (2 vCPU, 2 GB de RAM e 20 GB de disco bastam), na rede da empresa ou na nuvem que a Gobrax já usa, com Docker, Docker Compose, Git e PowerShell (`pwsh`).

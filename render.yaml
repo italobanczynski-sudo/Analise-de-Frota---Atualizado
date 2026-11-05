@@ -1,0 +1,29 @@
+# Render (Blueprint): plataforma + banco no plano grátis. Veja servidor/README.md, seção Implantação.
+# Grátis: a plataforma "dorme" após 15 min sem uso (o primeiro acesso leva ~1 min) e o banco expira em 30 dias.
+databases:
+  - name: analise-de-frota-db
+    plan: free
+    region: oregon
+    databaseName: frota
+    user: frota
+
+services:
+  - type: web
+    name: analise-de-frota
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./servidor/Dockerfile
+    dockerContext: .
+    healthCheckPath: /saude
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: analise-de-frota-db
+          property: connectionString
+      # a mesma do servidor/.env deste computador (senão os tokens dos clientes copiados não abrem): o Render pede na criação
+      - key: CHAVE_TOKENS
+        sync: false
+      - key: PROXIES_CONFIAVEIS
+        value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10
+      # URL_PUBLICA e ORIGENS_PERMITIDAS vêm sozinhas do endereço que o Render der (RENDER_EXTERNAL_URL)

@@ -8130,7 +8130,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // é montado pedindo uma janela de 5 minutos por vez, das 00:00 às 23:59 de Brasília (288 chamadas). A API não traz
   // velocidade nem direção: a distância é a soma das retas entre pontos (fica um pouco abaixo do km real).
   // No GitHub Pages o navegador chama a API com o token salvo; na plataforma, o servidor busca (GET /clientes/:id/trajeto).
-  const TRAJ_PASSO_MIN = 5, LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/', CHAVE_TRAJ = 'gbx-traj:';
+  const TRAJ_PASSO_MIN = 5, LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/', CHAVE_TRAJ = 'gbx-traj2:';
   E.traj = null;   // { chave, cli, placa, dia, pontos [{m: minuto do dia, lat, lon}], feitas, total, carregando, erro, min, tocando, vista }
   let leafletPronto = null, mapaTraj = null, timerTraj = null;
   function carregarLeaflet() {
@@ -8148,6 +8148,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // fundo do mapa (OpenStreetMap). A plataforma manda Referrer-Policy: no-referrer, e os servidores do OSM recusam imagens
   // pedidas sem Referer (aparece "Access blocked"): as imagens do mapa mandam só a origem do site, nunca o caminho
   const fundoMapa = (L) => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin', attribution: '© OpenStreetMap' });
+  // a janela pedida vai em UTC, mas lastPosition.date volta no horário de Brasília: aqui vira UTC (o servidor já entrega em UTC)
+  const posUTC = (rec) => { const lp = rec && rec.lastPosition, t = lp ? Date.parse(String(lp.date).replace(' ', 'T') + '-03:00') : NaN; return Number.isFinite(t) ? Object.assign({}, rec, { lastPosition: Object.assign({}, lp, { date: utc(t) }) }) : rec; };
   const placaPos = (p) => placaApi(p).replace(/[^A-Z0-9]/g, '');
   // minutos desde 00:00 de Brasília de uma data UTC "AAAA-MM-DD HH:MM:SS" da API
   const minBR = (dataUtc, dia) => { const t = Date.parse(String(dataUtc).replace(' ', 'T') + 'Z'); return Number.isFinite(t) ? Math.round((t - Date.parse(dia + 'T03:00:00Z')) / 60000) : null; };
@@ -8209,7 +8211,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           try { recs = registros(await apiGet('v1/vehicle-last-position', { startDate: utc(ini + i * passo), endDate: utc(ini + (i + 1) * passo - 1000), vehicleIdentification: placaPos(placa) }, tok)); }
           catch (e) { throw /vehicle not found/i.test(e.message) ? new Error('a API não encontrou a placa ' + placaPos(placa)) : e; }
           if (E.traj !== T) return;
-          const p = recs.map((x) => pontoDe(x, dia)).find(Boolean);
+          const p = recs.map((x) => pontoDe(posUTC(x), dia)).find(Boolean);
           if (p) T.pontos = juntarPontos(T.pontos.concat([p]));
           T.feitas = i + 1;
           if (i % 6 === 5 || i === T.total - 1) atualizarMapaTrajeto();
@@ -8321,14 +8323,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     let r;
     try { r = registros(await apiGet('v1/vehicle-last-position', { startDate: de, endDate: utc(agora), vehicleIdentification: v.placa }, tok)); }
     catch (e) { if (/vehicle not found/i.test(e.message)) return Object.assign(v, { status: 'nao_encontrado' }); throw e; }
-    const lp = (r.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat))) || {}).lastPosition;
+    const lp = (posUTC(r.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat)))) || {}).lastPosition;
     const t1 = lp ? Date.parse(String(lp.date).replace(' ', 'T') + 'Z') : NaN;
     if (!lp || !Number.isFinite(t1)) return v;
     Object.assign(v, { lat: Number(lp.lat), lon: Number(lp.lon), min: Math.max(0, Math.floor((agora - t1) / 60000)) });
     if (agora - t1 > 30 * 60000) return v;
     v.status = 'parado';
     const r0 = registros(await apiGet('v1/vehicle-last-position', { startDate: de, endDate: utc(t1 - 4 * 60000), vehicleIdentification: v.placa }, tok));
-    const lp0 = (r0.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat))) || {}).lastPosition;
+    const lp0 = (posUTC(r0.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat)))) || {}).lastPosition;
     const t0 = lp0 ? Date.parse(String(lp0.date).replace(' ', 'T') + 'Z') : NaN, dt = t1 - t0;
     if (!Number.isFinite(t0) || dt <= 0 || dt > 30 * 60000) return v;
     v.vel = Math.round((distKm({ lat: Number(lp0.lat), lon: Number(lp0.lon) }, v) / (dt / 3600000)) * 10) / 10;

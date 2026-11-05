@@ -41,7 +41,18 @@ func (c *Client_t) UltimaPosicao(ctx context.Context, token, placa string, ini, 
 		if p.Lat.Valor == nil || p.Lon.Valor == nil || p.Date == "" {
 			continue
 		}
-		return &Posicao_t{Data: p.Date, Lat: *p.Lat.Valor, Lon: *p.Lon.Valor}, nil
+		return &Posicao_t{Data: dataPosicaoUTC(p.Date), Lat: *p.Lat.Valor, Lon: *p.Lon.Valor}, nil
 	}
 	return nil, nil
+}
+
+// dataPosicaoUTC: a janela pedida (startDate/endDate) é lida em UTC, mas lastPosition.date volta no horário de Brasília
+// (conferido em 05/11/2026: a última posição de um veículo rodando vem sempre 3 h antes do fim da janela pedida).
+// Daqui para a frente tudo trata a data da posição como UTC, como as datas de entrada. Formato inesperado fica como veio.
+func dataPosicaoUTC(data string) string {
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", data, time.FixedZone("BRT", -3*60*60))
+	if err != nil {
+		return data
+	}
+	return t.UTC().Format("2006-01-02 15:04:05")
 }

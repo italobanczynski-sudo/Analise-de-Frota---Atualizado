@@ -137,12 +137,13 @@ func (s *GobraxAPISuite) TestUltimaPosicaoPedeAPlacaNaJanelaELeLatLon() {
 		s.Equal("ABC1D23", q.Get("vehicleIdentification"))
 		s.Equal("2026-10-20 03:00:00", q.Get("startDate"))
 		s.Equal("2026-10-20 03:04:59", q.Get("endDate"))
-		_, _ = w.Write([]byte(`{"records":[{"vehicleIdentification":"ABC1D23","startDate":"2026-10-20 03:00:00","endDate":"2026-10-20 03:04:59","lastPosition":{"date":"2026-10-20 03:04:30","lat":-25.441105,"lon":-49.276855}}]}`))
+		_, _ = w.Write([]byte(`{"records":[{"vehicleIdentification":"ABC1D23","startDate":"2026-10-20 03:00:00","endDate":"2026-10-20 03:04:59","lastPosition":{"date":"2026-10-20 00:04:30","lat":-25.441105,"lon":-49.276855}}]}`))
 	}
 	ini := time.Date(2026, 10, 20, 3, 0, 0, 0, time.UTC)
 	p, err := s.posicoes().UltimaPosicao(context.Background(), "tk", "ABC1D23", ini, ini.Add(5*time.Minute-time.Second))
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
+	// a API devolve a hora da posição no horário de Brasília; o adaptador entrega em UTC, como a janela pedida
 	s.Equal("2026-10-20 03:04:30", p.Data)
 	s.Equal(-25.441105, p.Lat)
 	s.Equal(-49.276855, p.Lon)

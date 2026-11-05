@@ -2044,6 +2044,58 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 @media print { .gaveta, .gaveta-fundo { display: none !important; } }
 /* Comparação por fase e resumo da reunião */
 .traj-mapa { height: 440px; border-radius: 12px; overflow: hidden; border: 1px solid var(--borda); position: relative; z-index: 0; isolation: isolate; background: var(--apoio); }
+/* Frota ao vivo (topo da Visão geral) */
+.vivo-grade { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(0, 7fr); gap: 16px; align-items: stretch; }
+.vivo-dir { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.vivo-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 20px; flex-wrap: wrap; position: relative; z-index: 20; }
+.vivo-cab .hv-txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vivo-mapa-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.vivo-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 13px; color: var(--corpo); margin-top: 4px; }
+.vivo-leg-i { display: inline-flex; align-items: center; gap: 6px; }
+.vivo-leg-i i, .vivo-feed-i i, .vivo-st i { width: 10px; height: 10px; border-radius: 999px; flex: none; display: inline-block; }
+.vivo-leg-q { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.vivo-mapa-wrap { position: relative; flex: 1; min-height: 420px; margin: 0 16px; }
+.vivo-mapa { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--borda); z-index: 0; isolation: isolate; background: var(--apoio); }
+.vivo-vista { position: absolute; right: 12px; bottom: 12px; z-index: 2; box-shadow: 0 2px 8px rgba(32,33,36,.12); }
+.vivo-feed { gap: 8px; }
+.vivo-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--corpo); }
+.vivo-eyebrow i { width: 8px; height: 8px; border-radius: 999px; background: var(--ok); }
+.vivo-feed-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+.vivo-feed-i { display: flex; align-items: flex-start; gap: 8px; text-align: left; background: none; border: 0; padding: 6px 8px; border-radius: 10px; font: inherit; font-size: 13px; color: var(--tinta); cursor: pointer; min-width: 0; }
+.vivo-feed-i:hover { background: var(--sup-hover); }
+.vivo-feed-i i { margin-top: 4px; }
+.vivo-feed-i span { min-width: 0; overflow-wrap: anywhere; }
+.vivo-feed-i small { display: block; color: var(--corpo); font-size: 12px; }
+.vivo-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.vivo-kpi { background: var(--superficie); border: 1px solid var(--hairline); border-top: 3px solid #FCB709; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; min-width: 0; }
+.vivo-kpi-rot { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--corpo); }
+.vivo-kpi-v { font-size: 34px; font-weight: 700; letter-spacing: -0.03em; color: var(--tinta); line-height: 1.15; }
+.vivo-kpi-v small { font-size: 14px; font-weight: 500; color: var(--corpo); letter-spacing: 0; }
+.vivo-kpi small { font-size: 12px; }
+.vivo-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; flex: 1; }
+.vivo-pessoa .card-corpo { gap: 12px; height: 100%; }
+.vivo-id { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.vivo-id > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vivo-nome { font-size: 20px; font-weight: 600; color: var(--tinta); overflow-wrap: anywhere; }
+.vivo-st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--corpo); }
+.vivo-st i { background: var(--c); }
+.vivo-barras { display: flex; flex-direction: column; gap: 6px; }
+.vivo-barra { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(60px, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; color: var(--tinta); }
+.vivo-barra-t { height: 6px; border-radius: 999px; background: var(--apoio); overflow: hidden; }
+.vivo-barra-t i { display: block; height: 100%; border-radius: 999px; }
+.vivo-barra b { font-weight: 600; min-width: 48px; text-align: right; }
+.vivo-cmps { display: flex; flex-direction: column; gap: 8px; }
+.vivo-cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 10px; font-size: 13px; color: var(--tinta); }
+.vivo-cmp b { font-size: 15px; font-weight: 600; }
+.vivo-cmp .var-v { font-size: 12px; }
+.vivo-spark { overflow: hidden; margin-top: auto; }
+.vivo-spark svg { width: 100%; }
+.vivo-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vivo-num { border: 1px solid var(--hairline); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.vivo-num b { font-size: 17px; font-weight: 700; color: var(--tinta); }
+.vivo-num small { font-size: 11px; color: var(--corpo); }
+@media (max-width: 1280px) { .vivo-grade { grid-template-columns: minmax(0, 1fr); } .vivo-mapa-wrap { min-height: 380px; } }
+@media (max-width: 760px) { .vivo-duo, .vivo-feed-grade { grid-template-columns: 1fr; } .vivo-mapa-wrap { min-height: 320px; margin: 0 12px; } .vivo-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vivo-kpi-v { font-size: 28px; } }
 .traj-ctl { display: flex; align-items: center; gap: 12px; }
 .traj-ctl input[type=range] { flex: 1; accent-color: #FCB709; }
 .jornada { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
@@ -3389,7 +3441,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { tela: 'jornada', href: '#/jornada', icone: 'dados-1', rot: 'Linha do tempo' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'combinados', href: '#/combinados', icone: 'escrita', rot: 'Combinados' },
-    { tela: 'fases', href: '#/fases', icone: 'dados-1', rot: 'Comparação por fase' },
     { tela: 'resumo', href: '#/resumo', icone: 'documento', rot: 'Resumo da reunião' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
     { sec: 'Detalhe da operação' },
@@ -3491,6 +3542,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
+    { id: 66, data: '2026-11-05', titulo: 'Frota ao vivo na Visão geral', texto: 'A Visão geral abre com o mapa da frota: a última posição de cada veículo (em movimento, parado ou sem sinal), atualizada a cada 2 minutos, e a lista de quem está comunicando agora. Ao lado, a nota, a frota agora, o consumo, a faixa verde e o motor ligado parado do período, o motorista e o veículo escolhido no mapa com o desempenho contra a frota. Saiu a Comparação por fase do menu (o cálculo segue no Resumo da reunião; dias excluídos foram para Combinados).' },
     { id: 64, data: '2026-11-03', titulo: 'Sem blocos repetidos', texto: 'Cada informação fica em um lugar só. Desenvolvimento da frota abre em Gráficos (o resumo já está na Visão geral). Veículo e motorista individual ficam com Dashboard, Todos os indicadores e Dia a dia. "O projeto se paga?" fica no Estudo do projeto. A Saúde do cliente mostra o cliente; a lista de todos os clientes fica na Carteira de clientes.' },
     { id: 63, data: '2026-11-03', titulo: 'Gráficos animados', texto: 'Os gráficos animam quando aparecem na tela e quando os dados mudam; o último ponto de cada linha pulsa e o balão com os valores aparece na hora ao passar o mouse.' },
     { id: 62, data: '2026-11-03', titulo: 'Carteira, metas, alertas e relatório em PDF', texto: 'Nova tela Carteira de clientes (todos os clientes lado a lado, maior risco primeiro). Metas por cliente no perfil do cliente, mostradas nos cartões de indicador. O sino agora mostra alertas: cliente sem dados novos, risco alto, veículos sem comunicar, busca da API com erro e tratativa com prazo vencido. Na Visão geral, o botão Baixar relatório (PDF).', href: '#/carteira', link: 'Abrir a Carteira de clientes' },
@@ -7175,15 +7227,11 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       A.km ? stat('estrada', A.km, 'km monitorados') : '',
       A.litros ? stat('gota', A.litros, 'litros de diesel') : ''
     ].join('');
-    const hero = `<section class="hero-geral hero-v2">
-      <div class="hv-topo">
-        <div class="hv-txt"><span class="hv-eyebrow"><i></i>Relatório de desempenho da frota</span>
-          <h1 class="hv-titulo">${esc(cliente)}</h1>
-</div>
-        <div class="hv-per" aria-label="Período">${campoPeriodo()}<button type="button" class="btn" data-acao="relatorio-pdf" style="align-self:flex-end;margin-top:8px">${icone('baixar', 14)}Baixar relatório (PDF)</button></div>
-      </div>
-      <div class="hv-stats">${stats}</div>
-    </section>`;
+    // topo: frota ao vivo no mapa + cliente, indicadores de desempenho, motorista e veículo
+    const cabVivo = `<div class="vivo-cab"><div class="hv-txt"><span class="hv-eyebrow"><i></i>Visão geral da frota</span>
+          <h1 class="hv-titulo">${esc(cliente)}</h1><span class="apoio">${[c.nAtivos ? fmt(c.nAtivos, 0) + ' motoristas' : '', bv ? fmt(bv.motoristas.length, 0) + ' veículos' : '', A.km ? fmt(A.km, 0) + ' km no período' : ''].filter(Boolean).join(' · ')}</span></div>
+        <div class="hv-per" aria-label="Período">${campoPeriodo()}<button type="button" class="btn" data-acao="relatorio-pdf" style="align-self:flex-end;margin-top:8px">${icone('baixar', 14)}Baixar relatório (PDF)</button></div></div>`;
+    const hero = blocoVivo(c, cabVivo);
 
     // ---- resultados entregues ----
     const dif = (k) => X.variacao(IND_MAP[k], A[k], B[k]);
@@ -7898,19 +7946,18 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const cab = cabecalho('Combinados', nome ? `${esc(nome)} · o que foi combinado em cada reunião, a meta, o prazo e o veredito` : 'Escolha um cliente no topo da tela.');
     if (!nome) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Escolha um cliente', 'Os combinados são registrados por cliente.')}</div></section>`;
     const ms = docsDe('marcos').filter((m) => ckey(m.cliente) === ckey(nome)).sort((a, b) => (a.data < b.data ? -1 : 1));
-    const marcos = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Marcos da tratativa</h2><span class="h2-sub">Cada marco abre uma fase na Comparação por fase. Marco nunca é apagado: só cancelado com motivo.</span></div></div>
+    const marcos = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Marcos da tratativa</h2><span class="h2-sub">Cada marco abre uma fase no Resumo da reunião. Marco nunca é apagado: só cancelado com motivo.</span></div></div>
       <div class="card-corpo" style="gap:8px">
         ${ms.length ? ms.map((m, i) => `<div class="passo ${m.cancelado ? 'passo-canc' : ''}"><div class="passo-t"><b>${i + 1} · ${D.br(m.data)} · ${esc(TIPOS_MARCO[m.tipo] || m.tipo)}</b><span class="apoio" style="font-size:12px">${esc(m.autor || '')}${m.cancelado ? ' · cancelado: ' + esc(m.motivo) : ''}</span></div>
           <div class="passo-ac">${m.cancelado ? '' : E.marcoCancel === m.id ? `<div class="susp-form"><input class="campo" id="mcancel-${esc(m.id)}" placeholder="Motivo" maxlength="200"><button type="button" class="btn peq" data-acao="marco-cancelar-ok" data-id="${esc(m.id)}">Cancelar marco</button><button type="button" class="btn-link peq" data-acao="marco-cancelar-nao">Voltar</button></div>` : `<button type="button" class="btn-link peq" data-acao="marco-cancelar" data-id="${esc(m.id)}">Cancelar</button>`}</div></div>`).join('') : '<span class="apoio">Nenhum marco ainda: o primeiro nasce ao salvar um combinado.</span>'}
         <div class="susp-form"><label class="mudo">Novo marco <input class="campo" type="date" id="marco-data" max="${D.hoje()}"></label><select class="campo" id="marco-tipo" style="max-width:280px">${Object.entries(TIPOS_MARCO).map(([k, r]) => `<option value="${k}">${r}</option>`).join('')}</select><button type="button" class="btn peq" data-acao="marco-salvar">Registrar marco</button></div>
       </div></section>`;
-    return `${cab}${listaCombinados(nome, false)}${cartaoPassos(nome)}${marcos}${gavetaCombinado()}`;
+    return `${cab}${listaCombinados(nome, false)}${cartaoPassos(nome)}${marcos}${cartaoDiasExcl(nome)}${gavetaCombinado()}`;
   }
 
   // ================= D · Comparação por fase e E · Resumo da reunião =================
   // Fase 1 (linha de base) = os N dias antes do primeiro marco; cada marco seguinte abre uma fase de N dias (ou até o próximo
   // marco, e aí ela fica inconclusiva). Valor da fase ponderado como no resto do painel; dia excluído com motivo fica fora.
-  const IND_FASE = ['motor_ocioso', 'kml', 'faixa_verde'];
   const COR_FASE = ['#E8EAED', '#FFF6C7', '#E3F2E6', '#E8F0FE', '#FCE8E6', '#F3E8FD'];
   function fasesDe(nome) {
     const datas = [...new Set(marcosDe(nome).map((m) => m.data))].sort();
@@ -7983,30 +8030,10 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     fs1.forEach((f) => { if (!Number.isFinite(f.valor)) return; const a = x(idx(f.ini)), b = x(idx(f.fim)); g += `<line x1="${a.toFixed(1)}" x2="${Math.max(a + 4, b).toFixed(1)}" y1="${y(f.valor).toFixed(1)}" y2="${y(f.valor).toFixed(1)}" stroke="#202124" stroke-width="3" stroke-linecap="round"><title>Média da Fase ${f.n}: ${esc(fmtAlvo(k, f.valor))}</title></line>`; });
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} por dia, com as fases e os marcos" style="display:block">${g}</svg>`;
   }
-  function cartaoFase(f, k, cmp) {
-    const [rot, cls] = ROT_CLS[f.cls];
-    return `<div class="fase-card fase-${f.cls}"><div class="fase-cab"><b>Fase ${f.n}${f.n === 1 ? ' · linha de base' : ''}</b><span class="badge ${cls}">${rot}</span></div>
-      <span class="apoio" style="font-size:12px">${D.periodoBR(f)}${f.marco ? ' · a partir do marco ' + (f.n - 1) : ''}</span>
-      <span class="fase-val num">${esc(fmtAlvo(k, f.valor))}</span>
-      ${f.n > 1 ? `<span class="apoio">${f.dif === null ? 'sem comparação' : esc(fmtDif(k, f.dif)) + ' vs Fase 1'}${cmp.ruido.ruido !== null ? ' · ruído ±' + fmt(cmp.ruido.ruido, k === 'kml' ? 2 : 1) : ''}</span>` : `<span class="apoio">${cmp.ruido.ruido !== null ? 'ruído ±' + fmt(cmp.ruido.ruido, k === 'kml' ? 2 : 1) + ' (2 × erro-padrão de ' + cmp.ruido.n + ' dias)' : ''}</span>`}
-      <span class="apoio" style="font-size:12px">${f.dias} dias válidos · ${fmt(f.km, 0)} km · cobertura ${f.rep} de ${f.vistos}</span>
-      ${f.n > 1 && f.ctl !== null ? `<span class="apoio" style="font-size:12px">Controle (mesmas semanas do mês anterior): ${esc(fmtDif(k, f.ctl))}</span>` : ''}
-      ${f.falta.length ? `<span class="apoio" style="font-size:12px">Inconclusiva: ${esc(f.falta.join(', '))}</span>` : ''}</div>`;
-  }
-  function telaFases() {
-    const nome = E.cliente;
-    const cab = cabecalho('Comparação por fase', nome ? `${esc(nome)} · o que mudou a cada marco da tratativa, separando mudança real de ruído. "Associado a", não "causado por".` : 'Escolha um cliente no topo da tela.');
-    if (!nome) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Escolha um cliente', 'As fases são montadas a partir dos marcos do cliente.')}</div></section>`;
-    const k = IND_FASE.includes(E.faseInd) ? E.faseInd : 'motor_ocioso', cmp = compararFases(nome, k);
-    const seg = `<div class="seg peq" role="group" aria-label="Indicador">${IND_FASE.filter(temInd).map((i) => `<button type="button" class="${i === k ? 'ativo' : ''}" data-acao="fase-ind" data-k="${i}">${esc(rotAlvo(i))}</button>`).join('')}</div>`;
-    if (!cmp) return cab + barraPeriodo() + `<section class="card"><div class="card-corpo">${vazioUI('Nenhum marco registrado', 'Sem marco não há fase: registre um combinado (ele cria o primeiro marco) ou um marco em Combinados.')}<a class="btn btn-primario" href="#/combinados" style="text-decoration:none;align-self:center">Ir para Combinados</a></div></section>`;
+  // dias excluídos (feriado, parada de frota): ficam fora do cálculo das fases do Resumo da reunião
+  function cartaoDiasExcl(nome) {
     const ex = diasExcl(nome);
-    return `${cab}${barraPeriodo()}
-      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${esc(rotAlvo(k))} por dia</h2><span class="h2-sub">Pontos = valor de cada dia; traço escuro = média da fase; faixas = fases; círculos = marcos. Eixo ajustado aos dados.</span></div>${seg}</div>
-        <div class="card-corpo">${graficoFases(nome, k, cmp)}
-          ${cmp.composicao ? '<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">As fases têm composição de dias da semana diferente (uma fase mais curta): compare com cuidado.</span></div></div>' : ''}</div></section>
-      <div class="fase-grade">${cmp.fases.map((f) => cartaoFase(f, k, cmp)).join('')}</div>
-      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Dias excluídos</h2><span class="h2-sub">Feriado ou parada de frota numa fase: exclua o dia com motivo; ele sai do cálculo das fases.</span></div></div>
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Dias excluídos</h2><span class="h2-sub">Feriado ou parada de frota numa fase: exclua o dia com motivo; ele sai do cálculo das fases.</span></div></div>
         <div class="card-corpo" style="gap:8px">${ex.length ? ex.map((d) => `<span class="apoio">${D.br(d.dia)} · ${esc(d.motivo)} · ${esc(d.por || '')}</span>`).join('') : '<span class="apoio">Nenhum dia excluído.</span>'}
           <div class="susp-form"><label class="mudo">Dia <input class="campo" type="date" id="excl-dia" max="${D.hoje()}"></label><input class="campo" id="excl-motivo" placeholder="Motivo (ex.: feriado de 12/10)" maxlength="160"><button type="button" class="btn peq" data-acao="excl-salvar">Excluir dia</button></div></div></section>`;
   }
@@ -8266,6 +8293,248 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     }, 40);
   }
 
+  // ================= H · Frota ao vivo (topo da Visão geral) =================
+  // Onde cada veículo está agora, pela mesma API de posição do trajeto: a última posição das últimas 24 h e a última até
+  // 4 min antes dela. A distância entre as duas dá a velocidade média (≥ 5 km/h = em movimento); sem posição há mais de
+  // 30 min = sem sinal. A API não traz ignição nem velocidade: "parado" é "comunicando sem sair do lugar".
+  // Na plataforma o servidor busca (GET /clientes/:id/ao-vivo, com cache de 90 s); no GitHub Pages, o navegador.
+  // Atualiza sozinho a cada 2 min enquanto a Visão geral está aberta e a aba do navegador está à vista.
+  const VIVO_SEG = 120, VIVO_COR = { movimento: '#1E8E3E', parado: '#5F6368', sem_sinal: '#BDC1C6' };
+  const VIVO_ROT = { movimento: 'Em movimento', parado: 'Parado', sem_sinal: 'Sem sinal' };
+  E.vivo = null;   // { cli, carregando, erro, veic: [{placa, status, lat, lon, min, vel}], em: ms, faltam }
+  let mapaVivo = null, timerVivo = null;
+  // placa como o servidor aceita: 5 a 8 letras e números (com hífen opcional), com ao menos um dígito; nome de pessoa tem espaço
+  const ehPlacaVivo = (t) => /^[A-Za-z0-9-]{5,9}$/.test(String(t || '').trim()) && /\d/.test(t) && /^[A-Z0-9]{5,8}$/.test(placaPos(t));
+  function placasVivo() { const bv = baseVeic(); return bv ? bv.motoristas.map((m) => m.nome).filter(ehPlacaVivo).slice(0, 150) : []; }
+  // motorista mais recente do veículo (último dia com condutor na planilha de veículos)
+  function condutorVivo(placa) {
+    const bv = baseVeic(), m = bv && bv.idxNome ? bv.idxNome.get(placa) : null;
+    if (!m) return '';
+    const l = m.linhas.reduce((u, x) => (x.condutor && !ehPlacaVivo(x.condutor) && (!u || x.data > u.data) ? x : u), null);
+    return l ? String(l.condutor).split(' / ')[0] : '';
+  }
+  async function vivoDireto(placa, tok, agora) {
+    const v = { placa: placaPos(placa), status: 'sem_sinal' }, de = utc(agora - 86400000);
+    let r;
+    try { r = registros(await apiGet('v1/vehicle-last-position', { startDate: de, endDate: utc(agora), vehicleIdentification: v.placa }, tok)); }
+    catch (e) { if (/vehicle not found/i.test(e.message)) return Object.assign(v, { status: 'nao_encontrado' }); throw e; }
+    const lp = (r.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat))) || {}).lastPosition;
+    const t1 = lp ? Date.parse(String(lp.date).replace(' ', 'T') + 'Z') : NaN;
+    if (!lp || !Number.isFinite(t1)) return v;
+    Object.assign(v, { lat: Number(lp.lat), lon: Number(lp.lon), min: Math.max(0, Math.floor((agora - t1) / 60000)) });
+    if (agora - t1 > 30 * 60000) return v;
+    v.status = 'parado';
+    const r0 = registros(await apiGet('v1/vehicle-last-position', { startDate: de, endDate: utc(t1 - 4 * 60000), vehicleIdentification: v.placa }, tok));
+    const lp0 = (r0.find((x) => x && x.lastPosition && Number.isFinite(Number(x.lastPosition.lat))) || {}).lastPosition;
+    const t0 = lp0 ? Date.parse(String(lp0.date).replace(' ', 'T') + 'Z') : NaN, dt = t1 - t0;
+    if (!Number.isFinite(t0) || dt <= 0 || dt > 30 * 60000) return v;
+    v.vel = Math.round((distKm({ lat: Number(lp0.lat), lon: Number(lp0.lon) }, v) / (dt / 3600000)) * 10) / 10;
+    if (v.vel >= 5) v.status = 'movimento';
+    return v;
+  }
+  async function atualizarVivo() {
+    const cli = E.cliente, placas = placasVivo();
+    if (!cli || !placas.length || (E.vivo && E.vivo.carregando && E.vivo.cli === cli)) return;
+    const V = E.vivo = Object.assign({}, E.vivo && E.vivo.cli === cli ? E.vivo : { veic: [], em: null }, { cli, carregando: true, erro: null });
+    pintarVivo();
+    try {
+      const cs = contaSrv();
+      if (cs) {
+        const id = cliSrv(cli);
+        if (!id) throw new Error('este cliente não está cadastrado no servidor');
+        let r = null;
+        for (let tent = 0; tent < 4; tent++) {   // completo:false = o tempo do pedido acabou; as placas já vistas vêm do cache
+          r = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(id) + '/ao-vivo?placas=' + encodeURIComponent(placas.map(placaPos).join(',')));
+          if (E.vivo !== V) return;
+          if (!r || r.completo !== false) break;
+        }
+        V.veic = ((r && r.veiculos) || []).map((x) => ({ placa: x.placa, status: x.status, lat: x.lat, lon: x.lon, min: x.min_atras, vel: x.velocidade }));
+        V.faltam = (r && r.faltam) || 0;
+      } else {
+        const tok = tokenDe(cli);
+        if (!tok) throw new Error('salve o token da API deste cliente em Configurações para ver a frota ao vivo');
+        const agora = Date.now(), out = [];
+        for (const p of placas) { out.push(await vivoDireto(p, tok, agora)); if (E.vivo !== V) return; }
+        V.veic = out; V.faltam = 0;
+      }
+      V.em = Date.now();
+    } catch (e) { V.erro = (e && e.message) || 'erro desconhecido'; }
+    V.carregando = false;
+    if (E.vivo === V) pintarVivo();
+  }
+  // liga o relógio de 2 min só na Visão geral; fora dela (ou com a aba escondida) não chama a API
+  function agendarVivo() {
+    const ativo = E.rota && E.rota.tela === 'geral' && !!E.base && !E.demo && placasVivo().length > 0;
+    if (!ativo) { if (timerVivo) clearInterval(timerVivo); timerVivo = null; mapaVivo = null; return; }
+    if (E.vivo && E.vivo.cli !== E.cliente) { E.vivo = null; E.vivoSel = null; E.vivoCentro = null; }
+    if (!E.vivo || E.vivo.cli !== E.cliente || (!E.vivo.carregando && (!E.vivo.em || Date.now() - E.vivo.em > VIVO_SEG * 1000))) atualizarVivo();
+    if (!timerVivo) timerVivo = setInterval(() => { if (document.visibilityState === 'visible' && E.rota.tela === 'geral') atualizarVivo(); }, VIVO_SEG * 1000);
+  }
+  const veicVivo = () => ((E.vivo && E.vivo.cli === E.cliente && E.vivo.veic) || []).filter((v) => v.status !== 'nao_encontrado');
+  const comPosVivo = () => veicVivo().filter((v) => Number.isFinite(v.lat) && Number.isFinite(v.lon) && !(v.lat === 0 && v.lon === 0));
+  const contVivo = () => { const c = { movimento: 0, parado: 0, sem_sinal: 0 }; veicVivo().forEach((v) => { c[v.status] = (c[v.status] || 0) + 1; }); return c; };
+  const quandoVivo = (v) => (v.min === undefined || v.min === null ? 'sem posição nas últimas 24 h' : v.min < 1 ? 'agora' : v.min < 60 ? 'há ' + v.min + ' min' : 'há ' + fmt(v.min / 60, v.min < 600 ? 1 : 0) + ' h');
+  const estadoVivo = (v) => (v.status === 'movimento' ? 'em movimento' + (Number.isFinite(v.vel) ? ' · ~' + fmt(v.vel, 0) + ' km/h' : '') : v.status === 'parado' ? 'parado' : 'sem sinal');
+  function legendaVivo() {
+    const c = contVivo(), V = E.vivo;
+    const itens = ['movimento', 'parado', 'sem_sinal'].map((s) => `<span class="vivo-leg-i"><i style="background:${VIVO_COR[s]}"></i>${VIVO_ROT[s]} <b class="num">${c[s]}</b></span>`).join('');
+    const quando = V && V.carregando ? '<span class="spinner peq"></span> atualizando…' : V && V.em ? 'atualizado às ' + new Date(V.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · a cada 2 min' : '';
+    return `${itens}<span class="vivo-leg-q apoio">${quando}</span>`;
+  }
+  function feedVivo() {
+    const V = E.vivo;
+    if (E.demo) return '<span class="apoio">A frota ao vivo usa a API de posição: não aparece no modo de demonstração.</span>';
+    if (V && V.erro) return `<span class="apoio">A posição não veio: ${esc(V.erro)}.</span>`;
+    const vs = veicVivo().filter((v) => v.status !== 'sem_sinal').sort((a, b) => (a.min || 0) - (b.min || 0)).slice(0, 6);
+    if (!vs.length) return `<span class="apoio">${V && V.carregando ? 'Buscando a última posição de cada veículo…' : V && V.em ? 'Nenhum veículo comunicou nos últimos 30 minutos.' : ''}</span>`;
+    return `<div class="vivo-feed-grade">${vs.map((v) => { const m = condutorVivo(v.placa); return `<button type="button" class="vivo-feed-i" data-acao="vivo-sel" data-placa="${esc(v.placa)}"><i style="background:${VIVO_COR[v.status]}"></i><span><b>${esc(v.placa)}</b>${m ? ' · ' + esc(m) : ''}<small>${esc(estadoVivo(v))} · ${esc(quandoVivo(v))}</small></span></button>`; }).join('')}</div>`;
+  }
+  // veículo escolhido no mapa (ou o primeiro em movimento, ou o que mais rodou no período)
+  function selVivo() {
+    const bv = baseVeic(), ps = placasVivo();
+    if (E.vivoSel && ps.includes(E.vivoSel)) return E.vivoSel;
+    const mov = veicVivo().filter((v) => v.status === 'movimento').sort((a, b) => (a.min || 0) - (b.min || 0))[0];
+    if (mov && ps.includes(mov.placa)) return mov.placa;
+    if (!bv) return ps[0] || null;
+    let melhor = null, km = -1;
+    bv.motoristas.forEach((m) => { const k = X.filtrar(m.linhas, E.A).reduce((t, l) => t + (l.km || 0), 0); if (k > km && ehPlacaVivo(m.nome)) { km = k; melhor = m.nome; } });
+    return melhor;
+  }
+  // anel com a nota (0 a 100)
+  function anelVivo(v, tam) {
+    const R = tam / 2 - 7, L = 2 * Math.PI * R, p = Number.isFinite(v) ? clamp(v, 0, 100) / 100 : 0, c = tam / 2;
+    const cor = !Number.isFinite(v) ? 'var(--borda)' : v >= 70 ? 'var(--ok)' : v >= 50 ? '#FCB709' : 'var(--critico)';
+    return `<svg width="${tam}" height="${tam}" viewBox="0 0 ${tam} ${tam}" aria-hidden="true" style="flex:none"><circle cx="${c}" cy="${c}" r="${R}" fill="none" style="stroke:var(--apoio)" stroke-width="8"/>
+      <circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="${cor}" stroke-width="8" stroke-linecap="round" transform="rotate(-90 ${c} ${c})" stroke-dasharray="${L.toFixed(1)}" stroke-dashoffset="${(L * (1 - p)).toFixed(1)}"/>
+      <text x="${c}" y="${c + tam / 9}" text-anchor="middle" font-size="${Math.round(tam / 3.4)}" font-weight="700" style="fill:var(--tinta)">${Number.isFinite(v) ? fmt(v, 0) : '—'}</text></svg>`;
+  }
+  // barras dos indicadores de condução (em %, 0 a 100)
+  function barrasVivo(r) {
+    const ks = ['inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'pressao_acelerador'].filter((k) => temInd(k) && Number.isFinite(r[k])).slice(0, 5);
+    return ks.map((k) => { const ind = IND_MAP[k], bom = ind.melhor > 0; return `<div class="vivo-barra"><span>${esc(ind.label)}</span><span class="vivo-barra-t"><i style="width:${clamp(r[k], 0, 100).toFixed(1)}%;background:${bom ? 'var(--ok)' : 'var(--atencao)'}"></i></span><b class="num">${esc(fmtInd(ind, r[k]))}</b></div>`; }).join('');
+  }
+  const numVivo = (v, rot) => `<div class="vivo-num"><b class="num">${v}</b><small>${rot}</small></div>`;
+  function cartaoMotoristaVivo(c, placa) {
+    const ativos = c.mots.filter((x) => x.la.length && x.a.km > 0);
+    if (!ativos.length) return '';
+    const nota = temInd('nota'), ord = ativos.slice().sort((p, q) => (nota ? (q.a.nota || 0) - (p.a.nota || 0) : (q.a.kml || 0) - (p.a.kml || 0)));
+    const cond = placa ? condutorVivo(placa) : '', doVeic = cond ? ativos.find((x) => ckey(x.m.nome) === ckey(cond)) : null;
+    const x = doVeic || ord[0], pos = ord.indexOf(x) + 1;
+    const dif = nota && Number.isFinite(x.a.nota) && Number.isFinite(x.b.nota) ? x.a.nota - x.b.nota : null;
+    const serie = X.serieDiaria(x.la, IND_MAP[nota ? 'nota' : 'kml'], E.A, E.base).map((p) => p.valor);
+    const dias = new Set(x.la.filter((l) => (l.km || 0) > 0).map((l) => l.data)).size;
+    return `<section class="card vivo-pessoa" id="vivo-mot"><div class="card-corpo">
+      <span class="vivo-eyebrow"><i></i>Motorista · ${doVeic ? 'ao volante de ' + esc(placa) : 'destaque do período'}</span>
+      <div class="vivo-id">${nota ? anelVivo(x.a.nota, 76) : ''}<div><b class="vivo-nome">${esc(x.m.nome)}</b>
+        <span class="apoio">${pos}º de ${ord.length} no ranking de ${nota ? 'nota' : 'consumo'}${Number.isFinite(x.a.kml) ? ' · ' + esc(fmtInd(IND_MAP.kml, x.a.kml)) : ''}</span></div></div>
+      <div class="vivo-barras">${barrasVivo(x.a)}</div>
+      <div class="vivo-spark">${X.ui.miniArea(serie, '#1E8E3E', 520, 44)}</div>
+      <div class="vivo-nums">${numVivo(dif === null ? '—' : (dif >= 0 ? '+' : '') + fmt(dif, 1), 'pts no período')}${numVivo(fmt(x.a.km, 0), 'km rodados')}${numVivo(fmt(dias, 0), 'dias rodando')}</div>
+    </div></section>`;
+  }
+  function cartaoVeiculoVivo(c, placa) {
+    const bv = baseVeic(), m = placa && bv && bv.idxNome ? bv.idxNome.get(placa) : null;
+    if (!m) return '';
+    const la = X.filtrar(m.linhas, E.A), r = X.resumo(la, bv), F = c.frotaA, v = veicVivo().find((x) => x.placa === placaPos(placa));
+    const cond = condutorVivo(placa);
+    const st = v ? `<span class="vivo-st" style="--c:${VIVO_COR[v.status] || '#BDC1C6'}"><i></i>${esc(estadoVivo(v))} · ${esc(quandoVivo(v))}</span>` : '<span class="vivo-st" style="--c:#BDC1C6"><i></i>sem posição ainda</span>';
+    // performance contra a média da frota no período (verde = melhor que a frota)
+    const cmp = ['kml', 'faixa_verde', 'motor_ocioso'].filter((k) => temInd(k) && Number.isFinite(r[k]) && Number.isFinite(F[k])).map((k) => {
+      const ind = IND_MAP[k], d = (r[k] - F[k]) * ind.melhor, cls = Math.abs(r[k] - F[k]) < (k === 'kml' ? 0.05 : 0.5) ? 'var-neutro' : d > 0 ? 'var-bom' : 'var-ruim';
+      return `<div class="vivo-cmp"><span>${esc(ind.label)}</span><b class="num">${esc(fmtInd(ind, r[k]))}</b><span class="var-v ${cls}">frota ${esc(fmtInd(ind, F[k]))}</span></div>`;
+    }).join('');
+    const serie = X.serieDiaria(la, IND_MAP.kml, E.A, bv).map((p) => p.valor);
+    const dias = new Set(la.filter((l) => (l.km || 0) > 0).map((l) => l.data)).size, nDias = D.dias(E.A);
+    return `<section class="card vivo-pessoa" id="vivo-veic"><div class="card-corpo">
+      <span class="vivo-eyebrow"><i></i>Veículo · desempenho no período</span>
+      <div class="vivo-id">${temInd('nota') ? anelVivo(r.nota, 76) : ''}<div><b class="vivo-nome">${esc(placa)}</b>
+        <span class="apoio">${cond ? esc(cond) : 'sem motorista identificado'}</span>${st}</div></div>
+      <div class="vivo-cmps">${cmp || '<span class="apoio">Sem consumo nem condução no período.</span>'}</div>
+      <div class="vivo-spark">${X.ui.miniArea(serie, '#FCB709', 520, 44)}</div>
+      <div class="vivo-nums">${numVivo(Number.isFinite(r.kml) ? fmt(r.kml, 2) : '—', 'km/l médio')}${numVivo(fmt(r.km || 0, 0), 'km no período')}${numVivo(fmt(dias, 0) + '/' + fmt(nDias, 0), 'dias operando')}</div>
+    </div></section>`;
+  }
+  function kpisVivo(c) {
+    const A = c.frotaA, B = c.frotaB, ct = contVivo(), tot = veicVivo().length || placasVivo().length;
+    const dv = (k) => { const v = X.variacao(IND_MAP[k], A[k], B[k]); return v.semBase ? '<small class="apoio">sem período anterior</small>' : `<small class="var-v ${v.sentido === 'melhor' ? 'var-bom' : v.sentido === 'pior' ? 'var-ruim' : 'var-neutro'}">${esc(v.texto)} vs anterior</small>`; };
+    const tile = (rot, corpo) => `<div class="vivo-kpi"><span class="vivo-kpi-rot">${rot}</span>${corpo}</div>`;
+    const out = [];
+    if (temInd('nota') && Number.isFinite(A.nota)) out.push(tile('Nota Gobrax', `<div class="vivo-kpi-anel">${anelVivo(A.nota, 84)}</div>${dv('nota')}`));
+    out.push(`<div class="vivo-kpi" id="vivo-kpi-frota"><span class="vivo-kpi-rot">Frota agora</span><span class="vivo-kpi-v num">${E.vivo && E.vivo.em ? ct.movimento : '—'}<small>/${fmt(tot, 0)}</small></span><small class="apoio">em movimento</small><small class="apoio">${E.vivo && E.vivo.em ? `${ct.parado} parados · ${ct.sem_sinal} sem sinal` : 'aguardando a posição'}</small></div>`);
+    if (temInd('kml') && Number.isFinite(A.kml)) out.push(tile('Consumo médio', `<span class="vivo-kpi-v num">${fmt(A.kml, 2)}<small> km/l</small></span>${dv('kml')}`));
+    if (temInd('faixa_verde') && Number.isFinite(A.faixa_verde)) out.push(tile('Faixa verde', `<span class="vivo-kpi-v num">${fmt(A.faixa_verde, 1)}<small>%</small></span>${dv('faixa_verde')}`));
+    if (temInd('motor_ocioso') && Number.isFinite(A.motor_ocioso)) out.push(tile('Motor ligado parado', `<span class="vivo-kpi-v num">${fmt(A.motor_ocioso, 1)}<small>%</small></span>${dv('motor_ocioso')}`));
+    else if (A.km) out.push(tile('Km rodados', `<span class="vivo-kpi-v num">${fmt(A.km, 0)}</span>${dv('km')}`));
+    return out.join('');
+  }
+  // topo da Visão geral: mapa ao vivo à esquerda; cliente, indicadores, motorista e veículo à direita
+  function blocoVivo(c, cab) {
+    const temPlacas = placasVivo().length > 0, placa = selVivo(), vista = E.vivoVista === 'brasil' ? 'brasil' : 'frota';
+    const mapa = temPlacas ? `<section class="card vivo-mapa-card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Frota no mapa</h2><div class="vivo-leg" id="vivo-leg">${legendaVivo()}</div></div>
+        <button type="button" class="btn peq" data-acao="vivo-atualizar" title="Buscar a posição agora">${icone('atualizar', 14)}Atualizar</button></div>
+      <div class="vivo-mapa-wrap"><div id="vivo-mapa" class="vivo-mapa" role="region" aria-label="Mapa com a última posição de cada veículo"></div>
+        <div class="seg peq vivo-vista" role="group" aria-label="Enquadramento do mapa"><button type="button" class="${vista === 'brasil' ? 'ativo' : ''}" data-acao="vivo-vista" data-v="brasil">Brasil</button><button type="button" class="${vista === 'frota' ? 'ativo' : ''}" data-acao="vivo-vista" data-v="frota">Frota</button></div></div>
+      <div class="card-corpo vivo-feed"><span class="vivo-eyebrow"><i></i>Comunicando agora</span><div id="vivo-feed">${feedVivo()}</div></div></section>`
+      : `<section class="card vivo-mapa-card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Frota no mapa</span><span class="apoio">O mapa ao vivo precisa das placas dos veículos: busque os dados da API do cliente (planilha de veículos).</span></div></div></section>`;
+    return `<div class="vivo-grade">${mapa}
+      <div class="vivo-dir">${cab}<div class="vivo-kpis">${kpisVivo(c)}</div>
+        <div class="vivo-duo">${cartaoMotoristaVivo(c, placa)}${cartaoVeiculoVivo(c, placa)}</div></div></div>`;
+  }
+  // atualiza só as partes ao vivo (sem redesenhar a tela inteira, para não perder a rolagem nem o que a pessoa digitou)
+  function pintarVivo() {
+    if (E.rota.tela !== 'geral') return;
+    const set = (id, h) => { const el = document.getElementById(id); if (el) el.innerHTML = h; };
+    set('vivo-leg', legendaVivo());
+    set('vivo-feed', feedVivo());
+    const k = document.getElementById('vivo-kpi-frota');
+    if (k && E.base) { const t = document.createElement('div'); t.innerHTML = kpisVivo(calc()); const n = t.querySelector('#vivo-kpi-frota'); if (n) k.replaceWith(n); }
+    const placa = selVivo(), veic = document.getElementById('vivo-veic'), mot = document.getElementById('vivo-mot');
+    if (E.base && placa && veic && veic.querySelector('.vivo-nome') && veic.querySelector('.vivo-nome').textContent !== placa) {
+      const t = document.createElement('div'); t.innerHTML = cartaoVeiculoVivo(calc(), placa) + cartaoMotoristaVivo(calc(), placa);
+      const nv = t.querySelector('#vivo-veic'), nm = t.querySelector('#vivo-mot');
+      if (nv) veic.replaceWith(nv);
+      if (nm && mot) mot.replaceWith(nm);
+    } else if (E.base && placa && veic) {
+      const t = document.createElement('div'); t.innerHTML = cartaoVeiculoVivo(calc(), placa);
+      const st = t.querySelector('.vivo-st'), at = veic.querySelector('.vivo-st'); if (st && at) at.replaceWith(st);
+    }
+    atualizarMapaVivo();
+  }
+  function montarMapaVivo() {
+    agendarVivo();
+    const el = document.getElementById('vivo-mapa');
+    if (!el) { mapaVivo = null; return; }
+    carregarLeaflet().then((L) => {
+      if (!document.body.contains(el)) return;
+      const map = L.map(el, { zoomControl: true, attributionControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map);
+      mapaVivo = { el, map, camada: L.layerGroup().addTo(map), enquadrado: false };
+      map.setView([-14.5, -51.5], 4);
+      atualizarMapaVivo();
+      map.on('moveend', () => { if (mapaVivo && mapaVivo.map === map && mapaVivo.enquadrado) E.vivoCentro = { c: map.getCenter(), z: map.getZoom() }; });
+    }).catch((e) => { el.innerHTML = '<div class="vazio"><span class="apoio">' + esc(e.message) + '.</span></div>'; });
+  }
+  function atualizarMapaVivo() {
+    const M = mapaVivo;
+    if (!M || !window.L || !document.body.contains(M.el)) return;
+    const L = window.L, sel = placaPos(selVivo() || ''), vs = comPosVivo();
+    M.camada.clearLayers();
+    // sem sinal embaixo, em movimento por cima; o escolhido por último
+    const ordem = { sem_sinal: 0, parado: 1, movimento: 2 };
+    vs.slice().sort((a, b) => (ordem[a.status] - ordem[b.status]) || ((a.placa === sel) - (b.placa === sel))).forEach((v) => {
+      const eSel = v.placa === sel, cor = VIVO_COR[v.status] || '#BDC1C6', m = condutorVivo(v.placa);
+      if (eSel) L.circleMarker([v.lat, v.lon], { radius: 15, color: '#FCB709', weight: 3, fill: false, interactive: false }).addTo(M.camada);
+      L.circleMarker([v.lat, v.lon], { radius: eSel ? 9 : 7, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 1 })
+        .bindTooltip(`<b>${esc(v.placa)}</b>${m ? ' · ' + esc(m) : ''}<br>${esc(estadoVivo(v))} · ${esc(quandoVivo(v))}`, { direction: 'top', offset: [0, -6] })
+        .on('click', () => { E.vivoSel = v.placa; pintarVivo(); })
+        .addTo(M.camada);
+    });
+    if (M.enquadrado) return;
+    if (E.vivoVista === 'brasil') { M.map.setView([-14.5, -51.5], 4); M.enquadrado = true; return; }
+    if (E.vivoCentro) { M.map.setView(E.vivoCentro.c, E.vivoCentro.z); M.enquadrado = true; return; }
+    if (vs.length) { M.map.fitBounds(L.latLngBounds(vs.map((v) => [v.lat, v.lon])).pad(0.2), { maxZoom: 12 }); M.enquadrado = !(E.vivo && E.vivo.carregando); }
+  }
+
   // ================= F · Linha do tempo do cliente: como éramos × como estamos =================
   // Marco zero = início da gestão Gobrax (campo inicioGestao no cadastro do cliente); sem ele, o primeiro dia com dado.
   // Linha de base = os 28 dias antes do marco zero (ou as 4 primeiras semanas, se não houver dado antes); atual = os
@@ -8340,14 +8609,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       { n: 2, rot: 'Linha de base', href: '#/jornada', ok: !!(J && J.mz.definido), txt: J && J.mz.definido ? 'marco zero em ' + D.br(J.mz.data) : 'marco zero não definido' },
       { n: 3, rot: 'Estudo', href: '#/churn', ok: !!f || cs.length > 0 || tratDoCliente(nome).length > 0, txt: f ? 'ficha de retenção feita' : 'Saúde do cliente' },
       { n: 4, rot: 'Ajuste', href: '#/combinados', ok: cs.length > 0, txt: cs.length ? cs.length + (cs.length === 1 ? ' combinado' : ' combinados') : 'nenhum combinado' },
-      { n: 5, rot: 'Acompanhamento', href: '#/fases', ok: nVer > 0, txt: nAcomp ? nAcomp + ' em acompanhamento' : nVer ? nVer + ' com veredito' : 'aguardando combinado' },
+      { n: 5, rot: 'Acompanhamento', href: '#/resumo', ok: nVer > 0, txt: nAcomp ? nAcomp + ' em acompanhamento' : nVer ? nVer + ' com veredito' : 'aguardando combinado' },
       { n: 6, rot: 'Resultado', href: '#/resumo', ok: nConf > 0, txt: nConf ? nConf + ' confirmado(s)' : 'nenhum resultado confirmado' },
       { n: 7, rot: 'Renovação', href: '#/churn', ok: !!(f && f.renovacao && f.renovacao <= D.hoje()), txt: f && f.renovacao ? 'renovação em ' + D.br(f.renovacao) : 'sem data de renovação' }
     ];
     return { e, atual: e.find((x) => !x.ok) || e[e.length - 1] };
   }
   // faixa "onde estou" no topo das telas do cliente: as sete etapas, a atual em destaque e o próximo passo
-  const TELAS_JORNADA = ['jornada', 'churn', 'combinados', 'fases', 'resumo', 'plano'];
+  const TELAS_JORNADA = ['jornada', 'churn', 'combinados', 'resumo', 'plano'];
   function faixaJornada(nome) {
     if (!nome || !E.base) return '';
     const { e, atual } = etapasCliente(nome), aqui = '#/' + E.rota.tela;
@@ -9798,7 +10067,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, fases: telaFases, resumo: telaResumo, jornada: telaJornada };
+    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, resumo: telaResumo, jornada: telaJornada };
     const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'carteira', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => (TELAS_JORNADA.includes(E.rota.tela) && E.base ? faixaJornada(E.cliente) : '') + tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
@@ -9812,6 +10081,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (entrou) { ultimaAnim = chaveAnim; pag.classList.add('anima'); animarNumeros(pag); document.body.classList.remove('carregou'); void document.body.offsetWidth; document.body.classList.add('carregou'); } else if (pag) pag.classList.add('sem-anima');
     desenharGraficos();
     montarMapaTrajeto();
+    montarMapaVivo();
     animarGraficos(pag, entrou);
     setTimeout(fotografarRisco, 1500);
     preencherImagensSemanais();
@@ -9842,6 +10112,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const partes = caminho.split('/').filter(Boolean);
     const aba = (new URLSearchParams(qs || '')).get('aba') || 'dashboard';
     if (partes[0] === 'veiculos') partes[0] = 'visao';
+    if (partes[0] === 'fases') partes[0] = 'resumo'; // Comparação por fase saiu do menu: links antigos caem no Resumo da reunião
     // Dashboards e Comparativo de períodos viraram abas de Desenvolvimento da frota (links antigos continuam funcionando)
     if (partes[0] === 'dashboards' || partes[0] === 'comparativo') { E.rota = { tela: 'visao', id: null, aba: partes[0] === 'dashboards' ? 'graficos' : 'indicadores' }; return; }
     if (partes[0] === 'plano' && aba === 'retorno') { location.replace('#/estudo'); return lerRota(); }
@@ -9849,7 +10120,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (partes[0] === 'individual') E.rota = { tela: 'individual', tipo: partes[1] === 'veiculo' ? 'veiculo' : 'motorista', id: partes[2] ? decodeURIComponent(partes[2]) : null, aba };
     else if (partes[0] === 'motoristas' && partes[1]) E.rota = { tela: 'detalhe', id: decodeURIComponent(partes[1]), aba };
     else if (partes[0] === 'cliente') E.rota = { tela: 'cliente', id: partes[1] ? decodeURIComponent(partes[1]) : null, aba };
-    else if (['motoristas', 'importar', 'config', 'visao', 'clientes', 'plano', 'carteira', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo', 'combinados', 'fases', 'resumo', 'jornada'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
+    else if (['motoristas', 'importar', 'config', 'visao', 'clientes', 'plano', 'carteira', 'churn', 'geral', 'premiacao', 'api', 'mensagens', 'estudo', 'combinados', 'resumo', 'jornada'].includes(partes[0])) E.rota = { tela: partes[0], id: null, aba };
     else E.rota = { tela: 'geral', id: null, aba };
   }
 
@@ -10515,11 +10786,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
     'churn-cliente': (el) => { trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'regras-salvar': () => salvarRegras(),
-    'fase-ind': (el) => { E.faseInd = el.dataset.k; render(); },
     'excl-salvar': () => excluirDia(),
     'mz-salvar': () => salvarMarcoZero(),
     'traj-carregar': (el) => carregarTrajeto(el.dataset.placa, (document.getElementById('traj-dia') || {}).value || el.dataset.dia),
     'traj-tocar': () => tocarTrajeto(),
+    'vivo-atualizar': () => atualizarVivo(),
+    'vivo-sel': (el) => { E.vivoSel = el.dataset.placa; pintarVivo(); },
+    'vivo-vista': (el) => { E.vivoVista = el.dataset.v; E.vivoCentro = null; if (mapaVivo) mapaVivo.enquadrado = false; document.querySelectorAll('[data-acao="vivo-vista"]').forEach((b) => b.classList.toggle('ativo', b === el)); atualizarMapaVivo(); },
     'premissas-salvar': () => salvarPremissas(),
     'resumo-exportar': () => {   // deck/PDF: só o resumo (sem nomes de motoristas, contatos nem valor de contrato)
       document.body.classList.add('imprime-resumo');

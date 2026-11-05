@@ -154,6 +154,8 @@ Resposta: `{"records":[{"vehicleIdentification", "startDate", "endDate", "lastPo
 
 **Trajeto do dia:** como só vem a última posição de cada intervalo, o servidor pergunta o dia de Brasília em janelas de 5 minutos (288 chamadas no dia inteiro, cerca de 35 s) e liga os pontos em ordem. Veículo parado repete a mesma coleta em várias janelas: vira um ponto só. Cada janela fica guardada em `posicoes_amostradas` e só é pedida de novo se ainda não tinha acabado havia 10 minutos quando foi buscada. A data de `lastPosition.date` é tratada como UTC, como as datas de entrada.
 
+**Frota ao vivo (Visão geral):** para cada placa, a última posição das últimas 24 h e a última até 4 minutos antes dela. A distância em linha reta entre as duas, dividida pelo tempo, dá a velocidade média: 5 km/h ou mais = em movimento; abaixo disso = parado (comunicando sem sair do lugar). Sem posição há mais de 30 minutos = sem sinal, e aí a segunda chamada não é feita. A API não traz ignição nem velocidade, então "parado" não diz se o motor está ligado. Na plataforma o servidor faz as chamadas (`GET /api/v1/clientes/:id/ao-vivo`, cache de 90 s por placa); no GitHub Pages, o navegador com o token salvo. O painel atualiza a cada 2 minutos só com a Visão geral aberta e a aba à vista.
+
 **Porta:** a coleção de posições usa `http://gateway-v3.gobrax.com.br:8888`; os demais endpoints usam `https://...:8889`, que é a base configurada (`GOBRAX_API_BASE`). Se a posição não responder na 8889, confirme a base com a Gobrax.
 
 ## O que a API respondeu de verdade (token da Xtsul, 21/10/2026)

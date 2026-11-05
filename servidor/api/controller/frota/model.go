@@ -16,3 +16,8 @@ type TrajetoRequest struct {
 type MesRequest struct {
 	Mes string `form:"mes" validate:"omitempty,datetime=2006-01"`
 }
+
+// AoVivoRequest: placas separadas por vírgula
+type AoVivoRequest struct {
+	Placas string `form:"placas" validate:"required,max=2000"`
+}

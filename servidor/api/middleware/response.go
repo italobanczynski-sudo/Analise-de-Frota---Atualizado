@@ -43,7 +43,7 @@ var (
 		usuario.ErrNome, usuario.ErrEmail, usuario.ErrPapel, usuario.ErrSenhaFraca, usuario.ErrSenhaLonga, usuario.ErrConviteInvalido,
 		usuario.ErrCodigoInvalido, base.ErrColecao, base.ErrID, base.ErrDados, base.ErrGrande,
 		mensagem.ErrDiaFuturo, mensagem.ErrMotoristaSemDia,
-		trajeto.ErrPlaca, trajeto.ErrDia, trajeto.ErrDiaFuturo, trajeto.ErrDiaAntigo, trajeto.ErrHoras,
+		trajeto.ErrPlaca, trajeto.ErrDia, trajeto.ErrDiaFuturo, trajeto.ErrDiaAntigo, trajeto.ErrHoras, trajeto.ErrPlacas,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
 	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}

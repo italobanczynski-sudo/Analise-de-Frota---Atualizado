@@ -1,6 +1,8 @@
 package frota
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"analisefrota/api/controller"
@@ -65,4 +67,20 @@ func Trajeto(c *gin.Context) {
 		return
 	}
 	controller.Response(c, mwfrota.Trajeto_t{ClienteID: id, Placa: req.Placa, Dia: req.Dia, De: req.De, Ate: req.Ate}.Buscar(c.Request.Context()))
+}
+
+// AoVivo: GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56 (até 150)
+// Onde cada placa está agora: em movimento, parada ou sem sinal, com a velocidade média entre as duas últimas
+// posições. completo=false: o tempo do pedido acabou; peça de novo (as placas já vistas vêm do cache de 90 s).
+func AoVivo(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	var req AoVivoRequest
+	if err := c.ShouldBindQuery(&req); err != nil || utils.ValidateStruct(req) != nil {
+		controller.RetFail(c, "informe placas separadas por vírgula")
+		return
+	}
+	controller.Response(c, mwfrota.AoVivo_t{ClienteID: id, Placas: strings.Split(req.Placas, ",")}.Buscar(c.Request.Context()))
 }

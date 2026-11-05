@@ -123,6 +123,7 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/odometros` | logado | Último odômetro de cada veículo |
 | `GET /api/v1/clientes/:id/premiacoes?mes=AAAA-MM` | logado | Premiação (sem `mes`: todos) |
 | `GET /api/v1/clientes/:id/trajeto?placa=ABC1D23&dia=AAAA-MM-DD&de=0&ate=24` | logado | Trajeto do dia: um ponto a cada 5 min (horas de Brasília). `completo: false` = o tempo do pedido acabou; peça de novo, o que já veio fica no banco |
+| `GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56` | logado | Onde cada placa está agora (até 150): `movimento`, `parado`, `sem_sinal` ou `nao_encontrado`, com a última posição, os minutos desde ela e a velocidade média entre as duas últimas posições (duas chamadas a `v1/vehicle-last-position` por placa; cache de 90 s). `completo: false` = o tempo do pedido acabou; peça de novo |
 | `GET /painel` | logado (senão volta para `/`) | Painel completo |
 | `GET /api/v1/painel/dados` | logado | Dados da API de cada cliente (último ano), para o painel |
 | `GET /api/v1/base/:colecao` | logado | Documentos da base do painel |

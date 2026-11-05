@@ -7,3 +7,10 @@ type ColetaConfig_t struct {
 	// Quantos dias para trás na primeira busca de um cliente
 	Dias int `envconfig:"COLETA_DIAS" default:"30"`
 }
+
+type RastroConfig_t struct {
+	// De quanto em quanto tempo o servidor grava a posição de todos os veículos (rastro da frota ao vivo); 0 = desligado
+	IntervaloMin int `envconfig:"RASTRO_INTERVALO_MIN" default:"5"`
+	// Quantos dias de rastro ficam guardados
+	Dias int `envconfig:"RASTRO_DIAS" default:"7"`
+}

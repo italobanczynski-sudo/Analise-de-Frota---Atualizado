@@ -10,6 +10,7 @@ import (
 	ctcliente "analisefrota/api/controller/cliente"
 	ctcoleta "analisefrota/api/controller/coleta"
 	ctfrota "analisefrota/api/controller/frota"
+	ctmapa "analisefrota/api/controller/mapa"
 	ctmensagem "analisefrota/api/controller/mensagem"
 	ctusuario "analisefrota/api/controller/usuario"
 	"analisefrota/api/web"
@@ -30,6 +31,8 @@ func GetRoutes(r *gin.Engine) {
 	// painel completo (index.html): só com login; sem sessão volta para a tela de entrada
 	r.GET("/painel", paginaLogada(), web.Painel())
 	r.GET("/painel/xlsx.full.min.js", web.PainelXLSX())
+	// fundo do mapa do painel, buscado pelo servidor no OpenStreetMap (só logado)
+	r.GET("/mapa/:z/:x/:y", autenticar(), ctmapa.Imagem)
 
 	// login (sem sessão)
 	pub := r.Group("/api/v1/auth", exigirCabecalhoApp())

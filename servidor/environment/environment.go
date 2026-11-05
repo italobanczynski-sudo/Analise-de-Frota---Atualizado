@@ -15,6 +15,7 @@ type Config_t struct {
 	Gobrax    GobraxConfig_t
 	Seguranca SegurancaConfig_t
 	Coleta    ColetaConfig_t
+	Rastro    RastroConfig_t
 	Email     EmailConfig_t
 	Hubspot   HubspotConfig_t
 }
@@ -31,6 +32,7 @@ func Load() {
 		"gobrax":    &Cfg.Gobrax,
 		"seguranca": &Cfg.Seguranca,
 		"coleta":    &Cfg.Coleta,
+		"rastro":    &Cfg.Rastro,
 		"email":     &Cfg.Email,
 		"hubspot":   &Cfg.Hubspot,
 	} {

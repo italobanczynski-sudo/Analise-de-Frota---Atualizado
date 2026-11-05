@@ -2,6 +2,7 @@ package frota
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -69,9 +70,10 @@ func Trajeto(c *gin.Context) {
 	controller.Response(c, mwfrota.Trajeto_t{ClienteID: id, Placa: req.Placa, Dia: req.Dia, De: req.De, Ate: req.Ate}.Buscar(c.Request.Context()))
 }
 
-// AoVivo: GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56 (até 150)
-// Onde cada placa está agora: em movimento, parada ou sem sinal, com a velocidade média entre as duas últimas
-// posições. completo=false: o tempo do pedido acabou; peça de novo (as placas já vistas vêm do cache de 90 s).
+// AoVivo: GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56&desde=AAAA-MM-DD HH:MM:SS (até 150 placas)
+// Onde cada placa está agora (em movimento, motor ligado parado, desligada ou sem sinal) e o rastro de ignição ligada
+// desde "desde" (UTC; sem ele, desde a meia-noite de Brasília; no máximo 24 h). completo=false: o tempo do pedido
+// acabou; peça de novo (as placas já vistas vêm do cache de 90 s).
 func AoVivo(c *gin.Context) {
 	id, ok := controller.IDParam(c)
 	if !ok {
@@ -79,8 +81,18 @@ func AoVivo(c *gin.Context) {
 	}
 	var req AoVivoRequest
 	if err := c.ShouldBindQuery(&req); err != nil || utils.ValidateStruct(req) != nil {
-		controller.RetFail(c, "informe placas separadas por vírgula")
+		controller.RetFail(c, "informe placas separadas por vírgula e, se quiser, desde (AAAA-MM-DD HH:MM:SS, UTC)")
 		return
 	}
-	controller.Response(c, mwfrota.AoVivo_t{ClienteID: id, Placas: strings.Split(req.Placas, ",")}.Buscar(c.Request.Context()))
+	agora := time.Now()
+	ini, _, _ := utils.JanelaDiaBR(utils.DiaBR(agora))
+	if req.Desde != "" {
+		if t, err := time.ParseInLocation(utils.LayoutAPI, req.Desde, time.UTC); err == nil {
+			ini = t
+		}
+	}
+	if ini.Before(agora.Add(-24 * time.Hour)) {
+		ini = agora.Add(-24 * time.Hour)
+	}
+	controller.Response(c, mwfrota.AoVivo_t{ClienteID: id, Placas: strings.Split(req.Placas, ","), Desde: ini}.Buscar(c.Request.Context()))
 }

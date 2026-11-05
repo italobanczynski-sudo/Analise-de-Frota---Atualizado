@@ -13,3 +13,14 @@ type PosicaoRow_t struct {
 	Vazio     bool      `db:"vazio"`
 	BuscadoEm time.Time `db:"buscado_em"`
 }
+
+// RastroRow_t é uma posição gravada pela frota ao vivo (data em UTC)
+type RastroRow_t struct {
+	ClienteID  int64     `db:"cliente_id"`
+	Placa      string    `db:"placa"`
+	Data       time.Time `db:"data"`
+	Lat        float64   `db:"lat"`
+	Lon        float64   `db:"lon"`
+	Status     string    `db:"status"`
+	Velocidade *float64  `db:"velocidade"`
+}

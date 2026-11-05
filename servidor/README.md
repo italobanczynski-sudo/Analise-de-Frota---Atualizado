@@ -70,6 +70,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 | `SMTP_HOST`, `SMTP_PORTA`, `SMTP_USUARIO`, `SMTP_SENHA`, `SMTP_REMETENTE` | não | Envio dos códigos de acesso. Sem `SMTP_HOST`, nenhum e-mail sai e o código aparece só no log (use só no computador) |
 | `SESSAO_HORAS` (12), `CONVITE_HORAS` (72) | não | Duração do login e do link de convite |
 | `COLETA_AUTOMATICA` (true), `COLETA_INTERVALO_MIN` (60), `COLETA_DIAS` (30) | não | Busca automática |
+| `RASTRO_INTERVALO_MIN` (5; 0 desliga), `RASTRO_DIAS` (7) | não | Rastro da frota ao vivo: de quanto em quanto tempo grava a posição de todos os veículos e por quantos dias guarda |
 | `GOBRAX_API_BASE`, `GOBRAX_INTERVALO_MS` (120) | não | API Gobrax e pausa entre chamadas |
 | `PORTA` (8080), `PORTA_LOCAL` (8080, só Compose), `NGINX_SITE` (só Compose) | não | Portas e site do nginx |
 
@@ -123,7 +124,8 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/odometros` | logado | Último odômetro de cada veículo |
 | `GET /api/v1/clientes/:id/premiacoes?mes=AAAA-MM` | logado | Premiação (sem `mes`: todos) |
 | `GET /api/v1/clientes/:id/trajeto?placa=ABC1D23&dia=AAAA-MM-DD&de=0&ate=24` | logado | Trajeto do dia: um ponto a cada 5 min (horas de Brasília). `completo: false` = o tempo do pedido acabou; peça de novo, o que já veio fica no banco |
-| `GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56` | logado | Onde cada placa está agora (até 150): `movimento`, `parado`, `sem_sinal` ou `nao_encontrado`, com a última posição, os minutos desde ela e a velocidade média entre as duas últimas posições (duas chamadas a `v1/vehicle-last-position` por placa; cache de 90 s). `completo: false` = o tempo do pedido acabou; peça de novo |
+| `GET /api/v1/clientes/:id/ao-vivo?placas=ABC1D23,DEF4G56&desde=AAAA-MM-DD HH:MM:SS` | logado | Onde cada placa está agora (até 150): `movimento`, `ligado` (motor ligado parado), `desligado`, `sem_sinal` ou `nao_encontrado`, com a última posição, os minutos desde ela e a velocidade; e `rastro`, os pontos de ignição ligada de cada placa desde `desde` (UTC; sem ele, desde a meia-noite de Brasília). Cache de 90 s. `completo: false` = o tempo do pedido acabou; peça de novo |
+| `GET /mapa/:z/:x/:y.png` | logado | Fundo do mapa do painel, buscado pelo servidor no OpenStreetMap com a identificação da plataforma (cache em memória) |
 | `GET /painel` | logado (senão volta para `/`) | Painel completo |
 | `GET /api/v1/painel/dados` | logado | Dados da API de cada cliente (último ano), para o painel |
 | `GET /api/v1/base/:colecao` | logado | Documentos da base do painel |

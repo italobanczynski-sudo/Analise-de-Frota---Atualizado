@@ -17,7 +17,8 @@ type MesRequest struct {
 	Mes string `form:"mes" validate:"omitempty,datetime=2006-01"`
 }
 
-// AoVivoRequest: placas separadas por vírgula
+// AoVivoRequest: placas separadas por vírgula; desde em UTC (AAAA-MM-DD HH:MM:SS)
 type AoVivoRequest struct {
 	Placas string `form:"placas" validate:"required,max=2000"`
+	Desde  string `form:"desde" validate:"omitempty,max=19"`
 }

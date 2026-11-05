@@ -73,6 +73,14 @@ function roteiro() {
     passo('fechar', function () { return clicar('[data-acao=comb-fechar]'); }),
     passo('Configurações: regras sem mudança', ir('#/config'), function () { return $('#regras') ? '' : 'sem cartão de regras'; }),
     passo('salvar regras sem mudança', function () { return clicar('[data-acao=regras-salvar]'); }, function (t) { return t.some(function (x) { return /Nada mudou/.test(x); }) ? '' : 'mensagem inesperada'; }),
+    passo('Configurações: exportar tudo', function () { location.hash = '#/config'; window.confirm = function () { return true; };
+      var B0 = window.Blob; window.Blob = function (p, o) { if (o && o.type === 'application/json') window.__bkpTxt = p.join(''); return new B0(p, o); }; URL.createObjectURL = function () { return 'javascript:void(0)'; }; setTimeout(function () { clicar('[data-acao=bkp-exportar]'); }, 200); },
+      function () { return window.__bkpTxt ? '' : 'não gerou o arquivo'; }),
+    passo('conferir o arquivo exportado', function () {},
+      function () { var o = JSON.parse(window.__bkpTxt || '{}'); return o.tipo === 'gbx-analise-frota' && o.clientes.length === 1 && (o.colecoes.fichas || []).length && o.planilhas.motoristas && !/gbx-api-token|tokenprevia/.test(window.__bkpTxt) ? '' : 'arquivo incompleto'; }),
+    passo('importar o arquivo depois de apagar as fichas', function () { localStorage.removeItem('gbx-col-fichas'); var el = $('input[data-campo=bkp-arquivo]'); if (!el) return false;
+      var dt = new DataTransfer(); dt.items.add(new File([window.__bkpTxt], 'analise.json', { type: 'application/json' })); el.files = dt.files; el.dispatchEvent(new Event('change', { bubbles: true })); },
+      function () { return col('fichas').length && /Importados 1 cliente/.test(($('#levar-dados') || {}).textContent || '') ? '' : 'não importou'; }),
     passo('Carteira mostra retenção', ir('#/carteira'), function () { return /pendência/.test(document.body.textContent) ? '' : 'sem coluna de retenção'; })
   ];
   var i = 0;

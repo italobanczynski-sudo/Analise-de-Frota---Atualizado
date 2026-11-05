@@ -46,6 +46,8 @@ Ela não roda no GitHub (o Pages só hospeda páginas estáticas); fica para uso
 2. Settings → Pages → Source: "Deploy from a branch" → Branch `main` / pasta `/ (root)`.
 3. Cada envio para a `main` atualiza o site em 1 a 2 minutos (aba Actions → pages build and deployment).
 
+Para trazer os dados da plataforma antiga: entre nela, abra **Configurações → Levar os dados para outro lugar → Exportar tudo** e, no GitHub Pages, use **Importar arquivo** no mesmo cartão. Os tokens não vão no arquivo: salve o de cada cliente de novo no perfil dele.
+
 O Render deixou de ser usado em 05/11/2026 (`render.yaml` e a tarefa que mantinha o servidor acordado foram removidos).
 
 ## Testes

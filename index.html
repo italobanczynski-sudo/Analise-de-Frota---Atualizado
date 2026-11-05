@@ -3543,6 +3543,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const NOVIDADES = [
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
     { id: 66, data: '2026-11-05', titulo: 'Frota ao vivo na Visão geral', texto: 'A Visão geral abre com o mapa da frota: a última posição de cada veículo (em movimento, parado ou sem sinal), atualizada a cada 2 minutos, e a lista de quem está comunicando agora. Ao lado, a nota, a frota agora, o consumo, a faixa verde e o motor ligado parado do período, o motorista e o veículo escolhido no mapa com o desempenho contra a frota. Saiu a Comparação por fase do menu (o cálculo segue no Resumo da reunião; dias excluídos foram para Combinados).' },
+    { id: 67, data: '2026-11-05', titulo: 'Levar os dados para o GitHub Pages', texto: 'Em Configurações, Exportar tudo baixa um arquivo com clientes, tratativas, fichas, combinados, regras, HubSpot e planilhas; Importar arquivo grava esses dados em outro painel, como o GitHub Pages. Os tokens da API não vão no arquivo.' },
     { id: 64, data: '2026-11-03', titulo: 'Sem blocos repetidos', texto: 'Cada informação fica em um lugar só. Desenvolvimento da frota abre em Gráficos (o resumo já está na Visão geral). Veículo e motorista individual ficam com Dashboard, Todos os indicadores e Dia a dia. "O projeto se paga?" fica no Estudo do projeto. A Saúde do cliente mostra o cliente; a lista de todos os clientes fica na Carteira de clientes.' },
     { id: 63, data: '2026-11-03', titulo: 'Gráficos animados', texto: 'Os gráficos animam quando aparecem na tela e quando os dados mudam; o último ponto de cada linha pulsa e o balão com os valores aparece na hora ao passar o mouse.' },
     { id: 62, data: '2026-11-03', titulo: 'Carteira, metas, alertas e relatório em PDF', texto: 'Nova tela Carteira de clientes (todos os clientes lado a lado, maior risco primeiro). Metas por cliente no perfil do cliente, mostradas nos cartões de indicador. O sino agora mostra alertas: cliente sem dados novos, risco alto, veículos sem comunicar, busca da API com erro e tratativa com prazo vencido. Na Visão geral, o botão Baixar relatório (PDF).', href: '#/carteira', link: 'Abrir a Carteira de clientes' },
@@ -8802,7 +8803,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       dbRef = db.collection('clientes');
       try {   // leituras do HubSpot importadas por arquivo (script busca-de-dados/hubspot.mjs): valem até o conector trazer uma mais nova
         hubRef = db.collection('hubspot');
-        hubRef.onSnapshot((sn) => { sn.docs.forEach((d) => { try { const bruto = d.data().json || 'null', o = JSON.parse(bruto); if (o && o.comp) { usarHubArquivo(o, false); const limpo = JSON.stringify(o); if (limpo !== bruto) hubRef.doc(d.id).set(Object.assign({}, d.data(), { json: limpo })).catch(() => {}); } } catch (e) { /* documento inválido */ } }); }, () => {});   // arquivo antigo com dados pessoais: regrava limpo
+        hubRef.onSnapshot((sn) => { hubDocs = sn.docs.map((d) => d.data()); sn.docs.forEach((d) => { try { const bruto = d.data().json || 'null', o = JSON.parse(bruto); if (o && o.comp) { usarHubArquivo(o, false); const limpo = JSON.stringify(o); if (limpo !== bruto) hubRef.doc(d.id).set(Object.assign({}, d.data(), { json: limpo })).catch(() => {}); } } catch (e) { /* documento inválido */ } }); }, () => {});   // arquivo antigo com dados pessoais: regrava limpo
       } catch (e) { hubRef = null; }
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
       try { db.collection('config').doc('diesel_uf').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !v.diesel || !v.diesel.br) return; if (!E.dieselUF || String(v.coleta) > String(E.dieselUF.coleta)) { E.dieselUF = v; render(); } }, () => {}); } catch (e) { /* sem preços por estado */ }
@@ -8818,7 +8819,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           render();   // cliente cadastrado por outra pessoa aparece na hora, em qualquer tela
         }, semBase);
       } catch (e) { semBase(); }
-    } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); lerHubLocal(); render(); }
+    } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); lerHubLocal(); E.rel = armazem.lerJSON(CHAVE_REL, []); render(); }
   }
   function carregarClientesLocal() {
     E.clientes = armazem.lerJSON(CHAVE_CLIENTES, []);
@@ -9517,6 +9518,114 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   };
 
   // Configurações → lista de clientes; cada cliente abre o próprio perfil, onde as planilhas são anexadas
+  // ---------- Levar os dados para outro lugar: exportar tudo num arquivo e importar em outro painel ----------
+  // Serve para trazer o que estava na plataforma com login (ou no Claude) para o GitHub Pages, e vice-versa.
+  // Os tokens da API nunca entram no arquivo: cada pessoa digita de novo o token do cliente no perfil dele.
+  const BKP_TIPO = 'gbx-analise-frota';
+  const CHAVE_REL = 'gbx-frota-rel';
+  let hubDocs = [];   // leituras do HubSpot guardadas na base compartilhada (preenchido pelo onSnapshot)
+  function montarBackup() {
+    const colecoes = {};
+    Object.keys(COL).forEach((n) => { const d = COL[n].docs; if (Array.isArray(d) && d.length) colecoes[n] = d; });
+    let hub = hubDocs.map((d) => { try { return JSON.parse(d.json); } catch (e) { return null; } }).filter((o) => o && o.comp);
+    if (!hub.length) { try { hub = Object.keys(localStorage).filter((k) => k.indexOf('gbx-hub-') === 0).map((k) => armazem.lerJSON(k, null)).filter((o) => o && o.comp); } catch (e) { hub = []; } }
+    const api = {};
+    (planRef ? [...planDocs.entries()] : Object.entries(E.apiLocal || {})).forEach(([id, d]) => { if (d && (d.alvo === 'odometro' || d.alvo === 'premiacao')) api[id] = d; });
+    return {
+      tipo: BKP_TIPO, versao: 1, gerado: new Date().toISOString(),
+      clientes: (E.clientes || []).map((c) => Object.assign({}, c)),
+      tratativas: E.trat || [], relacionamento: E.rel || [], regras: regrasAtuais(), colecoes, hubspot: hub, api,
+      planilhas: {
+        motoristas: E.linhasAll && E.linhasAll.length ? X.paraCSV(E.linhasAll.slice(), E.colunasAll) : '',
+        veiculos: E.veic && E.veic.linhas && E.veic.linhas.length ? X.paraCSV(E.veic.linhas.slice(), E.veic.colunas) : ''
+      }
+    };
+  }
+  function exportarBackup() {
+    if (E.demo) { toast('Saia do modo demonstração para exportar.', 'erro'); return; }
+    const o = montarBackup();
+    baixarBlob('analise-de-frota-' + D.hoje() + '.json', new Blob([JSON.stringify(o)], { type: 'application/json' }), '');
+    toast('Arquivo gerado: ' + o.clientes.length + ' cliente(s). Guarde-o só no seu computador.');
+  }
+  async function importarBackup(texto) {
+    let o = null;
+    try { o = JSON.parse(texto); } catch (e) { o = null; }
+    if (!o || o.tipo !== BKP_TIPO) { toast('Este não é um arquivo exportado pelo painel (Exportar tudo).', 'erro'); return; }
+    if (E.demo) { toast('Saia do modo demonstração para importar.', 'erro'); return; }
+    if (!confirm('Importar os dados de ' + dataHoraBR(o.gerado) + '? Clientes e registros com o mesmo nome ou código são atualizados; nada é apagado.')) return;
+    const falhas = [];
+    const tentar = async (rotulo, f) => { try { await f(); } catch (e) { falhas.push(rotulo + ': ' + ((e && e.message) || 'erro')); } };
+    E.bkpImportando = true; render();
+    // clientes: o mesmo nome (sem acento, caixa e LTDA) é o mesmo cliente
+    let nCli = 0;
+    for (const c of o.clientes || []) {
+      if (!c || !c.nome) continue;
+      const atual = E.clientes.find((x) => ckey(x.nome) === ckey(c.nome));
+      const { id: idArq, ...campos } = c;
+      const id = atual ? atual.id : String(idArq || slugCli(c.nome)).replace(/^srv-/, 'cli-');
+      const doc = Object.assign({}, campos, atual ? Object.fromEntries(Object.entries(atual).filter(([k, v]) => k !== 'id' && v !== '' && v !== null && v !== undefined)) : {});
+      await tentar('cliente ' + c.nome, async () => { if (E.clientesEmDb && dbRef) await dbRef.doc(id).set(doc); });
+      if (atual) Object.assign(atual, doc); else E.clientes.push(Object.assign({ id }, doc));
+      nCli++;
+    }
+    ordenarClientes(); salvarLocal();
+    // tratativas e relacionamento: pelo código
+    for (const t of o.tratativas || []) {
+      if (!t || !t.id) continue;
+      const { id, ...campos } = t;
+      await tentar('tratativa', async () => { if (E.tratEmDb && tratRef) await tratRef.doc(id).set(campos); });
+      const i = (E.trat || []).findIndex((x) => x.id === id);
+      if (i >= 0) E.trat[i] = t; else (E.trat = E.trat || []).push(t);
+    }
+    if (!E.tratEmDb) salvarTratLocal();
+    for (const r of o.relacionamento || []) {
+      if (!r || !r.id) continue;
+      const { id, ...campos } = r;
+      await tentar('relacionamento', async () => { if (dbCompart) await dbCompart.collection('relacionamento').doc(id).set(campos); });
+      const i = (E.rel || []).findIndex((x) => x.id === id);
+      if (i >= 0) E.rel[i] = r; else (E.rel = E.rel || []).push(r);
+    }
+    if (!dbCompart) armazem.gravar(CHAVE_REL, JSON.stringify(E.rel || []));
+    // fichas, combinados, marcos, passos, dias excluídos, premissas, liberações...
+    let nReg = 0;
+    for (const [nome, docs] of Object.entries(o.colecoes || {})) {
+      for (const d of Array.isArray(docs) ? docs : []) {
+        if (!d || !d.id) continue;
+        const { id, ...campos } = d;
+        await tentar(nome, () => gravarDoc(nome, id, campos));
+        nReg++;
+      }
+    }
+    if (o.regras && typeof o.regras === 'object' && Object.keys(o.regras).length) {
+      armazem.gravar(CHAVE_REGRAS, JSON.stringify(o.regras)); aplicarRegras(o.regras);
+      await tentar('regras', async () => { if (dbCompart) await dbCompart.collection('config').doc('regras').set(o.regras); });
+    }
+    (o.hubspot || []).forEach((h) => { if (h && h.comp && h.cliente) usarHubArquivo(h, true); });
+    for (const [id, d] of Object.entries(o.api || {})) await tentar('odômetro/premiação', () => gravarDocApi(id, d));
+    // planilhas: entram como uma importação, somadas ao que já existe (mesmo dia e placa: fica a do arquivo)
+    const nomeArq = 'Dados importados de ' + String(o.gerado || '').slice(0, 10).split('-').reverse().join('/');
+    const cliAntes = E.importCli; E.importCli = null;
+    const P = o.planilhas || {};
+    if (P.veiculos) await tentar('planilha de veículos', async () => { if (!importarTexto(P.veiculos, nomeArq, true, 'veiculos')) throw new Error('arquivo inválido'); if (E.impVeic && E.impVeic.salvo === false) throw new Error('sem espaço no navegador; busque pela API no perfil do cliente'); });
+    if (P.motoristas) await tentar('planilha de motoristas', async () => { if (!importarTexto(P.motoristas, nomeArq, true, 'motoristas')) throw new Error('arquivo inválido'); if (E.importacao && E.importacao.salvo === false) throw new Error('sem espaço no navegador; busque pela API no perfil do cliente'); });
+    E.importCli = cliAntes;
+    E.bkpImportando = false;
+    E.bkpResultado = { clientes: nCli, registros: nReg, falhas };
+    toast(falhas.length ? 'Importado com ' + falhas.length + ' aviso(s): veja em Configurações.' : 'Dados importados: ' + nCli + ' cliente(s) e ' + nReg + ' registro(s).', falhas.length ? 'erro' : undefined);
+    render();
+  }
+  function blocoMudanca() {
+    const R = E.bkpResultado;
+    const res = R ? `<div class="alerta ${R.falhas.length ? 'alerta-atencao' : 'alerta-ok'}" style="margin-top:12px"><span class="alerta-icone">${R.falhas.length ? '!' : '✓'}</span><div class="alerta-corpo"><span class="alerta-texto">Importados ${R.clientes} cliente(s) e ${R.registros} registro(s).${R.falhas.length ? ' Não entraram:' : ''}</span>${R.falhas.slice(0, 8).map((f) => `<span class="alerta-texto">${esc(f)}</span>`).join('')}</div></div>` : '';
+    return `<section class="card" id="levar-dados">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Levar os dados para outro lugar</h2>
+        <span class="h2-sub"><b>Exportar tudo</b> baixa um arquivo com clientes, tratativas, fichas, combinados, passos, regras, HubSpot, odômetro, premiação e planilhas deste painel. Em outro painel (por exemplo, o GitHub Pages), use <b>Importar arquivo</b>. Os tokens da API não vão no arquivo: salve de novo o de cada cliente no perfil dele. O arquivo tem dados de clientes: guarde só no seu computador e não envie por chat ou e-mail.</span></div></div>
+      <div class="card-corpo"><span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn" data-acao="bkp-exportar">Exportar tudo</button>
+        <label class="btn btn-primario" style="position:relative;overflow:hidden">${E.bkpImportando ? 'Importando…' : 'Importar arquivo'}<input type="file" accept=".json,application/json" data-campo="bkp-arquivo" ${E.bkpImportando ? 'disabled' : ''} style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"></label>
+      </span>${res}</div></section>`;
+  }
+
   // ---------- Usuários: no painel do servidor (/painel), o administrador convida e gerencia quem entra ----------
   // A ponte do servidor (painel-base.js) publica window.GBX_CONTA = { eu, chamar }; no GitHub Pages e no Claude não há login e a seção não aparece.
   const PAPEIS_USU = { admin: 'Administrador', colaborador: 'Colaborador', leitor: 'Leitor' };
@@ -9841,6 +9950,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return `
       ${abasConfig()}
       ${blocoUsuarios()}
+      ${blocoMudanca()}
       ${avisoLocal()}
       <span class="sub">Cadastre o cliente e abra o perfil dele para anexar as planilhas de motoristas e de veículos.${E.clientesEmDb ? ' O cadastro é compartilhado com quem tem acesso a este painel.' : ' O cadastro fica salvo só neste navegador.'}</span>
       <section class="card">
@@ -10682,6 +10792,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       U.enviando = false;
       render(); usuCarregar();
     },
+    'bkp-exportar': () => exportarBackup(),
     'usu-link': async (el) => {
       const U = usu(), u = (U.lista || []).find((x) => String(x.id) === el.dataset.id), cs = contaSrv();
       if (!u || !cs) return;
@@ -10982,6 +11093,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (k === 'resumo-fase') { E.resumoFase = el.value; render(); return; }
     if (k === 'evo-ind') { E.evoInd = el.value; render(); return; }
     if (k === 'traj-dia') { E.trajDia = el.value; render(); return; }
+    if (k === 'bkp-arquivo' && el.files && el.files[0]) { const arq = el.files[0]; el.value = ''; arq.text().then(importarBackup).catch((e) => { E.bkpImportando = false; toast('Não foi possível importar: ' + e.message, 'erro'); render(); }); return; }
     if (k === 'hub-arquivo' && el.files && el.files[0]) {
       el.files[0].text().then((t) => {
         let o = null; try { o = JSON.parse(t); } catch (e) { o = null; }

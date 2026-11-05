@@ -13,7 +13,7 @@ Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela 
 | Senhas e segredos | bcrypt (custo 12), AES-256-GCM para tokens de clientes, HMAC-SHA256 para códigos por e-mail |
 | E-mail | SMTP (Gmail com senha de app, Workspace, Office 365...) |
 | Telas | HTML, CSS e JS puros, embutidos no binário (`api/web`) |
-| Implantação | Docker Compose (+ nginx e Let's Encrypt) ou Render |
+| Implantação | Docker Compose (+ nginx e Let's Encrypt) |
 
 ## Estrutura
 
@@ -62,7 +62,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
 | `POSTGRES_PASSWORD` | sim (Compose) | Senha do Postgres do Compose |
-| `DATABASE_URL` | sim | Montada pelo Compose; no Render, vem do banco do projeto |
+| `DATABASE_URL` | sim | Montada pelo Compose |
 | `CHAVE_TOKENS` | sim | 32 bytes em base64 (`openssl rand -base64 32`). Cifra os tokens dos clientes e assina os códigos por e-mail. Trocar a chave invalida os tokens salvos e os códigos pendentes |
 | `URL_PUBLICA` | não | Começo dos links de convite. Se começar com `https://`, o cookie de login é `Secure` (veja "Login só por HTTPS"). Padrão `http://localhost:8080` |
 | `ORIGENS_PERMITIDAS` | não | Origens liberadas no CORS, separadas por vírgula |

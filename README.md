@@ -1,11 +1,11 @@
 # Análise de Frota (Gobrax)
 
-Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o mesmo `index.html`:
+Painel estático (HTML + JS), hospedado no **GitHub Pages**: https://italobanczynski-sudo.github.io/Analise-de-Frota---Atualizado/ . O mesmo `index.html` roda em dois lugares:
 
 | Onde | Dados (clientes e planilhas) |
 |---|---|
 | **Painel no Claude** (Artifact): https://claude.ai/artifact/JtQke6GEAqzz8ohdP653dS | Base compartilhada: todos que têm acesso veem os mesmos dados, ao vivo. |
-| GitHub Pages | Só no navegador de cada pessoa (localStorage). A página mostra um aviso com o link do painel no Claude. |
+| **GitHub Pages** (endereço oficial) | Só no navegador de cada pessoa (localStorage). O navegador chama a API Gobrax direto com o token salvo; a Frota ao vivo atualiza de 5 em 5 min e o rastro do dia existe enquanto a página está aberta. |
 
 ## Estrutura do projeto
 
@@ -16,7 +16,6 @@ Painel estático (HTML + JS), sem servidor próprio. Roda em dois lugares, com o
 | `documentacao/` | Documentação da API Gobrax usada pelo painel |
 | `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `busca-de-dados/.env` e lista em `busca-de-dados/clientes.json`, ambos fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
-| `render.yaml` | Implantação na nuvem no Render (plano grátis: https://analise-de-frota.onrender.com) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |
 
 ## Painel no Claude
@@ -40,20 +39,19 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 ## Plataforma com login (servidor em Go)
 A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `busca-de-dados/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
 
-Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
+Ela não roda no GitHub (o Pages só hospeda páginas estáticas); fica para uso no Docker deste computador ou num servidor próprio. Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
 
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.
 2. Settings → Pages → Source: "Deploy from a branch" → Branch `main` / pasta `/ (root)`.
+3. Cada envio para a `main` atualiza o site em 1 a 2 minutos (aba Actions → pages build and deployment).
+
+O Render deixou de ser usado em 05/11/2026 (`render.yaml` e a tarefa que mantinha o servidor acordado foram removidos).
 
 ## Testes
 A cada envio para o GitHub rodam (aba Actions → Testes):
 - **Painel:** `node testes/painel/rodar.js` abre todas as telas e abas num Chrome sem janela, com dados sintéticos (com e sem Nota Gobrax), e falha se alguma tela der erro ou mostrar NaN/undefined.
 - **Servidor:** `go build`, `go vet` e `go test` em `servidor/`.
-
-## Hospedagem: atenção
-- O banco grátis do Render expira 30 dias depois de criado (criado em 25/10/2026). Antes disso, passe o banco para um plano pago no painel do Render, senão clientes, tokens e histórico se perdem.
-- O GitHub Actions chama `/saude` a cada 10 min para o servidor grátis não dormir (a busca automática de hora em hora só roda acordado).
 
 ## Observações
 - O repositório/Pages contém só o código; nenhuma planilha ou dado de cliente vai junto.

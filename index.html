@@ -3438,7 +3438,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { sec: 'Carteira' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
     { sec: 'Cliente' },
-    { tela: 'jornada', href: '#/jornada', icone: 'dados-1', rot: 'Linha do tempo' },
     { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
     { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
     { sec: 'Detalhe da operação' },
@@ -3843,46 +3842,64 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     </select>`;
   }
 
-  // Evolução da frota dia a dia na Visão geral: os cinco indicadores principais, cada um com a sua cor, em faixas
-  // empilhadas que dividem o mesmo eixo de dias (unidades diferentes não cabem numa escala só). Linha cheia = período
-  // analisado; tracejada cinza = período de comparação, dia a dia. Clique na legenda para esconder ou mostrar.
+  // Evolução da frota dia a dia na Visão geral: os cinco indicadores principais num gráfico só, curvas suaves, cada um
+  // com a sua cor. Nota e percentuais dividem o eixo da esquerda; km rodado usa o eixo da direita (escala própria).
+  // Em cima, o valor do período e a variação contra a comparação. Clique num indicador para esconder ou mostrar.
   const EVO_DIA = [['nota', '#FCB709'], ['km', '#1A73E8'], ['faixa_verde', '#1E8E3E'], ['motor_ocioso', '#E37400'], ['pressao_acelerador', '#9334E6']];
   function cartaoEvoFrota(linhas) {
     const inds = EVO_DIA.filter(([k]) => IND_MAP[k] && temInd(k));
     if (!inds.length) return '';
     const esc0 = E.evoOcultos || (E.evoOcultos = armazem.lerJSON('gbx-evo-ocultos', []));
     const vis = inds.filter(([k]) => !esc0.includes(k));
+    const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const ra = X.resumo(X.filtrar(linhas, E.A), E.base), rb = X.resumo(X.filtrar(linhas, E.B), E.base);
-    const W = Math.max(360, larguraGrafico(1, 520) - 250), HL = 96, m = { l: 66, r: 18, t: 10, b: 8 };
-    let dias = [];
-    const faixas = vis.map(([k, cor], idx) => {
-      const ind = IND_MAP[k], sa = X.serieDiaria(linhas, ind, E.A, E.base), sb = X.serieDiaria(linhas, ind, E.B, E.base);
-      if (!dias.length) dias = sa.map((p) => p.data);
-      const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
-      const todos = sa.concat(sb).map((p) => p.valor).filter(tem);
-      const ultima = idx === vis.length - 1, H = HL + (ultima ? 22 : 0), ih = HL - m.t - m.b, iw = W - m.l - m.r, n = Math.max(1, sa.length - 1);
-      let g = '';
-      if (todos.length) {
-        let lo = Math.min(...todos), hi = Math.max(...todos); const pad = (hi - lo) * 0.12 || Math.abs(hi) * 0.1 || 1; lo -= pad; hi += pad;
-        if (ind.un === '%' || k === 'km') lo = Math.max(0, lo);
-        const x = (i) => m.l + (i / n) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
-        [lo + (hi - lo) * 0.15, lo + (hi - lo) * 0.85].forEach((t) => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="var(--hairline)"/><text x="${m.l - 6}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end" font-size="10" style="fill:var(--texto-2)">${esc(fmtInd(ind, t))}</text>`; });
-        const caminho = (sr) => { let d = '', ab = false; sr.forEach((p, i) => { if (!tem(p.valor)) { ab = false; return; } d += (ab ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.valor).toFixed(1); ab = true; }); return d; };
-        const db = caminho(sb), da = caminho(sa);
-        if (db) g += `<path d="${db}" fill="none" stroke="#9AA0A6" stroke-width="1.5" stroke-dasharray="4 4"/>`;
-        if (da) g += `<path d="${da}" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-        sa.forEach((p, i) => { if (!tem(p.valor)) return; const pb = sb[i]; g += `<circle cx="${x(i).toFixed(1)}" cy="${y(p.valor).toFixed(1)}" r="${sa.length > 45 ? 2 : 3}" fill="${cor}"><title>${D.br(p.data)} ${D.semana(p.data)} · ${esc(ind.label)}: ${esc(fmtInd(ind, p.valor))}${pb && tem(pb.valor) ? ' · comparação (' + D.br(pb.data) + '): ' + esc(fmtInd(ind, pb.valor)) : ''}</title></circle>`; });
-        if (ultima) { const passo = Math.max(1, Math.ceil(sa.length / Math.max(2, Math.floor(iw / 64)))); sa.forEach((p, i) => { if (i % passo === 0 || i === sa.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${H - 4}" text-anchor="${i === sa.length - 1 ? 'end' : i === 0 ? 'start' : 'middle'}" font-size="10" style="fill:var(--texto-2)">${D.curta(p.data)}</text>`; }); }
-      } else g += `<text x="${m.l}" y="${HL / 2}" font-size="11" style="fill:var(--texto-2)">sem dados no período</text>`;
-      const v = ra[k], ant = rb[k];
-      return `<div style="display:flex;gap:14px;align-items:center;min-width:0;${idx ? 'border-top:1px solid var(--hairline);padding-top:6px' : ''}">
-        <div style="width:200px;flex:none;display:flex;flex-direction:column;gap:2px"><span style="display:flex;align-items:center;gap:8px;font-weight:600"><span style="width:12px;height:12px;border-radius:3px;background:${cor};flex:none"></span>${esc(ind.label)}</span>
-          <span class="num" style="font-size:18px;font-weight:700">${fmtInd(ind, v)}</span>${tem(v) && tem(ant) ? variacao(X.variacao(ind, v, ant), 'vs comparação') : ''}</div>
-        <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} dia a dia" style="display:block;min-width:0;flex:1">${g}</svg></div>`;
+    const series = {}; inds.forEach(([k]) => { series[k] = X.serieDiaria(linhas, IND_MAP[k], E.A, E.base); });
+    const dias = (series[inds[0][0]] || []).map((p) => p.data);
+    const temKm = vis.some(([k]) => k === 'km'), outros = vis.filter(([k]) => k !== 'km');
+    const W = Math.max(560, larguraGrafico(1, 900)), H = 300, m = { l: 44, r: temKm ? 74 : 18, t: 14, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, dias.length - 1);
+    const x = (i) => dias.length === 1 ? m.l + iw / 2 : m.l + (i / n) * iw;
+    // escalas: esquerda (nota e %) e direita (km)
+    const vEsq = outros.flatMap(([k]) => series[k].map((p) => p.valor)).filter(tem);
+    const mxE = Math.max(0, ...vEsq), passoE = mxE > 60 ? 20 : 10;
+    const hiE = Math.max(passoE, Math.ceil(mxE / passoE) * passoE);
+    const vKm = temKm ? series.km.map((p) => p.valor).filter(tem) : [];
+    const hiK = (() => { const mx = Math.max(1, ...vKm); const p = Math.pow(10, Math.floor(Math.log10(mx))); return Math.ceil(mx / p) * p; })();
+    const yE = (v) => m.t + ih - (v / hiE) * ih, yK = (v) => m.t + ih - (v / hiK) * ih;
+    const gid = 'evo' + (++idGrafQuem), corArea = vis.length ? vis[0][1] : '#FCB709';
+    let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${corArea}" stop-opacity=".40"/><stop offset="1" stop-color="${corArea}" stop-opacity=".02"/></linearGradient></defs>`;
+    const nT = 4;
+    for (let t = 0; t <= nT; t++) {
+      const yy = m.t + ih - (t / nT) * ih;
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}"${t ? ' stroke-dasharray="2 4"' : ''} style="stroke:${t ? 'var(--hairline)' : 'var(--texto-2)'}" stroke-opacity="${t ? 1 : 0.5}"/>`;
+      if (outros.length) g += `<text x="${m.l - 8}" y="${(yy + 4).toFixed(1)}" text-anchor="end" font-size="10" style="fill:var(--texto-2)">${fmt((hiE * t) / nT, 0)}</text>`;
+      if (temKm) g += `<text x="${W - m.r + 8}" y="${(yy + 4).toFixed(1)}" text-anchor="start" font-size="10" fill="#1A73E8">${fmt((hiK * t) / nT, 0)} km</text>`;
+    }
+    const trechos = (sr, y) => { const out = []; let cur = []; sr.forEach((p, i) => { if (!tem(p.valor)) { if (cur.length) out.push(cur); cur = []; return; } cur.push([x(i), y(p.valor)]); }); if (cur.length) out.push(cur); return out; };
+    // a primeira curva visível ganha a área preenchida (como no modelo); as demais só a linha
+    if (vis.length) { const [k0] = vis[0]; trechos(series[k0], k0 === 'km' ? yK : yE).forEach((t) => { g += `<path d="${curvaSuave(t)}L${t[t.length - 1][0].toFixed(1)},${(m.t + ih).toFixed(1)}L${t[0][0].toFixed(1)},${(m.t + ih).toFixed(1)}Z" fill="url(#${gid})"/>`; }); }
+    vis.slice().reverse().forEach(([k, cor]) => {
+      const y = k === 'km' ? yK : yE, sr = series[k];
+      trechos(sr, y).forEach((t) => { g += `<path d="${curvaSuave(t)}" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; });
+      for (let i = sr.length - 1; i >= 0; i--) if (tem(sr[i].valor)) { g += `<circle cx="${x(i).toFixed(1)}" cy="${y(sr[i].valor).toFixed(1)}" r="4" fill="${cor}"/>`; break; }
     });
-    const leg = inds.map(([k, cor]) => { const on = !esc0.includes(k); return `<button type="button" class="pilula ${on ? 'ativa' : ''}" data-acao="evo-dia" data-k="${k}" aria-pressed="${on}" style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:${on ? cor : '#DADCE0'}"></span>${esc(IND_MAP[k].label)}</button>`; }).join('');
-    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução da frota dia a dia</h2><span class="h2-sub">Linha colorida = período analisado (${esc(D.periodoCurto(E.A))}); tracejada cinza = comparação (${esc(D.periodoCurto(E.B))}). Passe o mouse num ponto para ver o dia.</span></div></div>
-      <div class="card-corpo" style="gap:10px"><div style="display:flex;gap:6px;flex-wrap:wrap">${leg}</div>${faixas.length ? faixas.join('') : '<span class="apoio">Escolha ao menos um indicador na legenda.</span>'}</div></section>`;
+    // colunas invisíveis para o mouse: todos os valores do dia
+    const bw = dias.length > 1 ? iw / n : iw;
+    dias.forEach((d, i) => {
+      const txt = vis.map(([k]) => { const p = series[k][i]; return `${IND_MAP[k].label}: ${p && tem(p.valor) ? fmtInd(IND_MAP[k], p.valor) : '—'}`; }).join('\n');
+      g += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${m.t}" width="${bw.toFixed(1)}" height="${ih}" fill="transparent"><title>${D.br(d)} ${D.semana(d)}\n${esc(txt)}</title></rect>`;
+    });
+    const passo = Math.max(1, Math.ceil(dias.length / Math.max(2, Math.floor(iw / 64))));
+    dias.forEach((d, i) => { if (i % passo === 0 || i === dias.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === dias.length - 1 && dias.length > 1 ? 'end' : i === 0 && dias.length > 1 ? 'start' : 'middle'}" font-size="10" style="fill:var(--texto-2)">${D.curta(d)}</text>`; });
+    // indicadores: valor do período, variação e liga/desliga a curva
+    const leg = inds.map(([k, cor]) => {
+      const on = !esc0.includes(k), ind = IND_MAP[k], v = ra[k], ant = rb[k];
+      return `<button type="button" data-acao="evo-dia" data-k="${k}" aria-pressed="${on}" title="${on ? 'Esconder' : 'Mostrar'} no gráfico" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:12px;border:1px solid var(--hairline);min-width:150px;${on ? '' : 'opacity:.45'}">
+        <span style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px"><span style="width:14px;height:3px;border-radius:2px;background:${cor};flex:none"></span>${esc(ind.label)}</span>
+        <span class="num" style="font-size:18px;font-weight:700">${fmtInd(ind, v)}</span>${tem(v) && tem(ant) ? variacao(X.variacao(ind, v, ant), 'vs comparação') : ''}</button>`;
+    }).join('');
+    const eixos = [outros.length ? 'nota e % no eixo da esquerda' : '', temKm ? 'km rodado no eixo da direita' : ''].filter(Boolean).join('; ');
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução da frota dia a dia</h2><span class="h2-sub">${esc(D.periodoCurto(E.A))}, comparado a ${esc(D.periodoCurto(E.B))}.${eixos ? ' ' + esc(eixos[0].toUpperCase() + eixos.slice(1)) + '.' : ''} Clique num indicador para esconder ou mostrar; passe o mouse no gráfico para ver o dia.</span></div></div>
+      <div class="card-corpo" style="gap:14px"><div style="display:flex;gap:8px;flex-wrap:wrap">${leg}</div>${vis.length ? `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Indicadores da frota dia a dia" style="display:block">${g}</svg>` : '<span class="apoio">Escolha ao menos um indicador.</span>'}</div></section>`;
   }
 
   // Cartão "Dia a dia": gráfico de linha com o período de comparação sobreposto, ou tabela
@@ -6906,26 +6923,53 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     else if (tem(ref)) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke-dasharray="6 5" stroke-width="1.5" style="stroke:var(--texto-2)"/><text x="${W - m.r + 8}" y="${(y(ref) + 4).toFixed(1)}" text-anchor="start" font-size="11" style="fill:var(--texto-2)">Anterior: ${esc(fmtInd(ind, ref))}</text>`;
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} ${esc((GRAN_GERAL.find((x) => x[0] === S.g) || [])[2] || '')} em ${esc(D.periodoBR(S.pMes))}" style="display:block">${g}</svg>`;
   }
-  // quantos evoluíram, ficaram estáveis, regrediram ou não tinham a fatia anterior, em cada fatia; o total (rodaram) em cima
+  // curva suave (cúbica monótona: não passa do valor real nem desce abaixo de zero entre os pontos)
+  function curvaSuave(pts) {
+    const n = pts.length; if (!n) return '';
+    if (n === 1) return 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+    const dx = [], dy = [], sl = [];
+    for (let k = 0; k < n - 1; k++) { dx.push(pts[k + 1][0] - pts[k][0]); dy.push(pts[k + 1][1] - pts[k][1]); sl.push(dy[k] / dx[k]); }
+    const t = [sl[0]];
+    for (let k = 1; k < n - 1; k++) t.push(sl[k - 1] * sl[k] <= 0 ? 0 : (3 * (dx[k - 1] + dx[k])) / ((2 * dx[k] + dx[k - 1]) / sl[k - 1] + (dx[k] + 2 * dx[k - 1]) / sl[k]));
+    t.push(sl[n - 2]);
+    let d = 'M' + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1);
+    for (let k = 0; k < n - 1; k++) {
+      const h = dx[k] / 3;
+      d += 'C' + (pts[k][0] + h).toFixed(1) + ',' + (pts[k][1] + t[k] * h).toFixed(1) + ' ' + (pts[k + 1][0] - h).toFixed(1) + ',' + (pts[k + 1][1] - t[k + 1] * h).toFixed(1) + ' ' + pts[k + 1][0].toFixed(1) + ',' + pts[k + 1][1].toFixed(1);
+    }
+    return d;
+  }
+  let idGrafQuem = 0;
+  // quantos evoluíram, ficaram estáveis, regrediram ou não tinham a fatia anterior, em cada fatia: curvas suaves, uma por
+  // situação; quem rodou é a curva amarela com área preenchida. Passe o mouse numa fatia para ver os números.
   function graficoQuem(S, Q) {
     const ords = ['evoluiu', 'estavel', 'regrediu', 'sembase'], mx = Math.max(1, ...Q.sem.map((c) => c.n));
-    const W = 520, H = 210, m = { l: 8, r: 8, t: 24, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, bw = iw / S.ws.length, larg = Math.min(56, bw * 0.6);
-    const passoRot = Math.max(1, Math.ceil(44 / bw));
-    let g = '';
+    const W = 520, H = 200, m = { l: 30, r: 14, t: 12, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, S.ws.length - 1);
+    const x = (i) => S.ws.length === 1 ? m.l + iw / 2 : m.l + (i / n) * iw, y = (v) => m.t + ih - (v / mx) * ih;
+    const passoRot = Math.max(1, Math.ceil(S.ws.length / Math.max(2, Math.floor(iw / 48))));
+    const gid = 'gq' + (++idGrafQuem);
+    let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCB709" stop-opacity=".45"/><stop offset="1" stop-color="#FCB709" stop-opacity=".02"/></linearGradient></defs>`;
+    const passoY = mx <= 4 ? 1 : Math.ceil(mx / 4);
+    for (let t = 0; t <= mx; t += passoY) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke-dasharray="2 4" style="stroke:var(--hairline)"/><text x="${m.l - 8}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end" font-size="10" style="fill:var(--texto-2)">${t}</text>`;
+    g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" style="stroke:var(--texto-2)" stroke-opacity=".5"/>`;
+    // trechos contínuos (fatia sem ninguém rodando quebra a curva)
+    const trechos = (f) => { const out = []; let cur = []; Q.sem.forEach((c, i) => { if (!c.n) { if (cur.length) out.push(cur); cur = []; return; } cur.push([x(i), y(f(c))]); }); if (cur.length) out.push(cur); return out; };
+    const ultimo = (() => { for (let i = Q.sem.length - 1; i >= 0; i--) if (Q.sem[i].n) return i; return -1; })();
+    trechos((c) => c.n).forEach((tr) => { const d = curvaSuave(tr); g += `<path d="${d}L${tr[tr.length - 1][0].toFixed(1)},${y(0).toFixed(1)}L${tr[0][0].toFixed(1)},${y(0).toFixed(1)}Z" fill="url(#${gid})"/>`; });
+    ords.slice().reverse().forEach((st) => {
+      const cor = st === 'sembase' ? '#B0B4BA' : STATUS[st].cor;
+      trechos((c) => c[st] || 0).forEach((tr) => { g += `<path d="${curvaSuave(tr)}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; });
+      if (ultimo >= 0) g += `<circle cx="${x(ultimo).toFixed(1)}" cy="${y(Q.sem[ultimo][st] || 0).toFixed(1)}" r="3.5" fill="${cor}"/>`;
+    });
+    trechos((c) => c.n).forEach((tr) => { g += `<path d="${curvaSuave(tr)}" fill="none" stroke="#FCB709" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; });
+    if (ultimo >= 0) g += `<circle cx="${x(ultimo).toFixed(1)}" cy="${y(Q.sem[ultimo].n).toFixed(1)}" r="4" fill="#FCB709"/>`;
+    // faixas invisíveis para o mouse: mostram os números de cada fatia
+    const bw = S.ws.length > 1 ? iw / n : iw;
     Q.sem.forEach((c, i) => {
-      const cx = m.l + i * bw + bw / 2, w = S.ws[i];
-      let base = m.t + ih;
-      if (c.n) {
-        ords.forEach((st) => {
-          const v = c[st]; if (!v) return;
-          const h = (v / mx) * ih;
-          base -= h;
-          g += `<rect x="${(cx - larg / 2).toFixed(1)}" y="${base.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, h - 1).toFixed(1)}" style="fill:${STATUS[st].cor}"><title>${esc(rotFatia(w, S.g))}: ${v} ${esc(STATUS[st].rot.toLowerCase())}</title></rect>`;
-          if (h >= 16 && bw >= 30) g += `<text x="${cx.toFixed(1)}" y="${(base + h / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${st === 'sembase' || st === 'estavel' ? '#2B2B2B' : '#fff'}">${v}</text>`;
-        });
-        if (bw >= 24) g += `<text x="${cx.toFixed(1)}" y="${(base - 6).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--tinta)">${c.n}</text>`;
-      } else if (bw >= 40) g += `<text x="${cx.toFixed(1)}" y="${(m.t + ih - 6).toFixed(1)}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">sem dados</text>`;
-      if (i % passoRot === 0) g += `<text x="${cx.toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(rotCurto(w, S.g))}${mesSemIncompleta(w) ? '*' : ''}</text>`;
+      const w = S.ws[i];
+      g += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${m.t}" width="${bw.toFixed(1)}" height="${ih}" fill="transparent"><title>${esc(rotFatia(w, S.g))}${c.n ? `: ${c.n} rodaram · ${ords.map((st) => `${c[st] || 0} ${STATUS[st].rot.toLowerCase()}`).join(' · ')}` : ': sem dados'}</title></rect>`;
+      const anc = S.ws.length > 1 && i === 0 ? 'start' : S.ws.length > 1 && i === S.ws.length - 1 ? 'end' : 'middle';
+      if (i % passoRot === 0 || i === S.ws.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="11" style="fill:var(--texto-2)">${esc(rotCurto(w, S.g))}${mesSemIncompleta(w) ? '*' : ''}</text>`;
     });
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Quantos evoluíram, ficaram estáveis ou regrediram em cada fatia" style="display:block">${g}</svg>`;
   }
@@ -6957,7 +7001,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         ${verTab ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th></th>${S.ws.map((w) => `<th class="dir">${esc(rotCurto(w, S.g))}</th>`).join('')}</tr></thead><tbody>
           <tr><td>Rodaram</td>${Q.sem.map((c) => `<td class="dir num"><b>${c.n}</b></td>`).join('')}</tr>
           ${linhas.map(([st, r]) => `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${STATUS[st].cor};margin-right:6px"></span>${r}</td>${Q.sem.map((c) => `<td class="dir num">${c.n ? c[st] : '—'}</td>`).join('')}</tr>`).join('')}
-        </tbody></table></div>` : `${graficoQuem(S, Q)}<div style="display:flex;gap:14px;flex-wrap:wrap">${linhas.map(([st, r]) => `<span class="apoio" style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:${STATUS[st].cor}"></span>${r}</span>`).join('')}<span class="apoio">número em cima = rodaram</span></div>`}
+        </tbody></table></div>` : `${graficoQuem(S, Q)}<div style="display:flex;gap:14px;flex-wrap:wrap">${linhas.map(([st, r]) => `<span class="apoio" style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:${st === 'sembase' ? '#B0B4BA' : STATUS[st].cor}"></span>${r}</span>`).join('')}<span class="apoio" style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:#FCB709"></span>Rodaram</span></div>`}
         ${ord.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><div><span class="apoio">Melhores em ${esc(rotUlt)} · ${esc(ind.label)}</span>${lista(top)}</div>
           <div><span class="apoio">Precisam de atenção em ${esc(rotUlt)}</span>${lista(baixo)}</div></div>` : ''}
       </div>`;

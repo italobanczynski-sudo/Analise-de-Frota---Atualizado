@@ -6,6 +6,8 @@ type ColetaConfig_t struct {
 	IntervaloMin int `envconfig:"COLETA_INTERVALO_MIN" default:"60"`
 	// Quantos dias para trás na primeira busca de um cliente
 	Dias int `envconfig:"COLETA_DIAS" default:"30"`
+	// Entre uma busca completa e outra, de quanto em quanto tempo refaz só o dia de hoje (0 = desligado)
+	HojeMin int `envconfig:"COLETA_HOJE_MIN" default:"15"`
 }
 
 type RastroConfig_t struct {

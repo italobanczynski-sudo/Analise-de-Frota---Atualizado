@@ -7,7 +7,7 @@
 (function () {
   // avisa o painel, já no carregamento, que ele está no servidor (o login chega depois, no evento gbx-conta)
   window.GBX_SERVIDOR = true;
-  const ATUALIZA_MS = 30000, ATUALIZA_DADOS_MS = 10 * 60000;
+  const ATUALIZA_MS = 30000, ATUALIZA_DADOS_MS = 5 * 60000;   // o servidor refaz o dia de hoje a cada 15 min
 
   async function chamar(metodo, caminho, corpo) {
     const op = { method: metodo, credentials: 'same-origin', headers: { 'X-Requisicao': 'plataforma' } };

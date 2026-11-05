@@ -40,6 +40,12 @@ func Init() {
 			logrus.Fatalf("background: tarefa de busca: %v", err)
 		}
 		logrus.Infof("background: busca automática a cada %d min", cfg.IntervaloMin)
+		if cfg.HojeMin > 0 {
+			if _, err := s.NewJob(gocron.DurationJob(time.Duration(cfg.HojeMin)*time.Minute), gocron.NewTask(atualizarHoje), unica); err != nil {
+				logrus.Fatalf("background: tarefa do dia de hoje: %v", err)
+			}
+			logrus.Infof("background: dia de hoje atualizado a cada %d min", cfg.HojeMin)
+		}
 	} else {
 		logrus.Info("background: busca automática desligada (COLETA_AUTOMATICA=false)")
 	}
@@ -64,6 +70,12 @@ func buscarTodos() {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Minute)
 	defer cancel()
 	coleta.NewColeta().ExecutarTodos(ctx)
+}
+
+func atualizarHoje() {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
+	coleta.NewColeta().AtualizarHoje(ctx)
 }
 
 func limparSessoes() {

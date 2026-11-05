@@ -301,6 +301,47 @@ func (s *ColetaSuite) TestSituacaoDeQuemNuncaFoiBuscado() {
 	s.NotNil(sit.Avisos)
 }
 
+// ---------- atualização rápida do dia de hoje ----------
+
+func (s *ColetaSuite) clientesHoje() {
+	s.cli.On("Listar", mock.Anything).Return([]cliente.Cliente_t{{ID: 1, Nome: "Cliente", TemToken: true}, {ID: 2, Nome: "Sem token"}}, nil)
+}
+
+func (s *ColetaSuite) TestAtualizarHojeBuscaSoHojeSemMexerNaSituacao() {
+	s.clientesHoje()
+	s.repo.On("Buscar", mock.Anything, int64(1)).Return(coleta_repo.SituacaoRow_t{Situacao: coleta.SituacaoOk, UltimoDia: sql.NullString{String: "2026-10-24", Valid: true}}, nil)
+	s.api.On("Estatisticas", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.EstatisticaRec_t{}, nil)
+	s.api.On("Performance", mock.Anything, "tk", mock.Anything, mock.Anything).Return([]gobraxapi.PerformanceRec_t{}, nil)
+
+	out := s.svc.AtualizarHoje(s.ctx)
+
+	s.NoError(out["Cliente"])
+	s.NotContains(out, "Sem token")
+	s.api.AssertNumberOfCalls(s.T(), "Estatisticas", 1)
+	s.api.AssertCalled(s.T(), "Estatisticas", mock.Anything, "tk", s.diaUTC("2026-10-24"), mock.Anything)
+	s.diario.AssertCalled(s.T(), "SalvarDia", mock.Anything, int64(1), "2026-10-24", mock.Anything)
+	s.api.AssertNotCalled(s.T(), "Odometro", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.api.AssertNotCalled(s.T(), "Premiacao", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	s.repo.AssertNotCalled(s.T(), "MarcarInicio", mock.Anything, mock.Anything, mock.Anything)
+	s.repo.AssertNotCalled(s.T(), "MarcarFim", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func (s *ColetaSuite) TestAtualizarHojePulaPausaErroENuncaBuscado() {
+	for _, sit := range []coleta_repo.SituacaoRow_t{
+		{Situacao: coleta.SituacaoAguardando, UltimoDia: sql.NullString{String: "2026-10-23", Valid: true}},
+		{Situacao: coleta.SituacaoErro, UltimoDia: sql.NullString{String: "2026-10-23", Valid: true}},
+		{},
+	} {
+		s.SetupTest()
+		s.clientesHoje()
+		s.repo.On("Buscar", mock.Anything, int64(1)).Return(sit, nil)
+
+		s.svc.AtualizarHoje(s.ctx)
+
+		s.api.AssertNotCalled(s.T(), "Estatisticas", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	}
+}
+
 func TestColetaSuite(t *testing.T) { suite.Run(t, new(ColetaSuite)) }
 
 func (s *ColetaSuite) TestLimiteDaAPIGuardaOQueVeioEDeixaORestoParaAProxima() {

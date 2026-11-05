@@ -24,6 +24,8 @@ type Service_I interface {
 	// Executar busca um cliente: da última busca até hoje (na primeira vez, os últimos N dias)
 	Executar(ctx context.Context, clienteID int64) (Resultado_t, error)
 	// ExecutarTodos busca, um de cada vez, todos os clientes que têm token
+	// AtualizarHoje refaz só o dia de hoje de cada cliente (os números do painel andam ao longo do dia)
+	AtualizarHoje(ctx context.Context) map[string]error
 	ExecutarTodos(ctx context.Context) map[string]error
 	Situacao(ctx context.Context, clienteID int64) (Situacao_t, error)
 	// MarcarInterrompidas: ao subir, nenhuma busca está rodando de verdade; as que ficaram "rodando" foram interrompidas
@@ -81,7 +83,7 @@ func (c *coleta_t) Executar(ctx context.Context, clienteID int64) (Resultado_t, 
 		return Resultado_t{}, err
 	}
 
-	res, ultimoDia, err := c.buscar(ctx, clienteID, ini, hoje, agora)
+	res, ultimoDia, err := c.buscar(ctx, clienteID, ini, hoje, agora, true)
 	fim := c.d.Agora()
 	if err != nil {
 		_ = c.d.Repo.MarcarFim(ctx, clienteID, SituacaoErro, err.Error(), res.Avisos, nil, fim)
@@ -115,7 +117,8 @@ func (c *coleta_t) agendarNovaTentativa(clienteID int64, ate time.Time) {
 }
 
 // buscar devolve o resultado e até que dia a busca ficou completa
-func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string, agora time.Time) (Resultado_t, string, error) {
+// extras = também odômetro e premiação (a atualização rápida de hoje não busca)
+func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string, agora time.Time, extras bool) (Resultado_t, string, error) {
 	res := Resultado_t{Performance: true, Avisos: []string{}}
 	token, err := c.d.Clientes.Token(ctx, clienteID)
 	if err != nil {
@@ -219,6 +222,9 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 	}
 	res.Performance = !fp.desligado
 	res.Avisos = append(res.Avisos, append(fe.avisos(), fp.avisos()...)...)
+	if !extras {
+		return res, hoje, nil
+	}
 
 	// odômetro: o último de cada veículo nos últimos 30 dias
 	if odo, err := c.d.API.Odometro(ctx, token, agora.Add(-30*24*time.Hour), agora); err == nil {
@@ -271,6 +277,48 @@ func (c *coleta_t) ExecutarTodos(ctx context.Context) map[string]error {
 		logrus.Infof("coleta: %s: %s", cl.Nome, resumo(res))
 		for _, a := range res.Avisos {
 			logrus.Warnf("coleta: %s: %s", cl.Nome, a)
+		}
+	}
+	return out
+}
+
+// AtualizarHoje: a busca completa roda de hora em hora; entre uma e outra, esta refaz só o dia de hoje (estatísticas,
+// performance e motoristas) para o consumo, a faixa verde e o motor ligado parado andarem ao longo do dia.
+// Não mexe na situação da busca nem no "último dia completo". Pula o cliente que nunca teve a busca completa,
+// o que está com busca em andamento, o que deu erro (token vencido etc.: a busca completa tenta de novo) e o que está
+// em pausa pedida pela API (para não gastar o limite dela).
+func (c *coleta_t) AtualizarHoje(ctx context.Context) map[string]error {
+	out := map[string]error{}
+	clis, err := c.d.Clientes.Listar(ctx)
+	if err != nil {
+		out["(lista de clientes)"] = err
+		return out
+	}
+	for _, cl := range clis {
+		if !cl.TemToken {
+			continue
+		}
+		sit, err := c.d.Repo.Buscar(ctx, cl.ID)
+		if err != nil {
+			out[cl.Nome] = err
+			continue
+		}
+		if !sit.UltimoDia.Valid || sit.Situacao == SituacaoAguardando || sit.Situacao == SituacaoRodando || sit.Situacao == SituacaoErro {
+			continue
+		}
+		if !trancar(cl.ID) {
+			continue
+		}
+		agora := c.d.Agora()
+		hoje := utils.DiaBR(agora)
+		res, _, err := c.buscar(ctx, cl.ID, hoje, hoje, agora, false)
+		liberar(cl.ID)
+		out[cl.Nome] = err
+		switch {
+		case err != nil:
+			logrus.Warnf("coleta (hoje): %s: %v", cl.Nome, err)
+		case res.AguardarAte != nil:
+			logrus.Infof("coleta (hoje): %s: a API pediu pausa até %s; fica para a próxima", cl.Nome, utils.HoraBR(*res.AguardarAte))
 		}
 	}
 	return out

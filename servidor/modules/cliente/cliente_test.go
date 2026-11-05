@@ -27,8 +27,8 @@ func (m *RepositoryMock_t) BuscarPorNome(ctx context.Context, nome string) (clie
 	a := m.Called(ctx, nome)
 	return a.Get(0).(cliente_repo.ClienteRow_t), a.Error(1)
 }
-func (m *RepositoryMock_t) Criar(ctx context.Context, nome, hubspotID string) (int64, error) {
-	a := m.Called(ctx, nome, hubspotID)
+func (m *RepositoryMock_t) Criar(ctx context.Context, nome string) (int64, error) {
+	a := m.Called(ctx, nome)
 	return a.Get(0).(int64), a.Error(1)
 }
 func (m *RepositoryMock_t) SalvarTokenCifrado(ctx context.Context, id int64, cifrado []byte) error {
@@ -87,16 +87,14 @@ func (s *ClienteSuite) TestTokenComCaractereEstranhoERecusado() {
 	s.repo.AssertNotCalled(s.T(), "SalvarTokenCifrado", mock.Anything, mock.Anything, mock.Anything)
 }
 
-func (s *ClienteSuite) TestCriarValidaNomeEHubspot() {
-	_, err := s.svc.Criar(s.ctx, "  ", "")
+func (s *ClienteSuite) TestCriarValidaNome() {
+	_, err := s.svc.Criar(s.ctx, "  ")
 	s.ErrorIs(err, cliente.ErrNomeVazio)
-	_, err = s.svc.Criar(s.ctx, "Cliente X", "abc")
-	s.ErrorIs(err, cliente.ErrHubspotID)
 }
 
 func (s *ClienteSuite) TestCriarNomeRepetido() {
-	s.repo.On("Criar", s.ctx, "Cliente X", "").Return(int64(0), cliente_repo.ErrRepetido)
-	_, err := s.svc.Criar(s.ctx, " Cliente X ", "")
+	s.repo.On("Criar", s.ctx, "Cliente X").Return(int64(0), cliente_repo.ErrRepetido)
+	_, err := s.svc.Criar(s.ctx, " Cliente X ")
 	s.ErrorIs(err, cliente.ErrNomeRepetido)
 }
 

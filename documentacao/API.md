@@ -36,14 +36,14 @@ O painel no Claude não deixa a página chamar endereços de fora, então a busc
    GOBRAX_TOKEN_XTSUL=<token da Xtsul>
    GOBRAX_TOKEN_CAJU=<token da Caju>
    ```
-2. Copie `busca-de-dados/clientes.example.json` para `busca-de-dados/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token e o ID da empresa no HubSpot (o número no fim do link da empresa):
+2. Copie `busca-de-dados/clientes.example.json` para `busca-de-dados/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token:
    ```json
    [
-     { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL", "hubspot_id": "<ID no HubSpot>" },
-     { "cliente": "Caju Transportes", "token": "GOBRAX_TOKEN_CAJU", "hubspot_id": "<ID no HubSpot>" }
+     { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL" },
+     { "cliente": "Caju Transportes", "token": "GOBRAX_TOKEN_CAJU" }
    ]
    ```
-3. Rode `node busca-de-dados/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente). O HubSpot segue o mesmo arquivo: `node busca-de-dados/hubspot.mjs --cliente "Caju Transportes"`.
+3. Rode `node busca-de-dados/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente).
 
 Para incluir um cliente novo: uma linha `GOBRAX_TOKEN_<NOME>=` no `busca-de-dados/.env` e uma entrada no `busca-de-dados/clientes.json`. O cliente precisa existir no painel com o mesmo nome.
 
@@ -206,21 +206,3 @@ Detalhes da resposta da performance:
 - **Painel no Claude:** os dados ficam na base compartilhada, coleção `planilhas`, com um documento por tipo, cliente e dia (ou mês, na premiação).
 - **GitHub Pages:** os dados ficam só no navegador (`localStorage`).
 - O CPF e o id dos motoristas são descartados antes de qualquer gravação. Só o nome segue.
-
-## HubSpot (perfil e relacionamento do cliente)
-
-O cartão **Cliente no HubSpot** e o **Estudo do cliente** (Saúde do cliente) usam duas fontes, a que for mais recente:
-
-1. **Conector do HubSpot no claude.ai** (painel aberto dentro do Claude): lido ao vivo com a autorização de quem abre o painel. Não há token no painel.
-2. **API do HubSpot por script** (`busca-de-dados/hubspot.mjs`): para usar fora do Claude ou guardar uma leitura.
-   - Crie um app privado no HubSpot (Configurações → Integrações → Apps privados) só com escopos de leitura: empresas, contatos, tickets, e-mails, ligações e reuniões.
-   - Coloque o token no `busca-de-dados/.env` como `HUBSPOT_TOKEN=...` (o arquivo fica fora do Git; nunca cole o token em chat).
-   - No `busca-de-dados/clientes.json`, `hubspot_id` é o id da empresa no HubSpot (opcional; sem ele, busca pelo nome).
-   - Rode `node busca-de-dados/hubspot.mjs` (ou `--cliente "Nome"`). Gera `busca-de-dados/saida/<cliente>/hubspot.json`.
-   - No painel, em Saúde do cliente → Cliente no HubSpot → **Importar arquivo**. A leitura fica guardada na base compartilhada (coleção `hubspot`) e vale até o conector trazer uma mais nova.
-
-Endpoints usados (só leitura): `GET /crm/v3/objects/companies/{id}`, `POST /crm/v3/objects/companies/search`, `GET /crm/v4/objects/{tipo}/{id}/associations/{tipo}` e `POST /crm/v3/objects/{tipo}/batch/read`.
-
-Campos da empresa: frota (`frota_contratada`, `frota_total`), nota CHS (`nota_do_chs`, `chs_score` e as partes `chs_aderencia`, `chs_nota_engajamento`, `chs_nota_adimplencia`, `chs_nota_usuario`, `chs_nota_motorista`, `chs_nota_tickets_positivos`), contrato (`data_inicio_do_contrato_original`, `data_de_termino_do_contrato`, `ciclo_experiencia`), `estados_onde_opera` e último contato (`notes_last_contacted`).
-
-Dados pessoais ficam de fora (Política de Segurança da Gobrax, cláusula 5.1): o script e o painel não pedem CNPJ, e-mail nem telefone; dos contatos vêm só nome, cargo e último contato. E-mails, CPF, CNPJ e telefones escritos em notas, reuniões, ligações e assuntos saem mascarados (`[e-mail]`, `[CPF]`, `[CNPJ]`, `[telefone]`). Um arquivo antigo que ainda tenha esses dados é limpo e regravado quando o painel o lê.

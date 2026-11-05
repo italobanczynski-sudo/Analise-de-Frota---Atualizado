@@ -17,7 +17,7 @@ type Service_I interface {
 	Listar(ctx context.Context) ([]Cliente_t, error)
 	Buscar(ctx context.Context, id int64) (Cliente_t, error)
 	BuscarPorNome(ctx context.Context, nome string) (Cliente_t, error)
-	Criar(ctx context.Context, nome, hubspotID string) (Cliente_t, error)
+	Criar(ctx context.Context, nome string) (Cliente_t, error)
 	SalvarToken(ctx context.Context, id int64, token string) error
 	// Token devolve o token decifrado, só para chamar a API Gobrax; nunca vai para uma resposta
 	Token(ctx context.Context, id int64) (string, error)
@@ -59,15 +59,12 @@ func (c *cliente_t) BuscarPorNome(ctx context.Context, nome string) (Cliente_t, 
 	return deRow(r), traduzir(err)
 }
 
-func (c *cliente_t) Criar(ctx context.Context, nome, hubspotID string) (Cliente_t, error) {
-	nome, hubspotID = strings.TrimSpace(nome), strings.TrimSpace(hubspotID)
+func (c *cliente_t) Criar(ctx context.Context, nome string) (Cliente_t, error) {
+	nome = strings.TrimSpace(nome)
 	if err := validarNome(nome); err != nil {
 		return Cliente_t{}, err
 	}
-	if err := validarHubspot(hubspotID); err != nil {
-		return Cliente_t{}, err
-	}
-	id, err := c.repo.Criar(ctx, nome, hubspotID)
+	id, err := c.repo.Criar(ctx, nome)
 	if err != nil {
 		return Cliente_t{}, traduzir(err)
 	}
@@ -98,7 +95,7 @@ func (c *cliente_t) Token(ctx context.Context, id int64) (string, error) {
 }
 
 func deRow(r cliente_repo.ClienteRow_t) Cliente_t {
-	return Cliente_t{ID: r.ID, Nome: r.Nome, HubspotID: r.HubspotID, TemToken: r.TemToken, CriadoEm: r.CriadoEm}
+	return Cliente_t{ID: r.ID, Nome: r.Nome, TemToken: r.TemToken, CriadoEm: r.CriadoEm}
 }
 
 func traduzir(err error) error {

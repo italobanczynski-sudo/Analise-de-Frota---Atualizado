@@ -10,7 +10,7 @@ import (
 // Criar cadastra o cliente e, se veio token, já o salva cifrado
 func (m Cliente_t) Criar(ctx context.Context) *middleware.Response_t {
 	svc := modcliente.NewCliente()
-	c, err := svc.Criar(ctx, m.Nome, m.HubspotID)
+	c, err := svc.Criar(ctx, m.Nome)
 	if err != nil {
 		return middleware.RetErro(err)
 	}

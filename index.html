@@ -1198,78 +1198,16 @@ tr.linha-clicavel:hover .ind-abrir, tr.linha-clicavel:focus-visible .ind-abrir {
 .pd-garg-val b { font-size: 15px; font-variant-numeric: tabular-nums; }
 .pd-garg-val small { font-size: 11.5px; color: var(--texto-2); }
 @media (max-width: 760px) { .pd-garg { grid-template-columns: 28px 1fr; } .pd-garg-bar, .pd-garg-val { grid-column: 2; } .pd-garg-val { align-items: flex-start; } .pd-per { margin-left: 0; } }
-/* ---------- Cliente no HubSpot ---------- */
-.hb-topo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 24px; align-items: center; }
-.hb-nome { display: flex; flex-direction: column; gap: 2px; }
-.hb-nome b { font-size: 17px; color: var(--tinta); }
-.hb-chs { flex: 1 1 460px; max-width: 640px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; padding: 12px 16px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--sup-hover); }
-.hb-chs-nota { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
-.hb-chs-nota b { font-size: 36px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.hb-t { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-2); }
-.hb-chs-partes { flex: 1 1 300px; display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 8px 22px; }
-.hb-parte { display: grid; grid-template-columns: 96px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; color: var(--texto-2); }
-.hb-parte b { text-align: right; color: var(--tinta); font-variant-numeric: tabular-nums; }
+/* ---------- Barras de lista e títulos de bloco ---------- */
 .hb-trilho { height: 6px; border-radius: 999px; background: var(--apoio); overflow: hidden; }
 .hb-trilho i { display: block; height: 100%; border-radius: 999px; }
-.hb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.hb-tile { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 10px; }
-.hb-tile b { font-size: 22px; font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; }
-.hb-tile.ruim b { color: var(--critico-tinta); } .hb-tile.bom b { color: var(--ok-tinta); }
-.hb-s { font-size: 12px; color: var(--texto-2); }
-.hb-perfil { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 18px; padding: 12px 14px; border-radius: 10px; background: var(--apoio); }
-.hb-campo { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--texto-2); min-width: 0; }
-.hb-campo b { font-size: 13px; color: var(--tinta); font-weight: 600; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 4px; }
-.hb-largo { grid-column: 1 / -1; }
-.hb-uf { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--superficie); border: 1px solid var(--borda); font-size: 12px; }
-.hb-bloco { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .hb-bloco-t { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-2); margin-bottom: 6px; }
-.hb-ev { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--apoio); }
-.hb-ev:last-child { border-bottom: 0; }
-.hb-ev-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--dado-fundo); color: var(--amarelo-press); font-size: 12px; font-weight: 700; }
-.hb-ev-txt { display: flex; flex-direction: column; min-width: 0; }
-.hb-ev-txt b { font-size: 13px; font-weight: 500; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hb-ev-txt small, .hb-ev-d { font-size: 12px; color: var(--texto-2); }
-.hb-ev-d { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.hb-ct { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--apoio); }
-.hb-ct:last-child { border-bottom: 0; }
-.hb-ct-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.hb-ct-txt b { font-size: 13px; color: var(--tinta); }
-.hb-ct-txt small { font-size: 12px; color: var(--texto-2); }
-.hb-ct-links { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
-@media (max-width: 640px) { .hb-chs-partes { grid-template-columns: 1fr; } }
-/* ---------- HubSpot: números que abrem o detalhe ---------- */
-.hb-abre { text-align: left; background: var(--superficie); cursor: pointer; font: inherit; color: inherit; transition: border-color 120ms; }
-.hb-abre:hover { border-color: var(--borda-hover); }
-.hb-abre.aberto { border-color: var(--amarelo); box-shadow: 0 0 0 1px var(--amarelo); }
-.hb-seta { margin-left: 6px; color: var(--texto-3); }
-.hb-det { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--sup-hover); }
-.hb-det-cab { display: flex; justify-content: space-between; align-items: center; }
-.hb-det-cab b { font-size: 15px; color: var(--tinta); }
-.hb-det-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.hb-det-kpis > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--superficie); border: 1px solid var(--hairline); }
-.hb-det-kpis b { font-size: 20px; font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; }
-.hb-det-kpis span { font-size: 12px; color: var(--texto-2); }
 .hb-bar { display: grid; grid-template-columns: minmax(120px, 42%) 1fr 32px 120px; gap: 10px; align-items: center; padding: 5px 0; font-size: 12.5px; }
 .hb-bar-rot { color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hb-bar b { text-align: right; color: var(--tinta); font-variant-numeric: tabular-nums; }
 .hb-bar small { color: var(--texto-2); font-size: 11.5px; white-space: nowrap; }
-.hb-quem { display: grid; grid-template-columns: 26px 28px minmax(120px, 1fr) auto minmax(80px, 30%); gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--apoio); }
-.hb-quem:last-child { border-bottom: 0; }
-.hb-quem-n { font-size: 12px; color: var(--texto-3); font-weight: 600; text-align: right; }
-.hb-quem b { font-size: 13px; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hb-quem-c { font-size: 12px; color: var(--texto-2); white-space: nowrap; }
-@media (max-width: 640px) { .hb-bar { grid-template-columns: 1fr 32px; } .hb-bar .hb-trilho, .hb-bar small { grid-column: 1 / -1; } .hb-quem { grid-template-columns: 26px 28px 1fr; } .hb-quem-c, .hb-quem .hb-trilho { grid-column: 3; } }
-/* ---------- Estudo do cliente ---------- */
-.es-dims { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.es-dim { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--hairline); border-left: 4px solid var(--borda); border-radius: 10px; }
-.es-dim.bom { border-left-color: var(--ok); } .es-dim.atencao { border-left-color: var(--atencao); } .es-dim.critico { border-left-color: var(--critico); }
-.es-dim-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.es-dim-cab b { font-size: 14px; color: var(--tinta); }
-.es-nivel { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.es-dim.bom .es-nivel { color: var(--ok-tinta); } .es-dim.atencao .es-nivel { color: var(--atencao-tinta); } .es-dim.critico .es-nivel { color: var(--critico-tinta); }
-.es-dim p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--corpo); }
-.es-acoes { padding: 12px 16px; border-radius: 10px; background: var(--creme); border-left: 3px solid var(--amarelo); }
-.es-acoes ol { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--corpo); line-height: 1.45; }
+@media (max-width: 640px) { .hb-bar { grid-template-columns: 1fr 32px; } .hb-bar .hb-trilho, .hb-bar small { grid-column: 1 / -1; } }
+
 /* ---------- Identidade v3: vidro, cápsulas e números grandes (amarelo Gobrax como destaque, pouco preto) ---------- */
 :root {
   --fonte: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
@@ -3447,7 +3385,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
     { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
     { rodape: true, tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
-    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'APIs (Gobrax e HubSpot)' },
+    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente', 'carteira'] }
   ];
   const navAtivo = (n) => ((n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo)) || (!!n.altInd && E.rota.tela === 'individual' && E.rota.tipo === n.altInd);
@@ -3540,7 +3478,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const NOVIDADES = [
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
     { id: 66, data: '2026-11-05', titulo: 'Frota ao vivo na Visão geral', texto: 'A Visão geral abre com o mapa da frota: a última posição de cada veículo (em movimento, parado ou sem sinal), atualizada a cada 2 minutos, e a lista de quem está comunicando agora. Ao lado, a nota, a frota agora, o consumo, a faixa verde e o motor ligado parado do período, o motorista e o veículo escolhido no mapa com o desempenho contra a frota. Saiu a Comparação por fase do menu (o cálculo segue no Resumo da reunião; dias excluídos foram para Combinados).' },
-    { id: 67, data: '2026-11-05', titulo: 'Levar os dados para o GitHub Pages', texto: 'Em Configurações, Exportar tudo baixa um arquivo com clientes, tratativas, fichas, combinados, regras, HubSpot e planilhas; Importar arquivo grava esses dados em outro painel, como o GitHub Pages. Os tokens da API não vão no arquivo.' },
     { id: 68, data: '2026-11-05', titulo: 'Visão geral em gráficos', texto: 'A evolução semanal virou um gráfico por indicador e as contagens de motoristas e veículos viraram barras lado a lado. A evolução dia a dia mostra Nota Gobrax, km, faixa verde, motor ligado parado e pedal crítico, cada um com a sua cor. Carteira de clientes foi para Configurações; Combinados, Resumo da reunião, Onde ainda há ganho e os atalhos do fim da Visão geral saíram.' },
     { id: 64, data: '2026-11-03', titulo: 'Sem blocos repetidos', texto: 'Cada informação fica em um lugar só. Desenvolvimento da frota abre em Gráficos (o resumo já está na Visão geral). Veículo e motorista individual ficam com Dashboard, Todos os indicadores e Dia a dia. "O projeto se paga?" fica no Estudo do projeto. A Saúde do cliente mostra o cliente; a lista de todos os clientes fica na Carteira de clientes.' },
     { id: 63, data: '2026-11-03', titulo: 'Gráficos animados', texto: 'Os gráficos animam quando aparecem na tela e quando os dados mudam; o último ponto de cada linha pulsa e o balão com os valores aparece na hora ao passar o mouse.' },
@@ -3565,16 +3502,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { id: 44, data: '2026-10-23', titulo: 'Calendário no topo da Visão geral', texto: 'O seletor de período subiu para o canto direito do cabeçalho, junto ao nome do cliente. Saiu a data repetida embaixo do nome e a faixa separada do calendário.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 43, data: '2026-10-23', titulo: 'Estado do diesel na barra do topo', texto: 'Ao lado do preço do diesel há um seletor de estado: Automático (segue o grupo ou o cliente), Média Brasil (geral) ou qualquer estado, com o preço da Petrobras de cada um. Os preços foram atualizados com a coleta de 23/10/2026.', href: '#/geral', link: 'Abrir Visão geral' },
     { id: 42, data: '2026-10-23', titulo: 'Troca de cliente só no topo', texto: 'Os botões "Cliente do relatório" saíram da Visão geral. Para trocar de empresa, use o seletor de cliente na barra do canto superior direito.', href: '#/geral', link: 'Abrir Visão geral' },
-    { id: 41, data: '2026-10-23', titulo: 'Caju Transportes no painel', texto: 'A Caju Transportes entrou como cliente, já ligada ao HubSpot (perfil, nota CHS, ligações, reuniões, notas, chamados e contatos) e com o diesel de Mato Grosso do Sul. Os últimos 30 dias de motoristas, veículos, odômetro (41 veículos) e premiação já entraram pela API, separados dos dados da Xtsul.', href: '#/clientes', link: 'Abrir Clientes' },
     { id: 40, data: '2026-10-22', titulo: 'Baixar arquivo no painel do Claude', texto: 'Na janela de exportação, o botão Baixar arquivo agora funciona também no painel do Claude: ele pede sua confirmação e salva o CSV. Copiar continua disponível.', href: '#/motoristas', link: 'Abrir Motoristas' },
-    { id: 39, data: '2026-10-22', titulo: 'Revisão geral', texto: 'Todas as telas, abas e períodos foram revisados, sem erros. Por segurança, o HubSpot não traz mais CNPJ, e-mail nem telefone: os contatos mostram nome, cargo e último contato, e e-mails, CPF, CNPJ e telefones escritos em notas, reuniões e ligações aparecem mascarados. Arquivos antigos na base são limpos sozinhos. Os últimos textos de planilha saíram.', href: '#/churn', link: 'Abrir Saúde do cliente' },
-    { id: 38, data: '2026-10-22', titulo: 'Saúde do cliente sem período anterior', texto: 'Quando o período escolhido não tem um anterior com dados (ex.: 90 dias), a Saúde do cliente compara as duas metades do próprio período em vez de ficar em branco. A nota CHS e o último contato do HubSpot também entram no índice de risco.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 37, data: '2026-10-22', titulo: 'Tudo pela API', texto: 'Se o período escolhido não tiver dados, o painel mostra o último período com dados, do mesmo tamanho, e avisa até quando a API trouxe dados. Os textos de planilha saíram: os dados vêm da API. Os botões Imprimir e Atualizar saíram do cabeçalho da Visão geral.', href: '#/geral', link: 'Abrir a Visão geral' },
-    { id: 36, data: '2026-10-22', titulo: 'Tratativas trazidas do HubSpot', texto: 'Em Saúde do cliente → Tratativas registradas, o botão Trazer do HubSpot cria uma tratativa para cada reunião, ligação completada e nota do HubSpot, com data, título e o que foi registrado, já na etapa provável do fluxo. Não duplica: trazer de novo só traz o que é novo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
-    { id: 35, data: '2026-10-22', titulo: 'Aba API HubSpot', texto: 'Na página API, a nova aba API HubSpot explica onde fica o token (no busca-de-dados/.env, nunca na página), como coletar com node busca-de-dados/hubspot.mjs (o script pede o token no terminal na primeira vez) e tem o botão para importar o arquivo gerado.', href: '#/api', link: 'Abrir API' },
-    { id: 34, data: '2026-10-22', titulo: 'Estudo do cliente e API do HubSpot', texto: 'Na Saúde do cliente, o Estudo do cliente cruza o HubSpot com a operação: saúde (CHS), relacionamento, suporte, contrato e frota e resultado, cada um com Bom, Atenção ou Crítico, e o que fazer agora. Os dados do HubSpot também podem vir pela API: rode node busca-de-dados/hubspot.mjs e use Importar arquivo.', href: '#/churn', link: 'Abrir Saúde do cliente' },
-    { id: 33, data: '2026-10-22', titulo: 'HubSpot: chamados, e-mails e ligações em detalhe', texto: 'No cartão Cliente no HubSpot, clique em Chamados de suporte para ver a relação dos chamados (abertos, assuntos, categorias, tempo para fechar), em E-mails para ver os temas, e em Ligações para ver quem mais entra em contato.', href: '#/churn', link: 'Abrir Saúde do cliente' },
-    { id: 32, data: '2026-10-22', titulo: 'Cliente no HubSpot na Saúde do cliente', texto: 'Ao abrir um cliente na Saúde do cliente, o painel lê o HubSpot ao vivo: cidade, estados onde opera, contrato, frota contratada, nota CHS com as partes que a compõem, último contato, total de ligações e e-mails, chamados de suporte abertos, últimos contatos e contatos principais. Precisa do conector do HubSpot conectado no claude.ai.', href: '#/churn', link: 'Abrir Saúde do cliente' },
     { id: 31, data: '2026-10-22', titulo: 'Plano de ação com diagnóstico', texto: 'O Plano de ação ganhou abas. Em Diagnóstico, escolha a comparação (período anterior, último dia, última semana, mês atual ou 1ª × 2ª metade) e veja ganhos, perdas, dicas e os gargalos operacionais com o valor em jogo. Em Evolução, veja o período dia a dia, semana a semana ou mês a mês.', href: '#/plano', link: 'Abrir Plano de ação' },
     { id: 30, data: '2026-10-22', titulo: 'Motoristas organizado em abas', texto: 'A tela Motoristas foi separada em abas: Resumo (ganhos, perdas e onde cada condutor está), Comportamento (gráfico de cada indicador), Comparativo (ranking por indicador) e Lista de motoristas. Visual mais limpo, uma coisa de cada vez.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 29, data: '2026-10-22', titulo: 'Gráficos de comportamento em Motoristas', texto: 'A tela Motoristas ganhou o comportamento dia a dia de cada indicador (período analisado contra o anterior) e o Comparativo entre condutores: escolha um indicador e veja todos do melhor para o pior, com a média da frota e como cada um estava antes.', href: '#/motoristas', link: 'Abrir Motoristas' },
@@ -5186,430 +5115,10 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
 
 
 
-  // ---------- HubSpot ao vivo: consulta o conector do próprio usuário e atualiza a cada 60 s ----------
-  const vivo = {};          // chave do cliente -> { calls, emails, deals, em, erro }
-  const vigiando = new Set();
-  let mcpRef = null, mcpTentou = false;
-  const MSG_ERRO = {
-    needs_reauth: 'Reconecte o HubSpot em Configurações → Conectores do claude.ai.',
-    server_not_connected: 'Adicione o conector do HubSpot em Configurações → Conectores do claude.ai.',
-    not_in_manifest: 'O acesso ao HubSpot foi negado para este painel.',
-    approval_required: 'O HubSpot precisa da sua autorização para este painel.',
-    blocked_by_policy: 'O HubSpot está bloqueado pela política da organização.',
-    selection_required: 'Escolha qual conector do HubSpot usar.',
-    sem_mcp: 'Abra o painel no claude.ai com o conector do HubSpot conectado para buscar os dados.',
-    sem_cliente_srv: 'Este cliente não está cadastrado no servidor. Um administrador cadastra em Configurações.',
-    upstream_error: 'Não foi possível consultar o HubSpot agora. Tente atualizar de novo.',
-    server_unavailable: 'O HubSpot não respondeu. Tente atualizar de novo.',
-    tool_error: 'O HubSpot recusou a consulta. Tente atualizar de novo.',
-    nao_achou: 'Este cliente não foi encontrado no HubSpot pelo nome. Confira se o nome da empresa é o mesmo nos dois lugares.'
-  };
-  function redesenharRel() { if (['plano', 'clientes', 'churn'].includes(E.rota.tela)) render(); }
-  async function obterMcp() {
-    if (!mcpTentou) { mcpTentou = true; try { mcpRef = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (e) { mcpRef = null; } }
-    return mcpRef;
-  }
-  // Busca no HubSpot agora (ao abrir e a cada clique em "Atualizar"); sem consulta automática em segundo plano
-  async function atualizarHub(r) {
-    const v = (vivo[r.chave] = vivo[r.chave] || {});
-    if (v.carregando || !r.hubspot_id) return;
-    v.carregando = true; v.erro = null; redesenharRel();
-    const mcp = await obterMcp();
-    if (!mcp) { v.carregando = false; v.erro = 'sem_mcp'; redesenharRel(); return; }
-    const filtro = [{ filters: [{ propertyName: 'associations.company', operator: 'EQ', value: String(r.hubspot_id) }] }];
-    const buscar = (tipo, props) => mcp.callTool('HubSpot', 'search_crm_objects', { objectType: tipo, filterGroups: filtro, properties: props, limit: 100 }, { cache: false }).then((res) => res && res.payload);
-    try {
-      const [calls, emails, deals] = await Promise.all([
-        buscar('calls', ['hs_timestamp', 'hs_call_status']),
-        buscar('emails', ['hs_timestamp', 'hs_email_direction']),
-        buscar('deals', ['dealname', 'amount', 'closedate', 'hs_is_closed_won', 'createdate'])
-      ]);
-      if (![calls, emails, deals].every((x) => x && typeof x === 'object')) throw { code: 'upstream_error' };
-      v.calls = calls; v.emails = emails; v.deals = deals; v.em = Date.now(); v.erro = null;
-    } catch (e) { v.erro = (e && e.code) || 'upstream_error'; }
-    v.carregando = false; redesenharRel();
-  }
-  function vigiarHubspot() {
-    (E.rel || []).forEach((r) => { if (r.hubspot_id && !vigiando.has(r.chave)) { vigiando.add(r.chave); atualizarHub(r); } });
-  }
-  function vivoParaRel(r) {
-    const v = vivo[r.chave];
-    if (!v || !v.calls || !v.emails || !v.deals) return null;
-    const dia = (t) => (t ? String(t).slice(0, 10) : '');
-    const maxTs = (arr) => arr.reduce((m, o) => { const t = o.properties && o.properties.hs_timestamp; return t && t > m ? t : m; }, '');
-    const cr = v.calls.results || [], er = v.emails.results || [], dr = v.deals.results || [];
-    const ligacoes = { total: v.calls.total, ultima: dia(maxTs(cr)) };
-    const emails = { total: v.emails.total, ultimo: dia(maxTs(er)) };
-    if (cr.length === v.calls.total) { ligacoes.completadas = cr.filter((o) => o.properties.hs_call_status === 'COMPLETED').length; }
-    if (er.length === v.emails.total) { emails.recebidos = er.filter((o) => o.properties.hs_email_direction === 'INCOMING_EMAIL').length; emails.enviados = er.length - emails.recebidos; }
-    const negocios = dr.map((o) => {
-      const p = o.properties || {}, nome = p.dealname || '';
-      const ganho = p.hs_is_closed_won === 'true';
-      const churn = /^churn confirmado/i.test(nome);
-      return { nome, data: dia(p.closedate) || dia(p.createdate), valor: p.amount === undefined || p.amount === '' ? null : Number(p.amount), resultado: churn ? 'Churn' : ganho ? 'Ganho' : 'Aberto', ord: p.closedate || p.createdate || '' };
-    }).sort((a, b) => (a.ord < b.ord ? 1 : -1));
-    const churn = negocios.find((n) => n.resultado === 'Churn');
-    return Object.assign({}, r, {
-      ligacoes: Object.assign({}, r.ligacoes, ligacoes), emails: Object.assign({}, r.emails, emails),
-      negocios, negocios_total: v.deals.total, contratos_ganhos: negocios.filter((n) => n.resultado === 'Ganho').length,
-      situacao: churn ? 'Churn confirmado em ' + D.br(churn.data) : r.situacao, atualizado: dia(new Date(v.em).toISOString()), _vivo: true, _em: v.em
-    });
-  }
-
-
-  // ---------- Cliente no HubSpot: perfil, frota, nota CHS, contatos, histórico e suporte ----------
-  // Lido ao vivo pelo conector do HubSpot de quem abre o painel; nada disso é gravado na base do painel.
-  const HUB_PORTAL = '19655000';
-  // total e lista de uma leitura do HubSpot; total desconhecido (ex.: sem permissão de leitura) é null, nunca 0
-  const hubTot = (r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : null), hubRes = (r) => (r && r.results) || [];
-  const hubCli = {};   // chave do cliente -> { carregando, erro, id, comp, calls, emails, meets, tickets, abertos, contatos, em }
-  const HUB_PROPS = ['name', 'nome_fantasia', 'city', 'state', 'estados_onde_opera', 'tipo_de_veiculo', 'frota_total', 'frota_contratada', 'veiculos_instalados', 'veiculos_offline',
-    'nota_do_chs', 'chs_score', 'chs_aderencia', 'chs_nota_engajamento', 'chs_nota_adimplencia', 'chs_nota_usuario', 'chs_nota_motorista', 'chs_nota_tickets_positivos', 'tickets_suporte__chs_',
-    'notes_last_contacted', 'notes_last_updated', 'hs_last_logged_call_date', 'data_inicio_do_contrato_original', 'data_de_termino_do_contrato', 'ciclo_experiencia', 'status_contrato', 'status_financeiro',
-    'lifecyclestage', 'num_associated_contacts', 'num_associated_deals', 'createdate'];
-  function hubPayload(res) {
-    let p = res && res.payload !== undefined ? res.payload : res;
-    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { p = null; } }
-    if (p && Array.isArray(p.content) && p.content[0] && typeof p.content[0].text === 'string') { try { p = JSON.parse(p.content[0].text); } catch (e) { /* fica como veio */ } }
-    return p;
-  }
-  // Dados pessoais (CNPJ, e-mail, telefone, CPF) não ficam no painel nem na base compartilhada: Política de Segurança da Gobrax, cláusula 5.1
-  const HUB_TEXTOS = ['hs_note_body', 'hs_call_body', 'hs_meeting_body', 'hs_internal_meeting_notes', 'hs_email_subject', 'hs_call_title', 'hs_meeting_title', 'subject'];
-  const semPII = (t) => String(t).replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[e-mail]').replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, '[CNPJ]')
-    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]').replace(/(\+?55\s?)?\(?\b\d{2}\)?\s?9?\d{4}[-\s]?\d{4}\b/g, '[telefone]');
-  function limparHub(o) {
-    if (!o) return o;
-    if (o.comp) delete o.comp.cnpj_texto;
-    ['calls', 'emails', 'meets', 'notas', 'tickets', 'abertos', 'contatos'].forEach((k) => ((o[k] && o[k].results) || []).forEach((r) => {
-      const p = r.properties || {};
-      ['email', 'phone', 'mobilephone', 'cnpj_texto'].forEach((c) => { delete p[c]; });
-      HUB_TEXTOS.forEach((c) => { if (typeof p[c] === 'string') p[c] = semPII(p[c]); });
-    }));
-    return o;
-  }
-  // Arquivo gerado pelo script (busca-de-dados/hubspot.mjs): mesmo formato da leitura ao vivo
-  function usarHubArquivo(o, salvar) {
-    limparHub(o);
-    const k = ckey(o.cliente), v = (hubCli[k] = hubCli[k] || {});
-    const em = Date.parse(o.gerado) || Date.now();
-    if (v.comp && v.em && v.em >= em && v.fonte !== 'arquivo') return;   // a leitura ao vivo é mais nova
-    Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos, contatos: o.contatos, porContato: o.porContato || [], origem: o.origem || '', em, fonte: 'arquivo', erro: null });
-    if (salvar) {
-      const slug = ckey(o.cliente).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      if (hubRef) hubRef.doc(slug).set({ cliente: o.cliente, gerado: o.gerado, json: JSON.stringify(o) }).catch(() => toast('Não foi possível guardar o arquivo do HubSpot na base compartilhada.', 'erro'));
-      else armazem.gravar('gbx-hub-' + slug, JSON.stringify(o));
-    }
-    redesenharRel();
-  }
-  function lerHubLocal() { try { Object.keys(localStorage).filter((x) => x.indexOf('gbx-hub-') === 0).forEach((x) => { const o = JSON.parse(localStorage.getItem(x)); if (o && o.comp) usarHubArquivo(o, false); }); } catch (e) { /* sem armazenamento */ } }
-  // No painel com login o servidor lê o HubSpot (token só no servidor) e guarda a leitura por 10 min;
-  // fora dele (Claude) vale o conector do HubSpot de quem está vendo
-  const HUB_ATUALIZA_MS = 10 * 60 * 1000;
-  async function buscarHubSrv(nome, v, atualizar) {
-    const cs = contaSrv();
-    try {
-      if (!msg().clientes) await msgClientes();
-      for (let i = 0; i < 50 && msg().carregandoCli; i++) await esperar(200);   // outra tela já pediu a lista: espera ela chegar
-      const id = cliSrv(nome);
-      if (!id) throw { code: 'sem_cliente_srv' };
-      const o = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(id) + '/hubspot' + (atualizar ? '?atualizar=1' : ''));
-      Object.assign(v, { id: String(o.id || ''), comp: o.comp, calls: o.calls, emails: o.emails, meets: o.meets, notas: o.notas, tickets: o.tickets, abertos: o.abertos,
-        contatos: o.contatos, porContato: o.porContato || [], em: Date.parse(o.gerado) || Date.now(), lidoEm: Date.now(), erro: null, erroMsg: '', fonte: 'servidor' });
-      limparHub(v);
-    } catch (e) {
-      v.lidoEm = Date.now();   // não repete a cada redesenho; tenta de novo no próximo ciclo
-      if (e && e.code === 'sem_cliente_srv') v.erro = 'sem_cliente_srv';
-      else { v.erro = 'servidor'; v.erroMsg = (e && e.message) || ''; }
-    }
-  }
-  async function buscarHubCli(nome, atualizar) {
-    const k = ckey(nome), v = (hubCli[k] = hubCli[k] || {});
-    v.tentou = true;
-    if (v.carregando) return;
-    v.carregando = true; v.erro = null; redesenharRel();
-    // no painel do servidor o login chega logo depois da página: espera por ele em vez de cair no conector do Claude
-    if (window.GBX_SERVIDOR && !contaSrv()) await new Promise((ok) => { addEventListener('gbx-conta', ok, { once: true }); setTimeout(ok, 15000); });
-    if (contaSrv()) { await buscarHubSrv(nome, v, atualizar); v.carregando = false; redesenharRel(); return; }
-    const mcp = await obterMcp();
-    if (!mcp) { v.carregando = false; v.erro = v.comp ? null : 'sem_mcp'; redesenharRel(); return; }
-    const ci = { userIntent: 'Mostrar o perfil e o relacionamento do cliente no painel de análise de frota', satisfaction: 'NEUTRAL' };
-    const call = (args) => mcp.callTool('HubSpot', 'search_crm_objects', Object.assign({ chatInsights: ci }, args), { cache: false }).then(hubPayload);
-    try {
-      const cli = E.clientes.find((c) => ckey(c.nome) === k);
-      let id = cli && cli.hubspotId;
-      if (!id) {   // sem o id gravado: procura pelo nome da empresa
-        const r = await call({ objectType: 'COMPANY', query: String(nome).replace(/\b(ltda|eireli|epp|me|s\/?a)\b\.?/gi, '').trim().slice(0, 100), properties: ['name'], limit: 10 });
-        const lista = (r && r.results) || [];
-        const m = lista.find((o) => ckey(o.properties && o.properties.name) === k) || lista[0];
-        if (!m) throw { code: 'nao_achou' };
-        id = m.id;
-      }
-      v.id = String(id);
-      const daEmpresa = { objectType: 'companies', operator: 'EQUAL', objectIdValues: [Number(id)] };
-      const assoc = [{ associatedWith: [daEmpresa] }];
-      const recentes = (tipo, props, campo, lim) => call({ objectType: tipo, filterGroups: assoc, properties: props, sorts: [{ propertyName: campo || 'hs_timestamp', direction: 'DESCENDING' }], limit: lim || 6 });
-      const notas = await recentes('NOTE', ['hs_timestamp', 'hs_note_body'], null, 100).catch(() => null);
-      const [comp, calls, emails, meets, tickets, abertos, contatos] = await Promise.all([
-        call({ objectType: 'COMPANY', filterGroups: [{ filters: [{ propertyName: 'hs_object_id', operator: 'EQ', value: String(id) }] }], properties: HUB_PROPS, limit: 1 }),
-        recentes('CALL', ['hs_timestamp', 'hs_call_title', 'hs_call_status', 'hs_call_direction', 'hs_call_duration', 'hs_call_body'], null, 100),
-        recentes('EMAIL', ['hs_timestamp', 'hs_email_subject', 'hs_email_direction'], null, 100),
-        recentes('MEETING', ['hs_timestamp', 'hs_meeting_title', 'hs_meeting_outcome', 'hs_meeting_body', 'hs_internal_meeting_notes'], null, 100).catch(() => null),
-        recentes('TICKET', ['subject', 'createdate', 'closed_date', 'hs_ticket_category', 'hs_ticket_priority', 'time_to_close'], 'createdate', 100),
-        call({ objectType: 'TICKET', filterGroups: [{ associatedWith: [daEmpresa], filters: [{ propertyName: 'closed_date', operator: 'NOT_HAS_PROPERTY' }] }], properties: ['subject', 'createdate', 'hs_ticket_priority'], sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }], limit: 6 }),
-        call({ objectType: 'CONTACT', filterGroups: assoc, properties: ['firstname', 'lastname', 'jobtitle', 'notes_last_contacted'], sorts: [{ propertyName: 'notes_last_contacted', direction: 'DESCENDING' }], limit: 10 })
-      ]);
-      if (!comp || !Array.isArray(comp.results) || !comp.results.length) throw { code: 'upstream_error' };
-      // quem mais fala com a Gobrax: total de ligações e de e-mails de cada contato da empresa
-      const cts = ((contatos && contatos.results) || []).slice(0, 10);
-      const porContato = await Promise.all(cts.map((o) => {
-        const doContato = [{ associatedWith: [{ objectType: 'contacts', operator: 'EQUAL', objectIdValues: [Number(o.id)] }] }];
-        const total = (tipo) => call({ objectType: tipo, filterGroups: doContato, properties: ['hs_timestamp'], limit: 1 }).then((r) => (r && Number.isFinite(Number(r.total)) ? Number(r.total) : 0)).catch(() => 0);
-        return Promise.all([total('CALL'), total('EMAIL')]).then(([l, e]) => ({ id: String(o.id), l, e }));
-      }));
-      Object.assign(v, { comp: comp.results[0].properties || {}, calls, emails, meets, notas, tickets, abertos, contatos, porContato, em: Date.now(), erro: null, fonte: 'conector' });
-      limparHub(v);
-    } catch (e) { v.erro = (e && e.code) || 'upstream_error'; }
-    v.carregando = false; redesenharRel();
-  }
-  const hubDia = (t) => { if (!t) return ''; const x = /^\d{11,}$/.test(String(t)) ? new Date(Number(t)).toISOString() : String(t); return x.slice(0, 10); };
-  const hubNum = (x) => { const n = Number(x); return x === '' || x === null || x === undefined || !Number.isFinite(n) ? null : n; };
-  const diasDesde = (d) => (d ? Math.max(0, D.dif(d, D.hoje())) : null);
-  // Detalhe aberto ao clicar num número: relação dos chamados, temas dos e-mails, quem mais liga
-  const temaDe = (t) => String(t || '').replace(/^\s*((re|res|enc|fw|fwd|encaminhado|resposta)\s*:\s*)+/gi, '').replace(/\s+/g, ' ').trim() || '(sem assunto)';
-  const rotCat = (x) => String(x || '').replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase()) || 'Sem categoria';
-  function barrasHub(lista, total) {
+  function barrasLista(lista, total) {
     const mx = Math.max(1, ...lista.map((x) => x.n));
     return lista.map((x) => `<div class="hb-bar"><span class="hb-bar-rot" title="${esc(x.rot)}">${esc(x.rot)}</span><span class="hb-trilho"><i style="width:${Math.max(3, (x.n / mx) * 100)}%;background:var(--dado)"></i></span><b>${fmt(x.n, 0)}</b><small>${total ? fmt((x.n / total) * 100, 0) + '%' : ''}${x.sub ? ' · ' + esc(x.sub) : ''}</small></div>`).join('');
   }
-  function hubDetalhe(v, k) {
-    if (!k) return '';
-    const res = hubRes, tot = hubTot;
-    const amostra = (r) => (tot(r) > res(r).length ? `<span class="apoio" style="font-size:12px">Análise dos ${res(r).length} mais recentes de ${fmt(tot(r), 0)}.</span>` : '');
-    const linkObj = (tipo, id) => `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/${tipo}/${encodeURIComponent(id)}`;
-    let corpo = '';
-    const semDet = (r, oque) => `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A chave do HubSpot usada na coleta não tem permissão para ler ${oque}: veio só o total (${fmt(tot(r), 0)}). Para ver o detalhe, gere a chave com o escopo de leitura correspondente${oque.includes('chamados') ? ' (tickets)' : ' (sales-email-read)'} ou abra o painel no Claude com o conector do HubSpot.</span></div></div>`;
-    if (k === 'tickets' && v.tickets && v.tickets.semDetalhe) corpo = semDet(v.tickets, 'os chamados');
-    else if (k === 'emails' && v.emails && v.emails.semDetalhe) corpo = semDet(v.emails, 'os e-mails');
-    else if (k === 'tickets') {
-      const ts = res(v.tickets), ab = ts.filter((o) => !o.properties.closed_date), fe = ts.length - ab.length;
-      const cats = new Map(); ts.forEach((o) => { const c = rotCat(o.properties.hs_ticket_category); cats.set(c, (cats.get(c) || 0) + 1); });
-      const temas = new Map(); ts.forEach((o) => { const t = temaDe(o.properties.subject).replace(/\s+-\s*$/, ''); temas.set(t, (temas.get(t) || 0) + 1); });
-      const meses = new Map(); ts.forEach((o) => { const m = hubDia(o.properties.createdate).slice(0, 7); if (m) meses.set(m, (meses.get(m) || 0) + 1); });
-      const tempos = ts.map((o) => Number(o.properties.time_to_close)).filter((x) => Number.isFinite(x) && x > 0);
-      const medio = tempos.length ? tempos.reduce((t, x) => t + x, 0) / tempos.length / 3600000 : null;
-      const lst = ts.slice().sort((a, b) => (!b.properties.closed_date) - (!a.properties.closed_date) || (String(a.properties.createdate) < String(b.properties.createdate) ? 1 : -1));   // abertos primeiro, depois do mais novo
-      corpo = `<div class="hb-det-kpis"><div><b>${fmt(tot(v.tickets), 0)}</b><span>chamados no total</span></div><div><b class="${ab.length ? 'txt-ruim' : 'txt-bom'}">${fmt(tot(v.abertos), 0)}</b><span>em aberto</span></div><div><b>${fmt(fe, 0)}</b><span>fechados (dos analisados)</span></div><div><b>${medio === null ? '—' : medio < 48 ? fmt(medio, 1) + ' h' : fmt(medio / 24, 1) + ' d'}</b><span>tempo médio para fechar</span></div></div>
-        <div class="grade-2" style="gap:16px">
-          <div class="hb-bloco"><span class="hb-bloco-t">Assuntos mais frequentes</span>${barrasHub([...temas.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([rot, n]) => ({ rot, n })), ts.length)}</div>
-          <div class="hb-bloco"><span class="hb-bloco-t">Por categoria</span>${barrasHub([...cats.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([rot, n]) => ({ rot, n })), ts.length)}
-            <span class="hb-bloco-t" style="margin-top:12px">Abertos por mês</span>${barrasHub([...meses.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 6).map(([m, n]) => ({ rot: D.nomeMes(m + '-01'), n })), 0)}</div>
-        </div>
-        <div class="tabela-wrap" style="max-height:340px;overflow:auto;border:1px solid var(--hairline);border-radius:8px"><table class="tabela"><thead><tr><th>Assunto</th><th>Aberto em</th><th>Situação</th><th>Categoria</th><th>Prioridade</th></tr></thead><tbody>
-          ${lst.map((o) => { const p = o.properties; return `<tr><td><a href="${linkObj('0-5', o.id)}" target="_blank" rel="noopener">${esc(temaDe(p.subject))}</a></td><td class="num">${D.br(hubDia(p.createdate))}</td><td>${p.closed_date ? `<span class="badge badge-neutro">Fechado ${D.br(hubDia(p.closed_date))}</span>` : '<span class="badge badge-critico">Em aberto</span>'}</td><td>${esc(rotCat(p.hs_ticket_category))}</td><td>${esc(rotCat(p.hs_ticket_priority) === 'Sem categoria' ? '—' : rotCat(p.hs_ticket_priority))}</td></tr>`; }).join('')}
-        </tbody></table></div>${amostra(v.tickets)}`;
-    } else if (k === 'emails') {
-      const es = res(v.emails), rec = es.filter((o) => o.properties.hs_email_direction === 'INCOMING_EMAIL').length;
-      const temas = new Map(); es.forEach((o) => { const t = temaDe(o.properties.hs_email_subject), c = nrm(t); const x = temas.get(c) || { rot: t, n: 0, ult: '' }; x.n++; const d = hubDia(o.properties.hs_timestamp); if (d > x.ult) x.ult = d; temas.set(c, x); });
-      const lista = [...temas.values()].sort((a, b) => b.n - a.n || (a.ult < b.ult ? 1 : -1));
-      corpo = `<div class="hb-det-kpis"><div><b>${fmt(tot(v.emails), 0)}</b><span>e-mails no total</span></div><div><b>${fmt(es.length - rec, 0)}</b><span>enviados pela Gobrax</span></div><div><b>${fmt(rec, 0)}</b><span>recebidos do cliente</span></div><div><b>${fmt(lista.length, 0)}</b><span>temas diferentes</span></div></div>
-        <div class="hb-bloco"><span class="hb-bloco-t">Temas dos e-mails</span>${barrasHub(lista.slice(0, 12).map((x) => ({ rot: x.rot, n: x.n, sub: 'último ' + D.br(x.ult) })), es.length)}</div>${amostra(v.emails)}`;
-    } else if (k === 'ligacoes') {
-      const cs = res(v.calls), feitas = cs.filter((o) => o.properties.hs_call_status === 'COMPLETED').length;
-      const ent = cs.filter((o) => o.properties.hs_call_direction === 'INBOUND').length, sai = cs.filter((o) => o.properties.hs_call_direction === 'OUTBOUND').length;
-      const dur = cs.map((o) => Number(o.properties.hs_call_duration)).filter((x) => Number.isFinite(x) && x > 0);
-      const nomes = new Map(res(v.contatos).map((o) => [String(o.id), [o.properties.firstname, o.properties.lastname].filter(Boolean).join(' ') || 'Contato sem nome']));
-      const quem = (v.porContato || []).filter((x) => x.l || x.e).sort((a, b) => b.l + b.e - (a.l + a.e));
-      corpo = `<div class="hb-det-kpis"><div><b>${fmt(tot(v.calls), 0)}</b><span>ligações no total</span></div><div><b>${fmt(feitas, 0)}</b><span>completadas</span></div><div><b>${fmt(ent, 0)} / ${fmt(sai, 0)}</b><span>recebidas / feitas pela Gobrax</span></div><div><b>${dur.length ? fmt(dur.reduce((t, x) => t + x, 0) / dur.length / 60000, 0) + ' min' : '—'}</b><span>duração média</span></div></div>
-        <div class="hb-bloco"><span class="hb-bloco-t">Quem mais entra em contato</span>${quem.length ? quem.map((x, i) => `<div class="hb-quem"><span class="hb-quem-n">${i + 1}º</span>${avatar(nomes.get(x.id) || '?', 28)}<b>${esc(nomes.get(x.id) || 'Contato')}</b><span class="hb-quem-c">${fmt(x.l, 0)} ligações · ${fmt(x.e, 0)} e-mails</span><span class="hb-trilho"><i style="width:${Math.max(3, ((x.l + x.e) / Math.max(1, quem[0].l + quem[0].e)) * 100)}%;background:var(--dado)"></i></span></div>`).join('') : '<span class="apoio">As ligações não estão ligadas a contatos da empresa no HubSpot.</span>'}</div>
-        <div class="hb-bloco"><span class="hb-bloco-t">Últimas ligações</span>${cs.slice(0, 8).map((o) => `<div class="hb-ev"><span class="hb-ev-ic">☎</span><span class="hb-ev-txt"><b>${esc(o.properties.hs_call_title || 'Ligação')}</b><small>${o.properties.hs_call_direction === 'INBOUND' ? 'recebida' : 'feita pela Gobrax'} · ${o.properties.hs_call_status === 'COMPLETED' ? 'completada' : esc(String(o.properties.hs_call_status || '').toLowerCase())}</small></span><span class="hb-ev-d">${D.br(hubDia(o.properties.hs_timestamp))}</span></div>`).join('')}</div>${amostra(v.calls)}`;
-    }
-    const tit = { tickets: 'Chamados de suporte', emails: 'E-mails', ligacoes: 'Ligações' }[k];
-    return `<div class="hb-det"><div class="hb-det-cab"><b>${tit}</b><button type="button" class="btn-icone fantasma" data-acao="hub-det" data-k="${k}" aria-label="Fechar">${icone('fechar', 14)}</button></div>${corpo}</div>`;
-  }
-  // Estudo do cliente: lê o HubSpot e a operação juntos e diz o que está bem, o que preocupa e o que fazer
-  const CHS_PARTES = {
-    chs_aderencia: ['Aderência', 'uso da plataforma e da solução no dia a dia', 'Rever com o gestor quem usa a plataforma e marcar uma sessão de uso guiado.'],
-    chs_nota_engajamento: ['Engajamento', 'participação do cliente nas rotinas com a Gobrax', 'Combinar uma reunião de resultados recorrente (mensal) com o decisor.'],
-    chs_nota_adimplencia: ['Adimplência', 'pagamentos em dia', 'Alinhar com o financeiro a situação das faturas antes da próxima conversa.'],
-    chs_nota_usuario: ['Usuário', 'uso da plataforma pelos gestores', 'Treinar os usuários da plataforma e mostrar os relatórios que importam para eles.'],
-    chs_nota_motorista: ['Motorista', 'uso do app e engajamento dos motoristas', 'Reforçar o app com os motoristas: premiação, ranking e conversa com o instrutor.'],
-    chs_nota_tickets_positivos: ['Tickets positivos', 'chamados resolvidos com avaliação boa', 'Acompanhar os chamados abertos até o fim e pedir avaliação no fechamento.']
-  };
-  function estudoCliente(sel) {
-    const v = hubCli[ckey(sel.nome)];
-    if (!v || !v.comp) return '';
-    const p = v.comp, res = hubRes, tot = hubTot;
-    const hoje = D.hoje(), mesesAtras = (n) => D.somarMeses(D.inicioMes(hoje), -n);
-    const dims = [];   // { nome, nivel: 'bom'|'atencao'|'critico', texto, acoes[] }
-    const nivel = (bom, ruim) => (bom ? 'bom' : ruim ? 'critico' : 'atencao');
-    // 1. Saúde (CHS)
-    const chs = hubNum(p.nota_do_chs) !== null ? hubNum(p.nota_do_chs) : hubNum(p.chs_score);
-    const fracos = Object.keys(CHS_PARTES).map((k) => [k, hubNum(p[k])]).filter(([, n]) => n !== null).sort((a, b) => a[1] - b[1]);
-    const ruins = fracos.filter(([, n]) => n < 50);
-    if (chs !== null) dims.push({ nome: 'Saúde (CHS)', nivel: nivel(chs >= 70 && !ruins.length, chs < 50), texto: `Nota CHS ${fmt(chs, 0)} de 100.` + (ruins.length ? ` Pontos fracos: ${ruins.map(([k, n]) => `${CHS_PARTES[k][0].toLowerCase()} (${fmt(n, 0)}, ${CHS_PARTES[k][1]})`).join('; ')}.` : ' Nenhuma parte da nota abaixo de 50.') + (fracos.length && fracos[fracos.length - 1][1] >= 80 ? ` Ponto forte: ${CHS_PARTES[fracos[fracos.length - 1][0]][0].toLowerCase()} (${fmt(fracos[fracos.length - 1][1], 0)}).` : ''), acoes: ruins.map(([k]) => CHS_PARTES[k][2]) });
-    // 2. Relacionamento: frequência e quem fala
-    const ult = hubDia(p.notes_last_contacted), ds = diasDesde(ult);
-    const evs = res(v.calls).map((o) => hubDia(o.properties.hs_timestamp)).concat(res(v.emails).map((o) => hubDia(o.properties.hs_timestamp)), res(v.meets).map((o) => hubDia(o.properties.hs_timestamp))).filter(Boolean);
-    const em3 = evs.filter((d) => d >= mesesAtras(3)).length, em3ant = evs.filter((d) => d >= mesesAtras(6) && d < mesesAtras(3)).length;
-    const quem = (v.porContato || []).filter((x) => x.l + x.e > 0).sort((a, b) => b.l + b.e - (a.l + a.e));
-    const nomeDe = (id) => { const o = res(v.contatos).find((c) => String(c.id) === String(id)); return o ? [o.properties.firstname, o.properties.lastname].filter(Boolean).join(' ') || 'um contato' : 'um contato'; };
-    const totQuem = quem.reduce((t, x) => t + x.l + x.e, 0);
-    const concentrado = quem.length && totQuem ? (quem[0].l + quem[0].e) / totQuem : 0;
-    const acRel = [];
-    if (ds !== null && ds > 30) acRel.push('Retomar o contato: ligar para o decisor e marcar a próxima conversa de resultados.');
-    if (concentrado >= 0.7 && quem.length >= 1) acRel.push(`O relacionamento depende de ${nomeDe(quem[0].id)}. Envolver mais um contato (gestor de frota ou diretoria) para não ficar dependente de uma pessoa.`);
-    if (em3 < em3ant) acRel.push('Os contatos diminuíram nos últimos 3 meses. Agendar um ponto de acompanhamento.');
-    dims.push({ nome: 'Relacionamento', nivel: nivel(ds !== null && ds <= 15 && em3 >= em3ant, ds === null || ds > 45), texto: `Último contato ${ds === null ? 'sem registro' : ds === 0 ? 'hoje' : 'há ' + fmt(ds, 0) + (ds === 1 ? ' dia' : ' dias')}. ${fmt(tot(v.calls), 0)} ligações e ${fmt(tot(v.emails), 0)} e-mails no histórico; ${fmt(em3, 0)} contatos nos últimos 3 meses (${fmt(em3ant, 0)} nos 3 anteriores).` + (quem.length ? ` Quem mais fala com a Gobrax: ${nomeDe(quem[0].id)} (${fmt(Math.round(concentrado * 100), 0)}% dos contatos).` : ''), acoes: acRel });
-    // 3. Suporte
-    const ts = res(v.tickets), ab = tot(v.abertos);
-    const t3 = ts.filter((o) => hubDia(o.properties.createdate) >= mesesAtras(3)).length, t3ant = ts.filter((o) => { const d = hubDia(o.properties.createdate); return d >= mesesAtras(6) && d < mesesAtras(3); }).length;
-    const reab = ts.filter((o) => /reabert/i.test(o.properties.subject || '')).length;
-    const cats = new Map(); ts.forEach((o) => { const c = rotCat(o.properties.hs_ticket_category); cats.set(c, (cats.get(c) || 0) + 1); });
-    const topCat = [...cats.entries()].sort((a, b) => b[1] - a[1])[0];
-    const acSup = [];
-    if (ab) acSup.push(ab === 1 ? 'Resolver o chamado em aberto antes da próxima reunião com o cliente.' : `Resolver os ${ab} chamados em aberto antes da próxima reunião com o cliente.`);
-    if (reab >= 3) acSup.push(`${reab} chamados foram reabertos: entender a causa raiz com o suporte em vez de fechar de novo.`);
-    if (t3 > t3ant && t3 >= 3) acSup.push('Os chamados aumentaram nos últimos 3 meses. Ver se é instalação, equipamento ou dúvida de uso.');
-    if (v.tickets && v.tickets.semDetalhe) dims.push({ nome: 'Suporte', nivel: 'atencao', texto: `${fmt(tot(v.tickets), 0)} chamados no histórico. A coleta não teve permissão para ler os chamados, então não dá para dizer quantos estão abertos nem os assuntos.`, acoes: ['Conferir no HubSpot os chamados em aberto deste cliente antes da próxima conversa.'] });
-    else dims.push({ nome: 'Suporte', nivel: nivel(ab === 0 && t3 <= t3ant && reab < 3, ab >= 3 || (t3 > t3ant * 2 && t3 >= 5)), texto: `${fmt(tot(v.tickets), 0)} chamados no histórico, ${ab === null ? 'abertos sem permissão de leitura' : fmt(ab, 0) + ' em aberto'}. ${fmt(t3, 0)} nos últimos 3 meses (${fmt(t3ant, 0)} nos 3 anteriores).` + (reab ? ` ${fmt(reab, 0)} reabertos.` : '') + (topCat && topCat[0] !== 'Sem categoria' ? ` Categoria mais comum: ${topCat[0].toLowerCase()}.` : ''), acoes: acSup });
-    // 4. Contrato e frota
-    const fc = hubNum(p.frota_contratada), comDados = E.veic ? placasDoCliente().length : null;   // todas as placas do cliente, sem o filtro de grupo
-    const ini = hubDia(p.data_inicio_do_contrato_original), fim = hubDia(p.data_de_termino_do_contrato);
-    const mesesCli = ini ? Math.max(0, Math.round(D.dif(ini, hoje) / 30.4)) : null, diasFim = fim ? D.dif(hoje, fim) : null;
-    const adocao = fc && comDados !== null ? comDados / fc : null;
-    const acCon = [];
-    if (diasFim !== null && diasFim >= 0 && diasFim <= 90) acCon.push(`O contrato termina em ${fmt(diasFim, 0)} dias: preparar a renovação com o resultado da operação em mãos.`);
-    if (adocao !== null && adocao < 0.9) acCon.push(`Só ${fmt(comDados, 0)} de ${fmt(fc, 0)} veículos contratados mandam dados: verificar instalação e equipamentos.`);
-    if (/experi/i.test(p.ciclo_experiencia || '')) acCon.push('Cliente ainda em experiência: mostrar resultado concreto (economia de diesel) antes do fim do ciclo.');
-    dims.push({ nome: 'Contrato e frota', nivel: nivel((adocao === null || adocao >= 0.9) && (diasFim === null || diasFim > 90), (adocao !== null && adocao < 0.6) || (diasFim !== null && diasFim >= 0 && diasFim <= 30)), texto: [mesesCli !== null ? `Cliente há ${fmt(mesesCli, 0)} meses (desde ${D.br(ini)})` : '', p.ciclo_experiencia ? 'ciclo: ' + String(p.ciclo_experiencia).toLowerCase() : '', fc !== null ? `${fmt(fc, 0)} veículos contratados` + (comDados !== null ? `, ${fmt(comDados, 0)} com dados no painel (${fmt((adocao || 0) * 100, 0)}%)` : '') : '', fim ? `término em ${D.br(fim)}` : ''].filter(Boolean).join(' · ') + '.', acoes: acCon });
-    // 5. Resultado da operação (painel)
-    if (E.base) {
-      const c = calc(), e = economia(c.frotaA, c.frotaB), vk = X.variacao(IND_MAP.kml, c.frotaA.kml, c.frotaB.kml);
-      const bomOp = (e && e.reais > 0) || (vk && vk.sentido === 'melhor');
-      dims.push({ nome: 'Resultado da operação', nivel: nivel(bomOp && c.cont.evoluiu >= c.cont.regrediu, e && e.reais < 0 && c.cont.regrediu > c.cont.evoluiu), texto: `${D.periodoBR(E.A)}: média de ${fmtInd(IND_MAP.kml, c.frotaA.kml)}${vk && !vk.semBase ? ' (' + vk.texto + ')' : ''}` + (e ? `, ${e.reais >= 0 ? 'economia' : 'custo a mais'} de ${fmtReais(Math.abs(e.reais), 0)} em diesel` : '') + `. ${c.cont.evoluiu} motoristas evoluíram e ${c.cont.regrediu} regrediram.`, acoes: bomOp ? ['Levar esse resultado para o cliente: é o melhor argumento de renovação.'] : ['Abrir o Plano de ação e levar ao cliente os 3 gargalos com o valor em jogo.'] });
-    }
-    const pontos = { bom: 0, atencao: 1, critico: 2 };
-    const geral = dims.reduce((t, d) => t + pontos[d.nivel], 0) / Math.max(1, dims.length);
-    const veredito = geral < 0.5 ? ['bom', 'Cliente saudável'] : geral < 1.2 ? ['atencao', 'Cliente pede atenção'] : ['critico', 'Cliente em risco'];
-    const acoes = [].concat(...dims.filter((d) => d.nivel !== 'bom').map((d) => d.acoes), ...dims.filter((d) => d.nivel === 'bom').map((d) => d.acoes)).filter(Boolean).slice(0, 6);
-    const rot = { bom: 'Bom', atencao: 'Atenção', critico: 'Crítico' };
-    return `<section class="card es-card">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Estudo do cliente</h2><span class="h2-sub">Leitura do HubSpot e da operação juntos: o que está bem, o que preocupa e o que fazer agora.</span></div>
-        <span class="badge ${veredito[0] === 'bom' ? 'badge-ok' : veredito[0] === 'critico' ? 'badge-critico' : 'badge-atencao'}" style="font-size:13px;padding:4px 12px">${veredito[1]}</span></div>
-      <div class="card-corpo" style="gap:14px">
-        <div class="es-dims">${dims.map((d) => `<div class="es-dim ${d.nivel}"><div class="es-dim-cab"><b>${d.nome}</b><span class="es-nivel">${rot[d.nivel]}</span></div><p>${esc(d.texto)}</p></div>`).join('')}</div>
-        ${acoes.length ? `<div class="es-acoes"><span class="hb-bloco-t">O que fazer agora</span><ol>${acoes.map((a) => `<li>${esc(a)}</li>`).join('')}</ol></div>` : ''}
-        <span class="apoio" style="font-size:12px">Baseado em ${v.fonte === 'arquivo' ? 'dados da API do HubSpot importados em ' + new Date(v.em).toLocaleDateString('pt-BR') : 'dados lidos agora no HubSpot'} e nos dados da operação no painel. Ligações, e-mails e chamados considerados: até ${fmt(Math.max(res(v.calls).length, res(v.emails).length, res(v.tickets).length), 0)} mais recentes de cada.</span>
-      </div></section>`;
-  }
-  function cartaoHubspot(nome) {
-    const k = ckey(nome);
-    const hv = hubCli[k];
-    const vencida = contaSrv() && hv && !hv.carregando && Date.now() - (hv.lidoEm || 0) > HUB_ATUALIZA_MS;
-    if (!hv || !hv.tentou || vencida) { (hubCli[k] = hubCli[k] || {}).tentou = true; setTimeout(() => buscarHubCli(nome), 0); }   // primeira vez nesta sessão ou leitura vencida: busca já
-    const v = hubCli[k] || { carregando: true };
-    const link = v.id ? `https://app.hubspot.com/contacts/${HUB_PORTAL}/record/0-2/${encodeURIComponent(v.id)}` : '';
-    const cab = `<div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Cliente no HubSpot</h2>
-        <span class="h2-sub">${v.em ? (v.fonte === 'arquivo' ? (v.origem === 'claude' ? 'Lido pelo Claude (conector do HubSpot) em ' : 'Lido pela API do HubSpot em ') + new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' (arquivo importado)' : 'Lido ao vivo às ' + new Date(v.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (v.fonte === 'servidor' ? ' pelo servidor · atualiza sozinho a cada 10 min' : ' pelo seu conector do HubSpot')) : v.carregando ? 'Buscando no HubSpot…' : 'Perfil, contatos e histórico do cliente no CRM'}</span></div>
-        <span style="display:flex;gap:8px;flex-wrap:wrap">${link ? `<a class="btn" href="${link}" target="_blank" rel="noopener">Abrir no HubSpot</a>` : ''}<label class="btn" title="Arquivo hubspot.json gerado pelo script busca-de-dados/hubspot.mjs">Importar arquivo<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label><button type="button" class="btn" data-acao="hubcli-atualizar" data-cli="${esc(nome)}" ${v.carregando ? 'disabled' : ''}>${v.carregando ? 'Buscando…' : 'Atualizar'}</button></span></div>`;
-    if (!v.comp) {
-      return `<section class="card hb-card">${cab}<div class="card-corpo">${v.carregando ? '<div class="vazio"><span class="spinner"></span><span class="apoio">Consultando o HubSpot…</span></div>'
-        : `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(v.erro === 'servidor' ? (v.erroMsg || MSG_ERRO.upstream_error) : MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)}</span>${contaSrv() ? (v.erro === 'servidor' && /HUBSPOT_TOKEN/.test(v.erroMsg || '') ? '<span class="alerta-texto">Um administrador coloca o token do app privado do HubSpot na variável <b>HUBSPOT_TOKEN</b> do servidor (Render → Environment).</span>' : '') : '<span class="alerta-texto">Ou rode <code>node busca-de-dados/hubspot.mjs</code> com o token do HubSpot no busca-de-dados/.env e clique em <b>Importar arquivo</b>.</span>'}</div></div>`}</div></section>`;
-    }
-    const p = v.comp, tot = hubTot, res = hubRes;
-    // perfil
-    const estados = String(p.estados_onde_opera || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
-    const campo = (rot, val) => (val ? `<div class="hb-campo"><span>${rot}</span><b>${val}</b></div>` : '');
-    const perfil = [
-      campo('Nome fantasia', esc(p.nome_fantasia || '')),
-      campo('Cidade', esc([p.city, p.state].filter(Boolean).join(' / '))),
-      campo('Tipo de veículo', esc(p.tipo_de_veiculo || '')),
-      campo('Cliente desde', p.data_inicio_do_contrato_original ? D.br(hubDia(p.data_inicio_do_contrato_original)) : ''),
-      campo('Término do contrato', p.data_de_termino_do_contrato ? D.br(hubDia(p.data_de_termino_do_contrato)) : ''),
-      campo('Ciclo', esc(p.ciclo_experiencia || '')),
-      campo('Status do contrato', esc(p.status_contrato || '')),
-      campo('Status financeiro', esc(p.status_financeiro || ''))
-    ].join('') + (estados.length ? `<div class="hb-campo hb-largo"><span>Estados onde opera</span><b>${estados.map((u) => `<span class="hb-uf">${esc(u)}</span>`).join('')}</b></div>` : '');
-    // CHS
-    const chs = hubNum(p.nota_do_chs) !== null ? hubNum(p.nota_do_chs) : hubNum(p.chs_score);
-    const corChs = (n) => (n === null ? 'var(--texto-3)' : n >= 70 ? 'var(--ok)' : n >= 40 ? 'var(--atencao)' : 'var(--critico)');
-    const partes = [['Aderência', p.chs_aderencia], ['Engajamento', p.chs_nota_engajamento], ['Adimplência', p.chs_nota_adimplencia], ['Usuário', p.chs_nota_usuario], ['Motorista', p.chs_nota_motorista], ['Tickets positivos', p.chs_nota_tickets_positivos]]
-      .map(([r, x]) => [r, hubNum(x)]).filter(([, n]) => n !== null);
-    const chsHtml = `<div class="hb-chs">
-        <div class="hb-chs-nota"><span class="hb-t">Nota CHS</span><b style="color:${corChs(chs)}">${chs === null ? '—' : fmt(chs, 0)}</b><span class="apoio">de 100${hubNum(p.chs_score) !== null && hubNum(p.nota_do_chs) !== null ? ' · nota final ' + fmt(hubNum(p.chs_score), 1) : ''}</span></div>
-        <div class="hb-chs-partes">${partes.map(([r, n]) => `<div class="hb-parte"><span>${r}</span><span class="hb-trilho"><i style="width:${Math.max(2, Math.min(100, n))}%;background:${corChs(n)}"></i></span><b>${fmt(n, 0)}</b></div>`).join('')}</div></div>`;
-    // números
-    const fc = hubNum(p.frota_contratada), ft = hubNum(p.frota_total), noPainel = E.veic ? placasDoCliente().length : null;
-    const ultCall = res(v.calls)[0], ultEmail = res(v.emails)[0];
-    const dUlt = hubDia(p.notes_last_contacted), ds = diasDesde(dUlt);
-    const tile = (t, val, sub, cls) => `<div class="hb-tile ${cls || ''}"><span class="hb-t">${t}</span><b>${val}</b><span class="hb-s">${sub}</span></div>`;
-    const tileAbre = (k, t, val, sub, cls) => `<button type="button" class="hb-tile hb-abre ${cls || ''} ${E.hubDet === k ? 'aberto' : ''}" data-acao="hub-det" data-k="${k}" aria-expanded="${E.hubDet === k}"><span class="hb-t">${t}<span class="hb-seta">${E.hubDet === k ? '▴' : '▾'}</span></span><b>${val}</b><span class="hb-s">${sub}</span></button>`;
-    const tiles = [
-      tile('Frota', fc !== null ? fmt(fc, 0) : ft !== null ? fmt(ft, 0) : '—', [fc !== null ? 'contratada' : '', ft !== null && fc !== null ? 'total ' + fmt(ft, 0) : '', noPainel !== null ? fmt(noPainel, 0) + ' com dados no painel' : ''].filter(Boolean).join(' · ')),
-      tile('Último contato', ds === null ? '—' : ds === 0 ? 'Hoje' : 'há ' + fmt(ds, 0) + ' d', dUlt ? D.br(dUlt) : 'sem registro', ds !== null && ds > 30 ? 'ruim' : ''),
-      tileAbre('ligacoes', 'Ligações', tot(v.calls) === null ? '—' : fmt(tot(v.calls), 0), ultCall ? 'última em ' + D.br(hubDia(ultCall.properties.hs_timestamp)) : 'nenhuma registrada'),
-      tileAbre('emails', 'E-mails', tot(v.emails) === null ? '—' : fmt(tot(v.emails), 0), ultEmail ? 'último em ' + D.br(hubDia(ultEmail.properties.hs_timestamp)) : 'nenhum registrado'),
-      tileAbre('tickets', 'Chamados de suporte', tot(v.tickets) === null ? '—' : fmt(tot(v.tickets), 0), tot(v.abertos) === null ? 'abertos: sem permissão de leitura' : tot(v.abertos) ? `<b class="txt-ruim">${fmt(tot(v.abertos), 0)} em aberto</b>` : 'nenhum em aberto', tot(v.abertos) > 0 ? 'ruim' : '')
-    ].join('');
-    const detalheHub = hubDetalhe(v, E.hubDet);
-    // histórico: ligações, e-mails, reuniões e chamados juntos, do mais recente
-    const hist = []
-      .concat(res(v.calls).map((o) => ({ d: o.properties.hs_timestamp, tipo: 'Ligação', ic: '☎', t: o.properties.hs_call_title || 'Ligação', s: o.properties.hs_call_status === 'COMPLETED' ? 'realizada' : String(o.properties.hs_call_status || '').toLowerCase() })))
-      .concat(res(v.emails).map((o) => ({ d: o.properties.hs_timestamp, tipo: 'E-mail', ic: '✉', t: o.properties.hs_email_subject || 'E-mail', s: o.properties.hs_email_direction === 'INCOMING_EMAIL' ? 'recebido' : 'enviado' })))
-      .concat(res(v.meets).map((o) => ({ d: o.properties.hs_timestamp, tipo: 'Reunião', ic: '◷', t: o.properties.hs_meeting_title || 'Reunião', s: String(o.properties.hs_meeting_outcome || '').toLowerCase() })))
-      .concat(res(v.tickets).map((o) => ({ d: o.properties.createdate, tipo: 'Chamado', ic: '!', t: o.properties.subject || 'Chamado de suporte', s: o.properties.closed_date ? 'fechado em ' + D.br(hubDia(o.properties.closed_date)) : 'aberto' })))
-      .filter((x) => x.d).sort((a, b) => (String(a.d) < String(b.d) ? 1 : -1)).slice(0, 10);
-    const histHtml = hist.length ? hist.map((x) => `<div class="hb-ev"><span class="hb-ev-ic" aria-hidden="true">${x.ic}</span><span class="hb-ev-txt"><b>${esc(x.t)}</b><small>${x.tipo}${x.s ? ' · ' + esc(x.s) : ''}</small></span><span class="hb-ev-d">${D.br(hubDia(x.d))}</span></div>`).join('') : '<span class="apoio">Nenhum contato registrado.</span>';
-    // contatos principais
-    const cts = res(v.contatos);
-    const ctHtml = cts.length ? cts.map((o) => { const c = o.properties || {}, n = [c.firstname, c.lastname].filter(Boolean).join(' ') || 'Contato sem nome';
-      return `<div class="hb-ct">${avatar(n, 30)}<span class="hb-ct-txt"><b>${esc(n)}</b><small>${esc(c.jobtitle || 'cargo não informado')}${c.notes_last_contacted ? ' · último contato ' + D.br(hubDia(c.notes_last_contacted)) : ''}</small></span></div>`; }).join('')
-      : '<span class="apoio">Nenhum contato associado à empresa.</span>';
-    const abertos = res(v.abertos);
-    return `<section class="card hb-card">${cab}
-      <div class="card-corpo" style="gap:16px">
-        ${v.erro ? `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(MSG_ERRO[v.erro] || MSG_ERRO.upstream_error)} Mostrando a última leitura.</span></div></div>` : ''}
-        <div class="hb-topo"><div class="hb-nome"><b>${esc(p.name || nome)}</b><span class="apoio">${esc({ customer: 'Cliente', opportunity: 'Oportunidade', lead: 'Lead' }[p.lifecyclestage] || p.lifecyclestage || '')}${hubNum(p.num_associated_contacts) !== null ? ' · ' + fmt(hubNum(p.num_associated_contacts), 0) + ' contatos' : ''}${hubNum(p.num_associated_deals) !== null ? ' · ' + fmt(hubNum(p.num_associated_deals), 0) + ' negócios' : ''}</span></div>${chsHtml}</div>
-        <div class="hb-tiles">${tiles}</div>
-        ${detalheHub}
-        <div class="hb-perfil">${perfil}</div>
-        ${abertos.length ? `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">${abertos.length} chamado(s) de suporte em aberto</span><span class="alerta-texto">${abertos.slice(0, 3).map((o) => esc(o.properties.subject || 'Chamado') + ' (desde ' + D.br(hubDia(o.properties.createdate)) + ')').join(' · ')}</span></div></div>` : ''}
-        <div class="grade-2" style="gap:16px">
-          <div class="hb-bloco"><span class="hb-bloco-t">Últimos contatos</span>${histHtml}</div>
-          <div class="hb-bloco"><span class="hb-bloco-t">Contatos principais</span>${ctHtml}</div>
-        </div>
-      </div></section>`;
-  }
-
-  // ---------- Radar automático: leitura dos indicadores em frases, recalculada a cada mudança ----------
-  function radarAuto() {
-    if (!E.base) return '';
-    const c = calc();
-    if (!c.la.length) return '';
-    const A = c.frotaA, B = c.frotaB, itens = [];
-    const dv = (k) => X.variacao(IND_MAP[k], A[k], B[k]);
-    const t = (cls, icone, html) => itens.push({ cls, icone, html });
-    const e = economia(A, B);
-    if (e && Math.abs(e.reais) >= 1) t(e.reais >= 0 ? 'ok' : 'ruim', e.reais >= 0 ? '▼' : '▲', e.reais >= 0 ? `A frota <b>economizou ${fmtReais(e.reais, 0)}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) em relação ao consumo do período anterior.` : `O consumo piorou e custou <b>${fmtReais(Math.abs(e.reais), 0)} a mais</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) frente ao período anterior.`);
-    const vk = dv('kml');
-    if (!vk.semBase && !vk.estavel) t(vk.sentido === 'melhor' ? 'ok' : 'ruim', vk.sentido === 'melhor' ? '▲' : '▼', `Média de consumo em <b>${fmtInd(IND_MAP.kml, A.kml)}</b>, <b>${vk.texto}</b> vs. período anterior.`);
-    if (c.cont.regrediu) t('ruim', '!', `<b>${c.cont.regrediu} ${c.cont.regrediu === 1 ? 'motorista piorou' : 'motoristas pioraram'}</b> a nota. Veja o Plano de ação para saber por onde começar.`);
-    if (c.cont.evoluiu) t('ok', '✓', `<b>${c.cont.evoluiu} ${c.cont.evoluiu === 1 ? 'motorista evoluiu' : 'motoristas evoluíram'}</b>: vale reconhecer o resultado.`);
-    const vo = dv('motor_ocioso');
-    if (A.motor_ocioso > 0) t(A.motor_ocioso >= 10 || vo.sentido === 'pior' ? 'atencao' : 'neutro', '•', `Motor ligado parado em <b>${fmtInd(IND_MAP.motor_ocioso, A.motor_ocioso)}</b> do tempo${vo.semBase ? '' : ' (' + vo.texto + ')'}.`);
-    const crit = c.mots.filter((x) => x.a.nota > 0 && x.a.nota < 40).length;
-    if (crit) t('ruim', '!', `<b>${crit} ${crit === 1 ? 'motorista com nota crítica' : 'motoristas com nota crítica'}</b> (abaixo de 40) pedem acompanhamento imediato.`);
-    const vd = dv('km_dia');
-    if (A.km_dia > 0) t(vd.sentido === 'pior' ? 'atencao' : 'neutro', '•', `Cada dia trabalhado rendeu <b>${fmtInd(IND_MAP.km_dia, A.km_dia)}</b>${vd.semBase ? '' : ' (' + vd.texto + ')'}.`);
-    if (!itens.length) return '';
-    return `<section class="radar" aria-label="Análise inteligente da frota">
-      <div class="radar-cab"><span class="radar-pulso" aria-hidden="true"></span><b><span class="ia" aria-hidden="true">✦</span>Análise inteligente da frota</b>
-        <span class="radar-sub">leitura de ${fmt(c.la.length, 0)} registros de ${fmt(c.nAtivos, 0)} motoristas, atualizada a cada filtro</span></div>
-      <div class="radar-scan" aria-hidden="true"></div>
-      <ul class="radar-lista">${itens.slice(0, 6).map((i, n) => `<li class="radar-i radar-${i.cls}" style="--n:${n}"><span class="radar-ic">${i.icone}</span><span>${i.html}</span></li>`).join('')}</ul>
-    </section>`;
-  }
-
   // ---------- Animação dos números (só quando a tela, o cliente ou o período mudam) ----------
   let ultimaAnim = '';
   // Gráficos animados: cada SVG anima quando entra na tela (barras sobem uma a uma, linhas se desenham, áreas aparecem,
@@ -5652,7 +5161,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     let nb = 0;
     svg.querySelectorAll('rect').forEach((el) => {
       const w = Number(el.getAttribute('width')) || 0, h = Number(el.getAttribute('height')) || 0, fill = (el.getAttribute('fill') || '') + (el.getAttribute('style') || '');
-      if (h < 3 || w > largura * 0.6 || /transparent/.test(fill)) return;   // fundo, faixa ou área de passar o mouse
+      if (h < 3 || w > largura * 0.6 || /transparent/.test(fill) || el.hasAttribute('transform')) return;   // fundo, faixa, área de passar o mouse ou já transformado
       el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 100%';
       el.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 800, delay: 100 + Math.min(nb++, 30) * 50, easing: facil, fill: 'backwards' });
     });
@@ -5665,7 +5174,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (!len) return;
       el.animate([{ strokeDasharray: len + ' ' + len, strokeDashoffset: len }, { strokeDasharray: len + ' ' + len, strokeDashoffset: 0 }], { duration: 1400, delay: 150, easing: 'cubic-bezier(.4,.1,.2,1)', fill: 'backwards' });
     });
-    svg.querySelectorAll('circle:not(.gbx-halo)').forEach((el, i) => {
+    // círculo com transform próprio (arco dos anéis, girado -90°) fica de fora: a origem no centro deslocaria o giro e o arco sairia do anel
+    svg.querySelectorAll('circle:not(.gbx-halo):not([transform])').forEach((el, i) => {
       el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center';
       el.animate([{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 420, delay: 1000 + Math.min(i, 40) * 22, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'backwards' });
     });
@@ -5751,41 +5261,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     });
   }
 
-
-  // ---------- Relacionamento (HubSpot ao vivo, com cópia gravada no banco do painel como reserva) ----------
-  function cartaoRelacionamento(todosClientes) {
-    const todos = E.rel || [];
-    const sel = todosClientes ? '' : ckey(E.cliente || '');
-    // igual ao relDoCliente: casa o nome inteiro (chave curta ou vazia não casava com qualquer cliente)
-    const lista = sel ? todos.filter((r) => ckey(r.cliente) === sel || (!!r.chave && ckey(r.chave) === sel)) : todos;
-    if (!lista.length) return '';
-    const dt = (v) => (v ? D.br(v) : '—');
-    const item = (r0) => {
-      const r = vivoParaRel(r0) || r0;
-      const erro = vivo[r0.chave] && vivo[r0.chave].erro;
-      const selo = r._vivo
-        ? `<span class="badge badge-ok" title="Dados lidos direto do HubSpot">Dados do HubSpot</span>`
-        : `<span class="badge badge-neutro" title="Última cópia gravada no painel">${r0.simulado ? 'Simulação' : vivo[r0.chave] && vivo[r0.chave].carregando ? 'Buscando no HubSpot…' : 'Cópia gravada'}</span>`;
-      const l = r.ligacoes || {}, em = r.emails || {};
-      const churn = /churn/i.test(r.situacao || '');
-      const neg = (r.negocios || []).map((n) => `<tr><td>${esc(n.nome)}</td><td>${n.data ? D.br(n.data) : '—'}</td><td class="dir num">${n.valor === null || n.valor === undefined ? '—' : fmtReais(n.valor, 2)}</td><td><span class="badge ${n.resultado === 'Ganho' ? 'badge-ok' : n.resultado === 'Churn' ? 'badge-critico' : 'badge-neutro'}">${esc(n.resultado)}</span></td></tr>`).join('');
-      return `<section class="card rel-card">
-        <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Relacionamento com o cliente · ${esc(r.cliente)}</h2>
-          <span class="h2-sub">Fonte: ${esc(r.fonte || 'HubSpot')} · ${r.simulado ? 'dados simulados, não vêm do HubSpot' : r._vivo ? 'consultado no HubSpot às ' + new Date(r._em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'cópia gravada em ' + dt(r.atualizado)}</span></div>
-          <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${selo}${r0.simulado ? '' : `<button type="button" class="btn" data-acao="hub-atualizar" data-id="${esc(r0.chave)}" ${vivo[r0.chave] && vivo[r0.chave].carregando ? 'disabled' : ''}>${vivo[r0.chave] && vivo[r0.chave].carregando ? 'Atualizando…' : 'Atualizar do HubSpot'}</button>`}${r.situacao ? `<span class="badge ${churn ? 'badge-critico' : 'badge-atencao'}">${esc(r.situacao)}</span>` : ''}</span></div>
-        <div class="card-corpo">
-          ${erro && MSG_ERRO[erro] ? `<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(MSG_ERRO[erro])} Enquanto isso, mostrando a última cópia gravada.</span></div></div>` : ''}
-          <div class="grade-kpi">
-            <div class="kpi"><span class="kpi-titulo">Contratos fechados</span><span class="kpi-valor">${fmt(r.contratos_ganhos || 0, 0)}</span><span class="kpi-ref">de ${fmt(r.negocios_total || 0, 0)} negócios no HubSpot</span></div>
-            <div class="kpi"><span class="kpi-titulo">Chamadas</span><span class="kpi-valor">${fmt(l.total || 0, 0)}</span><span class="kpi-ref">${l.completadas === undefined ? '' : fmt(l.completadas, 0) + ' completadas · '}última em ${dt(l.ultima)}</span></div>
-            <div class="kpi"><span class="kpi-titulo">E-mails</span><span class="kpi-valor">${fmt(em.total || 0, 0)}</span><span class="kpi-ref">${em.enviados === undefined ? '' : fmt(em.enviados, 0) + ' enviados · ' + fmt(em.recebidos || 0, 0) + ' recebidos · '}último em ${dt(em.ultimo)}</span></div>
-          </div>
-          ${r.motivos ? `<p class="apoio" style="margin:12px 0 0"><b>Motivos do cancelamento:</b> ${esc(r.motivos)}</p>` : ''}
-          ${neg ? `<div class="tabela-wrap" style="margin-top:12px"><table class="tabela"><thead><tr><th>Negócio</th><th>Data</th><th class="dir">Valor</th><th>Resultado</th></tr></thead><tbody>${neg}</tbody></table></div>` : ''}
-        </div></section>`;
-    };
-    return lista.map(item).join('');
-  }
 
   // ---------- Tela: Plano de ação (rentabilidade, produtividade e próximos passos) ----------
   // Meta da própria operação: o valor que separa o quarto melhor (percentil 75 no sentido do "melhor"); não usa a média do topo para um dado errado não inflar a meta
@@ -6152,21 +5627,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return baseTodosCache.base;
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const CHURN_PESOS = { uso: 25, engaj: 20, perf: 20, consumo: 15, criticos: 10, relac: 10, chs: 15, renov: 10 };
+  const CHURN_PESOS = { uso: 25, engaj: 20, perf: 20, consumo: 15, criticos: 10 };
   const CHURN_ACAO = {
     uso: ['Entender a queda de rodagem', 'Ligar para o gestor e descobrir a causa: rota trocada, veículos parados ou saída de operação.'],
     engaj: ['Reativar os motoristas', 'Reforçar o uso do app e alinhar uma rotina semanal de acompanhamento com o gestor.'],
     perf: ['Treinar quem tem a menor nota', 'Agendar treinamento com os motoristas de menor nota e combinar a meta de evolução.'],
     consumo: ['Mostrar o diesel que se perde', 'Apresentar o gasto extra de combustível e revisar faixa verde e motor ocioso.'],
-    criticos: ['Plano individual dos críticos', 'Abrir plano com o instrutor para cada motorista com nota abaixo de 40 e reavaliar em 7 dias.'],
-    chs: ['Atacar as partes fracas da nota CHS', 'Ver no Estudo do cliente quais partes da nota CHS estão abaixo de 50 e combinar com o cliente o plano para cada uma.'],
-    relac: ['Retomar o contato', 'Marcar reunião de resultados com a diretoria e registrar o próximo passo no HubSpot.']
+    criticos: ['Plano individual dos críticos', 'Abrir plano com o instrutor para cada motorista com nota abaixo de 40 e reavaliar em 7 dias.']
   };
-  function relDoCliente(nome) {
-    const k = ckey(nome);
-    const r = (E.rel || []).find((x) => ckey(x.cliente) === k || ckey(x.chave) === k);
-    return r ? (vivoParaRel(r) || r) : null;
-  }
   function churnCliente(nome, ls, bt) {
     const la = X.filtrar(ls, E.A);
     let lb = X.filtrar(ls, E.B), ca = la, ref = 'período anterior';
@@ -6201,35 +5669,12 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const dK = b.kml > 0 && aC.kml > 0 ? (aC.kml - b.kml) / b.kml : null;
     if (dK !== null) f.push({ k: 'consumo', nome: 'Resultado de consumo', risco: dK < 0 ? clamp(-dK * 500, 0, 100) : 0, det: `Média ${fmt(aC.kml, 2)} km/l (${dK >= 0 ? '+' : ''}${fmt(dK * 100, 1)}% vs. ${ref})` });
     if (notas.length) f.push({ k: 'criticos', nome: 'Motoristas com nota crítica', risco: clamp((crit / notas.length) * 250, 0, 100), det: `${fmt(crit, 0)} de ${fmt(notas.length, 0)} motoristas com nota abaixo de 40` });
-    // HubSpot (conector ou arquivo da API): nota CHS e último contato
-    const hv = hubCli[ckey(nome)];
-    if (hv && hv.comp) {
-      const chs = hubNum(hv.comp.nota_do_chs) !== null ? hubNum(hv.comp.nota_do_chs) : hubNum(hv.comp.chs_score);
-      if (chs !== null) f.push({ k: 'chs', nome: 'Nota CHS (HubSpot)', risco: clamp((80 - chs) * 2.5, 0, 100), det: `Nota CHS ${fmt(chs, 0)} de 100` });
-      const ult = hubDia(hv.comp.notes_last_contacted);
-      if (ult) { const dias = D.dif(ult, D.hoje()); f.push({ k: 'relac', nome: 'Relacionamento (HubSpot)', risco: clamp((dias - 30) * 1.2, 0, 100), det: `Último contato há ${fmt(dias, 0)} ${dias === 1 ? 'dia' : 'dias'}` }); }
-    }
-    const r = f.some((x) => x.k === 'relac') ? null : relDoCliente(nome);
-    if (r) {
-      const ult = [r.ligacoes && r.ligacoes.ultima, r.emails && r.emails.ultimo].filter(Boolean).sort().pop();
-      const churn = /churn/i.test(r.situacao || '');
-      if (ult || churn) {
-        const dias = ult ? D.dif(ult, D.hoje()) : null;
-        f.push({ k: 'relac', nome: 'Relacionamento (HubSpot)', risco: churn ? 100 : clamp((dias - 30) * 1.2, 0, 100), det: churn ? String(r.situacao) : `Último contato há ${fmt(dias, 0)} dias`, forca: churn });
-      }
-    }
-    // renovação da ficha de retenção: até 30 dias pesa tudo, até 90 dias pesa parte
-    const fic = fichaDe(nome);
-    if (fic && fic.renovacao) { const dr = D.dif(D.hoje(), fic.renovacao); f.push({ k: 'renov', nome: 'Renovação do contrato', risco: riscoRenovacao(dr), det: dr < 0 ? 'Contrato vencido há ' + -dr + ' dias' : 'Renova em ' + dr + ' dias (' + D.br(fic.renovacao) + ')' }); }
     if (!f.length) return null;
     const pesoTot = f.reduce((t, x) => t + (CHURN_PESOS[x.k] || 0), 0);
     if (!(pesoTot > 0)) return null;
     const calc0 = f.reduce((t, x) => t + CHURN_PESOS[x.k] * x.risco, 0) / pesoTot;
     f.forEach((x) => { x.contrib = (CHURN_PESOS[x.k] * x.risco) / pesoTot; x.peso = CHURN_PESOS[x.k] / pesoTot; });
-    // pedido de cancelamento (situação de churn no relacionamento) leva à faixa alta, qualquer que seja o uso
-    const relC = relDoCliente(nome), pedido = f.some((x) => x.forca) || !!(relC && /churn/i.test(relC.situacao || ''));
-    if (pedido && !f.some((x) => x.forca)) { const rx = f.find((x) => x.k === 'relac'); if (rx) rx.forca = true; }
-    const score = pedido ? Math.max(calc0, CHURN_FAIXAS.alto) : calc0;
+    const score = calc0;
     const faixa = score >= CHURN_FAIXAS.alto ? 'Alto' : score >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo';
     return { nome, score, faixa, fatores: f, a, b, km: a.km, dKm, nota: a.nota, motoristas: ativos.size, crit, principal: f.slice().sort((p, q) => q.contrib - p.contrib)[0] };
   }
@@ -6312,7 +5757,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const ETAPA_MAP = Object.fromEntries(ETAPAS.map((e) => [e.k, e]));
   const STATUS_TRAT = { combinado: 'Combinado', andamento: 'Em andamento', entregue: 'Entregue' };
   const BADGE_STATUS_TRAT = { combinado: 'badge-neutro', andamento: 'badge-atencao', entregue: 'badge-ok' };
-  const ETAPA_DO_SINAL = { renov: 'estudo', uso: 'estudo', engaj: 'plataforma', perf: 'plataforma', consumo: 'plataforma', criticos: 'plataforma', relac: 'estudo', chs: 'estudo' };
+  const ETAPA_DO_SINAL = { uso: 'estudo', engaj: 'plataforma', perf: 'plataforma', consumo: 'plataforma', criticos: 'plataforma' };
   const EFEITO_IND = ['nota', 'kml', 'faixa_verde', 'motor_ocioso', 'km_dia'];
   const EFEITO_CONTEXTO = ['km_dia'];
   const VEREDITO = { melhorou: ['Melhorou', 'badge-ok'], regrediu: ['Regrediu', 'badge-critico'], misto: ['Resultado misto', 'badge-atencao'], estavel: ['Estável', 'badge-neutro'] };
@@ -6382,7 +5827,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         : ` <button type="button" class="btn-link peq" data-acao="trat-remover" data-id="${esc(t.id)}">Remover</button>`);
     return `<article class="trat">
       <div class="trat-cab"><span class="trat-pin" style="background:${et.cor};color:${t.etapa === 'plataforma' ? '#2B2B2B' : '#fff'}">${n}</span>
-        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}${t.responsavel ? ' · por ' + esc(t.responsavel) : ''}${t.prazo ? ' · prazo ' + D.br(t.prazo) : ''}${t.origem === 'HubSpot' ? ' · <span class="badge badge-neutro" style="font-size:11px">HubSpot</span>' : ''}</span></div>
+        <div class="trat-tit"><b>${esc(t.titulo)}</b><span class="apoio">${D.br(t.data)} · etapa ${et.n}: ${esc(et.rot)}${t.responsavel ? ' · por ' + esc(t.responsavel) : ''}${t.prazo ? ' · prazo ' + D.br(t.prazo) : ''}</span></div>
         <span class="trat-sel"><span class="badge ${BADGE_STATUS_TRAT[t.status] || 'badge-neutro'}">${STATUS_TRAT[t.status] || 'Combinado'}</span>${atrasada ? '<span class="badge badge-critico">Prazo vencido</span>' : ''}</span></div>
       ${t.combinado ? `<p class="trat-comb"><b>O que foi combinado:</b> ${esc(t.combinado)}</p>` : ''}
       ${t.prazo ? `<span class="apoio" style="font-size:12px">Prazo combinado: ${D.br(t.prazo)}</span>` : ''}
@@ -6469,8 +5914,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return `${fluxoRetencao(trs.concat(comoTrat).sort((a, b) => (a.data < b.data ? -1 : 1)))}
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Linha do tempo da retenção</h2><span class="h2-sub">${esc(ind.label)} de ${esc(sel.nome)}, com cada tratativa marcada no dia em que aconteceu.</span></div>${seg}</div>
         <div class="card-corpo">${graficoTrat(ls, bt, ind, trs)}${leg}</div></section>
-      <section class="card" id="trat-lista"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Histórico de contatos e tratativas</h2><span class="h2-sub">Reuniões, ligações e ajustes, inclusive os trazidos do HubSpot. Metas e prazos ficam nos combinados. ${esc(guarda)}</span></div>
-        <span style="display:flex;gap:8px;flex-wrap:wrap">${(() => { const n = tratativasDoHub(sel.nome).length; return n ? `<button type="button" class="btn" data-acao="trat-hub" data-cli="${esc(sel.nome)}" title="Reuniões, ligações completadas e notas do HubSpot que ainda não estão aqui">Trazer do HubSpot (${n})</button>` : ''; })()}${E.tratForm ? '' : `<button type="button" class="btn btn-primario" data-acao="trat-novo" data-cli="${esc(sel.nome)}">Registrar tratativa</button>`}</span></div>
+      <section class="card" id="trat-lista"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Histórico de contatos e tratativas</h2><span class="h2-sub">Reuniões, ligações e ajustes. Metas e prazos ficam nos combinados. ${esc(guarda)}</span></div>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">${E.tratForm ? '' : `<button type="button" class="btn btn-primario" data-acao="trat-novo" data-cli="${esc(sel.nome)}">Registrar tratativa</button>`}</span></div>
         <div class="card-corpo">${E.tratForm ? formTrat(sel.nome) : ''}
           ${lista.length ? `<div class="trat-lista">${lista.map((x) => cartaoTrat(x.t, x.n, ls, bt)).join('')}</div>`
             : (E.tratForm ? '' : '<div class="vazio"><span class="vazio-titulo">Nenhuma tratativa registrada</span><span class="apoio">Registre a primeira para acompanhar o que mudou nos números depois de cada conversa e de cada ajuste.</span></div>')}</div></section>`;
@@ -6484,53 +5929,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     for (let i = trs.length - 1; i >= 0 && !med; i--) { const ef = efeitoTrat(ls, bt, trs[i].data); if (ef.estado === 'ok') med = { ef, t: trs[i], n: i + 1 }; }
     const res = med ? `<span class="badge ${VEREDITO[med.ef.veredito][1]}">${VEREDITO[med.ef.veredito][0]}</span><span class="linha2">tratativa ${med.n}, de ${D.br(med.t.data)}</span>` : '<span class="badge badge-vazio">Aguardando dados</span>';
     return `<td>${trs.length} ${trs.length === 1 ? 'registro' : 'registros'}<span class="linha2">última em ${D.br(u.data)}${ab ? ' · ' + ab + ' em aberto' : ''}</span></td><td>${res}</td>`;
-  }
-  // Tratativas a partir do HubSpot: reuniões, ligações completadas e notas viram registros (sem duplicar: campo "hubspot")
-  const textoHub = (h) => String(h || '').replace(/<br\s*\/?>|<\/p>|<\/li>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
-  const codigoMeet = (t) => /^[a-z]{3}-[a-z]{4}-[a-z]{3}\b/i.test(String(t || '').trim());
-  function etapaHub(txt) {
-    const t = nrm(txt);
-    if (/resultado|apresenta|renova|qbr|economia|indicador|relatorio|fechamento/.test(t)) return 'resultado';
-    if (/treina|onboard|implanta|instala|configur|ajuste|plataforma|liberac|acesso|usuario|tela/.test(t)) return 'plataforma';
-    return 'estudo';
-  }
-  function tratativasDoHub(nome) {
-    const v = hubCli[ckey(nome)];
-    if (!v || !v.comp) return [];
-    const res = (r) => (r && r.results) || [], out = [];
-    const curto = (t, n) => (t.length > n ? t.slice(0, n - 1).trim() + '…' : t);
-    res(v.meets).forEach((o) => {
-      const p = o.properties || {}, corpo = textoHub(p.hs_meeting_body || p.hs_internal_meeting_notes || '');
-      const tit = p.hs_meeting_title && !codigoMeet(p.hs_meeting_title) ? p.hs_meeting_title : 'Reunião com o cliente';
-      out.push({ hubspot: 'meeting:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Reunião: ' + tit, 140), combinado: curto(corpo || (p.hs_meeting_outcome ? 'Resultado: ' + String(p.hs_meeting_outcome).toLowerCase() : ''), 600), etapa: etapaHub(tit + ' ' + corpo) });
-    });
-    res(v.calls).filter((o) => (o.properties || {}).hs_call_status === 'COMPLETED').forEach((o) => {
-      const p = o.properties || {}, corpo = textoHub(p.hs_call_body || '');
-      const tit = p.hs_call_title && !codigoMeet(p.hs_call_title) ? p.hs_call_title : 'Ligação com o cliente';
-      out.push({ hubspot: 'call:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Ligação: ' + tit, 140), combinado: curto(corpo, 600), etapa: etapaHub(tit + ' ' + corpo) });
-    });
-    res(v.notas).forEach((o) => {
-      const p = o.properties || {}, corpo = textoHub(p.hs_note_body || '');
-      if (!corpo) return;
-      out.push({ hubspot: 'note:' + o.id, data: hubDia(p.hs_timestamp), titulo: curto('Nota: ' + corpo.split('\n')[0], 140), combinado: curto(corpo, 600), etapa: etapaHub(corpo) });
-    });
-    const ja = new Set((E.trat || []).filter((t) => t.hubspot).map((t) => t.hubspot));
-    return out.filter((t) => t.data && !ja.has(t.hubspot)).sort((a, b) => (a.data < b.data ? -1 : 1));
-  }
-  async function trazerTratHub(nome) {
-    const novas = tratativasDoHub(nome);
-    if (!novas.length) { toast('Nada novo no HubSpot para trazer.'); return; }
-    let ok = 0;
-    for (const t of novas) {
-      const reg = { cliente: nome, data: t.data, etapa: t.etapa, titulo: t.titulo, combinado: t.combinado, prazo: '', status: 'entregue', criado: D.hoje(), origem: 'HubSpot', hubspot: t.hubspot };
-      try {
-        if (E.tratEmDb && tratRef && !E.demo) await tratRef.add(reg);
-        else E.trat.push(Object.assign({ id: 't' + Date.now() + '-' + ok }, reg));
-        ok++;
-      } catch (e) { toast('Parou depois de ' + ok + ' registro(s): sem permissão para gravar neste painel.', 'erro'); break; }
-    }
-    if (!(E.tratEmDb && tratRef && !E.demo)) salvarTratLocal();
-    render(); if (ok) toast(ok + ' tratativa(s) trazida(s) do HubSpot.');
   }
   async function salvarTrat() {
     const f = E.tratForm; if (!f) return;
@@ -6562,12 +5960,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     E.tratRemover = null; render(); toast('Tratativa removida.');
   }
 
+  // Saúde do cliente: risco de churn calculado só com os resultados Gobrax da frota (uso, engajamento, nota, consumo e
+  // motoristas críticos). Sem dados de CRM nem registros manuais.
   function telaChurn() {
-    const bt = baseTodos();
     const cart = churnCarteira();
     if (!cart.length) {
       return `${cabecalho(`Saúde do cliente`, `Sem dados da API para calcular o risco de cada cliente.`)}
-        <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa rodagem, engajamento, nota, consumo e contato com o cliente.</span>
+        <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa os resultados Gobrax da frota: rodagem, engajamento dos motoristas, nota, consumo e motoristas críticos.</span>
         <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div></div></section>`;
     }
     const linhas = cart.map((c) => `<tr class="linha-clicavel" data-acao="churn-cliente" data-cli="${esc(c.nome)}" tabindex="0">
@@ -6575,11 +5974,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b><span class="badge ${BADGE_RISCO[c.faixa]}">${c.faixa}</span></span></td>
       <td>${c.principal ? esc(c.principal.nome) + '<span class="linha2">' + esc(c.principal.det) + '</span>' : '—'}</td>
       <td class="dir num">${c.dKm === null ? '—' : (c.dKm >= 0 ? '▲ ' : '▼ ') + fmt(Math.abs(c.dKm) * 100, 1) + '%'}</td>
-      <td class="dir num">${c.nota > 0 ? fmt(c.nota, 1) : '—'}</td>${celulasTrat(c)}</tr>`).join('');
-    const tabela = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes por risco</h2><span class="h2-sub">Clique em um cliente para abrir o histórico da retenção, os sinais de alerta e o plano.</span></div>
-        </div>
-      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de risco</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th><th>Tratativas</th><th>Último resultado medido</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
-    // Detalhe do cliente selecionado
+      <td class="dir num">${c.nota > 0 ? fmt(c.nota, 1) : '—'}</td></tr>`).join('');
+    const tabela = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes por risco</h2><span class="h2-sub">Clique em um cliente para ver o que pesa no risco e o plano de retenção.</span></div></div>
+      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de risco</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
     let detalhe = '';
     const sel = cart.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
     if (sel) {
@@ -6590,38 +5987,30 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       const alertas = fat.filter((x) => x.risco >= 50);
       const passos = fat.filter((x) => x.risco >= 25 && CHURN_ACAO[x.k]).slice(0, 4);
       const prazos = ['Hoje', 'Esta semana', 'Em 15 dias', 'Em 30 dias'];
-      setTimeout(() => garantirItemSuspeito(sel.nome), 0);
-      detalhe = `${cartaoPassos(sel.nome)}<section class="card churn-detalhe"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:24px 36px;align-items:center">
+      const bons = fat.filter((x) => x.risco < 15).map((x) => x.nome.toLowerCase()), p0 = fat[0];
+      const leitura = `<b>Nossa leitura:</b> ${esc(sel.nome)} está com risco ${sel.faixa.toLowerCase()} (${fmt(sel.score, 0)} de 100). ` +
+        (p0 && p0.risco >= 15 ? `O que mais pesa é “${esc(p0.nome.toLowerCase())}”: ${esc(p0.det)}. ` : 'Nenhum sinal pesa de forma relevante neste período. ') +
+        (bons.length ? `Pontos a favor: ${esc(bons.slice(0, 3).join(', '))}.` : '');
+      const fs = fotosRisco(sel.nome);
+      const historico = fs.length > 1 ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="apoio">Fotos diárias do índice desde ${D.br(fs[0].dia)} (${fs.length})</span>${X.ui.sparkline(fs.map((f) => f.score), '#FCB709')}</div>` : '';
+      detalhe = `<section class="card churn-detalhe"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:24px 36px;align-items:center">
           ${gauge(sel.score, sel.faixa, 240)}
           <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px"><span class="h2">${esc(sel.nome)}</span>
             <span class="apoio">${fmt(sel.motoristas, 0)} motoristas ativos · ${fmt(sel.km, 0)} km no período${sel.nota > 0 ? ' · nota ' + fmt(sel.nota, 1) : ''}</span>
             <span class="badge ${BADGE_RISCO[sel.faixa]}" style="align-self:flex-start">Risco ${sel.faixa.toLowerCase()} de churn</span>
-            <p class="churn-leitura">${(() => {
-              const f = sel.fatores.slice().sort((p, q) => q.contrib - p.contrib);
-              const bons = f.filter((x) => x.risco < 15).map((x) => x.nome.toLowerCase());
-              const p0 = f[0];
-              return `<b>Nossa leitura:</b> ${esc(sel.nome)} está com risco ${sel.faixa.toLowerCase()} (${fmt(sel.score, 0)} de 100). ` +
-                (p0 && p0.risco >= 15 ? `O que mais pesa é “${esc(p0.nome.toLowerCase())}”: ${esc(p0.det)}. ` : 'Nenhum sinal pesa de forma relevante neste período. ') +
-                (bons.length ? `Pontos a favor: ${esc(bons.slice(0, 3).join(', '))}.` : '');
-            })()}</p>
-            <span class="apoio" style="font-size:12px;max-width:60ch">O índice (0 a 100) combina uso da frota, engajamento, nota, consumo, motoristas críticos e contato com o cliente. É um sinal para priorizar a retenção, não uma previsão.</span></div></div></section>
-        ${cartaoFicha(sel.nome)}
-        ${cartaoHubspot(sel.nome)}
-        ${estudoCliente(sel)}
-        ${listaCombinados(sel.nome, true)}
-        ${secaoTratativas(sel)}
+            <p class="churn-leitura">${leitura}</p>
+            <span class="apoio" style="font-size:12px;max-width:60ch">O índice (0 a 100) usa só os resultados Gobrax da frota: uso da frota, engajamento dos motoristas, nota, consumo e motoristas críticos. É um sinal para priorizar a retenção, não uma previsão.</span></div></div></section>
         <div class="grade-2">
-          <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O que pesa no risco</h2><span class="h2-sub">Índice = soma dos pontos de cada sinal (risco do sinal × peso). Pesos em <a class="btn-link" href="#/config">Configurações</a>.</span></div></div><div class="card-corpo">${sel.fatores.some((x) => x.forca) ? '<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Situação de cancelamento no relacionamento: o índice vai para a faixa alta, qualquer que seja o uso.</span></div></div>' : ''}${barras}${(() => { const fs = fotosRisco(sel.nome); return fs.length > 1 ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="apoio">Fotos diárias do índice desde ${D.br(fs[0].dia)} (${fs.length})</span>${X.ui.sparkline(fs.map((f) => f.score), '#FCB709')}</div>` : `<span class="apoio">A foto diária do índice começou a ser gravada${fs.length ? ' em ' + D.br(fs[0].dia) : ' hoje'}: com o histórico dá para conferir os pesos contra os clientes que saíram.</span>`; })()}</div></section>
+          <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O que pesa no risco</h2><span class="h2-sub">Índice = soma dos pontos de cada sinal (risco do sinal × peso). Pesos em <a class="btn-link" href="#/config">Configurações</a>.</span></div></div><div class="card-corpo">${barras}${historico}</div></section>
           <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Plano de retenção</h2><span class="h2-sub">${alertas.length ? fmt(alertas.length, 0) + ' sinal(is) de alerta' : 'Sem sinais fortes. Manter o acompanhamento.'}</span></div></div>
-            <div class="card-corpo">${passos.length ? passos.map((x, i) => `<div class="churn-passo"><span class="churn-passo-n">${i + 1}</span><div><b>${CHURN_ACAO[x.k][0]}</b><span class="churn-prazo">${prazos[i]}</span><p>${CHURN_ACAO[x.k][1]}</p><button type="button" class="btn-link peq" data-acao="trat-novo" data-cli="${esc(sel.nome)}" data-etapa="${ETAPA_DO_SINAL[x.k]}" data-titulo="${esc(CHURN_ACAO[x.k][0])}">Registrar como tratativa</button></div></div>`).join('') : '<span class="apoio">Nenhuma ação urgente. Continue acompanhando os indicadores.</span>'}</div></section>
-        </div>
-        ${cartaoRelacionamento()}`;
+            <div class="card-corpo">${passos.length ? passos.map((x, i) => `<div class="churn-passo"><span class="churn-passo-n">${i + 1}</span><div><b>${CHURN_ACAO[x.k][0]}</b><span class="churn-prazo">${prazos[i]}</span><p>${CHURN_ACAO[x.k][1]}</p></div></div>`).join('') : '<span class="apoio">Nenhuma ação urgente. Continue acompanhando os indicadores.</span>'}</div></section>
+        </div>`;
     }
     const alterna = `<a class="btn" href="#/carteira" style="text-decoration:none">Carteira de clientes</a>`;
-    return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · histórico da retenção: o que foi combinado e o que mudou nos números`, `${alterna}`)}
+    return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · risco calculado com os resultados Gobrax da frota`, `${alterna}`)}
       ${barraPeriodo()}
       ${!sel && E.cliente ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
-      ${sel ? detalhe : tabela + detalhe}${gavetaCombinado()}`;
+      ${sel ? detalhe : tabela}`;
   }
 
 
@@ -7429,7 +6818,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       ${semDadosNoPeriodo(c.la.length)}
       ${faixa}
       ${blocoMesSemanal()}
-      ${radarAuto()}
       ${aneisDesempenho(c)}
       ${leitura}
       ${cartaoEvoFrota(E.base.linhas)}
@@ -7492,7 +6880,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     ['limites', 'faseDias', 'Duração padrão da fase', 'dias'], ['limites', 'faseDiasMin', 'Dias válidos mínimos por fase', 'dias'], ['limites', 'faseKmMin', 'Km mínimo da frota por fase', 'km'],
     ['faixas', 'alto', 'Risco alto a partir de', 'pontos'], ['faixas', 'medio', 'Risco médio a partir de', 'pontos'],
     ['pesos', 'uso', 'Peso: uso da frota', ''], ['pesos', 'engaj', 'Peso: engajamento dos motoristas', ''], ['pesos', 'perf', 'Peso: Nota Gobrax', ''],
-    ['pesos', 'consumo', 'Peso: resultado de consumo', ''], ['pesos', 'criticos', 'Peso: motoristas críticos', ''], ['pesos', 'relac', 'Peso: relacionamento', ''], ['pesos', 'chs', 'Peso: nota CHS (HubSpot)', ''], ['pesos', 'renov', 'Peso: renovação próxima', '']
+    ['pesos', 'consumo', 'Peso: resultado de consumo', ''], ['pesos', 'criticos', 'Peso: motoristas críticos', '']
   ];
   const valorRegra = (grupo, k) => (grupo === 'limites' ? X.LIMITES[k] : grupo === 'faixas' ? CHURN_FAIXAS[k] : CHURN_PESOS[k]);
   const podeEditarRegras = () => !contaSrv() || ehAdmin();
@@ -7672,7 +7060,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const MOTIVOS_CANC = { preco: 'Preço', resultado: 'Resultado não percebido', concorrente: 'Concorrente', gestao: 'Mudança de gestão', atendimento: 'Atendimento', outro: 'Outro' };
   const ESTAGIOS = { 1: '1 · Estudar o cliente', 2: '2 · Explorar a plataforma e ajustar', 3: '3 · Trazer o resultado' };
   const fichaDe = (nome) => docsDe('fichas').find((d) => ckey(d.cliente) === ckey(nome)) || null;
-  const hubLigado = (nome) => !!(hubCli[ckey(nome)] && hubCli[ckey(nome)].comp);
   // o que falta para a ficha estar completa (obrigatórios das regras)
   function faltasFicha(f) {
     if (!f) return ['ficha não preenchida'];
@@ -7696,7 +7083,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const f = E.fichaForm; if (!f) return;
     const nova = { cliente: f.cliente, motivos: f.motivos || [], principal: f.principal || '', detalhe: String(f.detalhe || '').trim(), alternativa: String(f.alternativa || '').trim(),
       renovacao: f.renovacao || '', equipamentos: Number(String(f.equipamentos || '').replace(',', '.')) || null, decisor: String(f.decisor || '').trim(),
-      responsavel: String(f.responsavel || '').trim(), estagio: Number(f.estagio) || 1, proximo: f.proximo || '', sincronizado: hubLigado(f.cliente) };
+      responsavel: String(f.responsavel || '').trim(), estagio: Number(f.estagio) || 1, proximo: f.proximo || '' };
     if (nova.principal && !nova.motivos.includes(nova.principal)) nova.principal = '';
     if (nova.motivos.length === 1) nova.principal = nova.motivos[0];
     const falta = faltasFicha(nova);
@@ -7915,7 +7302,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   const donosConhecidos = () => [...new Set([quemSou()].concat(docsDe('fichas').map((f) => f.responsavel), docsDe('passos').map((p) => p.dono)).filter((x) => x && x !== 'este navegador' && x !== 'sistema'))];
   function cartaoFicha(nome) {
     const f = fichaDe(nome), falta = faltasFicha(f), ed = E.fichaForm && ckey(E.fichaForm.cliente) === ckey(nome);
-    const sinc = hubLigado(nome) ? '<span class="badge badge-ok">HubSpot conectado</span>' : '<span class="badge badge-vazio" title="Sem token do HubSpot no servidor: preenchimento manual, reconciliado depois">Não sincronizado</span>';
     if (ed) {
       const v = E.fichaForm, perm = estagiosPermitidos(nome);
       return `<section class="card" id="ficha"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ficha de retenção</h2><span class="h2-sub">Quem é o cliente em risco, por que quer sair e quando renova.</span></div>${sinc}</div>
@@ -7926,14 +7312,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-detalhe">Detalhe do motivo</label><input class="campo" id="fi-detalhe" data-campo="fi-detalhe" value="${esc(v.detalhe || '')}" maxlength="200"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-alternativa">Alternativa avaliada${(v.motivos || []).includes('concorrente') ? ' (obrigatória)' : ''}</label><input class="campo" id="fi-alternativa" data-campo="fi-alternativa" value="${esc(v.alternativa || '')}" maxlength="120"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-renovacao">Renovação ou fim do contrato</label><input class="campo" type="date" id="fi-renovacao" data-campo="fi-renovacao" value="${esc(v.renovacao || '')}"></div>
-            <div class="campo-bloco"><label class="campo-rotulo" for="fi-equipamentos">Quantidade de equipamentos</label><input class="campo" id="fi-equipamentos" data-campo="fi-equipamentos" inputmode="numeric" value="${esc(v.equipamentos || '')}" ${hubLigado(nome) ? 'title="Vem do contrato no HubSpot"' : ''}></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-equipamentos">Quantidade de equipamentos</label><input class="campo" id="fi-equipamentos" data-campo="fi-equipamentos" inputmode="numeric" value="${esc(v.equipamentos || '')}"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-decisor">Decisor (cargo)</label><input class="campo" id="fi-decisor" data-campo="fi-decisor" value="${esc(v.decisor || '')}" maxlength="80" placeholder="Ex.: Diretor de operações"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-responsavel">Responsável Gobrax</label><input class="campo" id="fi-responsavel" data-campo="fi-responsavel" list="donos" value="${esc(v.responsavel || '')}" maxlength="80"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-estagio">Estágio do fluxo</label><select class="campo" id="fi-estagio" data-campo="fi-estagio">${Object.entries(ESTAGIOS).map(([k, r]) => `<option value="${k}" ${String(v.estagio || 1) === k ? 'selected' : ''} ${perm[k] ? '' : 'disabled'}>${r}${perm[k] ? '' : ' (pede registro)'}</option>`).join('')}</select></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-proximo">Próximo contato</label><input class="campo" type="date" id="fi-proximo" data-campo="fi-proximo" value="${esc(v.proximo || '')}"></div>
           </div>
           <datalist id="donos">${donosConhecidos().map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
-          <span class="apoio" style="font-size:12px">Telefone e e-mail do decisor ficam no HubSpot; aqui só o cargo. Cada alteração fica no histórico com autor e data.</span>
+          <span class="apoio" style="font-size:12px">Do decisor, só o cargo (sem telefone nem e-mail). Cada alteração fica no histórico com autor e data.</span>
           <div style="display:flex;gap:8px"><button type="button" class="btn btn-primario" data-acao="ficha-salvar">Salvar ficha</button><button type="button" class="btn" data-acao="ficha-cancelar">Cancelar</button></div>
         </div></section>`;
     }
@@ -7941,7 +7327,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const item = (rot, val, cls) => `<div class="ficha-i"><span class="exec-rot">${rot}</span><span class="${cls || ''}">${val}</span></div>`;
     const inv = podeVerContrato() && ckey(nome) === ckey(E.cliente) ? investimento() : null;
     return `<section class="card" id="ficha"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ficha de retenção</h2><span class="h2-sub">${f ? 'Atualizada por ' + esc(f.historico && f.historico[0] ? f.historico[0].por : '—') + (f.historico && f.historico[0] ? ' em ' + D.br(String(f.historico[0].em).slice(0, 10)) : '') : 'Ainda não preenchida.'}</span></div>
-        <span style="display:flex;gap:8px;align-items:center">${sinc}<button type="button" class="btn" data-acao="ficha-editar" data-cli="${esc(nome)}">${f ? 'Editar ficha' : 'Preencher ficha'}</button></span></div>
+        <span style="display:flex;gap:8px;align-items:center"><button type="button" class="btn" data-acao="ficha-editar" data-cli="${esc(nome)}">${f ? 'Editar ficha' : 'Preencher ficha'}</button></span></div>
       <div class="card-corpo" style="gap:12px">
         ${falta.length ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto"><b>Ficha incompleta:</b> falta ${esc(falta.join(', '))}. Os outros módulos continuam funcionando.</span></div></div>` : ''}
         ${f ? `<div class="ficha-grade">
@@ -8780,7 +8166,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return { e, atual: e.find((x) => !x.ok) || e[e.length - 1] };
   }
   // faixa "onde estou" no topo das telas do cliente: as sete etapas, a atual em destaque e o próximo passo
-  const TELAS_JORNADA = ['churn', 'combinados', 'resumo', 'plano'];   // a Linha do tempo não mostra a faixa
+  const TELAS_JORNADA = ['combinados', 'resumo', 'plano'];   // a Linha do tempo não mostra a faixa
   function faixaJornada(nome) {
     if (!nome || !E.base) return '';
     const { e, atual } = etapasCliente(nome), aqui = '#/' + E.rota.tela;
@@ -8872,7 +8258,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
 
   // ---------- Clientes: cadastro compartilhado (db) com cópia local quando o banco não está disponível ----------
   const CHAVE_CLIENTES = 'gbx-frota-clientes';
-  let dbRef = null, hubRef = null;
+  let dbRef = null;
   function ordenarClientes() { E.clientes.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')); }
   function salvarLocal() { if (E.demo) return; armazem.gravar(CHAVE_CLIENTES, JSON.stringify(E.clientes)); }
   async function iniciarClientes() {
@@ -8897,14 +8283,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       } catch (e) { /* sem regras compartilhadas */ }
       try { iniciarPlanilhas(db); } catch (e) { planRef = null; E.planEmDb = false; E.planCarregando = false; }
       dbRef = db.collection('clientes');
-      try {   // leituras do HubSpot importadas por arquivo (script busca-de-dados/hubspot.mjs): valem até o conector trazer uma mais nova
-        hubRef = db.collection('hubspot');
-        hubRef.onSnapshot((sn) => { hubDocs = sn.docs.map((d) => d.data()); sn.docs.forEach((d) => { try { const bruto = d.data().json || 'null', o = JSON.parse(bruto); if (o && o.comp) { usarHubArquivo(o, false); const limpo = JSON.stringify(o); if (limpo !== bruto) hubRef.doc(d.id).set(Object.assign({}, d.data(), { json: limpo })).catch(() => {}); } } catch (e) { /* documento inválido */ } }); }, () => {});   // arquivo antigo com dados pessoais: regrava limpo
-      } catch (e) { hubRef = null; }
       try { tratRef = db.collection('tratativas'); E.tratEmDb = true; tratRef.onSnapshot((sn) => { if (E.demo) return; E.trat = sn.docs.map((d) => Object.assign({ id: d.id }, d.data()));  if (E.rota.tela === 'churn') render(); }, () => { E.tratEmDb = false; carregarTratLocal(); if (E.rota.tela === 'churn') render(); }); } catch (e) { E.tratEmDb = false; carregarTratLocal(); }
       try { db.collection('config').doc('diesel_uf').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !v.diesel || !v.diesel.br) return; if (!E.dieselUF || String(v.coleta) > String(E.dieselUF.coleta)) { E.dieselUF = v; render(); } }, () => {}); } catch (e) { /* sem preços por estado */ }
       try { db.collection('config').doc('diesel').onSnapshot((d) => { const v = d.exists ? d.data() : null; if (!v || !(Number(v.preco_br) > 0)) return; E.diesel = v; if (!E.precoManual) E.preco = Number(v.preco_br); render(); }, () => {}); } catch (e) { /* sem preço automático */ }
-      try { db.collection('relacionamento').onSnapshot((sn) => { if (E.demo) return; E.rel = sn.docs.map((d) => Object.assign({ id: d.id }, d.data())); vigiarHubspot(); if (['plano', 'clientes', 'churn'].includes(E.rota.tela)) render(); }, () => {}); } catch (e) { /* sem relacionamento */ }
       E.clientesEmDb = true;
       const semBase = () => { E.clientesEmDb = false; E.planCarregando = false; carregarClientesLocal(); render(); };
       try {
@@ -8915,7 +8296,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           render();   // cliente cadastrado por outra pessoa aparece na hora, em qualquer tela
         }, semBase);
       } catch (e) { semBase(); }
-    } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); lerHubLocal(); E.rel = armazem.lerJSON(CHAVE_REL, []); render(); }
+    } else { E.planCarregando = false; carregarClientesLocal(); carregarTratLocal(); render(); }
   }
   function carregarClientesLocal() {
     E.clientes = armazem.lerJSON(CHAVE_CLIENTES, []);
@@ -9389,9 +8770,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       return [`<b style="font-weight:600">${esc(c.nome)}</b>`, tem ? '<span class="badge badge-ok">Salvo</span>' : '<span class="badge badge-vazio">Sem token</span>', quando, sit, `<a class="btn-link peq" href="#/cliente/${encodeURIComponent(c.id)}">${tem ? 'Abrir perfil' : 'Salvar token'}</a>`];
     })) : '<p>Nenhum cliente cadastrado. Cadastre em <a class="btn-link" href="#/config">Configurações</a> e informe o token da API.</p>';
     const card = (titulo, sub, corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">${titulo}</h2>${sub ? `<span class="h2-sub">${sub}</span>` : ''}</div></div><div class="card-corpo" style="gap:12px">${corpo}</div></section>`;
-    return `${cabecalho(`${E.apiAba === 'hubspot' ? 'API HubSpot' : 'API Gobrax'}`, `Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em documentacao/API.md.`)}
-      ${abas([['gobrax', 'API Gobrax'], ['hubspot', 'API HubSpot']], E.apiAba || 'gobrax', 'api-aba', 'APIs')}
-      ${E.apiAba === 'hubspot' ? abaHubspot(card) : `<div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
+    return `${cabecalho(`API Gobrax`, `Como o painel busca os dados direto da plataforma, sem planilha. A mesma documentação está no repositório, em documentacao/API.md.`)}
+      <div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
       ${card('Situação por cliente', 'O token fica só neste navegador e nunca aparece na tela.', status)}
       ${card('Como funciona', '', `<ul>
         <li><b>Base:</b> <code>${API_BASE}</code></li>
@@ -9409,37 +8789,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
          <span class="campo-rotulo">Campos usados</span>${tab(['Campo da API', 'No painel'], e.campos.map(([p, v]) => [`<code>${p}</code>`, esc(v)]))}
          <p><b>Aparece em:</b> ${e.onde}.</p>`)).join('')}
       ${card('Respostas e erros', '', tab(['Resposta', 'Significado', 'O que o painel faz'], API_ERROS))}
-      </div>`}`;
+      </div>`;
   }
-  // Aba API HubSpot: onde fica o token, como coletar e onde importar
-  function abaHubspot(card) {
-    const lidos = Object.keys(hubCli).map((k) => ({ k, v: hubCli[k] })).filter((x) => x.v && x.v.comp);
-    const tabela = lidos.length ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Fonte</th><th>Lido em</th><th class="dir">Nota CHS</th><th class="dir">Ligações</th><th class="dir">E-mails</th><th class="dir">Chamados abertos</th></tr></thead><tbody>
-      ${lidos.map(({ v }) => `<tr><td><b style="font-weight:600">${esc(v.comp.name || '')}</b></td><td>${v.fonte === 'arquivo' ? '<span class="badge badge-neutro">API (arquivo)</span>' : '<span class="badge badge-ok">Conector ao vivo</span>'}</td><td class="num">${v.em ? new Date(v.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td><td class="dir num">${esc(v.comp.nota_do_chs || '—')}</td><td class="dir num">${v.calls ? fmt(Number(v.calls.total) || 0, 0) : '—'}</td><td class="dir num">${v.emails ? fmt(Number(v.emails.total) || 0, 0) : '—'}</td><td class="dir num">${v.abertos ? fmt(Number(v.abertos.total) || 0, 0) : '—'}</td></tr>`).join('')}
-      </tbody></table></div>` : '<p class="apoio">Nenhum cliente lido do HubSpot ainda.</p>';
-    return `<div class="doc-api" style="display:flex;flex-direction:column;gap:16px">
-      ${card('Onde fica o token do HubSpot', 'Não existe campo de token nesta página, de propósito.', `<ul>
-        <li><b>Por que não aqui:</b> a API do HubSpot recusa chamadas feitas de dentro do navegador (sem CORS), e um token salvo numa página fica visível para quem a abre. Por isso a coleta roda no seu computador.</li>
-        <li><b>Onde fica:</b> no arquivo <code>busca-de-dados/.env</code> do projeto, na linha <code>HUBSPOT_TOKEN=</code>. Esse arquivo fica fora do Git e nunca vai para o GitHub nem para o painel.</li>
-        <li><b>Como colocar:</b> rode <code>node busca-de-dados/hubspot.mjs</code>. Na primeira vez ele pede o token no terminal (sem mostrar o que você cola), testa no HubSpot e guarda no <code>busca-de-dados/.env</code>. Para trocar depois: <code>node busca-de-dados/hubspot.mjs --trocar-token</code>.</li>
-        <li><b>Token certo:</b> do <b>app privado</b> do HubSpot (Configurações → Integrações → Apps privados), só com escopos de leitura: empresas, contatos, tickets, e-mails, ligações e reuniões.</li>
-        <li><b>Nunca</b> cole o token em chat, e-mail ou planilha.</li></ul>`)}
-      ${card('Coletar e trazer para o painel', '', `<ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
-        <li>No <code>busca-de-dados/clientes.json</code>, cada cliente pode ter <code>"hubspot_id"</code> (o número no fim do link da empresa no HubSpot). Sem ele, o script procura pelo nome.</li>
-        <li>No terminal, na pasta do projeto: <code>node busca-de-dados/hubspot.mjs</code> (ou <code>--cliente "Nome do cliente"</code>).</li>
-        <li>O script gera <code>busca-de-dados/saida/&lt;cliente&gt;/hubspot.json</code> com perfil, frota, nota CHS, contatos, ligações, e-mails, reuniões e chamados.</li>
-        <li>Importe o arquivo aqui embaixo (ou em Saúde do cliente → Cliente no HubSpot). Ele fica guardado na base compartilhada e alimenta o cartão e o Estudo do cliente.</li></ol>
-        <label class="btn btn-primario" style="align-self:flex-start;margin-top:10px">Importar arquivo hubspot.json<input type="file" accept=".json,application/json" data-campo="hub-arquivo" hidden></label>`)}
-      ${card('Clientes lidos do HubSpot', 'O painel usa a leitura mais recente: o arquivo importado ou o conector ao vivo (painel aberto no Claude).', tabela)}
-      ${card('Endpoints usados (só leitura)', '', `<ul>
-        <li><code>GET /crm/v3/objects/companies/{id}</code>: perfil, frota, nota CHS e partes, contrato, último contato. CNPJ, e-mail e telefone ficam de fora (política de segurança).</li>
-        <li><code>POST /crm/v3/objects/companies/search</code>: acha a empresa pelo nome quando não há <code>hubspot_id</code>.</li>
-        <li><code>GET /crm/v4/objects/companies/{id}/associations/{calls|emails|meetings|tickets|contacts}</code>: o que está ligado à empresa.</li>
-        <li><code>POST /crm/v3/objects/{tipo}/batch/read</code>: os campos de cada ligação, e-mail, reunião, chamado e contato.</li>
-        <li><code>GET /crm/v4/objects/contacts/{id}/associations/{calls|emails}</code>: quem mais entra em contato.</li></ul>`)}
-    </div>`;
-  }
-
   // Metas do cliente: salvas no cadastro (compartilhado), aparecem nos cartões de indicador de todas as telas
   function cartaoMetas(fc) {
     const metas = fc.metas || {};
@@ -9618,19 +8969,15 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // Serve para trazer o que estava na plataforma com login (ou no Claude) para o GitHub Pages, e vice-versa.
   // Os tokens da API nunca entram no arquivo: cada pessoa digita de novo o token do cliente no perfil dele.
   const BKP_TIPO = 'gbx-analise-frota';
-  const CHAVE_REL = 'gbx-frota-rel';
-  let hubDocs = [];   // leituras do HubSpot guardadas na base compartilhada (preenchido pelo onSnapshot)
   function montarBackup() {
     const colecoes = {};
     Object.keys(COL).forEach((n) => { const d = COL[n].docs; if (Array.isArray(d) && d.length) colecoes[n] = d; });
-    let hub = hubDocs.map((d) => { try { return JSON.parse(d.json); } catch (e) { return null; } }).filter((o) => o && o.comp);
-    if (!hub.length) { try { hub = Object.keys(localStorage).filter((k) => k.indexOf('gbx-hub-') === 0).map((k) => armazem.lerJSON(k, null)).filter((o) => o && o.comp); } catch (e) { hub = []; } }
     const api = {};
     (planRef ? [...planDocs.entries()] : Object.entries(E.apiLocal || {})).forEach(([id, d]) => { if (d && (d.alvo === 'odometro' || d.alvo === 'premiacao')) api[id] = d; });
     return {
       tipo: BKP_TIPO, versao: 1, gerado: new Date().toISOString(),
       clientes: (E.clientes || []).map((c) => Object.assign({}, c)),
-      tratativas: E.trat || [], relacionamento: E.rel || [], regras: regrasAtuais(), colecoes, hubspot: hub, api,
+      tratativas: E.trat || [], regras: regrasAtuais(), colecoes, api,
       planilhas: {
         motoristas: E.linhasAll && E.linhasAll.length ? X.paraCSV(E.linhasAll.slice(), E.colunasAll) : '',
         veiculos: E.veic && E.veic.linhas && E.veic.linhas.length ? X.paraCSV(E.veic.linhas.slice(), E.veic.colunas) : ''
@@ -9674,14 +9021,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (i >= 0) E.trat[i] = t; else (E.trat = E.trat || []).push(t);
     }
     if (!E.tratEmDb) salvarTratLocal();
-    for (const r of o.relacionamento || []) {
-      if (!r || !r.id) continue;
-      const { id, ...campos } = r;
-      await tentar('relacionamento', async () => { if (dbCompart) await dbCompart.collection('relacionamento').doc(id).set(campos); });
-      const i = (E.rel || []).findIndex((x) => x.id === id);
-      if (i >= 0) E.rel[i] = r; else (E.rel = E.rel || []).push(r);
-    }
-    if (!dbCompart) armazem.gravar(CHAVE_REL, JSON.stringify(E.rel || []));
     // fichas, combinados, marcos, passos, dias excluídos, premissas, liberações...
     let nReg = 0;
     for (const [nome, docs] of Object.entries(o.colecoes || {})) {
@@ -9696,7 +9035,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       armazem.gravar(CHAVE_REGRAS, JSON.stringify(o.regras)); aplicarRegras(o.regras);
       await tentar('regras', async () => { if (dbCompart) await dbCompart.collection('config').doc('regras').set(o.regras); });
     }
-    (o.hubspot || []).forEach((h) => { if (h && h.comp && h.cliente) usarHubArquivo(h, true); });
     for (const [id, d] of Object.entries(o.api || {})) await tentar('odômetro/premiação', () => gravarDocApi(id, d));
     // planilhas: entram como uma importação, somadas ao que já existe (mesmo dia e placa: fica a do arquivo)
     const nomeArq = 'Dados importados de ' + String(o.gerado || '').slice(0, 10).split('-').reverse().join('/');
@@ -9715,7 +9053,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const res = R ? `<div class="alerta ${R.falhas.length ? 'alerta-atencao' : 'alerta-ok'}" style="margin-top:12px"><span class="alerta-icone">${R.falhas.length ? '!' : '✓'}</span><div class="alerta-corpo"><span class="alerta-texto">Importados ${R.clientes} cliente(s) e ${R.registros} registro(s).${R.falhas.length ? ' Não entraram:' : ''}</span>${R.falhas.slice(0, 8).map((f) => `<span class="alerta-texto">${esc(f)}</span>`).join('')}</div></div>` : '';
     return `<section class="card" id="levar-dados">
       <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Levar os dados para outro lugar</h2>
-        <span class="h2-sub"><b>Exportar tudo</b> baixa um arquivo com clientes, tratativas, fichas, combinados, passos, regras, HubSpot, odômetro, premiação e planilhas deste painel. Em outro painel (por exemplo, o GitHub Pages), use <b>Importar arquivo</b>. Os tokens da API não vão no arquivo: salve de novo o de cada cliente no perfil dele. O arquivo tem dados de clientes: guarde só no seu computador e não envie por chat ou e-mail.</span></div></div>
+        <span class="h2-sub"><b>Exportar tudo</b> baixa um arquivo com clientes, tratativas, fichas, combinados, passos, regras, odômetro, premiação e planilhas deste painel. Em outro painel (por exemplo, o GitHub Pages), use <b>Importar arquivo</b>. Os tokens da API não vão no arquivo: salve de novo o de cada cliente no perfil dele. O arquivo tem dados de clientes: guarde só no seu computador e não envie por chat ou e-mail.</span></div></div>
       <div class="card-corpo"><span style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn" data-acao="bkp-exportar">Exportar tudo</button>
         <label class="btn btn-primario" style="position:relative;overflow:hidden">${E.bkpImportando ? 'Importando…' : 'Importar arquivo'}<input type="file" accept=".json,application/json" data-campo="bkp-arquivo" ${E.bkpImportando ? 'disabled' : ''} style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"></label>
@@ -9798,7 +9136,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   }
   // com o login, o menu ganha as Mensagens do dia e o Motorista individual, o acompanhamento: redesenha se o painel já está na tela
   window.addEventListener('gbx-conta', () => {
-    Object.values(hubCli).forEach((v) => { if (v.erro && !v.carregando) v.tentou = false; });   // leitura que falhou antes do login: busca de novo pelo servidor
     const app = document.getElementById('app'); if (app && app.children.length) render();
   });
 
@@ -9975,7 +9312,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const inds = Object.entries(porInd).sort((a, b) => b[1] - a[1]).map(([rot, n]) => ({ rot, n }));
     const graficos = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;padding:0 16px 16px">
         <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Mensagens enviadas por dia</span><div class="grafico" data-grafico="msg-enviadas-dia" style="height:200px"></div></div>
-        <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Indicadores mais apontados <span class="apoio" style="font-weight:400">(% das mensagens)</span></span>${inds.length ? barrasHub(inds.slice(0, 5), total) : '<span class="apoio">Nenhum indicador apontado ainda.</span>'}</div></div>`;
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Indicadores mais apontados <span class="apoio" style="font-weight:400">(% das mensagens)</span></span>${inds.length ? barrasLista(inds.slice(0, 5), total) : '<span class="apoio">Nenhum indicador apontado ainda.</span>'}</div></div>`;
     const porNome = {};
     c.mots.forEach((x) => { porNome[ckey(x.m.nome)] = x.m.id; });
     const notaTxt = (v) => (v === null || v === undefined ? '—' : fmt(v, 1));
@@ -10070,7 +9407,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Motoristas</th><th>Veículos</th><th>Token da API <span class="apoio" style="font-weight:400">(fica só neste navegador)</span></th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`
           : `<div class="card-corpo">${vazioUI(`${E.clientesPronto ? 'Nenhum cliente cadastrado' : 'Carregando clientes…'}`, `Cadastre o primeiro no formulário acima.`)}</div>`}
       </section>
-      ${cartaoRelacionamento(true)}
       ${cartaoRegras()}`;
   }
 
@@ -11054,11 +10390,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       else selecionar();
     },
     'filtrar-dim': (el) => { E.filtro[el.dataset.dim] = el.dataset.val; reaplicarFiltro(); if (E.rota.tela === 'detalhe') { location.hash = '#/motoristas'; return; } render(); window.scrollTo(0, 0); },
-    'hubcli-atualizar': (el) => { buscarHubCli(el.dataset.cli, true); },
-    'trat-hub': (el) => { trazerTratHub(el.dataset.cli); },
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
-    'hub-atualizar': (el) => { const r = (E.rel || []).find((x) => x.chave === el.dataset.id); if (r) atualizarHub(r); },
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
     'churn-cliente': (el) => { trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'regras-salvar': () => salvarRegras(),
@@ -11192,15 +10525,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (k === 'evo-ind') { E.evoInd = el.value; render(); return; }
     if (k === 'traj-dia') { E.trajDia = el.value; render(); return; }
     if (k === 'bkp-arquivo' && el.files && el.files[0]) { const arq = el.files[0]; el.value = ''; arq.text().then(importarBackup).catch((e) => { E.bkpImportando = false; toast('Não foi possível importar: ' + e.message, 'erro'); render(); }); return; }
-    if (k === 'hub-arquivo' && el.files && el.files[0]) {
-      el.files[0].text().then((t) => {
-        let o = null; try { o = JSON.parse(t); } catch (e) { o = null; }
-        if (!o || !o.comp || !o.cliente) { toast('Este não é um arquivo hubspot.json do script busca-de-dados/hubspot.mjs.', 'erro'); return; }
-        usarHubArquivo(Object.assign(o, { gerado: o.gerado || new Date().toISOString() }), true);
-        toast('Dados do HubSpot de ' + o.cliente + ' importados.');
-      });
-      return;
-    }
     if (k === 'usu-papel') { usuAlterar(el.dataset.id, el.value, null); return; }
     if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '' }); render(); return; }
     if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '' }); render(); return; }
@@ -11274,8 +10598,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     aplicarRegras(armazem.lerJSON(CHAVE_REGRAS, {}));
     docsDe('suspeitos_trat').filter((d) => d.acao === 'confirmar').forEach((d) => X.CONFIRMADOS.add(d.chave));
     ligarBalao();
-    // Cliente no HubSpot: com o painel no servidor, relê o cliente da tela a cada 10 min (o cartão também relê ao abrir)
-    setInterval(() => { if (contaSrv() && E.cliente && E.rota.tela === 'churn' && document.visibilityState === 'visible') buscarHubCli(E.cliente); }, HUB_ATUALIZA_MS);
     // rede de segurança: ação assíncrona que falhar sem tratamento (imagem, PDF, arquivo) avisa em vez de sumir em silêncio
     window.addEventListener('unhandledrejection', (ev) => {
       const e = ev.reason;

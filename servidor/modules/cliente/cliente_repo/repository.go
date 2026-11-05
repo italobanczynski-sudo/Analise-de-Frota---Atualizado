@@ -21,7 +21,7 @@ type Repository_I interface {
 	Listar(ctx context.Context) ([]ClienteRow_t, error)
 	BuscarPorID(ctx context.Context, id int64) (ClienteRow_t, error)
 	BuscarPorNome(ctx context.Context, nome string) (ClienteRow_t, error)
-	Criar(ctx context.Context, nome, hubspotID string) (int64, error)
+	Criar(ctx context.Context, nome string) (int64, error)
 	SalvarTokenCifrado(ctx context.Context, id int64, cifrado []byte) error
 	TokenCifrado(ctx context.Context, id int64) ([]byte, error)
 }
@@ -58,9 +58,9 @@ func (r *Repository_t) BuscarPorNome(ctx context.Context, nome string) (ClienteR
 	return row, err
 }
 
-func (r *Repository_t) Criar(ctx context.Context, nome, hubspotID string) (int64, error) {
+func (r *Repository_t) Criar(ctx context.Context, nome string) (int64, error) {
 	var id int64
-	err := r.Db.GetContext(ctx, &id, sqlCriar, nome, hubspotID)
+	err := r.Db.GetContext(ctx, &id, sqlCriar, nome)
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 		return 0, ErrRepetido

@@ -8,16 +8,16 @@ import (
 	"analisefrota/common/utils"
 )
 
-// Criar: POST /api/v1/clientes {"nome", "hubspot_id", "token"}
+// Criar: POST /api/v1/clientes {"nome", "token"}
 func Criar(c *gin.Context) {
 	var req CriarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		controller.RetFail(c, "corpo da requisição inválido: envie JSON com nome, hubspot_id e token")
+		controller.RetFail(c, "corpo da requisição inválido: envie JSON com nome e token")
 		return
 	}
 	if err := utils.ValidateStruct(req); err != nil {
-		controller.RetFail(c, "dados inválidos: o nome é obrigatório (até 120 letras) e o ID do HubSpot tem só números")
+		controller.RetFail(c, "dados inválidos: o nome é obrigatório (até 120 letras)")
 		return
 	}
-	controller.Response(c, mwcliente.Cliente_t{Nome: req.Nome, HubspotID: req.HubspotID, Token: req.Token}.Criar(c.Request.Context()))
+	controller.Response(c, mwcliente.Cliente_t{Nome: req.Nome, Token: req.Token}.Criar(c.Request.Context()))
 }

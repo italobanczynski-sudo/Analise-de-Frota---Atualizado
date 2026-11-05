@@ -59,7 +59,6 @@ const DiasPainel = 365
 type DadosCliente_t struct {
 	ID        int64               `json:"id"`
 	Nome      string              `json:"nome"`
-	HubspotID string              `json:"hubspot_id"`
 	Registros []diario.Registro_t `json:"registros"`
 	// Motoristas: o dado de cada motorista só no tempo do vínculo dele com o veículo (a planilha de motoristas do painel)
 	Motoristas []diario.Registro_t     `json:"motoristas"`
@@ -78,7 +77,7 @@ func (m Base_t) Dados(ctx context.Context) *middleware.Response_t {
 	dia, odo, prem := diario.NewDiario(), odometro.NewOdometro(), premiacao.NewPremiacao()
 	out := make([]DadosCliente_t, 0, len(clis))
 	for _, c := range clis {
-		d := DadosCliente_t{ID: c.ID, Nome: c.Nome, HubspotID: c.HubspotID}
+		d := DadosCliente_t{ID: c.ID, Nome: c.Nome}
 		if d.Registros, err = dia.Listar(ctx, c.ID, ini, hoje); err != nil {
 			return middleware.RetErro(err)
 		}

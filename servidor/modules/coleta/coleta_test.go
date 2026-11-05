@@ -85,8 +85,8 @@ func (m *ClientesMock_t) BuscarPorNome(ctx context.Context, nome string) (client
 	a := m.Called(ctx, nome)
 	return a.Get(0).(cliente.Cliente_t), a.Error(1)
 }
-func (m *ClientesMock_t) Criar(ctx context.Context, nome, hubspotID string) (cliente.Cliente_t, error) {
-	a := m.Called(ctx, nome, hubspotID)
+func (m *ClientesMock_t) Criar(ctx context.Context, nome string) (cliente.Cliente_t, error) {
+	a := m.Called(ctx, nome)
 	return a.Get(0).(cliente.Cliente_t), a.Error(1)
 }
 func (m *ClientesMock_t) SalvarToken(ctx context.Context, id int64, token string) error {

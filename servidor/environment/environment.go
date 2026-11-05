@@ -17,7 +17,6 @@ type Config_t struct {
 	Coleta    ColetaConfig_t
 	Rastro    RastroConfig_t
 	Email     EmailConfig_t
-	Hubspot   HubspotConfig_t
 }
 
 // Cfg é carregado uma vez por Load(), no início do main.
@@ -34,7 +33,6 @@ func Load() {
 		"coleta":    &Cfg.Coleta,
 		"rastro":    &Cfg.Rastro,
 		"email":     &Cfg.Email,
-		"hubspot":   &Cfg.Hubspot,
 	} {
 		if err := envconfig.Process("", alvo); err != nil {
 			log.Fatalf("environment: configuração de %s inválida: %v", nome, err)

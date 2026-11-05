@@ -14,7 +14,7 @@ Painel estático (HTML + JS). A plataforma online (login, base compartilhada, bu
 | `index.html` | O painel (telas, gráficos e regras), publicado no GitHub Pages e no Claude |
 | `bibliotecas/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
 | `documentacao/` | Documentação da API Gobrax usada pelo painel |
-| `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax) e `hubspot.mjs`. Tokens em `busca-de-dados/.env` e lista em `busca-de-dados/clientes.json`, ambos fora do Git |
+| `api/` | Scripts em Node que alimentam o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax). Tokens em `busca-de-dados/.env` e lista em `busca-de-dados/clientes.json`, ambos fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
 | `render.yaml` | Implantação na nuvem no Render (plano grátis: https://analise-de-frota.onrender.com) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |

@@ -1,12 +1,10 @@
 [
   {
     "cliente": "Xtsul Transportes LTDA",
-    "token": "GOBRAX_TOKEN_XTSUL",
-    "hubspot_id": "ID da empresa no HubSpot (opcional; sem ele, busca pelo nome)"
+    "token": "GOBRAX_TOKEN_XTSUL"
   },
   {
     "cliente": "Caju Transportes",
-    "token": "GOBRAX_TOKEN_CAJU",
-    "hubspot_id": "ID da empresa no HubSpot"
+    "token": "GOBRAX_TOKEN_CAJU"
   }
 ]

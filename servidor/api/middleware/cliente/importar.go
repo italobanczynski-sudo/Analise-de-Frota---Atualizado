@@ -13,13 +13,12 @@ import (
 	modcliente "analisefrota/modules/cliente"
 )
 
-// Importar traz os clientes do script antigo: busca-de-dados/clientes.json (nome, variável do token, HubSpot)
+// Importar traz os clientes do script antigo: busca-de-dados/clientes.json (nome e variável do token)
 // e os tokens do busca-de-dados/.env. Cria quem não existe e salva o token cifrado. Nenhum token vai para o log.
 func Importar(ctx context.Context, arqClientes, arqTokens string) ([]string, error) {
 	var lista []struct {
-		Cliente   string `json:"cliente"`
-		Token     string `json:"token"`
-		HubspotID string `json:"hubspot_id"`
+		Cliente string `json:"cliente"`
+		Token   string `json:"token"`
 	}
 	b, err := os.ReadFile(arqClientes)
 	if err != nil {
@@ -36,13 +35,9 @@ func Importar(ctx context.Context, arqClientes, arqTokens string) ([]string, err
 	var feito []string
 	for _, item := range lista {
 		nome := strings.TrimSpace(item.Cliente)
-		hub := item.HubspotID
-		if !regexp.MustCompile(`^[0-9]+$`).MatchString(hub) {
-			hub = "" // exemplo ou vazio no arquivo
-		}
 		c, err := svc.BuscarPorNome(ctx, nome)
 		if errors.Is(err, modcliente.ErrNaoEncontrado) {
-			c, err = svc.Criar(ctx, nome, hub)
+			c, err = svc.Criar(ctx, nome)
 		}
 		if err != nil {
 			feito = append(feito, fmt.Sprintf("%s: erro: %v", nome, err))

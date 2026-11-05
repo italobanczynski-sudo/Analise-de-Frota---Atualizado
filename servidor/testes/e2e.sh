@@ -83,7 +83,6 @@ contem "resposta diz tem_token" '"tem_token":true'
 nao_contem "token nunca volta na resposta" "token.de.teste"
 confere "cliente sem nome" 400 "$(req admin POST /api/v1/clientes '{"nome":""}')"
 confere "cliente repetido" 409 "$(req admin POST /api/v1/clientes '{"nome":"Cliente E2E"}')"
-confere "HubSpot com letras" 400 "$(req admin POST /api/v1/clientes '{"nome":"Outro","hubspot_id":"abc"}')"
 confere "admin cadastra cliente sem token" 201 "$(req admin POST /api/v1/clientes '{"nome":"Sem Token E2E"}')"
 ID_SEM=$(campo id)
 confere "busca de cliente sem token" 400 "$(req admin POST /api/v1/clientes/$ID_SEM/coleta)"

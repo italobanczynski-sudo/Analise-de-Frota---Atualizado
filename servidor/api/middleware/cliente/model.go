@@ -8,10 +8,9 @@ import (
 
 // Cliente_t reúne o que os casos de uso de cliente recebem do controller
 type Cliente_t struct {
-	ID        int64
-	Nome      string
-	HubspotID string
-	Token     string
+	ID    int64
+	Nome  string
+	Token string
 }
 
 // ClienteComColeta é o cliente com a situação da última busca (resposta da lista)

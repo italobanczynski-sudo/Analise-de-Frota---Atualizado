@@ -3856,7 +3856,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const series = {}; inds.forEach(([k]) => { series[k] = X.serieDiaria(linhas, IND_MAP[k], E.A, E.base); });
     const dias = (series[inds[0][0]] || []).map((p) => p.data);
     const temKm = vis.some(([k]) => k === 'km'), outros = vis.filter(([k]) => k !== 'km');
-    const W = Math.max(560, larguraGrafico(1, 900)), H = 300, m = { l: 44, r: temKm ? 74 : 18, t: 14, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, dias.length - 1);
+    const W = Math.max(560, larguraGrafico(1, 900)), H = 220, m = { l: 44, r: temKm ? 74 : 18, t: 24, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, dias.length - 1);
     const x = (i) => dias.length === 1 ? m.l + iw / 2 : m.l + (i / n) * iw;
     // escalas: esquerda (nota e %) e direita (km)
     const vEsq = outros.flatMap(([k]) => series[k].map((p) => p.valor)).filter(tem);
@@ -3866,7 +3866,10 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const hiK = (() => { const mx = Math.max(1, ...vKm); const p = Math.pow(10, Math.floor(Math.log10(mx))); return Math.ceil(mx / p) * p; })();
     const yE = (v) => m.t + ih - (v / hiE) * ih, yK = (v) => m.t + ih - (v / hiK) * ih;
     const gid = 'evo' + (++idGrafQuem), corArea = vis.length ? vis[0][1] : '#FCB709';
-    let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${corArea}" stop-opacity=".40"/><stop offset="1" stop-color="${corArea}" stop-opacity=".02"/></linearGradient></defs>`;
+    let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${corArea}" stop-opacity=".18"/><stop offset="1" stop-color="${corArea}" stop-opacity=".01"/></linearGradient></defs>`;
+    // nome de cada eixo em cima, para não confundir as escalas
+    if (outros.length) g += `<text x="2" y="12" text-anchor="start" font-size="10" font-weight="600" style="fill:var(--texto-2)">${outros.some(([k]) => k === 'nota') ? 'Nota / %' : '%'}</text>`;
+    if (temKm) g += `<text x="${W - m.r + 8}" y="12" text-anchor="start" font-size="10" font-weight="600" fill="#1A73E8">Km rodados</text>`;
     const nT = 4;
     for (let t = 0; t <= nT; t++) {
       const yy = m.t + ih - (t / nT) * ih;
@@ -3889,17 +3892,16 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       g += `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${m.t}" width="${bw.toFixed(1)}" height="${ih}" fill="transparent"><title>${D.br(d)} ${D.semana(d)}\n${esc(txt)}</title></rect>`;
     });
     const passo = Math.max(1, Math.ceil(dias.length / Math.max(2, Math.floor(iw / 64))));
-    dias.forEach((d, i) => { if (i % passo === 0 || i === dias.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === dias.length - 1 && dias.length > 1 ? 'end' : i === 0 && dias.length > 1 ? 'start' : 'middle'}" font-size="10" style="fill:var(--texto-2)">${D.curta(d)}</text>`; });
+    dias.forEach((d, i) => { if ((i % passo === 0 && dias.length - 1 - i >= passo * 0.75) || i === dias.length - 1) g += `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === dias.length - 1 && dias.length > 1 ? 'end' : i === 0 && dias.length > 1 ? 'start' : 'middle'}" font-size="10" style="fill:var(--texto-2)">${D.curta(d)}</text>`; });
     // indicadores: valor do período, variação e liga/desliga a curva
     const leg = inds.map(([k, cor]) => {
       const on = !esc0.includes(k), ind = IND_MAP[k], v = ra[k], ant = rb[k];
-      return `<button type="button" data-acao="evo-dia" data-k="${k}" aria-pressed="${on}" title="${on ? 'Esconder' : 'Mostrar'} no gráfico" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:12px;border:1px solid var(--hairline);min-width:150px;${on ? '' : 'opacity:.45'}">
-        <span style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px"><span style="width:14px;height:3px;border-radius:2px;background:${cor};flex:none"></span>${esc(ind.label)}</span>
-        <span class="num" style="font-size:18px;font-weight:700">${fmtInd(ind, v)}</span>${tem(v) && tem(ant) ? variacao(X.variacao(ind, v, ant), 'vs comparação') : ''}</button>`;
+      return `<button type="button" data-acao="evo-dia" data-k="${k}" aria-pressed="${on}" title="${on ? 'Esconder' : 'Mostrar'} no gráfico" style="all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 10px;border-radius:999px;border:1px solid ${on ? cor : 'var(--hairline)'};font-size:13px;${on ? '' : 'opacity:.45;text-decoration:line-through'}">
+        <span style="width:16px;height:4px;border-radius:2px;background:${cor};flex:none"></span><span style="font-weight:600">${esc(ind.label)}${k === 'km' && outros.length ? ' <span style="font-weight:400;color:var(--texto-2)">(eixo direito)</span>' : ''}</span>
+        <span class="num" style="font-weight:700">${fmtInd(ind, v)}</span>${tem(v) && tem(ant) ? variacao(X.variacao(ind, v, ant), '') : ''}</button>`;
     }).join('');
-    const eixos = [outros.length ? 'nota e % no eixo da esquerda' : '', temKm ? 'km rodado no eixo da direita' : ''].filter(Boolean).join('; ');
-    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução da frota dia a dia</h2><span class="h2-sub">${esc(D.periodoCurto(E.A))}, comparado a ${esc(D.periodoCurto(E.B))}.${eixos ? ' ' + esc(eixos[0].toUpperCase() + eixos.slice(1)) + '.' : ''} Clique num indicador para esconder ou mostrar; passe o mouse no gráfico para ver o dia.</span></div></div>
-      <div class="card-corpo" style="gap:14px"><div style="display:flex;gap:8px;flex-wrap:wrap">${leg}</div>${vis.length ? `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Indicadores da frota dia a dia" style="display:block">${g}</svg>` : '<span class="apoio">Escolha ao menos um indicador.</span>'}</div></section>`;
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução da frota dia a dia</h2><span class="h2-sub">${esc(D.periodoCurto(E.A))} · valor do período e variação contra ${esc(D.periodoCurto(E.B))}. Clique num indicador para esconder ou mostrar a linha; passe o mouse no gráfico para ver cada dia.</span></div></div>
+      <div class="card-corpo" style="gap:12px"><div style="display:flex;gap:8px;flex-wrap:wrap">${leg}</div>${vis.length ? `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Indicadores da frota dia a dia" style="display:block">${g}</svg>` : '<span class="apoio">Escolha ao menos um indicador.</span>'}</div></section>`;
   }
 
   // Cartão "Dia a dia": gráfico de linha com o período de comparação sobreposto, ou tabela
@@ -6899,12 +6901,12 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
     if (!todos.length) return '';
-    const W = compacto ? 380 : larguraGrafico(1, 520), H = compacto ? 170 : 230, m = compacto ? { l: 6, r: 6, t: 22, b: 24 } : { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const W = compacto ? 300 : larguraGrafico(1, 520), H = compacto ? 120 : 230, m = compacto ? { l: 4, r: 4, t: 20, b: 20 } : { l: 12, r: 112, t: 28, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
     const mn = Math.min(...todos), mx = Math.max(...todos);
     const lo = Math.min(0, mn), hi = mx > 0 ? mx * 1.12 : 1;   // barra sempre a partir do zero (cortar a base exagera a diferença); o valor e a cor mostram a mudança
     const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih, bw = iw / S.ws.length, larg = Math.min(64, bw * 0.62);
     // muitas fatias (dia a dia num mês): valores só onde cabem e rótulos espaçados
-    const cabeValor = bw >= (compacto ? 40 : 46), passoRot = Math.max(1, Math.ceil((compacto ? 44 : 64) / bw)), fs = compacto ? 11 : 12;
+    const cabeValor = bw >= (compacto ? 40 : 46), passoRot = Math.max(1, Math.ceil((compacto ? 44 : 64) / bw)), fs = compacto ? (bw < 64 ? 10 : 11) : 12;
     let g = '';
     S.ws.forEach((w, i) => {
       const cx = m.l + i * bw + bw / 2, v = vals[i], inc = mesSemIncompleta(w);
@@ -6944,7 +6946,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // situação; quem rodou é a curva amarela com área preenchida. Passe o mouse numa fatia para ver os números.
   function graficoQuem(S, Q) {
     const ords = ['evoluiu', 'estavel', 'regrediu', 'sembase'], mx = Math.max(1, ...Q.sem.map((c) => c.n));
-    const W = 520, H = 200, m = { l: 30, r: 14, t: 12, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, S.ws.length - 1);
+    const W = 520, H = 140, m = { l: 30, r: 14, t: 10, b: 22 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = Math.max(1, S.ws.length - 1);
     const x = (i) => S.ws.length === 1 ? m.l + iw / 2 : m.l + (i / n) * iw, y = (v) => m.t + ih - (v / mx) * ih;
     const passoRot = Math.max(1, Math.ceil(S.ws.length / Math.max(2, Math.floor(iw / 48))));
     const gid = 'gq' + (++idGrafQuem);
@@ -6958,7 +6960,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     trechos((c) => c.n).forEach((tr) => { const d = curvaSuave(tr); g += `<path d="${d}L${tr[tr.length - 1][0].toFixed(1)},${y(0).toFixed(1)}L${tr[0][0].toFixed(1)},${y(0).toFixed(1)}Z" fill="url(#${gid})"/>`; });
     ords.slice().reverse().forEach((st) => {
       const cor = st === 'sembase' ? '#B0B4BA' : STATUS[st].cor;
-      trechos((c) => c[st] || 0).forEach((tr) => { g += `<path d="${curvaSuave(tr)}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; });
+      trechos((c) => c[st] || 0).forEach((tr) => { g += `<path d="${curvaSuave(tr)}" fill="none" stroke="${cor}" stroke-width="2"${st === 'sembase' ? ' stroke-dasharray="5 4"' : ''} stroke-linejoin="round" stroke-linecap="round"/>`; });
       if (ultimo >= 0) g += `<circle cx="${x(ultimo).toFixed(1)}" cy="${y(Q.sem[ultimo][st] || 0).toFixed(1)}" r="3.5" fill="${cor}"/>`;
     });
     trechos((c) => c.n).forEach((tr) => { g += `<path d="${curvaSuave(tr)}" fill="none" stroke="#FCB709" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; });
@@ -7001,11 +7003,29 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         ${verTab ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th></th>${S.ws.map((w) => `<th class="dir">${esc(rotCurto(w, S.g))}</th>`).join('')}</tr></thead><tbody>
           <tr><td>Rodaram</td>${Q.sem.map((c) => `<td class="dir num"><b>${c.n}</b></td>`).join('')}</tr>
           ${linhas.map(([st, r]) => `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${STATUS[st].cor};margin-right:6px"></span>${r}</td>${Q.sem.map((c) => `<td class="dir num">${c.n ? c[st] : '—'}</td>`).join('')}</tr>`).join('')}
-        </tbody></table></div>` : `${graficoQuem(S, Q)}<div style="display:flex;gap:14px;flex-wrap:wrap">${linhas.map(([st, r]) => `<span class="apoio" style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:${st === 'sembase' ? '#B0B4BA' : STATUS[st].cor}"></span>${r}</span>`).join('')}<span class="apoio" style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:#FCB709"></span>Rodaram</span></div>`}
+        </tbody></table></div>` : `<div style="display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center;font-size:12px">${rotUlt ? `<span class="apoio" style="font-size:12px">${esc(rotUlt)}:</span>` : ''}${[['n', 'Rodaram', '#FCB709']].concat(linhas.map(([st, r]) => [st, r, st === 'sembase' ? '#B0B4BA' : STATUS[st].cor])).map(([st, r, cor]) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;flex:none;${st === 'sembase' ? `border-top:2px dashed ${cor}` : `height:4px;border-radius:2px;background:${cor}`}"></span>${r} <b class="num">${ult[st] || 0}</b></span>`).join('')}</div>${graficoQuem(S, Q)}`}
         ${ord.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><div><span class="apoio">Melhores em ${esc(rotUlt)} · ${esc(ind.label)}</span>${lista(top)}</div>
           <div><span class="apoio">Precisam de atenção em ${esc(rotUlt)}</span>${lista(baixo)}</div></div>` : ''}
       </div>`;
     };
+    // ranking único: motoristas com a melhor Nota Gobrax no período, com o km rodado (substitui os gráficos de quem evoluiu)
+    const rankingNota = (() => {
+      const lista = (E.base.motoristas || []).map((m) => {
+        const a = X.resumo(X.filtrar(m.linhas, S.pMes), E.base);
+        let nota = temInd('nota') && a.nota > 0 ? a.nota : null;
+        if (nota === null) { const p = notaPremiacao(m.nome); nota = p ? p.nota : null; }
+        return { m, nota, km: a.km };
+      }).filter((x) => Number.isFinite(x.nota) && x.km > 0).sort((p, q) => q.nota - p.nota || q.km - p.km);
+      if (!lista.length) return '';
+      const cab = '<thead><tr><th style="width:44px">#</th><th>Motorista</th><th class="dir">Nota Gobrax</th><th class="dir">Km rodados</th></tr></thead>';
+      const lin = (x, i) => `<tr><td class="num" style="color:var(--texto-2);font-weight:600">${i + 1}º</td><td><a class="btn-link" href="${linkMotorista(x.m.id)}">${esc(x.m.nome)}</a></td><td class="dir">${badgeNota(x.nota)}</td><td class="dir num">${fmtInd(IND_MAP.km, x.km)}</td></tr>`;
+      const top = lista.slice(0, 10), resto = lista.slice(10);
+      return `<div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="hb-bloco-t">Ranking de motoristas · melhor Nota Gobrax</span><span class="apoio" style="font-size:12px">${esc(D.periodoCurto(S.pMes))} · ${lista.length} motorista${lista.length === 1 ? '' : 's'} com nota</span></div>
+        <div class="grade-2">${[top.slice(0, 5), top.slice(5)].filter((p) => p.length).map((p, j) => `<div class="tabela-wrap"><table class="tabela">${cab}<tbody>${p.map((x, i) => lin(x, i + j * 5)).join('')}</tbody></table></div>`).join('')}</div>
+        ${resto.length ? `<details><summary class="btn-link" style="cursor:pointer;display:inline-block;margin:4px 0">Ver os outros ${resto.length}</summary><div class="tabela-wrap"><table class="tabela">${cab}<tbody>${resto.map((x, i) => lin(x, i + 10)).join('')}</tbody></table></div></details>` : ''}
+      </div>`;
+    })();
     const inc = S.ws.some(mesSemIncompleta);
     const verTab = false;   // só gráficos (a tabela saiu a pedido)
     const pilVer = `<div class="seg peq" role="group" aria-label="Mostrar como">${[['graficos', 'Gráficos'], ['tabela', 'Tabela']].map(([k, r]) => `<button type="button" class="${(verTab ? 'tabela' : 'graficos') === k ? 'ativo' : ''}" data-acao="sem-ver" data-v="${k}" aria-pressed="${(verTab ? 'tabela' : 'graficos') === k}">${r}</button>`).join('')}</div>`;
@@ -7014,9 +7034,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (!gr) return '';
       return `<div style="border:1px solid var(--hairline);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><b style="font-weight:600">${esc(ind.label)}</b><span class="num" style="white-space:nowrap"><b>${fmtInd(ind, v)}</b> ${v === null || v === undefined || ant === null || ant === undefined ? '' : variacao(X.variacao(ind, v, ant), 'vs comparação')}</span></div>
-        ${gr}<span class="apoio" style="font-size:12px">Comparação (${esc(D.periodoCurto(S.pAnt))}): ${fmtInd(ind, ant)}${ind.tipo === 'soma' ? '' : ' · linha tracejada'}</span></div>`;
+        ${gr}${ant === null || ant === undefined ? '' : `<span class="apoio" style="font-size:12px">Comparação: ${fmtInd(ind, ant)}${ind.tipo === 'soma' ? '' : ' (tracejado)'}</span>`}</div>`;
     };
-    const grade = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">${chaves.map(mini).join('')}</div>`;
+    // uma legenda só para todas as barras
+    const fem = nomeG === 'semana' || nomeG === 'quinzena';
+    const amostra = (estilo, txt) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;flex:none;${estilo}"></span>${txt}</span>`;
+    const legBarras = `<div class="apoio" style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">${amostra('background:#1E8E3E', 'Melhorou vs ' + nomeG + ' anterior')}${amostra('background:#D93025', 'Piorou')}${amostra('background:var(--dado)', 'Estável ou sem comparação')}${inc ? amostra('background:#D93025;opacity:.55', 'Cor clara = ' + nomeG + ' incomplet' + (fem ? 'a' : 'o') + ' (*)') : ''}${amostra('border-top:2px dashed var(--texto-2);height:0;border-radius:0', 'Média do período de comparação')}</div>`;
+    const grade = `${legBarras}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">${chaves.map(mini).join('')}</div>`;
     const x = S.chave ? X.variacao(IND_MAP[S.chave], S.frMes[S.chave], S.frAnt[S.chave]) : null;
     const opG = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['kml', 'Média de consumo']].filter(([k]) => temInd(k) && S.fr.some((f) => Number.isFinite(f[k])));
     const kG = opG.some(([k]) => k === E.semGrafInd) ? E.semGrafInd : (opG[0] || [])[0];
@@ -7026,12 +7050,12 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const pm = temInd('nota') ? null : notaFrotaPremiacao(S.pMes), pmA = pm ? notaFrotaPremiacao(S.pAnt) : null;
     const notaMes = pm ? `<span class="apoio" style="white-space:nowrap">Nota Gobrax (Premiação): <b>${fmt(pm.nota, 1)}</b> ${pmA ? variacao(X.variacao(IND_MAP.nota, pm.nota, pmA.nota), 'vs comparação') : ''}</span>` : '';
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Evolução ${esc(G[2])} <a class="btn-link peq" href="#/estudo" style="margin-left:8px;font-weight:500">Estudo de todo o projeto →</a></h2>
-        <span class="h2-sub">${esc(D.periodoBR(S.pMes))}: cada ${esc(nomeG)} comparad${nomeG === 'semana' || nomeG === 'quinzena' ? 'a' : 'o'} ${nomeG === 'semana' || nomeG === 'quinzena' ? 'à' : 'ao'} anterior e o período todo comparado a ${esc(D.periodoBR(S.pAnt))}. Barra verde melhorou, vermelha piorou. Mude o período na barra de datas.</span></div>
+        <span class="h2-sub">${esc(D.periodoBR(S.pMes))}: cada ${esc(nomeG)} comparad${nomeG === 'semana' || nomeG === 'quinzena' ? 'a' : 'o'} ${nomeG === 'semana' || nomeG === 'quinzena' ? 'à' : 'ao'} anterior e o período todo comparado a ${esc(D.periodoBR(S.pAnt))}. Mude o período na barra de datas.</span></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${pilGran}${notaMes}${x && !x.semBase ? `<span class="apoio" style="white-space:nowrap">${esc(IND_MAP[S.chave].label)} no período: <b>${fmtInd(IND_MAP[S.chave], S.frMes[S.chave])}</b> ${variacao(x, 'vs comparação')}</span>` : ''}</div></div>
       <div class="card-corpo" style="gap:16px">
         ${verTab && kG ? `<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="hb-bloco-t">${esc(IND_MAP[kG].label)} da frota ${esc(G[2])}</span>${pilG}</div>${graficoMesSemanal(S, kG)}${inc ? `<span class="apoio" style="font-size:12px">* ${esc(nomeG)} incomplet${nomeG === 'semana' || nomeG === 'quinzena' ? 'a' : 'o'} (cortad${nomeG === 'semana' || nomeG === 'quinzena' ? 'a' : 'o'} pelo período escolhido ou ainda em andamento)</span>` : ''}</div>` : ''}
         ${verTab ? tabela : grade + (inc ? `<span class="apoio" style="font-size:12px">* ${esc(nomeG)} incomplet${nomeG === 'semana' || nomeG === 'quinzena' ? 'a' : 'o'} no período escolhido.</span>` : '')}
-        <div class="grade-2">${blocoQuem(S.mots, 'Motoristas')}${blocoQuem(S.veics, 'Veículos')}</div>
+        ${rankingNota}
       </div></section>`;
   }
 

@@ -51,6 +51,18 @@ services:
       - certbot-certs:/etc/letsencrypt:ro
     depends_on:
       - app
+    # relê o certificado a cada 6 h (pega o renovado pelo certbot-renovar sem derrubar o site)
+    command: ["/bin/sh", "-c", "while :; do sleep 6h; nginx -s reload; done & exec nginx -g 'daemon off;'"]
+    restart: unless-stopped
+    profiles: ["producao"]
+
+  # renova o certificado HTTPS sozinho: tenta a cada 12 h, e o Let's Encrypt só troca quando faltam menos de 30 dias
+  certbot-renovar:
+    image: certbot/certbot:v2.11.0
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    entrypoint: ["/bin/sh", "-c", "while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done"]
     restart: unless-stopped
     profiles: ["producao"]
 

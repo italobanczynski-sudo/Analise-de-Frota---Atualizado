@@ -1,6 +1,6 @@
 # Análise de Frota (Gobrax)
 
-Painel estático (HTML + JS), hospedado no **GitHub Pages**: https://italobanczynski-sudo.github.io/Analise-de-Frota---Atualizado/ . O mesmo `index.html` roda em dois lugares:
+Painel estático (HTML + JS) com endereço no **GitHub Pages**: https://italobanczynski-sudo.github.io/Analise-de-Frota---Atualizado/ . A parte online (login, base compartilhada, busca automática e rastro da frota) fica no servidor da Gobrax, em https://analisefrota.gobrax.com.br: quando ele está no ar, o endereço do GitHub leva direto para lá (`?local=1` fica no GitHub). Implantação em [servidor/README.md](servidor/README.md#implantação). O mesmo `index.html` roda em:
 
 | Onde | Dados (clientes e planilhas) |
 |---|---|
@@ -39,7 +39,7 @@ No perfil do cliente, card "Buscar dados pela API Gobrax" (base `https://gateway
 ## Plataforma com login (servidor em Go)
 A pasta [servidor/](servidor/README.md) tem a plataforma em Go (padrão Gobrax). Ela busca sozinha os dados da API Gobrax a cada hora, guarda tudo no Postgres (tokens cifrados) e entrega pela API HTTP e por telas com login, perfis (administrador, colaborador e leitor) e gestão de usuários. Substitui o `busca-de-dados/puxar.mjs`. O painel `index.html` ainda lê os dados pelo Artifact até a fase 2.
 
-Ela não roda no GitHub (o Pages só hospeda páginas estáticas); fica para uso no Docker deste computador ou num servidor próprio. Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
+Ela não roda no GitHub (o Pages só hospeda páginas estáticas): fica no servidor da Gobrax. Começo rápido (precisa só do Docker): `cd servidor`, copie `.env.example` para `.env`, rode `docker compose up -d --build` e abra http://localhost:8080. Instalação, variáveis, perfis, API, testes, implantação e backup estão no [README do servidor](servidor/README.md).
 
 ## Publicar no GitHub Pages
 1. Envie estes arquivos na raiz do repositório.

@@ -19,7 +19,11 @@ import (
 
 // GetRoutes registra todas as rotas do servidor
 func GetRoutes(r *gin.Engine) {
-	r.GET("/saude", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+	// público e sem credencial: o painel no GitHub Pages confere aqui se a plataforma está no ar antes de levar a pessoa para ela
+	r.GET("/saude", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 
 	// telas
 	r.GET("/", web.Pagina("entrar.html"))

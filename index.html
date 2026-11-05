@@ -8986,6 +8986,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
 
   // ---------- API Gobrax: estatísticas por veículo (dia a dia), odômetro e premiação ----------
   // O token de cada cliente fica só no navegador de quem o digitou: nunca vai para a base compartilhada nem para o código.
+  const PLATAFORMA = 'https://analisefrota.gobrax.com.br';   // plataforma online (servidor da Gobrax)
   const API_BASE = 'https://gateway-v3.gobrax.com.br:8889/api/';
   const CHAVE_API_LOCAL = 'gbx-frota-api';
   const chaveToken = (cli) => 'gbx-api-token:' + slugCli(cli);
@@ -11184,6 +11185,11 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (e && e.name === 'AbortError') return;   // a pessoa cancelou o compartilhamento
       toast('Não foi possível concluir: ' + ((e && e.message) || 'erro inesperado') + '.', 'erro');
     });
+    // GitHub Pages: com a plataforma online da Gobrax no ar (login, base compartilhada, busca automática e rastro),
+    // o endereço do GitHub leva direto para ela. Fora do ar, o painel segue aqui no navegador. ?local=1 fica no GitHub.
+    if (/\.github\.io$/.test(location.hostname) && !/[?&]local=1/.test(location.search)) {
+      fetch(PLATAFORMA + '/saude', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j && j.ok === true) location.replace(PLATAFORMA + '/painel' + location.hash); }).catch(() => {});
+    }
     // limpeza única dos dados antigos deste navegador (planilhas, clientes, tratativas, resultados da API); os tokens da API ficam
     if (!armazem.ler('gbx-reset-2026-10-21')) {
       [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo', CHAVE_TRAT, CHAVE_API_LOCAL, 'gbx-reset-2026-10-20'].forEach((k) => armazem.apagar(k));

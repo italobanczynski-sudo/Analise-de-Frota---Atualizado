@@ -164,16 +164,32 @@ O ponta a ponta sobe um projeto Docker separado (`analisefrota-e2e`, porta 18080
 
 ## Implantação
 
-### Servidor próprio (Docker + nginx + HTTPS)
-Pré-requisitos: DNS de `analisefrota.gobrax.com.br` apontando para a máquina, portas 80 e 443 abertas, `.env` preenchido com `URL_PUBLICA=https://analisefrota.gobrax.com.br`.
+### Servidor da Gobrax (Docker + nginx + HTTPS): onde a plataforma fica online
+O painel continua com endereço no GitHub Pages: quando `https://analisefrota.gobrax.com.br/saude` responde, o GitHub Pages leva a pessoa direto para a plataforma (`/painel`). Com `?local=1` no endereço, fica no GitHub.
+
+**O que a TI precisa providenciar (uma vez):**
+1. Uma máquina Linux sempre ligada (2 vCPU, 2 GB de RAM e 20 GB de disco bastam), na rede da empresa ou na nuvem que a Gobrax já usa, com Docker, Docker Compose, Git e PowerShell (`pwsh`).
+2. DNS: registro A de `analisefrota.gobrax.com.br` para o IP público da máquina.
+3. Firewall: portas 80 e 443 abertas para a internet. A porta 8080 fica só na própria máquina.
+4. Um e-mail com senha de app para os códigos de acesso (SMTP).
+
+**Colocar no ar:**
+1. `git clone https://github.com/italobanczynski-sudo/Analise-de-Frota---Atualizado.git` e `cd Analise-de-Frota---Atualizado/servidor`.
+2. Copie `.env.example` para `.env` e preencha. Use a **mesma `CHAVE_TOKENS`** do Render (painel do Render → serviço → Environment), senão os tokens dos clientes trazidos de lá não abrem. Os segredos ficam só nesse arquivo, nunca em chat, e-mail ou commit.
+3. Rode `pwsh ./implantacao/setup-producao.ps1` (sobe banco, app e nginx, gera o certificado e liga o HTTPS).
+4. Traga os dados do Render: cole a "External Database URL" do banco `analise-de-frota-db` (Render → Connect) no arquivo `servidor/.banco-render` e rode `bash implantacao/trazer-dados-render.sh`. Ele guarda antes uma cópia do banco atual (`backup-antes-render.dump`). Depois, apague o `.banco-render`.
+5. Atualização automática: agende `implantacao/atualizar.sh` a cada 5 min (`crontab -e`, a linha está no próprio script). Cada envio para a `main` no GitHub chega à plataforma em até 5 min.
+6. Confira `https://analisefrota.gobrax.com.br`, entre e só então apague o serviço e o banco no painel do Render.
+
+O certificado HTTPS se renova sozinho (`certbot-renovar` tenta a cada 12 h e o nginx relê a cada 6 h).
+
+Pré-requisitos do script: DNS de `analisefrota.gobrax.com.br` apontando para a máquina, portas 80 e 443 abertas, `.env` preenchido com `URL_PUBLICA=https://analisefrota.gobrax.com.br`.
 
 ```powershell
 ./implantacao/setup-producao.ps1
 ```
 
-O script sobe tudo com o nginx em HTTP (`NGINX_SITE=http-somente`), gera o certificado com o Certbot, troca o nginx para HTTPS (`analisefrota.conf`, o padrão) e confere `/saude`. Depois disso, para atualizar: `docker compose --profile producao up -d --build`.
-
-Renovar o certificado (a cada ~60 dias; agende): `docker compose --profile certbot run --rm certbot renew` e depois `docker compose --profile producao restart nginx`.
+O script sobe tudo com o nginx em HTTP (`NGINX_SITE=http-somente`), gera o certificado com o Certbot, troca o nginx para HTTPS (`analisefrota.conf`, o padrão) e confere `/saude`. Depois disso, para atualizar à mão: `docker compose --profile producao up -d --build` (ou deixe o `atualizar.sh` agendado).
 
 ## Backup e recuperação
 

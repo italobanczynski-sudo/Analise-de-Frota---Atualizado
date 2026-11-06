@@ -85,6 +85,15 @@ func Telefone(c *gin.Context) {
 	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, UsuarioID: controller.UsuarioLogado(c).ID, Motorista: req.Motorista}.SalvarTelefone(c.Request.Context(), req.Telefone))
 }
 
+// Condutores: GET /api/v1/clientes/:id/condutores (motoristas com o telefone de cada um)
+func Condutores(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id}.Condutores(c.Request.Context()))
+}
+
 // Acompanhamento: GET /api/v1/clientes/:id/mensagens/acompanhamento?motorista=Nome
 func Acompanhamento(c *gin.Context) {
 	id, ok := controller.IDParam(c)

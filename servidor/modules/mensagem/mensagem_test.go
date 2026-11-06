@@ -45,6 +45,10 @@ func (m *TelefonesMock_t) Salvar(ctx context.Context, row mensagem_repo.Telefone
 func (m *TelefonesMock_t) Apagar(ctx context.Context, clienteID int64, chave string) error {
 	return m.Called(ctx, clienteID, chave).Error(0)
 }
+func (m *TelefonesMock_t) Linhas(ctx context.Context, clienteID int64) ([]mensagem_repo.TelefoneRow_t, error) {
+	a := m.Called(ctx, clienteID)
+	return a.Get(0).([]mensagem_repo.TelefoneRow_t), a.Error(1)
+}
 func (m *TelefonesMock_t) Listar(ctx context.Context, clienteID int64) (map[string]string, error) {
 	a := m.Called(ctx, clienteID)
 	return a.Get(0).(map[string]string), a.Error(1)
@@ -293,6 +297,24 @@ func (s *MensagemSuite) TestListarMostraQuemJaFoiEnviado() {
 	s.Nil(m[1].Enviada)
 	s.Equal("5511900000000", m[0].Telefone, "traz o telefone cadastrado para abrir a conversa")
 	s.Empty(m[1].Telefone)
+}
+
+func (s *MensagemSuite) TestCondutoresJuntaQuemRodouEQuemTemTelefone() {
+	beto := reg("Beto  Souza", "2026-10-20", 70, 5)
+	beto.Rodou = false // ficou parado: não conta
+	s.diario.On("Listar", s.ctx, int64(1), "2026-07-29", "2026-10-27").Return([]diario.Registro_t{
+		reg("Ana Lima", "2026-10-25", 70, 5), reg("ANA  LIMA", "2026-10-26", 70, 5), reg("ANA LIMA", "2026-10-26", 70, 5), beto,
+		reg("CARLOS", "2026-10-01", 70, 5)}, nil)
+	s.tel.On("Linhas", s.ctx, int64(1)).Return([]mensagem_repo.TelefoneRow_t{
+		{Chave: "CARLOS", Motorista: "Carlos", Telefone: "5511900000002"}, {Chave: "DIRCEU", Motorista: "Dirceu", Telefone: "5511900000003"}}, nil)
+
+	c, err := s.svc.Condutores(s.ctx, 1)
+
+	s.Require().NoError(err)
+	s.Require().Len(c, 3)
+	s.Equal(mensagem.Condutor_t{Motorista: "ANA LIMA", UltimoDia: "2026-10-26", Dias: 2}, c[0], "um por nome; o nome do dia mais recente; dias sem repetir")
+	s.Equal(mensagem.Condutor_t{Motorista: "CARLOS", Telefone: "5511900000002", UltimoDia: "2026-10-01", Dias: 1}, c[1])
+	s.Equal(mensagem.Condutor_t{Motorista: "Dirceu", Telefone: "5511900000003"}, c[2], "tem telefone mas não rodou nos 90 dias")
 }
 
 func TestNormalizarTelefone(t *testing.T) {

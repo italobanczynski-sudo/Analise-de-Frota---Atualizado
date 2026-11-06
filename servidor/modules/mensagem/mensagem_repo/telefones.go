@@ -24,6 +24,8 @@ type Telefones_I interface {
 	Apagar(ctx context.Context, clienteID int64, chave string) error
 	// Listar devolve os telefones do cliente por chave do motorista
 	Listar(ctx context.Context, clienteID int64) (map[string]string, error)
+	// Linhas: os telefones do cliente com o nome do motorista como foi cadastrado
+	Linhas(ctx context.Context, clienteID int64) ([]TelefoneRow_t, error)
 }
 
 type Telefones_t struct {
@@ -49,9 +51,15 @@ func (r *Telefones_t) Apagar(ctx context.Context, clienteID int64, chave string)
 	return err
 }
 
-func (r *Telefones_t) Listar(ctx context.Context, clienteID int64) (map[string]string, error) {
+func (r *Telefones_t) Linhas(ctx context.Context, clienteID int64) ([]TelefoneRow_t, error) {
 	rows := []TelefoneRow_t{}
-	if err := r.Db.SelectContext(ctx, &rows, `SELECT cliente_id, chave, motorista, telefone, atualizado_por FROM telefones_motoristas WHERE cliente_id = $1`, clienteID); err != nil {
+	err := r.Db.SelectContext(ctx, &rows, `SELECT cliente_id, chave, motorista, telefone, atualizado_por FROM telefones_motoristas WHERE cliente_id = $1`, clienteID)
+	return rows, err
+}
+
+func (r *Telefones_t) Listar(ctx context.Context, clienteID int64) (map[string]string, error) {
+	rows, err := r.Linhas(ctx, clienteID)
+	if err != nil {
 		return nil, err
 	}
 	out := make(map[string]string, len(rows))

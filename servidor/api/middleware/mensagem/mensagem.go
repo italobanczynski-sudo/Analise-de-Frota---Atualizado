@@ -63,6 +63,18 @@ func (m Mensagem_t) Desmarcar(ctx context.Context) *middleware.Response_t {
 	return middleware.RetOkData(map[string]bool{"desmarcada": true})
 }
 
+// Condutores lista os motoristas do cliente com o telefone de cada um (cadastro em Configurações)
+func (m Mensagem_t) Condutores(ctx context.Context) *middleware.Response_t {
+	if _, err := modcliente.NewCliente().Buscar(ctx, m.ClienteID); err != nil {
+		return middleware.RetErro(err)
+	}
+	r, err := modmensagem.NewMensagem().Condutores(ctx, m.ClienteID)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	return middleware.RetOkData(r)
+}
+
 // SalvarTelefone grava o telefone do motorista (vazio apaga)
 func (m Mensagem_t) SalvarTelefone(ctx context.Context, telefone string) *middleware.Response_t {
 	if _, err := modcliente.NewCliente().Buscar(ctx, m.ClienteID); err != nil {

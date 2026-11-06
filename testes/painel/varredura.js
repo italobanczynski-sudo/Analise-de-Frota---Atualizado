@@ -1,7 +1,7 @@
 // Injeta no HTML gerado pelo harness um script que percorre todas as rotas e abas e grava um relatório no DOM
 const fs = require('fs');
 const [arq] = process.argv.slice(2);
-const rotas = ['geral', 'carteira', 'estudo', 'dashboards', 'visao', 'visao?aba=graficos', 'visao?aba=indicadores', 'plano?aba=plano', 'individual/veiculo', 'individual/motorista', 'motoristas', 'motoristas/Teste%20A', 'premiacao', 'mensagens', 'churn', 'plano', 'comparativo', 'api', 'config', 'clientes', 'cliente', 'veiculos', 'individual/motorista/Teste%20B', 'individual/veiculo/AAA1', 'combinados', 'fases', 'resumo', 'jornada'];
+const rotas = ['geral', 'carteira', 'estudo', 'dashboards', 'visao', 'visao?aba=graficos', 'visao?aba=indicadores', 'plano?aba=plano', 'individual/veiculo', 'individual/motorista', 'motoristas', 'motoristas/Teste%20A', 'premiacao', 'mensagens', 'churn', 'plano', 'comparativo', 'api', 'config', 'telefones', 'clientes', 'cliente', 'veiculos', 'individual/motorista/Teste%20B', 'individual/veiculo/AAA1', 'combinados', 'fases', 'resumo', 'jornada'];
 function varredura(rotas) {
   var rel = [], suspeito = /\bNaN\b|\bundefined\b|Infinity|\[object|\bnull\b/g, errosRota = [];
   window.addEventListener('error', function (e) { errosRota.push(e.message + ' @' + e.lineno); });

@@ -29,6 +29,8 @@ type Service_I interface {
 	Enviadas(ctx context.Context, clienteID int64) ([]Enviadas_t, error)
 	// SalvarTelefone grava o telefone do motorista (vazio apaga) e devolve o número como ficou gravado
 	SalvarTelefone(ctx context.Context, clienteID int64, motorista, telefone string, usuarioID int64) (string, error)
+	// Condutores: motoristas dos últimos 90 dias e os que têm telefone, para o cadastro em Configurações
+	Condutores(ctx context.Context, clienteID int64) ([]Condutor_t, error)
 }
 
 // Deps_t são as dependências; os testes trocam cada uma por um mock

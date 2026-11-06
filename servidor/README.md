@@ -142,6 +142,7 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/mensagens/enviadas` | logado | Por motorista: quantas mensagens foram marcadas como enviadas, a nota do mês em cada dia e os indicadores que ele foi orientado a melhorar (aba Motoristas › Mensagens enviadas) |
 | `PUT /api/v1/clientes/:id/mensagens/enviada` `{dia, motorista}` | colaborador, admin | Marca a mensagem como enviada (guarda o retrato da análise) |
 | `DELETE /api/v1/clientes/:id/mensagens/enviada?dia=&motorista=` | colaborador, admin | Desmarca |
+| `GET /api/v1/clientes/:id/condutores` | colaborador, admin | Motoristas que rodaram nos últimos 90 dias e os que têm telefone, com o telefone de cada um (Configurações › Telefones dos condutores) |
 | `PUT /api/v1/clientes/:id/mensagens/telefone` `{motorista, telefone}` | colaborador, admin | Grava o telefone do motorista para a fila de envio (vazio apaga). O leitor recebe a lista de mensagens sem telefone |
 
 A documentação da API Gobrax (externa) está em [../docs/API.md](../docs/API.md).

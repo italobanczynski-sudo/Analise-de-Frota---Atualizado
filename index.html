@@ -1824,21 +1824,27 @@ html:not([data-tema="escuro"]) .exec-val { white-space: nowrap; font-size: clamp
 /* mini gráfico do indicador na própria linha, abaixo do texto (não cobre a variação) */
 html:not([data-tema="escuro"]) .grade-kpi > .kpi .kpi-spark { position: static; order: 10; align-self: flex-end; margin-top: 6px; opacity: .85; }
 
-/* menu lateral: faixa fixa com os nomes, item ativo em pílula branca */
+/* menu lateral: recolhido numa faixa só com os ícones; ao passar o mouse (ou navegar pelo teclado) abre com os nomes por cima do conteúdo */
 @media (min-width: 1100px) {
   html:not([data-tema="escuro"]) .sidebar {
-    width: 228px; align-items: stretch; padding: 14px 12px 16px; left: 0; top: 0; bottom: 0; border: 0; border-radius: 0;
-    background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow-y: auto;
+    width: 68px; align-items: stretch; padding: 14px 10px 16px; left: 0; top: 0; bottom: 0; border: 0; border-radius: 0;
+    background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow-x: hidden; overflow-y: auto;
+    transition: width 180ms var(--ease), background 180ms var(--ease), box-shadow 180ms var(--ease);
   }
-  html:not([data-tema="escuro"]) .nav-marca { justify-content: flex-start; gap: 10px; padding: 6px 10px 14px; pointer-events: none; }
+  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) { width: 228px; background: var(--fundo); box-shadow: 8px 0 28px -12px rgba(16, 18, 22, 0.28); }
+  html:not([data-tema="escuro"]) .nav-marca { justify-content: flex-start; gap: 10px; padding: 6px 10px 14px; pointer-events: none; white-space: nowrap; }
   html:not([data-tema="escuro"]) .nav-marca svg { display: none; }
-  html:not([data-tema="escuro"]) :is(.nav-marca span, .nav-secao, .nav-item .nome) { display: block; }
+  html:not([data-tema="escuro"]) :is(.nav-marca span, .nav-secao) { display: block; visibility: hidden; white-space: nowrap; }
+  html:not([data-tema="escuro"]) .nav-item .nome { display: none; }
+  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) :is(.nav-marca span, .nav-secao) { visibility: visible; }
+  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) .nav-item .nome { display: block; }
   html:not([data-tema="escuro"]) .nav-item { width: auto; height: auto; min-height: 40px; justify-content: flex-start; gap: 12px; padding: 7px 12px; border-radius: 12px; }
-  html:not([data-tema="escuro"]) .nav-item .nome { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
+  html:not([data-tema="escuro"]) .nav-item .nome { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; min-width: 160px; }
   html:not([data-tema="escuro"]) .nav-item .dica { display: none; }
+  html:not([data-tema="escuro"]) .sidebar:not(:hover):not(:focus-within) .nav-item.ativo::after { display: none; }
   html:not([data-tema="escuro"]) .nav-rodape { align-items: stretch; }
   html:not([data-tema="escuro"]) .nav-fundo { display: none; }
-  html:not([data-tema="escuro"]) .conteudo { margin-left: 236px; }
+  html:not([data-tema="escuro"]) .conteudo { margin-left: 76px; }
 }
 html:not([data-tema="escuro"]) .nav-secao { font-size: 10px; color: var(--texto-3); padding: 16px 12px 4px; }
 html:not([data-tema="escuro"]) .nav-item:hover { background: rgba(16, 18, 22, 0.04); }
@@ -2859,14 +2865,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (va !== null) { pa.setAttribute('cx', x(i)); pa.setAttribute('cy', y(va)); pa.setAttribute('visibility', 'visible'); bol.em(x(i), y(va) - 4, rotV(va), W); } else { pa.setAttribute('visibility', 'hidden'); bol.some(); }
       if (vb !== null) { pb.setAttribute('cx', x(i)); pb.setAttribute('cy', y(vb)); pb.setAttribute('visibility', 'visible'); } else pb.setAttribute('visibility', 'hidden');
       let h = `<span class="dica-data">Dia ${i + 1} de ${n}</span>`;
-      // séries nomeadas (mesmo dia nas duas linhas): a dica mostra a data e o nome de cada linha
-      if (cfg.rotA) {
-        h = `<span class="dica-data">${a[i] ? D.curta(a[i].data) + ' ' + D.semana(a[i].data) : ''}</span>`
-          + `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-a"></span>${esc(cfg.rotA)}</span><b>${va === null ? 'sem dado' : esc(rotV(va))}</b></span>`
-          + (b.length ? `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-b"></span>${esc(cfg.rotB || '')}</span><b>${vb === null ? 'sem dado' : esc(rotV(vb))}</b></span>` : '');
-        dica(h, ev.clientX, ev.clientY);
-        return;
-      }
       if (a[i]) h +=`<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-a"></span>${D.curta(a[i].data)} ${D.semana(a[i].data)}</span><b>${va === null ? 'sem dado' : esc(rotV(va))}</b></span>`;
       if (b[i]) h += `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-b"></span>${D.curta(b[i].data)} ${D.semana(b[i].data)}</span><b>${vb === null ? 'sem dado' : esc(rotV(vb))}</b></span>`;
       dica(h, ev.clientX, ev.clientY);
@@ -3508,7 +3506,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
-    { id: 73, data: '2026-11-06', titulo: 'Nota de quem recebeu mensagem × nota da frota', texto: 'Em Motoristas › Mensagens enviadas, novo gráfico com a nota Gobrax por dia de quem recebeu mensagem comparada à nota geral da frota, com a nota de antes do primeiro envio e a de agora para os dois grupos.', href: '#/motoristas', link: 'Abrir Motoristas' },
+    { id: 73, data: '2026-11-06', titulo: 'Nota de quem recebeu mensagem × nota da frota', texto: 'Em Motoristas › Mensagens enviadas, novo gráfico com a nota Gobrax de cada mês (premiação da API) de quem recebeu mensagem comparada à nota geral da frota, com a nota de antes do primeiro envio e a de agora para os dois grupos.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 72, data: '2026-11-06', titulo: 'Robô do WhatsApp no sino', texto: 'Quando o robô das 08:00 termina com mensagem que deu erro ou ficou pendente, o sino mostra quantas foram enviadas, quantas deram erro e quantas ficaram pendentes, com o nome de quem e o motivo. Se o robô não conseguir rodar (WhatsApp desconectado, por exemplo), o sino também avisa.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações › Clientes, abra o cliente e use a aba Condutores: veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/config', link: 'Abrir Configurações' },
     { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
@@ -9502,33 +9500,42 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
     if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
   }
-  // Nota Gobrax por dia: quem recebeu mensagem × frota toda, de 14 dias antes do 1º envio até o último dado (no máximo 60 dias),
-  // com a nota de antes (14 dias antes do 1º envio) e a de agora (últimos 7 dias) para os dois grupos
+  // Nota Gobrax por mês (premiação da API; a API não manda a nota por dia): quem recebeu mensagem × frota toda,
+  // com a nota de antes (mês anterior ao 1º envio) e a de agora (último mês, parcial no mês corrente). Média ponderada pelos km.
   function graficoNotaEnviadas(lista, diasEnvio) {
-    const b = E.base, ind = IND_MAP.nota;
-    if (!b || !ind || !temInd('nota') || !diasEnvio.length) return '';
+    const ind = IND_MAP.nota;
+    if (!ind || !diasEnvio.length || !E.cliente) return '';
+    const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && Array.isArray(d.motoristas)).sort((a, b) => (a.data < b.data ? -1 : 1));
+    if (!docs.length) return `<div style="display:flex;flex-direction:column;gap:6px;padding:0 16px 16px"><span class="hb-bloco-t">Evolução da nota Gobrax: quem recebeu mensagem × nota geral da frota</span>
+        <span class="apoio">Sem a premiação da API para este cliente. No perfil do cliente, busque "Scores e premiação" para ver a nota de cada mês.</span></div>`;
     const nomes = new Set(lista.map((x) => ckey(x.motorista)));
-    const lsRec = b.motoristas.filter((m) => nomes.has(ckey(m.nome))).flatMap((m) => m.linhas);
-    if (!lsRec.length) return '';
-    const prim = diasEnvio[0], fim = b.fim;
-    if (fim < prim) return '';
-    const p = { ini: [D.somar(prim, -14), D.somar(fim, -59), b.inicio].sort().pop(), fim };
-    const antes = { ini: D.somar(prim, -14), fim: D.somar(prim, -1) }, agora = { ini: D.somar(fim, -6), fim };
-    const nota = (ls, per) => { const f = X.filtrar(ls, per); return f.length ? X.agregar(f, ind, b) : null; };
-    const grupos = [['Quem recebeu mensagem', lsRec, 'leg-linha-a'], ['Nota geral da frota (Gobrax)', b.linhas, 'leg-linha-b']].map(([rot, ls, leg]) => ({ rot, leg, antes: nota(ls, antes), agora: nota(ls, agora) }));
-    E.graficos['msg-evo-nota'] = { tipo: 'linha', a: X.serieDiaria(lsRec, ind, p, b), b: X.serieDiaria(b.linhas, ind, p, b), ind, titulo: 'Nota Gobrax por dia: quem recebeu mensagem × frota', rotA: 'Quem recebeu', rotB: 'Frota toda', altura: 220 };
-    const num = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : fmt(v, 1));
-    const tile = (g) => `<div style="display:flex;flex-direction:column;gap:4px;min-width:200px">
-        <span class="apoio" style="display:inline-flex;gap:6px;align-items:center"><span class="${g.leg}"></span>${esc(g.rot)}</span>
-        <span class="num" style="font-size:13px"><span class="mudo">antes ${num(g.antes)} →</span> <b style="font-size:22px">${num(g.agora)}</b> ${g.antes !== null && g.agora !== null ? variacao(X.variacao(ind, g.agora, g.antes)) : ''}</span></div>`;
-    const [gR, gF] = grupos;
-    const dif = Number.isFinite(gR.agora) && Number.isFinite(gF.agora) ? gR.agora - gF.agora : null;
-    const leitura = dif === null ? '' : `<span class="apoio">Hoje quem recebeu mensagem está <b>${fmt(Math.abs(dif), 1)} pts ${dif >= 0 ? 'acima' : 'abaixo'}</b> da nota geral da frota.</span>`;
+    const media = (ms) => { let s = 0, w = 0; ms.forEach((m) => { if (!Number.isFinite(m.nota)) return; const k = m.km > 0 ? m.km : 1; s += m.nota * k; w += k; }); return w ? s / w : null; };
+    const meses = docs.map((d) => ({ mes: d.data, frota: media(d.motoristas), rec: media(d.motoristas.filter((m) => nomes.has(ckey(m.nome)))) }));
+    const mesEnvio = diasEnvio[0].slice(0, 7), hojeMes = D.hoje().slice(0, 7);
+    const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
+    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 6)));   // até 6 meses, sempre com o "antes"
+    const antes = meses[iAntes], agora = meses[meses.length - 1];
+    const num = (v) => (Number.isFinite(v) ? fmt(v, 1) : '—');
+    const curto = (k) => D.nomeMes(k + '-01').slice(0, 3) + '/' + k.slice(2, 4);
+    const tile = (rot, leg, a, b) => `<div style="display:flex;flex-direction:column;gap:4px;min-width:200px">
+        <span class="apoio" style="display:inline-flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:3px;background:${leg}"></span>${esc(rot)}</span>
+        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(a)} →</span> ` : ''}<b style="font-size:22px">${num(b)}</b> ${antes !== agora && Number.isFinite(a) && Number.isFinite(b) ? variacao(X.variacao(ind, b, a)) : ''}</span></div>`;
+    const dif = Number.isFinite(agora.rec) && Number.isFinite(agora.frota) ? agora.rec - agora.frota : null;
+    const leitura = dif === null ? '' : `<span class="apoio">${agora.mes === hojeMes ? 'Neste mês' : 'Em ' + D.nomeMes(agora.mes + '-01')}, quem recebeu mensagem está <b>${fmt(Math.abs(dif), 1)} pts ${dif >= 0 ? 'acima' : 'abaixo'}</b> da nota geral da frota.</span>`;
+    // colunas por mês (começa no zero; o topo acompanha a maior nota): amarela = quem recebeu, cinza = frota toda
+    const topo = Math.min(100, Math.ceil((Math.max(0, ...vis.flatMap((m) => [m.rec, m.frota]).filter(Number.isFinite)) + 5) / 10) * 10) || 100;
+    const H = 150, alt = (v) => (Number.isFinite(v) ? Math.max(2, Math.min(topo, v)) / topo * H : 0);
+    const barra = (v, cor, tit) => `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;width:34px;height:${H + 20}px" title="${esc(tit)}: ${num(v)}">
+        <span class="num" style="font-size:11.5px;font-weight:600">${num(v)}</span><span style="width:100%;height:${alt(v)}px;background:${cor};border-radius:6px 6px 2px 2px"></span></div>`;
+    const colunas = vis.map((m) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:84px">
+        <div style="display:flex;gap:6px;align-items:flex-end">${barra(m.rec, 'var(--dado)', 'Quem recebeu mensagem')}${barra(m.frota, '#BDC1C6', 'Frota toda')}</div>
+        <span class="num" style="font-size:12px;color:var(--texto-2)">${curto(m.mes)}${m.mes === hojeMes ? ' <span class="mudo">(parcial)</span>' : ''}</span>
+        ${m.mes === mesEnvio ? '<span class="badge" style="font-size:10.5px">1º envio</span>' : '<span style="height:18px"></span>'}</div>`).join('');
     return `<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">
         <span class="hb-bloco-t">Evolução da nota Gobrax: quem recebeu mensagem × nota geral da frota</span>
-        <span class="apoio" style="font-size:12px">Antes = 14 dias antes do 1º envio (${D.br(antes.ini).slice(0, 5)} a ${D.br(antes.fim).slice(0, 5)}). Agora = últimos 7 dias com dado (${D.br(agora.ini).slice(0, 5)} a ${D.br(agora.fim).slice(0, 5)}). Nota média ponderada pelos km.</span>
-        <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-end">${tile(gR)}${tile(gF)}${leitura}</div>
-        <div class="grafico" data-grafico="msg-evo-nota" style="height:220px"></div></div>`;
+        <span class="apoio" style="font-size:12px">Nota do mês da premiação da API Gobrax, média ponderada pelos km. Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
+        <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-end">${tile('Quem recebeu mensagem', 'var(--dado)', antes.rec, agora.rec)}${tile('Nota geral da frota (Gobrax)', '#BDC1C6', antes.frota, agora.frota)}${leitura}</div>
+        <div style="display:flex;gap:18px;align-items:flex-end;overflow-x:auto;padding-top:6px;border-bottom:1px solid var(--hairline)" role="img" aria-label="Nota Gobrax por mês: quem recebeu mensagem e frota toda">${colunas}</div></div>`;
   }
   function painelEnviadas(c) {
     const M = msg();

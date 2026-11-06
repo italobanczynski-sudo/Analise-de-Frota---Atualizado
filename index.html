@@ -624,6 +624,30 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 
 /* Dashboards: indicadores atual x anterior */
 .pares { display: flex; flex-direction: column; gap: 18px; }
+.indg { display: flex; flex-direction: column; gap: 18px; padding: 0 18px 12px; }
+.indg-grupo { display: flex; flex-direction: column; gap: 10px; }
+.indg-titulo { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3); }
+.indg-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-items: start; }
+.indg-card .par-cab { flex-wrap: nowrap; align-items: flex-start; }
+.indg-card .par-cab > .badge, .indg-card .par-cab > .var { flex: none; }
+.indg-card .par-barra { grid-template-columns: 1fr auto; }
+.indg-card .par-val { min-width: 56px; white-space: nowrap; }
+.indg-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 10px; }
+.indg-card.linha-clicavel:hover .ind-abrir, .indg-card.linha-clicavel:focus-visible .ind-abrir { opacity: 1; color: var(--dado); }
+.indg-var { font-size: 12.5px; }
+.indg-deriv { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--hairline); }
+.indg-deriv-nome { font-size: 12px; color: var(--texto-2); }
+.evo-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.evo-graf { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dv { display: flex; flex-direction: column; gap: 2px; }
+.dv-leg { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; }
+.dv-linha { display: grid; grid-template-columns: 22px minmax(90px, 180px) 1fr 84px; align-items: center; gap: 10px; padding: 5px 4px; border-radius: 8px; text-decoration: none; color: inherit; }
+.dv-linha:hover { background: var(--sup-hover); }
+.dv-trilho { position: relative; height: 12px; border-radius: 999px; background: var(--apoio); }
+.dv-zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px; background: var(--texto-3); }
+.dv-barra { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+.dv-valor { text-align: right; font-size: 12.5px; }
+@media (max-width: 520px) { .dv-linha { grid-template-columns: 20px minmax(70px, 110px) 1fr 70px; gap: 8px; } .evo-grade { grid-template-columns: 1fr; } }
 .par { display: flex; flex-direction: column; gap: 6px; }
 .par-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .par-nome { font-size: 13px; font-weight: 600; color: var(--tinta); }
@@ -3974,7 +3998,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       ${abas([['graficos', 'Gráficos', undefined, '#/visao'], ['indicadores', 'Todos os indicadores', undefined, '#/visao?aba=indicadores'], ['qualidade', 'Qualidade do dado', ((infoQualidade() || {}).susp || []).length || undefined, '#/visao?aba=qualidade']], aba, '', 'Seções de Desenvolvimento da frota')}`;
     if (aba === 'indicadores') return topo + abaIndicadoresFrota();
     if (aba === 'qualidade') return topo + abaQualidade();
-    return topo + abaGraficosFrota(c) + cartaoOdometro();
+    return topo + abaGraficosFrota(c);
   }
 
   // ---------- Painel: distribuição e ranking das notas ----------
@@ -4911,7 +4935,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return `
       <section class="card">
         <div class="card-cab">
-          <div class="card-cab-texto"><h2 class="h2">${esc(alvo.nome)}</h2><span class="h2-sub">Todos os indicadores, um por linha.</span></div>
+          <div class="card-cab-texto"><h2 class="h2">${esc(alvo.nome)}</h2><span class="h2-sub">Período analisado (amarelo) × comparação (cinza). Clique num indicador para ver o gráfico dia a dia.</span></div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label class="campo-bloco" style="min-width:220px"><span class="campo-rotulo">Escopo</span>
               <select class="campo" data-campo="escopo">
@@ -4924,14 +4948,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           </div>
         </div>
         <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px">
-          ${tabelaIndicadores(alvo.a, alvo.b, null, escopo === 'frota' ? '' : escopo)}
-          ${(() => { const e = economia(alvo.a, alvo.b); return e ? `<div style="padding:12px 18px 10px" class="apoio">Com a média de consumo da comparação, os mesmos km teriam usado <b class="num">${fmt(alvo.a.km / alvo.b.kml, 0)} L</b>. ${e.reais >= 0 ? 'Economia' : 'Custo adicional'} estimado: <b class="num">${fmtReais(Math.abs(e.reais), 2)}</b> (${fmt(Math.abs(e.litros), 0)} L a ${fmtReais(E.preco, 2)}/L).</div>` : ''; })()}
+          ${graficosIndicadores(alvo.a, alvo.b, escopo === 'frota' ? '' : escopo)}
+          ${(() => { const e = economia(alvo.a, alvo.b); return e ? `<div style="padding:4px 18px 10px" class="apoio">Com a média de consumo da comparação, os mesmos km teriam usado <b class="num">${fmt(alvo.a.km / alvo.b.kml, 0)} L</b>. ${e.reais >= 0 ? 'Economia' : 'Custo adicional'} estimado: <b class="num">${fmtReais(Math.abs(e.reais), 2)}</b> (${fmt(Math.abs(e.litros), 0)} L a ${fmtReais(E.preco, 2)}/L).</div>` : ''; })()}
         </div>
       </section>
-      ${cartaoEvolucaoDiaria(linhasEscopo(), alvo.nome)}
+      ${cartaoEvolucaoGraficos(linhasEscopo(), alvo.nome)}
       <section class="card">
         <div class="card-cab">
-          <div class="card-cab-texto"><h2 class="h2">Motoristas por indicador</h2><span class="h2-sub">Quem mais melhorou e quem mais piorou em ${esc(ind.label.toLowerCase())}.</span></div>
+          <div class="card-cab-texto"><h2 class="h2">Motoristas por indicador</h2><span class="h2-sub">Variação de cada motorista em ${esc(ind.label.toLowerCase())}: verde melhorou, vermelho piorou. Clique para abrir o motorista.</span></div>
           ${seletorIndicador('ind-comp', ind.key)}
           <div class="capsula" role="group" aria-label="Ordem">
             <button type="button" class="${E.comp.ord < 0 ? 'ativo' : ''}" data-acao="ord-comp" data-o="-1">Melhores primeiro</button>
@@ -4939,12 +4963,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           </div>
           <button type="button" class="btn" data-acao="exportar-matriz">${icone('baixar', 14, '#5F6368')}Exportar CSV</button>
         </div>
-        <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:520px;overflow:auto">
-          <table class="tabela" style="min-width:720px"><thead><tr><th>#</th><th>Motorista</th><th class="dir">Período analisado</th><th class="dir">Comparação</th><th class="dir">Variação</th><th>Resultado</th></tr></thead>
-          <tbody>${linhas.map((r, i) => `<tr class="clicavel" data-acao="abrir-motorista" data-id="${esc(r.x.m.id)}"><td class="num mudo">${i + 1}</td>
-            <td><span class="pessoa">${avatar(r.x.m.nome, 28)}<span class="pessoa-nome">${esc(r.x.m.nome)}</span></span></td>
-            <td class="dir">${fmtInd(ind, r.x.a[ind.key])}</td><td class="dir" style="color:var(--texto-2)">${fmtInd(ind, r.x.b[ind.key])}</td>
-            <td class="dir">${variacao(r.v)}</td><td>${resultado(r.v, ind)}</td></tr>`).join('')}</tbody></table></div></div>
+        <div class="card-corpo">${barrasVariacaoMotoristas(linhas, ind)}</div>
       </section>`;
   }
 
@@ -4991,6 +5010,72 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           <table class="tabela" style="min-width:${260 + inds.length * 110}px"><thead><tr><th>Dia</th><th class="dir">Motoristas</th>${inds.map((ind) => `<th class="dir">${esc(ind.label)}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody></table></div></div>
       </section>`;
+  }
+
+  // ---------- Desenvolvimento da frota em gráficos ----------
+  // Cada indicador vira um mini gráfico: barra do período analisado (amarelo) × comparação (cinza), variação e resultado
+  function graficosIndicadores(a, b, alvoId) {
+    const da = derivados(a), db = derivados(b);
+    const ok = (v) => v !== null && v !== undefined && Number.isFinite(v);
+    const barrasPar = (ind, va, vb) => {
+      const max = ind.un === '%' ? 100 : Math.max(ok(va) ? Math.abs(va) : 0, ok(vb) ? Math.abs(vb) : 0) || 1;
+      const w = (x) => (ok(x) ? Math.max(1.5, Math.min(100, (Math.abs(x) / max) * 100)) : 0);
+      return `<div class="par-barra" title="Período analisado: ${esc(fmtInd(ind, va))}"><span class="par-trilho"><span style="width:${w(va)}%;background:var(--dado)"></span></span><span class="par-val num">${fmtInd(ind, va)}</span></div>
+        <div class="par-barra" title="Comparação: ${esc(fmtInd(ind, vb))}"><span class="par-trilho"><span style="width:${w(vb)}%;background:#BDC1C6"></span></span><span class="par-val num mudo">${fmtInd(ind, vb)}</span></div>`;
+    };
+    let html = '';
+    GRUPOS.forEach((g) => {
+      const inds = E.base.indicadores.filter((i) => i.grupo === g.key);
+      if (!inds.length) return;
+      const cards = inds.map((ind) => {
+        const v = X.variacao(ind, a[ind.key], b[ind.key]), clic = ind.tipo !== 'dias';
+        const deriv = (DERIV[ind.key] || []).filter((d) => da[d.key] !== null || db[d.key] !== null).map((d) => {
+          const vd = X.variacao(d, da[d.key], db[d.key]);
+          const custo = d.key === 'ocioso_l' && da[d.key] !== null && E.preco ? ' · ≈ ' + fmtReais(da[d.key] * E.preco, 0) : '';
+          return `<div class="indg-deriv"><span class="indg-deriv-nome" title="${esc(d.desc)}">↳ ${esc(d.label)}${esc(custo)}</span>${barrasPar(d, da[d.key], db[d.key])}<div class="indg-var">${variacao(vd)}</div></div>`;
+        }).join('');
+        return `<div class="indg-card ${clic ? 'linha-clicavel' : ''}" ${clic ? `tabindex="0" role="button" data-acao="ind-detalhe" data-k="${ind.key}" data-alvo="${esc(alvoId || '')}"` : ''} title="${esc(ind.desc)}${clic ? ' · clique para ver o gráfico' : ''}">
+          <div class="par-cab"><span class="par-nome">${esc(ind.label)}${clic ? ` <span class="ind-abrir">${icone('grafico', 13)}</span>` : ''}</span>${resultado(v, ind)}</div>
+          ${barrasPar(ind, a[ind.key], b[ind.key])}
+          <div class="indg-var">${variacao(v)}</div>${deriv}</div>`;
+      }).join('');
+      html += `<div class="indg-grupo"><span class="indg-titulo">${esc(g.label)}</span><div class="indg-grade">${cards}</div></div>`;
+    });
+    return `<div class="indg">${html}</div>`;
+  }
+  // Evolução dia a dia em gráficos: uma linha por indicador, período analisado × comparação
+  function cartaoEvolucaoGraficos(linhas, nome) {
+    const { inds, lista } = evolucaoDiaria(linhas);
+    if (!lista.length) return cartaoEvolucaoDiaria(linhas, nome);
+    const cab = `<div class="card-cab">
+          <div class="card-cab-texto"><h2 class="h2">Evolução dia a dia · ${esc(nome)}</h2><span class="h2-sub">Linha amarela: ${esc(D.periodoCurto(E.A))}. Tracejado: ${esc(D.periodoCurto(E.B))}. Passe o mouse para ver cada dia.</span></div>
+          <button type="button" class="btn" data-acao="exportar-evolucao">${icone('baixar', 14, '#5F6368')}Exportar CSV</button>
+        </div>`;
+    const graf = inds.map((ind) => {
+      const ch = 'evo-' + ind.key;
+      E.graficos[ch] = { tipo: 'linha', a: X.serieDiaria(linhas, ind, E.A, E.base), b: X.serieDiaria(linhas, ind, E.B, E.base), ind, titulo: ind.label + ' por dia', altura: 160 };
+      return `<div class="evo-graf"><span class="par-nome">${esc(ind.label)}</span><div class="grafico" data-grafico="${ch}" style="height:160px"></div></div>`;
+    }).join('');
+    return `<section class="card">${cab}<div class="card-corpo"><div class="evo-grade">${graf}</div></div></section>`;
+  }
+  // Motoristas por indicador: barra divergente da variação (direita sobe, esquerda desce; cor pelo resultado)
+  function barrasVariacaoMotoristas(linhas, ind) {
+    const mag = (v) => (v.semBase || v.estavel ? 0 : ind.var === 'pp' || ind.var === 'pts' ? v.delta : v.rel * 100);
+    const com = linhas.filter((r) => !r.v.semBase), sem = linhas.filter((r) => r.v.semBase);
+    if (!com.length) return vazioUI('Nenhum motorista com os dois períodos', 'Para comparar é preciso ter registro no período analisado e na comparação.');
+    const max = Math.max(...com.map((r) => Math.abs(mag(r.v))), 0.0001);
+    const cor = (v) => (v.estavel || v.sentido === 'neutro' ? '#9AA0A6' : v.sentido === 'melhor' ? 'var(--ok)' : 'var(--critico)');
+    const itens = com.map((r, i) => {
+      const m = mag(r.v), w = Math.max(m ? 1.5 : 0, (Math.abs(m) / max) * 50);
+      const barra = `<span class="dv-barra" style="${m >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${cor(r.v)}"></span>`;
+      return `<a class="dv-linha" href="${linkMotorista(r.x.m.id)}" title="${esc(r.x.m.nome)}: ${esc(fmtInd(ind, r.x.b[ind.key]))} → ${esc(fmtInd(ind, r.x.a[ind.key]))}">
+        <span class="rk-pos">${i + 1}</span><span class="rk-nome">${esc(r.x.m.nome)}</span>
+        <span class="dv-trilho"><span class="dv-zero"></span>${barra}</span>
+        <span class="dv-valor">${variacao(r.v)}</span></a>`;
+    }).join('');
+    return `<div class="dv-leg apoio"><span>◀ desceu</span><span>${esc(ind.label)}: período analisado × comparação</span><span>subiu ▶</span></div>
+      <div class="dv" style="max-height:520px;overflow:auto">${itens}</div>
+      ${sem.length ? `<span class="apoio" style="font-size:12px">Sem base para comparar (${sem.length}): ${sem.slice(0, 12).map((r) => esc(r.x.m.nome)).join(', ')}${sem.length > 12 ? '…' : ''}</span>` : ''}`;
   }
 
   // ---------- Tela: Análise dos veículos (por veículo e agrupada por grupo, modelo, filial ou tipo) ----------
@@ -5091,17 +5176,17 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       const gNota = gs.filter((g) => Number.isFinite(g.a.nota)).sort((q, r) => r.a.nota - q.a.nota).slice(0, 10);
       const gKml = gs.filter((g) => Number.isFinite(g.a.kml)).sort((q, r) => r.a.kml - q.a.kml).slice(0, 10);
       const maxG = Math.max(...gKml.map((g) => g.a.kml), 1);
-      return `<div class="grade-2">
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Grupos por nota</h2><span class="h2-sub">Nota Gobrax ponderada por km${gs.length > 10 ? ' · 10 melhores de ' + gs.length : ''}.</span></div></div>
-          <div class="card-corpo"><div class="rk">${barras(gNota, (v) => v.a.nota, 100, (x) => fmt(x, 1), (v) => COR_FAIXA[X.faixaNota(v.a.nota)])}</div></div></section>
+      return `<div class="${gNota.length ? 'grade-2' : ''}">
+        ${gNota.length ? '' : '<!--'}<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Grupos por nota</h2><span class="h2-sub">Nota Gobrax ponderada por km${gs.length > 10 ? ' · 10 melhores de ' + gs.length : ''}.</span></div></div>
+          <div class="card-corpo"><div class="rk">${barras(gNota, (v) => v.a.nota, 100, (x) => fmt(x, 1), (v) => COR_FAIXA[X.faixaNota(v.a.nota)])}</div></div></section>${gNota.length ? '' : '-->'}
         <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Grupos por consumo</h2><span class="h2-sub">Média km/l${gs.length > 10 ? ' · 10 melhores de ' + gs.length : ''}.</span></div></div>
           <div class="card-corpo"><div class="rk">${barras(gKml, (v) => v.a.kml, maxG, (x) => fmt(x, 2), () => '#FCB709')}</div></div></section>
       </div>`;
     })() : '';
     const sub = ' · ' + D.periodoBR(p);
-    return `${aviso}${cartaoGrupos}<div class="grade-2">
-      <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Veículos por nota</h2><span class="h2-sub">Nota Gobrax ponderada por km${sub}${vs.length > 10 ? ' · 10 melhores de ' + vs.length : ''}.</span></div></div>
-        <div class="card-corpo"><div class="rk">${barras(porNota, (v) => v.a.nota, 100, (x) => fmt(x, 1), (v) => COR_FAIXA[X.faixaNota(v.a.nota)])}</div></div></section>
+    return `${aviso}${cartaoGrupos}<div class="${porNota.length ? 'grade-2' : ''}">
+      ${porNota.length ? '' : '<!--'}<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Veículos por nota</h2><span class="h2-sub">Nota Gobrax ponderada por km${sub}${vs.length > 10 ? ' · 10 melhores de ' + vs.length : ''}.</span></div></div>
+        <div class="card-corpo"><div class="rk">${barras(porNota, (v) => v.a.nota, 100, (x) => fmt(x, 1), (v) => COR_FAIXA[X.faixaNota(v.a.nota)])}</div></div></section>${porNota.length ? '' : '-->'}
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Veículos por consumo</h2><span class="h2-sub">Média km/l${sub}${vs.length > 10 ? ' · 10 melhores de ' + vs.length : ''}.</span></div></div>
         <div class="card-corpo"><div class="rk">${barras(porKml, (v) => v.a.kml, maxKml, (x) => fmt(x, 2), () => '#FCB709')}</div></div></section>
     </div>`;
@@ -8746,7 +8831,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       uso: 'Último odômetro de cada veículo nos últimos 30 dias. Guarda um documento por cliente, substituído a cada busca.',
       params: [['startDate / endDate', 'Agora − 30 dias até agora, em UTC'], ['vehicleIdentification', 'Vazio = todos']],
       campos: [['vehicleIdentification', 'placa'], ['odometer', 'odômetro'], ['lastUpdated', 'última comunicação']],
-      onde: 'Desenvolvimento da frota → Odômetro e comunicação (no fim da tela)' },
+      onde: 'Guardado na base; o cartão Odômetro e comunicação saiu do painel' },
     { metodo: 'GET', caminho: 'v2/driversOverview', titulo: 'Scores e premiação',
       uso: 'Nota, km e bonificação de cada motorista por mês. Guarda um documento por cliente e mês.',
       params: [['startDate / endDate', 'Mês no formato <code>MM-AAAA</code>'], ['documentNumbers', 'Vazio = todos os motoristas']],
@@ -8862,30 +8947,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           ${st ? `<span class="apoio" role="status">${st.rodando ? esc(st.msg) : st.erro ? '<b class="critico-txt">Parou: ' + esc(st.erro) + '.</b>' + (st.feito.length ? ' Antes disso: ' + esc(st.feito.join(', ')) + '.' : '') : '✓ ' + esc(st.feito.join(', ')) + '.'}</span>` : ''}
         </div>
       </div>
-    </section>`;
-  }
-
-  // Odômetro e comunicação de cada veículo (da última busca na API)
-  function cartaoOdometro() {
-    const doc = docsApi('odometro', E.cliente)[0];
-    if (!doc || !doc.veiculos || !doc.veiculos.length) return '';
-    const agora = Date.now();
-    const horas = (s) => { const t = Date.parse(String(s).replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? (agora - t) / 3600000 : null; };
-    const vs = doc.veiculos.map((v) => ({ ...v, h: horas(v.coletado) })).sort((a, b) => (b.h === null ? -1 : a.h === null ? 1 : b.h - a.h));
-    const sit = (h) => (h === null ? '<span class="badge badge-vazio">Sem coleta</span>' : h <= 24 ? '<span class="badge badge-ok">Comunicando</span>' : h <= 72 ? '<span class="badge badge-atencao">Há ' + Math.round(h / 24) + ' dia(s)</span>' : '<span class="badge badge-critico">Há ' + Math.round(h / 24) + ' dias</span>');
-    const atrasados = vs.filter((v) => v.h === null || v.h > 24).length;
-    // todos sem coleta há mais de 24 h = falha de coleta (não é veículo parado): a lista "sem comunicar" só vale com a coleta atual
-    if (vs.length && atrasados === vs.length) {
-      const maisNovo = vs.filter((v) => v.h !== null).sort((a, b) => a.h - b.h)[0];
-      return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Odômetro e comunicação</h2><span class="h2-sub">Da API Gobrax, buscado em ${D.br(doc.data)} · ${vs.length} veículos</span></div></div>
-        <div class="card-corpo"><div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-titulo">Falha de coleta</span><span class="alerta-texto">Nenhum veículo tem coleta nas últimas 24 h${maisNovo ? ' (a mais recente tem ' + fmt(maisNovo.h / 24, 0) + ' dia(s))' : ''}. Isso indica coleta parada, não ${vs.length} veículos sem comunicar: atualize a busca da API antes de ler esta lista.</span></div></div></div></section>`;
-    }
-    return `<section class="card">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Odômetro e comunicação</h2>
-        <span class="h2-sub">Da API Gobrax, buscado em ${D.br(doc.data)} · ${vs.length} veículos${atrasados ? ' · ' + atrasados + ' sem comunicar há mais de 24 h' : ' · todos comunicando'}. Veículo parado há dias pode indicar unidade eletrônica sem sinal.</span></div></div>
-      <div class="card-corpo" style="padding-left:0;padding-right:0;padding-bottom:4px"><div class="tabela-wrap" style="max-height:420px;overflow:auto">
-        <table class="tabela"><thead><tr><th>Veículo</th><th class="dir">Odômetro</th><th>Última coleta</th><th>Situação</th></tr></thead>
-        <tbody>${vs.map((v) => `<tr><td>${esc(v.placa)}</td><td class="dir num">${v.odometro === null ? '—' : fmt(v.odometro, 0) + ' km'}</td><td class="num">${esc(v.coletado.slice(0, 16)) || '—'}</td><td>${sit(v.h)}</td></tr>`).join('')}</tbody></table></div></div>
     </section>`;
   }
 

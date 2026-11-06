@@ -43,8 +43,11 @@ csp=$(curl -s -D - -o /dev/null "$BASE/" | grep -ci "content-security-policy: de
 confere "CSP presente" 1 "$csp"
 confere "pasta /estatico/ não é listada" 404 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/estatico/")"
 confere "CSS da tela de entrada" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/estatico/login.css")"
+acao=$(curl -s -D - -o /dev/null -H 'Origin: https://site-malicioso.exemplo' "$BASE/api/v1/clientes" | grep -ci "access-control-allow-origin")
+confere "CORS da API recusa outra origem" 0 "$acao"
+# /saude é pública de propósito: o painel no GitHub Pages confere por ela se a plataforma está no ar
 acao=$(curl -s -D - -o /dev/null -H 'Origin: https://site-malicioso.exemplo' "$BASE/saude" | grep -ci "access-control-allow-origin")
-confere "CORS recusa outra origem" 0 "$acao"
+confere "/saude aberta a qualquer origem" 1 "$acao"
 
 echo "== sem login"
 confere "lista de clientes sem login" 401 "$(req anon GET /api/v1/clientes)"

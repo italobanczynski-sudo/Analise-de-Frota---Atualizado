@@ -2859,7 +2859,15 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       if (va !== null) { pa.setAttribute('cx', x(i)); pa.setAttribute('cy', y(va)); pa.setAttribute('visibility', 'visible'); bol.em(x(i), y(va) - 4, rotV(va), W); } else { pa.setAttribute('visibility', 'hidden'); bol.some(); }
       if (vb !== null) { pb.setAttribute('cx', x(i)); pb.setAttribute('cy', y(vb)); pb.setAttribute('visibility', 'visible'); } else pb.setAttribute('visibility', 'hidden');
       let h = `<span class="dica-data">Dia ${i + 1} de ${n}</span>`;
-      if (a[i]) h += `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-a"></span>${D.curta(a[i].data)} ${D.semana(a[i].data)}</span><b>${va === null ? 'sem dado' : esc(rotV(va))}</b></span>`;
+      // séries nomeadas (mesmo dia nas duas linhas): a dica mostra a data e o nome de cada linha
+      if (cfg.rotA) {
+        h = `<span class="dica-data">${a[i] ? D.curta(a[i].data) + ' ' + D.semana(a[i].data) : ''}</span>`
+          + `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-a"></span>${esc(cfg.rotA)}</span><b>${va === null ? 'sem dado' : esc(rotV(va))}</b></span>`
+          + (b.length ? `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-b"></span>${esc(cfg.rotB || '')}</span><b>${vb === null ? 'sem dado' : esc(rotV(vb))}</b></span>` : '');
+        dica(h, ev.clientX, ev.clientY);
+        return;
+      }
+      if (a[i]) h +=`<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-a"></span>${D.curta(a[i].data)} ${D.semana(a[i].data)}</span><b>${va === null ? 'sem dado' : esc(rotV(va))}</b></span>`;
       if (b[i]) h += `<span class="dica-linha"><span class="dica-marca"><span class="leg-linha-b"></span>${D.curta(b[i].data)} ${D.semana(b[i].data)}</span><b>${vb === null ? 'sem dado' : esc(rotV(vb))}</b></span>`;
       dica(h, ev.clientX, ev.clientY);
     });
@@ -3500,6 +3508,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 73, data: '2026-11-06', titulo: 'Nota de quem recebeu mensagem × nota da frota', texto: 'Em Motoristas › Mensagens enviadas, novo gráfico com a nota Gobrax por dia de quem recebeu mensagem comparada à nota geral da frota, com a nota de antes do primeiro envio e a de agora para os dois grupos.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 72, data: '2026-11-06', titulo: 'Robô do WhatsApp no sino', texto: 'Quando o robô das 08:00 termina com mensagem que deu erro ou ficou pendente, o sino mostra quantas foram enviadas, quantas deram erro e quantas ficaram pendentes, com o nome de quem e o motivo. Se o robô não conseguir rodar (WhatsApp desconectado, por exemplo), o sino também avisa.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações › Clientes, abra o cliente e use a aba Condutores: veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/config', link: 'Abrir Configurações' },
     { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
@@ -9493,6 +9502,34 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
     if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
   }
+  // Nota Gobrax por dia: quem recebeu mensagem × frota toda, de 14 dias antes do 1º envio até o último dado (no máximo 60 dias),
+  // com a nota de antes (14 dias antes do 1º envio) e a de agora (últimos 7 dias) para os dois grupos
+  function graficoNotaEnviadas(lista, diasEnvio) {
+    const b = E.base, ind = IND_MAP.nota;
+    if (!b || !ind || !temInd('nota') || !diasEnvio.length) return '';
+    const nomes = new Set(lista.map((x) => ckey(x.motorista)));
+    const lsRec = b.motoristas.filter((m) => nomes.has(ckey(m.nome))).flatMap((m) => m.linhas);
+    if (!lsRec.length) return '';
+    const prim = diasEnvio[0], fim = b.fim;
+    if (fim < prim) return '';
+    const p = { ini: [D.somar(prim, -14), D.somar(fim, -59), b.inicio].sort().pop(), fim };
+    const antes = { ini: D.somar(prim, -14), fim: D.somar(prim, -1) }, agora = { ini: D.somar(fim, -6), fim };
+    const nota = (ls, per) => { const f = X.filtrar(ls, per); return f.length ? X.agregar(f, ind, b) : null; };
+    const grupos = [['Quem recebeu mensagem', lsRec, 'leg-linha-a'], ['Nota geral da frota (Gobrax)', b.linhas, 'leg-linha-b']].map(([rot, ls, leg]) => ({ rot, leg, antes: nota(ls, antes), agora: nota(ls, agora) }));
+    E.graficos['msg-evo-nota'] = { tipo: 'linha', a: X.serieDiaria(lsRec, ind, p, b), b: X.serieDiaria(b.linhas, ind, p, b), ind, titulo: 'Nota Gobrax por dia: quem recebeu mensagem × frota', rotA: 'Quem recebeu', rotB: 'Frota toda', altura: 220 };
+    const num = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : fmt(v, 1));
+    const tile = (g) => `<div style="display:flex;flex-direction:column;gap:4px;min-width:200px">
+        <span class="apoio" style="display:inline-flex;gap:6px;align-items:center"><span class="${g.leg}"></span>${esc(g.rot)}</span>
+        <span class="num" style="font-size:13px"><span class="mudo">antes ${num(g.antes)} →</span> <b style="font-size:22px">${num(g.agora)}</b> ${g.antes !== null && g.agora !== null ? variacao(X.variacao(ind, g.agora, g.antes)) : ''}</span></div>`;
+    const [gR, gF] = grupos;
+    const dif = Number.isFinite(gR.agora) && Number.isFinite(gF.agora) ? gR.agora - gF.agora : null;
+    const leitura = dif === null ? '' : `<span class="apoio">Hoje quem recebeu mensagem está <b>${fmt(Math.abs(dif), 1)} pts ${dif >= 0 ? 'acima' : 'abaixo'}</b> da nota geral da frota.</span>`;
+    return `<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">
+        <span class="hb-bloco-t">Evolução da nota Gobrax: quem recebeu mensagem × nota geral da frota</span>
+        <span class="apoio" style="font-size:12px">Antes = 14 dias antes do 1º envio (${D.br(antes.ini).slice(0, 5)} a ${D.br(antes.fim).slice(0, 5)}). Agora = últimos 7 dias com dado (${D.br(agora.ini).slice(0, 5)} a ${D.br(agora.fim).slice(0, 5)}). Nota média ponderada pelos km.</span>
+        <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-end">${tile(gR)}${tile(gF)}${leitura}</div>
+        <div class="grafico" data-grafico="msg-evo-nota" style="height:220px"></div></div>`;
+  }
   function painelEnviadas(c) {
     const M = msg();
     const card = (corpo) => `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Mensagens enviadas aos motoristas</h2><span class="h2-sub">Marcadas como enviadas em <a class="btn-link" href="#/mensagens">Mensagens do dia</a>. Clique num motorista para ver cada envio.</span></div></div>${corpo}</section>`;
@@ -9523,6 +9560,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="hb-bloco-t">Indicadores mais apontados <span class="apoio" style="font-weight:400">(% das mensagens)</span></span>${inds.length ? barrasLista(inds.slice(0, 5), total) : '<span class="apoio">Nenhum indicador apontado ainda.</span>'}</div></div>`;
     const porNome = {};
     c.mots.forEach((x) => { porNome[ckey(x.m.nome)] = x.m.id; });
+    const evoNota = graficoNotaEnviadas(R.lista, dias);
     const notaTxt = (v) => (v === null || v === undefined ? '—' : fmt(v, 1));
     const lista = R.lista.slice().sort((a, b) => b.dias_enviada - a.dias_enviada).map((x) => {
       const id = porNome[ckey(x.motorista)];
@@ -9559,6 +9597,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         <div><span class="apoio">Motoristas que receberam</span><div style="font-size:26px;font-weight:700">${R.lista.length}</div></div>
         ${maisApontado ? `<div><span class="apoio">Ponto mais orientado</span><div style="font-size:20px;font-weight:700;margin-top:4px">${esc(maisApontado.rot)} <span class="apoio" style="font-size:13px;font-weight:400">em ${fmt(total ? (maisApontado.n / total) * 100 : 0, 0)}% das mensagens</span></div></div>` : ''}</div>
       ${graficos}
+      ${evoNota}
       <div class="env-lista">
         <div class="env-lin env-cab"><span>Motorista</span><span class="env-n">Mensagens</span><span>Nota do mês (1º → último envio)</span><span>Ponto mais orientado</span><span>Último envio</span><span></span></div>
         ${lista}

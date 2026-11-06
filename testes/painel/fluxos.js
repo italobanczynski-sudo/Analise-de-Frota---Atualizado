@@ -56,6 +56,8 @@ function roteiro() {
     passo('salvar sem motivo', function () { return clicar('[data-acao=susp-salvar]'); }, null, true),
     passo('salvar com motivo', function () { encher('#susp-motivo', 'Litros zerados pela unidade'); return clicar('[data-acao=susp-salvar]'); }, function () { return col('suspeitos_trat').length === 1 ? '' : 'tratamento não gravado'; }, false),
     passo('abrir Resumo da reunião', ir('#/resumo'), function () { return $('.res-topo') || $('[data-acao=lib-salvar]') ? '' : 'resumo vazio'; }),
+    // os dados de teste têm data fixa: com o tempo o resumo fica bloqueado (dado velho); libera com motivo, como a pessoa faria
+    function () { return new Promise(function (res) { var n = 0; (function v() { var b = $('[data-acao=lib-salvar]'); if (!b || n++ > 10) return res(); encher('#lib-motivo-' + b.dataset.tipo, 'Teste automático'); clicar(b); setTimeout(v, 300); })(); }); },
     passo('salvar premissas', function () { encher('#pr-preco', '7,10'); return clicar('[data-acao=premissas-salvar]'); }, function () { var p = col('premissas')[0]; return p && Math.abs(p.preco - 7.1) < 1e-9 ? '' : 'premissa não salva'; }, false),
     passo('abrir Linha do tempo', ir('#/jornada'), function () { return !$('.jornada') && $('.fase-card') ? '' : 'faixa de etapas na tela ou sem cartões de evolução'; }),
     passo('marco zero no futuro é recusado', function () { encher('#mz-data', '2099-01-01'); return clicar('[data-acao=mz-salvar]'); }, null, true),

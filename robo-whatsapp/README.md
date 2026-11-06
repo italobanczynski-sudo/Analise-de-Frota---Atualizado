@@ -9,7 +9,7 @@ Todo dia às 08:00 manda a análise de ontem (Mensagens do dia) a cada motorista
 1. Na plataforma, em **Configurações › Usuários**, crie um usuário para o robô com papel **Colaborador** e crie a senha pelo convite.
 2. Nesta pasta: `npm install`.
 3. Copie `.env.example` para `.env` e preencha `ROBO_EMAIL` e `ROBO_SENHA`. O `.env` não vai para o Git.
-4. `npm run parear`: abre o Chrome com o QR Code. No celular do número do robô: **WhatsApp › Dispositivos conectados › Conectar um dispositivo**. A sessão fica em `.sessao-whatsapp/`.
+4. `npm run parear`: abre o Chrome (não precisa ser o navegador do dia a dia) com o QR Code. No celular do número do robô: **WhatsApp › Dispositivos conectados › Conectar um dispositivo**. A sessão fica em `%LOCALAPPDATA%\robo-whatsapp-gobrax` (pasta sem espaços no caminho: com espaços o WhatsApp Web falha).
 5. `npm run teste`: mostra quem receberia a mensagem hoje, sem enviar nada.
 6. `powershell -ExecutionPolicy Bypass -File agendar.ps1`: agenda no Windows para todo dia às 08:00. Se o computador estiver desligado nesse horário, roda quando ligar.
 

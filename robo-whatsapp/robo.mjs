@@ -83,13 +83,18 @@ async function entrar() {
 }
 
 // ---------- WhatsApp Web ----------
+// O Chrome é aberto por aqui (e não pelo whatsapp-web.js) para liberar o armazenamento persistente: sem ele o
+// WhatsApp Web nega o "storage bucket", desconecta (post_logout) e recarrega sem parar. A sessão fica no perfil
+// do Chrome numa pasta SEM espaços no caminho (com espaços, como a do projeto, o WhatsApp Web também falha).
+const PERFIL = ENV.PERFIL_CHROME || path.join(process.env.LOCALAPPDATA || AQUI, 'robo-whatsapp-gobrax', 'perfil');
 async function abrirWhatsApp() {
+  const { default: puppeteer } = await import('puppeteer');
   const { default: wweb } = await import('whatsapp-web.js');
-  const { Client, LocalAuth } = wweb;
-  const cliente = new Client({
-    authStrategy: new LocalAuth({ dataPath: path.join(AQUI, '.sessao-whatsapp') }),
-    puppeteer: { executablePath: CFG.chrome, headless: MODO !== 'parear', args: ['--no-sandbox'] }
-  });
+  if (/\s/.test(PERFIL)) throw new Error('O caminho do perfil do Chrome não pode ter espaços: ' + PERFIL + ' (ajuste PERFIL_CHROME no .env).');
+  const navegador = await puppeteer.launch({ executablePath: CFG.chrome, headless: MODO !== 'parear', defaultViewport: null, userDataDir: PERFIL });
+  await navegador.defaultBrowserContext().overridePermissions('https://web.whatsapp.com', ['persistent-storage', 'notifications']);
+  const cliente = new wweb.Client({ puppeteer: { browserWSEndpoint: navegador.wsEndpoint() } });
+  cliente.fechar = async () => { await cliente.destroy().catch(() => {}); await navegador.close().catch(() => {}); };
   const pronto = new Promise((ok, falha) => {
     cliente.on('qr', async (qr) => {
       if (MODO !== 'parear') { falha(new Error('O WhatsApp pediu o QR Code de novo: rode "node robo.mjs parear".')); return; }
@@ -99,11 +104,31 @@ async function abrirWhatsApp() {
     });
     cliente.on('ready', ok);
     cliente.on('auth_failure', (m) => falha(new Error('Falha no login do WhatsApp: ' + m)));
-    setTimeout(() => falha(new Error('O WhatsApp Web não abriu em 3 minutos.')), 180000);
+    const limite = MODO === 'parear' ? 6 : 3;   // no pareamento, tempo para pegar o celular e ler o código
+    setTimeout(() => falha(new Error(`O WhatsApp Web não conectou em ${limite} minutos.`)), limite * 60000);
   });
-  await cliente.initialize();
-  await pronto;
+  pronto.catch(() => {});   // a falha é tratada no await abaixo
+  try {
+    await cliente.initialize();
+    await pronto;
+  } catch (e) {
+    await cliente.fechar();   // fecha o Chrome: senão a próxima tentativa acha o perfil em uso
+    throw e;
+  }
   return cliente;
+}
+// O WhatsApp Web às vezes recarrega a página enquanto abre ("Execution context was destroyed"): tenta de novo
+async function abrirWhatsAppComRetentativa() {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await abrirWhatsApp();
+    } catch (e) {
+      const passageiro = /context was destroyed|Target closed|Navigation|detached/i.test(e.message);
+      if (!passageiro || tentativa >= 4) throw e;
+      log(`o WhatsApp Web recarregou ao abrir (${e.message}); tentativa ${tentativa + 1} de 4`);
+      await dormir(5000);
+    }
+  }
 }
 
 // ---------- envio ----------
@@ -132,15 +157,15 @@ async function enviarDoCliente(wa, c, dia, conta) {
 async function principal() {
   log(`== robô do WhatsApp · modo ${MODO}`);
   if (MODO === 'parear') {
-    const wa = await abrirWhatsApp();
-    log('WhatsApp conectado. A sessão ficou guardada em robo-whatsapp/.sessao-whatsapp; pode fechar.');
-    await dormir(5000);
-    await wa.destroy();
+    const wa = await abrirWhatsAppComRetentativa();
+    log('WhatsApp conectado. A sessão ficou guardada em ' + PERFIL + '.');
+    await dormir(10000);   // termina de sincronizar antes de fechar
+    await wa.fechar();
     return;
   }
   const dia = ontemBR();
   await entrar();
-  const wa = MODO === 'teste' ? null : await abrirWhatsApp();
+  const wa = MODO === 'teste' ? null : await abrirWhatsAppComRetentativa();
   const feitos = new Set(), conta = { n: 0 };
   try {
     for (;;) {
@@ -160,7 +185,7 @@ async function principal() {
       await dormir(CFG.esperaMin * 60000);
     }
   } finally {
-    if (wa) { await dormir(8000); await wa.destroy().catch(() => {}); }   // dá tempo da última mensagem sair
+    if (wa) { await dormir(8000); await wa.fechar(); }   // dá tempo da última mensagem sair
   }
   log(`== fim: ${conta.n} mensagem(ns) enviada(s) referentes a ${dia}`);
 }

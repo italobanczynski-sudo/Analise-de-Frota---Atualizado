@@ -17,6 +17,8 @@ type Mensagem_t struct {
 	UsuarioID int64
 	Dia       string // AAAA-MM-DD; vazio = ontem
 	Motorista string
+	// VerTelefone: quem só lê (leitor) não recebe o telefone dos motoristas
+	VerTelefone bool
 }
 
 func (m Mensagem_t) dia() string {
@@ -34,6 +36,11 @@ func (m Mensagem_t) Listar(ctx context.Context) *middleware.Response_t {
 	r, err := modmensagem.NewMensagem().Listar(ctx, m.ClienteID, m.dia())
 	if err != nil {
 		return middleware.RetErro(err)
+	}
+	if !m.VerTelefone {
+		for i := range r {
+			r[i].Telefone = ""
+		}
 	}
 	return middleware.RetOkData(r)
 }
@@ -54,6 +61,18 @@ func (m Mensagem_t) Desmarcar(ctx context.Context) *middleware.Response_t {
 		return middleware.RetErro(err)
 	}
 	return middleware.RetOkData(map[string]bool{"desmarcada": true})
+}
+
+// SalvarTelefone grava o telefone do motorista (vazio apaga)
+func (m Mensagem_t) SalvarTelefone(ctx context.Context, telefone string) *middleware.Response_t {
+	if _, err := modcliente.NewCliente().Buscar(ctx, m.ClienteID); err != nil {
+		return middleware.RetErro(err)
+	}
+	n, err := modmensagem.NewMensagem().SalvarTelefone(ctx, m.ClienteID, m.Motorista, telefone, m.UsuarioID)
+	if err != nil {
+		return middleware.RetErro(err)
+	}
+	return middleware.RetOkData(map[string]string{"motorista": m.Motorista, "telefone": n})
 }
 
 // Acompanhamento devolve os dias com mensagem enviada ao motorista e se ele melhorou depois no ponto apontado

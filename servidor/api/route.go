@@ -68,6 +68,8 @@ func GetRoutes(r *gin.Engine) {
 	// mensagens dos motoristas: quem manda pelo WhatsApp marca como enviada
 	colab.PUT("/clientes/:id/mensagens/enviada", ctmensagem.Marcar)
 	colab.DELETE("/clientes/:id/mensagens/enviada", ctmensagem.Desmarcar)
+	// telefone do motorista para a fila de envio (o painel abre a conversa no WhatsApp; não há envio automático)
+	colab.PUT("/clientes/:id/mensagens/telefone", ctmensagem.Telefone)
 	// base do painel: o leitor só lê (como o Leitor do Artifact); colaborador e admin gravam
 	colab.PUT("/base/:colecao/:doc", ctbase.Gravar)
 	colab.POST("/base/:colecao", ctbase.Criar)

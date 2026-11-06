@@ -30,6 +30,8 @@ type Mensagem_t struct {
 	Resumo_t
 	Texto   string     `json:"texto"`
 	Enviada *time.Time `json:"enviada"` // quando foi marcada como enviada (nil = ainda não)
+	// Telefone do motorista (só dígitos, com 55) para abrir a conversa no WhatsApp; vazio = não cadastrado
+	Telefone string `json:"telefone"`
 }
 
 // Acompanhamento_t é o histórico das mensagens de um motorista: quantos dias recebeu e se melhorou no que foi apontado

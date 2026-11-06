@@ -6,6 +6,7 @@ import (
 	"analisefrota/api/controller"
 	mwmensagem "analisefrota/api/middleware/mensagem"
 	"analisefrota/common/utils"
+	"analisefrota/modules/usuario"
 )
 
 type DiaRequest struct {
@@ -33,7 +34,7 @@ func Listar(c *gin.Context) {
 		controller.RetFail(c, "dia no formato AAAA-MM-DD")
 		return
 	}
-	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, Dia: req.Dia}.Listar(c.Request.Context()))
+	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, Dia: req.Dia, VerTelefone: controller.UsuarioLogado(c).Papel != usuario.PapelLeitor}.Listar(c.Request.Context()))
 }
 
 // Marcar: PUT /api/v1/clientes/:id/mensagens/enviada {"dia", "motorista"}
@@ -63,6 +64,25 @@ func Desmarcar(c *gin.Context) {
 		return
 	}
 	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, Dia: req.Dia, Motorista: req.Motorista}.Desmarcar(c.Request.Context()))
+}
+
+type TelefoneRequest struct {
+	Motorista string `json:"motorista" validate:"required,max=120"`
+	Telefone  string `json:"telefone" validate:"max=30"`
+}
+
+// Telefone: PUT /api/v1/clientes/:id/mensagens/telefone {"motorista", "telefone"} (telefone vazio apaga)
+func Telefone(c *gin.Context) {
+	id, ok := controller.IDParam(c)
+	if !ok {
+		return
+	}
+	var req TelefoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil || utils.ValidateStruct(req) != nil {
+		controller.RetFail(c, "envie o motorista e o telefone")
+		return
+	}
+	controller.Response(c, mwmensagem.Mensagem_t{ClienteID: id, UsuarioID: controller.UsuarioLogado(c).ID, Motorista: req.Motorista}.SalvarTelefone(c.Request.Context(), req.Telefone))
 }
 
 // Acompanhamento: GET /api/v1/clientes/:id/mensagens/acompanhamento?motorista=Nome

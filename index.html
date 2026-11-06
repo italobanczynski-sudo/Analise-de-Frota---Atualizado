@@ -3500,6 +3500,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web já com o texto, você aperta Enviar e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
+    { id: 69, data: '2026-11-06', titulo: 'Desenvolvimento da frota em gráficos', texto: 'Em Todos os indicadores, cada indicador virou um gráfico do período analisado contra a comparação, a evolução dia a dia virou uma linha por indicador e a variação dos motoristas virou barras para cada lado. O cartão de odômetro saiu.', href: '#/visao?aba=indicadores', link: 'Abrir Todos os indicadores' },
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
     { id: 66, data: '2026-11-05', titulo: 'Frota ao vivo na Visão geral', texto: 'A Visão geral abre com o mapa da frota: a última posição de cada veículo (em movimento, parado ou sem sinal), atualizada a cada 2 minutos, e a lista de quem está comunicando agora. Ao lado, a nota, a frota agora, o consumo, a faixa verde e o motor ligado parado do período, o motorista e o veículo escolhido no mapa com o desempenho contra a frota. Saiu a Comparação por fase do menu (o cálculo segue no Resumo da reunião; dias excluídos foram para Combinados).' },
     { id: 68, data: '2026-11-05', titulo: 'Visão geral em gráficos', texto: 'A evolução semanal virou um gráfico por indicador e as contagens de motoristas e veículos viraram barras lado a lado. A evolução dia a dia mostra Nota Gobrax, km, faixa verde, motor ligado parado e pedal crítico, cada um com a sua cor. Carteira de clientes foi para Configurações; Combinados, Resumo da reunião, Onde ainda há ganho e os atalhos do fim da Visão geral saíram.' },
@@ -9249,8 +9251,52 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     };
     setTimeout(conferir, 10000);
   }
+  // Telefone do motorista (só dígitos, com 55) → "(11) 90000-0000"
+  const fmtTel = (n) => { const d = String(n || '').replace(/^55/, ''); return d.length < 10 ? String(n || '') : `(${d.slice(0, 2)}) ${d.slice(2, -4)}-${d.slice(-4)}`; };
+  // Conversa do motorista já com o texto: no computador abre direto no WhatsApp Web (sempre na mesma aba);
+  // no celular, pelo wa.me (abre o aplicativo). Sem telefone, o WhatsApp pede para escolher o contato.
+  function linkWhats(tel, texto) {
+    const celular = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (tel && !celular) return 'https://web.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(texto);
+    return 'https://wa.me/' + (tel || '') + '?text=' + encodeURIComponent(texto);
+  }
+  const ALVO_WHATS = 'gbx-whatsapp';
+  // Fila de envio: a próxima mensagem não enviada (e não pulada) do dia
+  const filaAtual = (M) => (M.lista || []).findIndex((m) => !m.enviada && !(M.filaPulados || []).includes(m.motorista));
+  function campoTelefone(m, i) {
+    return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="campo" style="max-width:190px" type="tel" inputmode="tel" autocomplete="off" id="msg-tel-${i}" placeholder="(DDD) número" value="${esc(m.telefone ? fmtTel(m.telefone) : '')}" aria-label="Telefone de ${esc(m.motorista)}" data-tecla-enter="msg-tel-salvar" data-i="${i}">
+      <button type="button" class="btn peq" data-acao="msg-tel-salvar" data-i="${i}" ${msg().ocupado === 'tel:' + m.motorista ? 'disabled' : ''}>${m.telefone ? 'Trocar' : 'Salvar telefone'}</button></div>`;
+  }
+  function painelFila(M) {
+    const lista = M.lista || [], i = filaAtual(M);
+    const pend = lista.filter((m) => !m.enviada).length;
+    if (i < 0) {
+      const pulados = (M.filaPulados || []).length;
+      return `<section class="card" style="border:2px solid var(--ok)"><div class="card-corpo" style="gap:10px">
+        <span class="h2">${pend ? 'Fim da fila' : 'Todas as mensagens do dia foram enviadas'}</span>
+        <span class="apoio">${pend ? `${pulados} motorista(s) pulado(s) ficaram sem enviar.` : 'Bom trabalho.'}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${pulados ? '<button type="button" class="btn btn-primario" data-acao="msg-fila-iniciar">Voltar aos pulados</button>' : ''}<button type="button" class="btn" data-acao="msg-fila-sair">Fechar a fila</button></div>
+      </div></section>`;
+    }
+    const m = lista[i], feitas = lista.length - pend;
+    return `<section class="card" style="border:2px solid var(--dado)" aria-live="polite">
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Fila de envio · ${feitas + 1} de ${lista.length}</h2><span class="h2-sub">1. Abra a conversa e aperte Enviar no WhatsApp. 2. Volte aqui e passe para o próximo: a mensagem é marcada como enviada.</span></div>
+        <button type="button" class="btn-link peq" data-acao="msg-fila-sair">Sair da fila</button></div>
+      <div class="plano-barra" style="margin:0 18px"><i style="background:var(--dado);width:${(feitas / Math.max(1, lista.length)) * 100}%"></i></div>
+      <div class="card-corpo" style="gap:12px">
+        <span class="pessoa">${avatar(m.motorista, 36)}<b style="font-weight:600;font-size:16px">${esc(m.motorista)}</b>${m.telefone ? `<span class="apoio num">${esc(fmtTel(m.telefone))}</span>` : '<span class="badge badge-atencao">Sem telefone</span>'}</span>
+        ${m.telefone ? '' : `<span class="apoio">Cadastre o telefone para a conversa abrir direto; sem ele, o WhatsApp pede para escolher o contato.</span>${campoTelefone(m, i)}`}
+        <p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55;padding:12px 14px;border-radius:12px;background:var(--apoio);max-height:260px;overflow:auto">${esc(m.texto)}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <a class="btn btn-primario" href="${esc(linkWhats(m.telefone, m.texto))}" target="${ALVO_WHATS}" rel="noopener" style="text-decoration:none" data-acao="msg-fila-aberta">1. Abrir conversa no WhatsApp</a>
+          <button type="button" class="btn ${M.filaAberta === m.motorista ? 'btn-primario' : ''}" data-acao="msg-fila-proximo" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>2. Enviei, próximo</button>
+          <button type="button" class="btn-link peq" data-acao="msg-fila-pular" data-i="${i}">Pular</button>
+          <button type="button" class="btn-link peq" data-acao="msg-copiar" data-i="${i}">Copiar texto</button>
+        </div></div></section>`;
+  }
   function telaMensagens() {
-    const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Copie, mande pelo seu WhatsApp e marque como enviada. O acompanhamento aparece no Motorista individual.`)}`;
+    const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp já com o texto, você aperta Enviar e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
     const M = msg();
     if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
@@ -9273,8 +9319,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const filtros = `<section class="card"><div class="card-corpo" style="flex-direction:row;align-items:flex-end;gap:14px;flex-wrap:wrap">
       <div class="campo-bloco" style="min-width:260px"><label class="campo-rotulo" for="msg-cli">Cliente</label><select class="campo" id="msg-cli" data-campo="msg-cli">${M.clientes.map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === M.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></div>
       <div class="campo-bloco"><label class="campo-rotulo" for="msg-dia">Análise do dia</label><input class="campo" id="msg-dia" type="date" data-campo="msg-dia" value="${esc(M.dia)}" max="${ontemMsg()}"></div>
-      ${lista.length ? `<span class="apoio"><b>${enviadas}</b> de <b>${lista.length}</b> mensagens marcadas como enviadas</span>` : ''}
-    </div></section>${busca}`;
+      ${lista.length ? `<span class="apoio"><b>${enviadas}</b> de <b>${lista.length}</b> mensagens marcadas como enviadas · <b>${lista.filter((m) => m.telefone).length}</b> com telefone</span>` : ''}
+      ${podeMarcar() && lista.length && enviadas < lista.length && !M.fila ? `<button type="button" class="btn btn-primario" data-acao="msg-fila-iniciar" style="margin-left:auto">Enviar em fila (${lista.length - enviadas})</button>` : ''}
+    </div></section>${busca}${M.fila && podeMarcar() && lista.length && !M.carregando ? painelFila(M) : ''}`;
     const cartoes = M.carregando || M.lista === null ? '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Montando as análises…</span></div></div></section>'
       : M.erro ? `<div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(M.erro)}</span></div></div>`
         : !lista.length ? '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ninguém rodou neste dia</span><span class="apoio">Escolha outro dia ou confira se a busca da API está em dia.</span></div></div></section>'
@@ -9285,9 +9332,10 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
             <div class="card-corpo" style="gap:12px">
               ${m.foco_rotulo ? `<span class="apoio">Ponto de atenção: <b>${esc(m.foco_rotulo)}</b> · melhorou em ${esc(m.melhorou)} e piorou em ${esc(m.piorou)} de ${esc(m.comparados)} indicadores</span>` : m.comparados ? `<span class="apoio">Nenhum ponto piorou · melhorou em ${esc(m.melhorou)} de ${esc(m.comparados)} indicadores</span>` : ''}
               <p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55;padding:12px 14px;border-radius:12px;background:var(--apoio, rgba(127,127,127,.08))">${esc(m.texto)}</p>
+              ${podeMarcar() ? campoTelefone(m, i) : ''}
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn" data-acao="msg-copiar" data-i="${i}">Copiar</button>
-                <a class="btn" href="https://wa.me/?text=${encodeURIComponent(m.texto)}" target="_blank" rel="noopener" style="text-decoration:none">Abrir no WhatsApp</a>
+                <a class="btn" href="${esc(linkWhats(m.telefone, m.texto))}" target="${ALVO_WHATS}" rel="noopener" style="text-decoration:none">Abrir no WhatsApp${m.telefone ? '' : ' (escolher contato)'}</a>
                 ${podeMarcar() ? (m.enviada ? `<button type="button" class="btn-link peq" data-acao="msg-desmarcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Desmarcar</button>`
                   : `<button type="button" class="btn btn-primario" data-acao="msg-marcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Marcar como enviada</button>`) : ''}
               </div></div></section>`).join('')}</div>`;
@@ -10305,6 +10353,42 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       try { await navigator.clipboard.writeText(m.texto); toast('Mensagem de ' + m.motorista + ' copiada. Cole no WhatsApp e, depois de mandar, marque como enviada.'); }
       catch (e) { toast('Não consegui copiar: selecione o texto e use Ctrl+C.', 'erro'); }
     },
+    'msg-tel-salvar': async (el) => {
+      const M = msg(), i = Number(el.dataset.i), m = (M.lista || [])[i], cs = contaSrv(), campo = document.getElementById('msg-tel-' + i);
+      if (!m || !cs || !campo) return;
+      M.ocupado = 'tel:' + m.motorista; render();
+      try {
+        const r = await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/telefone', { motorista: m.motorista, telefone: campo.value });
+        m.telefone = r.telefone || '';
+        toast(m.telefone ? 'Telefone de ' + m.motorista + ' salvo.' : 'Telefone de ' + m.motorista + ' apagado.');
+      } catch (e) { toast(e.message, 'erro'); }
+      M.ocupado = ''; render();
+    },
+    'msg-fila-iniciar': () => { Object.assign(msg(), { fila: true, filaPulados: [], filaAberta: '' }); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+    'msg-fila-sair': () => { Object.assign(msg(), { fila: false, filaPulados: [], filaAberta: '' }); render(); },
+    'msg-fila-aberta': (el, ev) => {
+      // deixa o link abrir a conversa (na mesma aba do WhatsApp) e destaca o "Enviei, próximo"
+      const M = msg(), m = (M.lista || [])[filaAtual(M)];
+      M.filaAberta = m ? m.motorista : '';
+      setTimeout(render, 0);
+    },
+    'msg-fila-pular': (el) => {
+      const M = msg(), m = (M.lista || [])[Number(el.dataset.i)];
+      if (!m) return;
+      M.filaPulados = (M.filaPulados || []).concat(m.motorista); M.filaAberta = '';
+      render();
+    },
+    'msg-fila-proximo': async (el) => {
+      const M = msg(), m = (M.lista || [])[Number(el.dataset.i)], cs = contaSrv();
+      if (!m || !cs) return;
+      M.ocupado = m.motorista; render();
+      try {
+        const r = await cs.chamar('PUT', '/api/v1/clientes/' + encodeURIComponent(M.cli) + '/mensagens/enviada', { dia: M.dia, motorista: m.motorista });
+        m.enviada = r.enviada; delete M.acomp[M.cli + '|' + m.motorista]; delete M.enviadas[M.cli];
+        M.filaAberta = '';
+      } catch (e) { toast(e.message, 'erro'); }
+      M.ocupado = ''; render();
+    },
     'msg-marcar': async (el) => {
       const M = msg(), m = (M.lista || [])[Number(el.dataset.i)], cs = contaSrv();
       if (!m || !cs) return;
@@ -10556,7 +10640,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   });
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('input[data-campo^="cli-"]')) { ev.preventDefault(); salvarCliente(); return; }
-    if (ev.key === 'Enter' && ev.target.matches('tr[data-acao], .cal-clic, .cd-ind, .mm-card, .pd-garg') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
+    if (ev.key === 'Enter' && ev.target.matches('input[data-tecla-enter]') && acoes[ev.target.dataset.teclaEnter]) { ev.preventDefault(); acoes[ev.target.dataset.teclaEnter](ev.target, ev); return; }
+    if (ev.key === 'Enter' && ev.target.matches('tr[data-acao], .cal-clic, .cd-ind, .mm-card, .pd-garg, .indg-card') && acoes[ev.target.dataset.acao]) acoes[ev.target.dataset.acao](ev.target, ev);
     if (ev.key === 'Escape' && E.combForm) { E.combForm = null; render(); return; }
     if (ev.key === 'Escape') { X.ui.dica(null); if (E.indDet) { E.indDet = null; render(); } if (E.cal.aberto) acoes['cal-cancelar'](); if (E.sino) { E.sino = false; render(); } if (E.navAberto) { E.navAberto = false; render(); } if (E.dieselMenu) { E.dieselMenu = false; render(); } if (E.semEnvio) { E.semEnvio = null; render(); } if (E.exportacao) { E.exportacao = null; render(); } }
   });
@@ -10587,8 +10672,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (k === 'traj-dia') { E.trajDia = el.value; render(); return; }
     if (k === 'bkp-arquivo' && el.files && el.files[0]) { const arq = el.files[0]; el.value = ''; arq.text().then(importarBackup).catch((e) => { E.bkpImportando = false; toast('Não foi possível importar: ' + e.message, 'erro'); render(); }); return; }
     if (k === 'usu-papel') { usuAlterar(el.dataset.id, el.value, null); return; }
-    if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '' }); render(); return; }
-    if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '' }); render(); return; }
+    if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '', fila: false, filaPulados: [] }); render(); return; }
+    if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '', fila: false, filaPulados: [] }); render(); return; }
     if (k === 'mot-comp') { E.motComp = el.value; render(); return; }
     if (k === 'grp-placa') {
       const c = cliAtual(); if (!c) return;

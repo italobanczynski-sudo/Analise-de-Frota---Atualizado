@@ -99,11 +99,18 @@ confere "situação da busca" 200 "$(req admin GET /api/v1/clientes/$ID_CLI/cole
 confere "mensagens enviadas do cliente" 200 "$(req admin GET /api/v1/clientes/$ID_CLI/mensagens/enviadas)"
 contem "sem mensagens enviadas ainda" '"dados":\[\]'
 confere "mensagens enviadas de cliente inexistente" 404 "$(req admin GET /api/v1/clientes/999999/mensagens/enviadas)"
+confere "salva telefone do motorista" 200 "$(req admin PUT /api/v1/clientes/$ID_CLI/mensagens/telefone '{"motorista":"Motorista E2E","telefone":"(11) 90000-0000"}')"
+contem "telefone gravado com o 55" '"telefone":"5511900000000"'
+confere "telefone inválido" 400 "$(req admin PUT /api/v1/clientes/$ID_CLI/mensagens/telefone '{"motorista":"Motorista E2E","telefone":"123"}')"
+confere "telefone sem motorista" 400 "$(req admin PUT /api/v1/clientes/$ID_CLI/mensagens/telefone '{"telefone":"11900000000"}')"
+confere "telefone de cliente inexistente" 404 "$(req admin PUT /api/v1/clientes/999999/mensagens/telefone '{"motorista":"X","telefone":"11900000000"}')"
+confere "apaga telefone (vazio)" 200 "$(req admin PUT /api/v1/clientes/$ID_CLI/mensagens/telefone '{"motorista":"motorista e2e","telefone":""}')"
 
 echo "== permissões do leitor"
 confere "leitor vê clientes" 200 "$(req leitor GET /api/v1/clientes)"
 confere "leitor vê registros" 200 "$(req leitor GET "/api/v1/clientes/$ID_CLI/registros?inicio=2026-10-01&fim=2026-10-02")"
 confere "leitor não pede busca" 403 "$(req leitor POST /api/v1/clientes/$ID_CLI/coleta)"
+confere "leitor não grava telefone" 403 "$(req leitor PUT /api/v1/clientes/$ID_CLI/mensagens/telefone '{"motorista":"X","telefone":"11900000000"}')"
 confere "leitor não cadastra cliente" 403 "$(req leitor POST /api/v1/clientes '{"nome":"Invasor"}')"
 confere "leitor não troca token" 403 "$(req leitor PUT /api/v1/clientes/$ID_CLI/token '{"token":"abc"}')"
 confere "leitor não lista usuários" 403 "$(req leitor GET /api/v1/usuarios)"

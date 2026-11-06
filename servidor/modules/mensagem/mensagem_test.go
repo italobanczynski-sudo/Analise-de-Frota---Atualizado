@@ -37,6 +37,19 @@ func (m *PremiacaoMock_t) Listar(ctx context.Context, clienteID int64, mes strin
 	return a.Get(0).([]premiacao.Premiacao_t), a.Error(1)
 }
 
+type TelefonesMock_t struct{ mock.Mock }
+
+func (m *TelefonesMock_t) Salvar(ctx context.Context, row mensagem_repo.TelefoneRow_t) error {
+	return m.Called(ctx, row).Error(0)
+}
+func (m *TelefonesMock_t) Apagar(ctx context.Context, clienteID int64, chave string) error {
+	return m.Called(ctx, clienteID, chave).Error(0)
+}
+func (m *TelefonesMock_t) Listar(ctx context.Context, clienteID int64) (map[string]string, error) {
+	a := m.Called(ctx, clienteID)
+	return a.Get(0).(map[string]string), a.Error(1)
+}
+
 type RepoMock_t struct{ mock.Mock }
 
 func (m *RepoMock_t) Marcar(ctx context.Context, row mensagem_repo.EnviadaRow_t) error {
@@ -75,6 +88,7 @@ func reg(mot, dia string, inicioFV, ocioso float64) diario.Registro_t {
 type MensagemSuite struct {
 	suite.Suite
 	repo      *RepoMock_t
+	tel       *TelefonesMock_t
 	diario    *DiarioMock_t
 	premiacao *PremiacaoMock_t
 	svc       mensagem.Service_I
@@ -82,10 +96,10 @@ type MensagemSuite struct {
 }
 
 func (s *MensagemSuite) SetupTest() {
-	s.repo, s.diario, s.premiacao = new(RepoMock_t), new(DiarioMock_t), new(PremiacaoMock_t)
+	s.repo, s.tel, s.diario, s.premiacao = new(RepoMock_t), new(TelefonesMock_t), new(DiarioMock_t), new(PremiacaoMock_t)
 	s.ctx = context.Background()
 	agora := time.Date(2026, 10, 27, 10, 0, 0, 0, time.UTC) // 27/10 às 7h de Brasília
-	s.svc = mensagem.NewMensagemCom(mensagem.Deps_t{Repo: s.repo, Diario: s.diario, Premiacao: s.premiacao, Agora: func() time.Time { return agora }})
+	s.svc = mensagem.NewMensagemCom(mensagem.Deps_t{Repo: s.repo, Telefones: s.tel, Diario: s.diario, Premiacao: s.premiacao, Agora: func() time.Time { return agora }})
 }
 
 // ---------- análise individual ----------
@@ -228,6 +242,7 @@ func (s *MensagemSuite) TestListarTrazOTextoProntoEANotaDaPremiacao() {
 	s.premiacao.On("Listar", s.ctx, int64(1), "2026-10").Return([]premiacao.Premiacao_t{{Motorista: "Ana Lima", Nota: f(87.5)}}, nil)
 	s.premiacao.On("Listar", s.ctx, int64(1), "2026-09").Return([]premiacao.Premiacao_t{{Motorista: "ANA LIMA", Nota: f(84)}}, nil)
 	s.repo.On("ListarDia", s.ctx, int64(1), "2026-10-26").Return([]mensagem_repo.EnviadaRow_t{}, nil)
+	s.tel.On("Listar", s.ctx, int64(1)).Return(map[string]string{}, nil)
 
 	m, err := s.svc.Listar(s.ctx, 1, "2026-10-26")
 
@@ -269,12 +284,53 @@ func (s *MensagemSuite) TestListarMostraQuemJaFoiEnviado() {
 	s.semNotas()
 	s.diario.On("Listar", s.ctx, int64(1), mock.Anything, mock.Anything).Return([]diario.Registro_t{reg("ANA", "2026-10-26", 75, 5), reg("BETO", "2026-10-26", 75, 5)}, nil)
 	s.repo.On("ListarDia", s.ctx, int64(1), "2026-10-26").Return([]mensagem_repo.EnviadaRow_t{{Motorista: "ANA", MarcadoEm: time.Now()}}, nil)
+	s.tel.On("Listar", s.ctx, int64(1)).Return(map[string]string{"ANA": "5511900000000"}, nil)
 
 	m, err := s.svc.Listar(s.ctx, 1, "2026-10-26")
 
 	s.Require().NoError(err)
 	s.NotNil(m[0].Enviada)
 	s.Nil(m[1].Enviada)
+	s.Equal("5511900000000", m[0].Telefone, "traz o telefone cadastrado para abrir a conversa")
+	s.Empty(m[1].Telefone)
+}
+
+func TestNormalizarTelefone(t *testing.T) {
+	for _, c := range []struct{ entra, sai string }{
+		{"(11) 90000-0000", "5511900000000"}, {"11 3000-0000", "551130000000"}, {"+55 11 90000-0000", "5511900000000"},
+		{"011 90000-0000", "5511900000000"}, {"", ""}, {"   ", ""},
+	} {
+		n, err := mensagem.NormalizarTelefone(c.entra)
+		if err != nil || n != c.sai {
+			t.Errorf("%q: veio %q, %v; esperado %q", c.entra, n, err, c.sai)
+		}
+	}
+	for _, ruim := range []string{"123", "abc", "+44 20 7946 0958", "11 90000-0000-0000"} {
+		if _, err := mensagem.NormalizarTelefone(ruim); err != mensagem.ErrTelefone {
+			t.Errorf("%q deveria ser recusado", ruim)
+		}
+	}
+}
+
+func (s *MensagemSuite) TestSalvarTelefoneGravaPeloNomeEApagaQuandoVazio() {
+	var gravado mensagem_repo.TelefoneRow_t
+	s.tel.On("Salvar", s.ctx, mock.Anything).Run(func(a mock.Arguments) { gravado = a.Get(1).(mensagem_repo.TelefoneRow_t) }).Return(nil)
+	s.tel.On("Apagar", s.ctx, int64(1), "ANA LIMA").Return(nil)
+
+	n, err := s.svc.SalvarTelefone(s.ctx, 1, " Ana  Lima ", "(11) 90000-0000", 9)
+	s.Require().NoError(err)
+	s.Equal("5511900000000", n)
+	s.Equal("ANA LIMA", gravado.Chave)
+	s.Equal("Ana Lima", gravado.Motorista)
+	s.Equal(int64(9), *gravado.AtualizadoPor)
+
+	n, err = s.svc.SalvarTelefone(s.ctx, 1, "ana lima", "", 9)
+	s.Require().NoError(err)
+	s.Empty(n)
+	s.tel.AssertCalled(s.T(), "Apagar", s.ctx, int64(1), "ANA LIMA")
+
+	_, err = s.svc.SalvarTelefone(s.ctx, 1, "ana lima", "123", 9)
+	s.ErrorIs(err, mensagem.ErrTelefone)
 }
 
 func (s *MensagemSuite) TestAcompanhamentoMedeOPontoApontadoNosDiasSeguintes() {

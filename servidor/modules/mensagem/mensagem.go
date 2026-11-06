@@ -1,8 +1,8 @@
 // Package mensagem monta, para cada motorista que rodou num dia, a análise individual pronta para mandar
 // pelo WhatsApp: km, média, início da faixa verde, embalo, motor ligado parado, piloto automático, pedal crítico
 // (cada um contra a média dos 7 dias anteriores), nota do mês contra o mês anterior, evolução e dica do dia.
-// Lê o dia a dia (diario) e a nota (premiacao); não envia nada nem guarda telefone: quem manda é a pessoa,
-// que marca a mensagem como enviada. Cada marca guarda um retrato da análise para o acompanhamento do motorista.
+// Lê o dia a dia (diario) e a nota (premiacao); não envia nada: quem manda é a pessoa, pelo próprio WhatsApp
+// (o painel abre a conversa do motorista com o telefone guardado aqui), e marca a mensagem como enviada. Cada marca guarda um retrato da análise para o acompanhamento do motorista.
 package mensagem
 
 import (
@@ -27,11 +27,14 @@ type Service_I interface {
 	Acompanhamento(ctx context.Context, clienteID int64, motorista string) (Acompanhamento_t, error)
 	// Enviadas: por motorista, quantas mensagens foram enviadas, a nota em cada dia e os indicadores apontados
 	Enviadas(ctx context.Context, clienteID int64) ([]Enviadas_t, error)
+	// SalvarTelefone grava o telefone do motorista (vazio apaga) e devolve o número como ficou gravado
+	SalvarTelefone(ctx context.Context, clienteID int64, motorista, telefone string, usuarioID int64) (string, error)
 }
 
 // Deps_t são as dependências; os testes trocam cada uma por um mock
 type Deps_t struct {
 	Repo      mensagem_repo.Repository_I
+	Telefones mensagem_repo.Telefones_I
 	Diario    diario.Service_I
 	Premiacao premiacao.Service_I
 	Agora     func() time.Time
@@ -40,7 +43,7 @@ type Deps_t struct {
 type mensagem_t struct{ d Deps_t }
 
 func NewMensagem() Service_I {
-	return &mensagem_t{d: Deps_t{Repo: mensagem_repo.NewRepository(), Diario: diario.NewDiario(), Premiacao: premiacao.NewPremiacao(), Agora: time.Now}}
+	return &mensagem_t{d: Deps_t{Repo: mensagem_repo.NewRepository(), Telefones: mensagem_repo.NewTelefones(), Diario: diario.NewDiario(), Premiacao: premiacao.NewPremiacao(), Agora: time.Now}}
 }
 
 // NewMensagemCom recebe as dependências (usado nos testes)
@@ -61,13 +64,17 @@ func (m *mensagem_t) Listar(ctx context.Context, clienteID int64, dia string) ([
 	if err != nil {
 		return nil, err
 	}
+	telefones, err := m.d.Telefones.Listar(ctx, clienteID)
+	if err != nil {
+		return nil, err
+	}
 	quando := map[string]time.Time{}
 	for _, e := range marcadas {
 		quando[ChaveMotorista(e.Motorista)] = e.MarcadoEm
 	}
 	out := make([]Mensagem_t, len(res))
 	for i, r := range res {
-		out[i] = Mensagem_t{Resumo_t: r, Texto: Texto(r.Variaveis)}
+		out[i] = Mensagem_t{Resumo_t: r, Texto: Texto(r.Variaveis), Telefone: telefones[ChaveMotorista(r.Motorista)]}
 		if t, ok := quando[ChaveMotorista(r.Motorista)]; ok {
 			out[i].Enviada = &t
 		}

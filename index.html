@@ -1824,27 +1824,30 @@ html:not([data-tema="escuro"]) .exec-val { white-space: nowrap; font-size: clamp
 /* mini gráfico do indicador na própria linha, abaixo do texto (não cobre a variação) */
 html:not([data-tema="escuro"]) .grade-kpi > .kpi .kpi-spark { position: static; order: 10; align-self: flex-end; margin-top: 6px; opacity: .85; }
 
-/* menu lateral: recolhido numa faixa só com os ícones; ao passar o mouse (ou navegar pelo teclado) abre com os nomes por cima do conteúdo */
+/* menu lateral: cartão fixo; cada item é o ícone num quadradinho com o nome embaixo (ativo em amarelo) */
 @media (min-width: 1100px) {
   html:not([data-tema="escuro"]) .sidebar {
-    width: 68px; align-items: stretch; padding: 14px 10px 16px; left: 0; top: 0; bottom: 0; border: 0; border-radius: 0;
-    background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow-x: hidden; overflow-y: auto;
-    transition: width 180ms var(--ease), background 180ms var(--ease), box-shadow 180ms var(--ease);
+    width: 106px; align-items: stretch; padding: 12px 5px; left: 12px; top: 12px; bottom: 12px; gap: 2px;
+    background: var(--superficie); border: 1px solid var(--vidro-borda); border-radius: 18px; box-shadow: 0 1px 2px rgba(16, 18, 22, 0.05);
+    -webkit-backdrop-filter: none; backdrop-filter: none; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin;
   }
-  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) { width: 228px; background: var(--fundo); box-shadow: 8px 0 28px -12px rgba(16, 18, 22, 0.28); }
-  html:not([data-tema="escuro"]) .nav-marca { justify-content: flex-start; gap: 10px; padding: 6px 10px 14px; pointer-events: none; white-space: nowrap; }
-  html:not([data-tema="escuro"]) .nav-marca svg { display: none; }
-  html:not([data-tema="escuro"]) :is(.nav-marca span, .nav-secao) { display: block; visibility: hidden; white-space: nowrap; }
-  html:not([data-tema="escuro"]) .nav-item .nome { display: none; }
-  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) :is(.nav-marca span, .nav-secao) { visibility: visible; }
-  html:not([data-tema="escuro"]) .sidebar:is(:hover, :focus-within) .nav-item .nome { display: block; }
-  html:not([data-tema="escuro"]) .nav-item { width: auto; height: auto; min-height: 40px; justify-content: flex-start; gap: 12px; padding: 7px 12px; border-radius: 12px; }
-  html:not([data-tema="escuro"]) .nav-item .nome { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; min-width: 160px; }
-  html:not([data-tema="escuro"]) .nav-item .dica { display: none; }
-  html:not([data-tema="escuro"]) .sidebar:not(:hover):not(:focus-within) .nav-item.ativo::after { display: none; }
-  html:not([data-tema="escuro"]) .nav-rodape { align-items: stretch; }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca { display: flex; flex-direction: column; align-items: center; gap: 4px; width: auto; padding: 4px 2px 10px; margin: 0 6px 4px; border-bottom: 1px solid var(--hairline); pointer-events: none; cursor: default; }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca svg { padding: 7px; border-radius: 10px; background: var(--tinta); color: var(--amarelo); }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca span { display: block; font-size: 10.5px; font-weight: 700; line-height: 1.2; text-align: center; color: var(--tinta); }
+  html:not([data-tema="escuro"]) .sidebar .nav-secao { display: block; font-size: 0; height: 1px; padding: 0; margin: 6px 14px; background: var(--hairline); }
+  html:not([data-tema="escuro"]) .sidebar .nav-secao:first-of-type { display: none; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item { width: auto; height: auto; min-height: 0; flex-direction: column; justify-content: flex-start; align-items: center; gap: 4px; padding: 6px 2px; border-radius: 12px; background: transparent; box-shadow: none; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item img { width: 24px; height: 24px; padding: 7px; box-sizing: content-box; border-radius: 10px; background: var(--apoio); opacity: .8; transition: background 140ms var(--ease); }
+  html:not([data-tema="escuro"]) .sidebar .nav-item:hover { background: transparent; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item:hover img { background: rgba(16, 18, 22, 0.09); opacity: 1; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item.ativo img { background: var(--amarelo); opacity: 1; box-shadow: 0 4px 12px -6px rgba(252, 183, 9, 0.8); }
+  html:not([data-tema="escuro"]) .sidebar .nav-item .nome { display: block; font-size: 10.5px; font-weight: 500; line-height: 1.2; text-align: center; white-space: normal; overflow: visible; color: var(--texto-2); }
+  html:not([data-tema="escuro"]) .sidebar .nav-item.ativo .nome { color: var(--tinta); font-weight: 700; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item.ativo::after { display: none; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item .dica { display: none; }
+  html:not([data-tema="escuro"]) .nav-rodape { align-items: stretch; padding-top: 6px; }
   html:not([data-tema="escuro"]) .nav-fundo { display: none; }
-  html:not([data-tema="escuro"]) .conteudo { margin-left: 76px; }
+  html:not([data-tema="escuro"]) .conteudo { margin-left: 130px; }
 }
 html:not([data-tema="escuro"]) .nav-secao { font-size: 10px; color: var(--texto-3); padding: 16px 12px 4px; }
 html:not([data-tema="escuro"]) .nav-item:hover { background: rgba(16, 18, 22, 0.04); }
@@ -3506,7 +3509,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
-    { id: 73, data: '2026-11-06', titulo: 'Nota de quem recebeu mensagem × nota da frota', texto: 'Em Motoristas › Mensagens enviadas, novo gráfico com a nota Gobrax de cada mês (premiação da API) de quem recebeu mensagem comparada à nota geral da frota, com a nota de antes do primeiro envio e a de agora para os dois grupos.', href: '#/motoristas', link: 'Abrir Motoristas' },
+    { id: 73, data: '2026-11-06', titulo: 'Evolução da nota geral da frota', texto: 'Em Motoristas › Mensagens enviadas, novo gráfico de linha com a nota geral da frota (Gobrax) de cada mês, pela premiação da API, marcando o mês do primeiro envio e mostrando a nota de antes e a de agora.', href: '#/motoristas', link: 'Abrir Motoristas' },
     { id: 72, data: '2026-11-06', titulo: 'Robô do WhatsApp no sino', texto: 'Quando o robô das 08:00 termina com mensagem que deu erro ou ficou pendente, o sino mostra quantas foram enviadas, quantas deram erro e quantas ficaram pendentes, com o nome de quem e o motivo. Se o robô não conseguir rodar (WhatsApp desconectado, por exemplo), o sino também avisa.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações › Clientes, abra o cliente e use a aba Condutores: veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/config', link: 'Abrir Configurações' },
     { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
@@ -9500,42 +9503,45 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
     if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
   }
-  // Nota Gobrax por mês (premiação da API; a API não manda a nota por dia): quem recebeu mensagem × frota toda,
+  // Nota geral da frota (Gobrax) por mês, em linha (premiação da API; a API não manda a nota por dia),
   // com a nota de antes (mês anterior ao 1º envio) e a de agora (último mês, parcial no mês corrente). Média ponderada pelos km.
   function graficoNotaEnviadas(lista, diasEnvio) {
     const ind = IND_MAP.nota;
     if (!ind || !diasEnvio.length || !E.cliente) return '';
     const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && Array.isArray(d.motoristas)).sort((a, b) => (a.data < b.data ? -1 : 1));
-    if (!docs.length) return `<div style="display:flex;flex-direction:column;gap:6px;padding:0 16px 16px"><span class="hb-bloco-t">Evolução da nota Gobrax: quem recebeu mensagem × nota geral da frota</span>
+    if (!docs.length) return `<div style="display:flex;flex-direction:column;gap:6px;padding:0 16px 16px"><span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
         <span class="apoio">Sem a premiação da API para este cliente. No perfil do cliente, busque "Scores e premiação" para ver a nota de cada mês.</span></div>`;
-    const nomes = new Set(lista.map((x) => ckey(x.motorista)));
     const media = (ms) => { let s = 0, w = 0; ms.forEach((m) => { if (!Number.isFinite(m.nota)) return; const k = m.km > 0 ? m.km : 1; s += m.nota * k; w += k; }); return w ? s / w : null; };
-    const meses = docs.map((d) => ({ mes: d.data, frota: media(d.motoristas), rec: media(d.motoristas.filter((m) => nomes.has(ckey(m.nome)))) }));
+    const meses = docs.map((d) => ({ mes: d.data, v: media(d.motoristas) }));
     const mesEnvio = diasEnvio[0].slice(0, 7), hojeMes = D.hoje().slice(0, 7);
     const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
-    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 6)));   // até 6 meses, sempre com o "antes"
+    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 12)));   // até 12 meses, sempre com o "antes"
     const antes = meses[iAntes], agora = meses[meses.length - 1];
     const num = (v) => (Number.isFinite(v) ? fmt(v, 1) : '—');
     const curto = (k) => D.nomeMes(k + '-01').slice(0, 3) + '/' + k.slice(2, 4);
-    const tile = (rot, leg, a, b) => `<div style="display:flex;flex-direction:column;gap:4px;min-width:200px">
-        <span class="apoio" style="display:inline-flex;gap:6px;align-items:center"><span style="width:10px;height:10px;border-radius:3px;background:${leg}"></span>${esc(rot)}</span>
-        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(a)} →</span> ` : ''}<b style="font-size:22px">${num(b)}</b> ${antes !== agora && Number.isFinite(a) && Number.isFinite(b) ? variacao(X.variacao(ind, b, a)) : ''}</span></div>`;
-    const dif = Number.isFinite(agora.rec) && Number.isFinite(agora.frota) ? agora.rec - agora.frota : null;
-    const leitura = dif === null ? '' : `<span class="apoio">${agora.mes === hojeMes ? 'Neste mês' : 'Em ' + D.nomeMes(agora.mes + '-01')}, quem recebeu mensagem está <b>${fmt(Math.abs(dif), 1)} pts ${dif >= 0 ? 'acima' : 'abaixo'}</b> da nota geral da frota.</span>`;
-    // colunas por mês (começa no zero; o topo acompanha a maior nota): amarela = quem recebeu, cinza = frota toda
-    const topo = Math.min(100, Math.ceil((Math.max(0, ...vis.flatMap((m) => [m.rec, m.frota]).filter(Number.isFinite)) + 5) / 10) * 10) || 100;
-    const H = 150, alt = (v) => (Number.isFinite(v) ? Math.max(2, Math.min(topo, v)) / topo * H : 0);
-    const barra = (v, cor, tit) => `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;width:34px;height:${H + 20}px" title="${esc(tit)}: ${num(v)}">
-        <span class="num" style="font-size:11.5px;font-weight:600">${num(v)}</span><span style="width:100%;height:${alt(v)}px;background:${cor};border-radius:6px 6px 2px 2px"></span></div>`;
-    const colunas = vis.map((m) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:84px">
-        <div style="display:flex;gap:6px;align-items:flex-end">${barra(m.rec, 'var(--dado)', 'Quem recebeu mensagem')}${barra(m.frota, '#BDC1C6', 'Frota toda')}</div>
-        <span class="num" style="font-size:12px;color:var(--texto-2)">${curto(m.mes)}${m.mes === hojeMes ? ' <span class="mudo">(parcial)</span>' : ''}</span>
-        ${m.mes === mesEnvio ? '<span class="badge" style="font-size:10.5px">1º envio</span>' : '<span style="height:18px"></span>'}</div>`).join('');
+    const varia = antes !== agora && Number.isFinite(antes.v) && Number.isFinite(agora.v) ? variacao(X.variacao(ind, agora.v, antes.v)) : '';
+    const resumo = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(antes.v)} →</span> ` : ''}<b style="font-size:24px">${num(agora.v)}</b> ${varia}</span>
+        <span class="apoio">${agora.mes === hojeMes ? 'neste mês (parcial)' : 'em ' + D.nomeMes(agora.mes + '-01')}</span></div>`;
+    // linha (SVG): a escala acompanha as notas do período, com folga; pontos com o valor; o mês do 1º envio marcado
+    const vals = vis.map((m) => m.v).filter(Number.isFinite);
+    const lo = Math.max(0, Math.floor((Math.min(...vals) - 3) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...vals) + 3) / 10) * 10);
+    const W = 680, H = 240, mE = 40, mD = 40, mT = 26, mB = 50, n = vis.length;
+    const x0 = mE + 32, x = (i) => (n === 1 ? (x0 + W - mD) / 2 : x0 + i * (W - x0 - mD) / (n - 1));
+    const y = (v) => mT + (hi - v) / ((hi - lo) || 1) * (H - mT - mB);
+    const grade = Array.from({ length: (hi - lo) / 10 + 1 }, (_, k) => lo + k * 10).map((g) => `<line x1="${mE}" x2="${W - mD}" y1="${y(g)}" y2="${y(g)}" stroke="var(--hairline)"/><text x="${mE - 8}" y="${y(g) + 4}" text-anchor="end" font-size="11" fill="var(--texto-2)">${fmt(g, 0)}</text>`).join('');
+    const pts = vis.map((m, i) => (Number.isFinite(m.v) ? [x(i), y(m.v), m, i] : null)).filter(Boolean);
+    const linha = pts.length > 1 ? `<polyline points="${pts.map((p) => p[0] + ',' + p[1]).join(' ')}" fill="none" stroke="var(--dado)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+    const iEnv = vis.findIndex((m) => m.mes === mesEnvio);
+    const envio = iEnv >= 0 ? `<line x1="${x(iEnv)}" x2="${x(iEnv)}" y1="${mT - 8}" y2="${H - mB}" stroke="var(--texto-2)" stroke-dasharray="4 4" opacity=".6"/><text x="${x(iEnv)}" y="${H - mB + 36}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--texto-2)">1º envio</text>` : '';
+    const marcas = pts.map(([px, py, m]) => `<g><title>${esc(D.nomeMes(m.mes + '-01'))}: ${num(m.v)}</title><circle cx="${px}" cy="${py}" r="4.5" fill="var(--superficie)" stroke="var(--dado)" stroke-width="2.5"/>
+        <text x="${px}" y="${py - 11}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--tinta)">${num(m.v)}</text></g>`).join('');
+    const eixo = vis.map((m, i) => `<text x="${x(i)}" y="${H - mB + 20}" text-anchor="middle" font-size="11.5" fill="var(--texto-2)">${curto(m.mes)}</text>${m.mes === hojeMes && m.mes !== mesEnvio ? `<text x="${x(i)}" y="${H - mB + 36}" text-anchor="middle" font-size="10.5" fill="var(--texto-2)">(parcial)</text>` : ''}`).join('');
     return `<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">
-        <span class="hb-bloco-t">Evolução da nota Gobrax: quem recebeu mensagem × nota geral da frota</span>
-        <span class="apoio" style="font-size:12px">Nota do mês da premiação da API Gobrax, média ponderada pelos km. Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
-        <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-end">${tile('Quem recebeu mensagem', 'var(--dado)', antes.rec, agora.rec)}${tile('Nota geral da frota (Gobrax)', '#BDC1C6', antes.frota, agora.frota)}${leitura}</div>
-        <div style="display:flex;gap:18px;align-items:flex-end;overflow-x:auto;padding-top:6px;border-bottom:1px solid var(--hairline)" role="img" aria-label="Nota Gobrax por mês: quem recebeu mensagem e frota toda">${colunas}</div></div>`;
+        <span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
+        <span class="apoio" style="font-size:12px">Nota do mês da premiação da API Gobrax, média ponderada pelos km, frota toda. Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
+        ${resumo}
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="Nota geral da frota Gobrax por mês">${grade}${envio}${linha}${marcas}${eixo}</svg></div>`;
   }
   function painelEnviadas(c) {
     const M = msg();

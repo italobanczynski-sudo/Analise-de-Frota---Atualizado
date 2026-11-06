@@ -3500,7 +3500,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
-    { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web já com o texto, você aperta Enviar e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
+    { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 69, data: '2026-11-06', titulo: 'Desenvolvimento da frota em gráficos', texto: 'Em Todos os indicadores, cada indicador virou um gráfico do período analisado contra a comparação, a evolução dia a dia virou uma linha por indicador e a variação dos motoristas virou barras para cada lado. O cartão de odômetro saiu.', href: '#/visao?aba=indicadores', link: 'Abrir Todos os indicadores' },
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
     { id: 66, data: '2026-11-05', titulo: 'Frota ao vivo na Visão geral', texto: 'A Visão geral abre com o mapa da frota: a última posição de cada veículo (em movimento, parado ou sem sinal), atualizada a cada 2 minutos, e a lista de quem está comunicando agora. Ao lado, a nota, a frota agora, o consumo, a faixa verde e o motor ligado parado do período, o motorista e o veículo escolhido no mapa com o desempenho contra a frota. Saiu a Comparação por fase do menu (o cálculo segue no Resumo da reunião; dias excluídos foram para Combinados).' },
@@ -9253,12 +9253,18 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   }
   // Telefone do motorista (só dígitos, com 55) → "(11) 90000-0000"
   const fmtTel = (n) => { const d = String(n || '').replace(/^55/, ''); return d.length < 10 ? String(n || '') : `(${d.slice(0, 2)}) ${d.slice(2, -4)}-${d.slice(-4)}`; };
-  // Conversa do motorista já com o texto: no computador abre direto no WhatsApp Web (sempre na mesma aba);
-  // no celular, pelo wa.me (abre o aplicativo). Sem telefone, o WhatsApp pede para escolher o contato.
+  // Conversa do motorista: no computador abre o WhatsApp Web (sempre na mesma aba) SEM o texto, porque o texto que vai
+  // no link chega com os emojis trocados por "�"; o texto é copiado no clique e a pessoa cola com Ctrl+V.
+  // No celular, pelo wa.me com o texto (o aplicativo mantém os emojis). Sem telefone, o WhatsApp pede o contato.
+  const ehCelular = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   function linkWhats(tel, texto) {
-    const celular = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    if (tel && !celular) return 'https://web.whatsapp.com/send?phone=' + tel + '&text=' + encodeURIComponent(texto);
+    if (!ehCelular()) return tel ? 'https://web.whatsapp.com/send?phone=' + tel : 'https://web.whatsapp.com/';
     return 'https://wa.me/' + (tel || '') + '?text=' + encodeURIComponent(texto);
+  }
+  async function copiarParaColar(m) {
+    if (ehCelular()) return;
+    try { await navigator.clipboard.writeText(m.texto); toast('Texto de ' + m.motorista + ' copiado: na conversa, cole com Ctrl+V e aperte Enter.'); }
+    catch (e) { toast('Não consegui copiar: use o botão Copiar texto.', 'erro'); }
   }
   const ALVO_WHATS = 'gbx-whatsapp';
   // Fila de envio: a próxima mensagem não enviada (e não pulada) do dia
@@ -9281,7 +9287,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     }
     const m = lista[i], feitas = lista.length - pend;
     return `<section class="card" style="border:2px solid var(--dado)" aria-live="polite">
-      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Fila de envio · ${feitas + 1} de ${lista.length}</h2><span class="h2-sub">1. Abra a conversa e aperte Enviar no WhatsApp. 2. Volte aqui e passe para o próximo: a mensagem é marcada como enviada.</span></div>
+      <div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Fila de envio · ${feitas + 1} de ${lista.length}</h2><span class="h2-sub">1. Abra a conversa: o texto é copiado junto. Cole com Ctrl+V e aperte Enter no WhatsApp. 2. Volte aqui e passe para o próximo: a mensagem é marcada como enviada.</span></div>
         <button type="button" class="btn-link peq" data-acao="msg-fila-sair">Sair da fila</button></div>
       <div class="plano-barra" style="margin:0 18px"><i style="background:var(--dado);width:${(feitas / Math.max(1, lista.length)) * 100}%"></i></div>
       <div class="card-corpo" style="gap:12px">
@@ -9296,7 +9302,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         </div></div></section>`;
   }
   function telaMensagens() {
-    const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp já com o texto, você aperta Enviar e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;
+    const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp Web e copia o texto, você cola com Ctrl+V, aperta Enter e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
     const M = msg();
     if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
@@ -9335,7 +9341,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
               ${podeMarcar() ? campoTelefone(m, i) : ''}
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn" data-acao="msg-copiar" data-i="${i}">Copiar</button>
-                <a class="btn" href="${esc(linkWhats(m.telefone, m.texto))}" target="${ALVO_WHATS}" rel="noopener" style="text-decoration:none">Abrir no WhatsApp${m.telefone ? '' : ' (escolher contato)'}</a>
+                <a class="btn" href="${esc(linkWhats(m.telefone, m.texto))}" target="${ALVO_WHATS}" rel="noopener" style="text-decoration:none" data-acao="msg-abrir" data-i="${i}">Abrir no WhatsApp${m.telefone ? '' : ' (escolher contato)'}</a>
                 ${podeMarcar() ? (m.enviada ? `<button type="button" class="btn-link peq" data-acao="msg-desmarcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Desmarcar</button>`
                   : `<button type="button" class="btn btn-primario" data-acao="msg-marcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Marcar como enviada</button>`) : ''}
               </div></div></section>`).join('')}</div>`;
@@ -10367,11 +10373,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     'msg-fila-iniciar': () => { Object.assign(msg(), { fila: true, filaPulados: [], filaAberta: '' }); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
     'msg-fila-sair': () => { Object.assign(msg(), { fila: false, filaPulados: [], filaAberta: '' }); render(); },
     'msg-fila-aberta': (el, ev) => {
-      // deixa o link abrir a conversa (na mesma aba do WhatsApp) e destaca o "Enviei, próximo"
+      // deixa o link abrir a conversa (na mesma aba do WhatsApp), copia o texto para colar e destaca o "Enviei, próximo"
       const M = msg(), m = (M.lista || [])[filaAtual(M)];
       M.filaAberta = m ? m.motorista : '';
+      if (m) copiarParaColar(m);
       setTimeout(render, 0);
     },
+    'msg-abrir': (el) => { const m = (msg().lista || [])[Number(el.dataset.i)]; if (m) copiarParaColar(m); },
     'msg-fila-pular': (el) => {
       const M = msg(), m = (M.lista || [])[Number(el.dataset.i)];
       if (!m) return;

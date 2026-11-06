@@ -197,7 +197,7 @@ func (c comparacao_t) texto() string {
 	case 1:
 		return v + " ✅ melhorou " + dif
 	case -1:
-		return v + " ⚠️ piorou " + dif
+		return v + " ⚠️ queda de " + dif
 	}
 	return v + " ➖ estável"
 }
@@ -272,7 +272,7 @@ func evolucao(melhorou, piorou, comparados int, anterior string) string {
 	if anterior == "" {
 		return "Ainda não temos um dia anterior seu para comparar. A partir do próximo dia você acompanha a sua evolução."
 	}
-	base := fmt.Sprintf("Em relação ao dia %s, você melhorou em %d e piorou em %d dos %d indicadores.", dataBR(anterior), melhorou, piorou, comparados)
+	base := fmt.Sprintf("Em relação ao dia %s, você melhorou em %d e teve queda em %d dos %d indicadores.", dataBR(anterior), melhorou, piorou, comparados)
 	switch {
 	case comparados == 0:
 		return "Neste dia não houve indicadores registrados para comparar com o dia " + dataBR(anterior) + "."
@@ -308,7 +308,7 @@ func dicaDoDia(comps []comparacao_t, anterior string) string {
 	}
 	pior := piorIndicador(comps)
 	if pior == nil {
-		return "nenhum indicador piorou em relação ao dia " + dataBR(anterior) + ". Continue assim!"
+		return "nenhum indicador teve queda em relação ao dia " + dataBR(anterior) + ". Continue assim!"
 	}
 	return fmt.Sprintf("%s ficou em %s%% (no dia %s: %s%%). Dica: %s", pior.ind.rotulo, num(*pior.hoje, 1), dataBR(anterior), num(*pior.media, 1), pior.ind.dica)
 }

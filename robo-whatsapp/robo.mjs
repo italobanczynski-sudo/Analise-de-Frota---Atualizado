@@ -136,21 +136,83 @@ async function enviarDoCliente(wa, c, dia, conta) {
   const lista = await chamar('GET', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens?dia=${dia}`);
   const fila = pendentes(lista);
   const semTel = lista.filter((m) => !m.enviada && !m.telefone).length;
+  conta.semTelefone += semTel;
   log(`${c.nome}: ${lista.length} mensagens, ${fila.length} para enviar${semTel ? `, ${semTel} sem telefone (não vão)` : ''}`);
   for (const m of fila) {
-    if (conta.n >= CFG.maxPorDia) { log(`limite de ${CFG.maxPorDia} mensagens no dia atingido`); return; }
+    if (conta.n >= CFG.maxPorDia) {
+      log(`limite de ${CFG.maxPorDia} mensagens no dia atingido`);
+      fila.slice(fila.indexOf(m)).forEach((x) => conta.pendentes.push({ cliente: c.nome, motorista: x.motorista, motivo: 'limite de mensagens do dia' }));
+      return;
+    }
     if (MODO === 'teste') { log(`  [teste] mandaria para ${m.motorista} (${mascarar(m.telefone)})`); continue; }
     try {
       const id = await wa.getNumberId(m.telefone);
-      if (!id) { log(`  ${m.motorista} (${mascarar(m.telefone)}): este número não tem WhatsApp; confira o cadastro`); continue; }
+      if (!id) {
+        log(`  ${m.motorista} (${mascarar(m.telefone)}): este número não tem WhatsApp; confira o cadastro`);
+        conta.erros.push({ cliente: c.nome, motorista: m.motorista, motivo: 'o número não tem WhatsApp; confira o cadastro' });
+        continue;
+      }
       await wa.sendMessage(id._serialized, m.texto);
       await chamar('PUT', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens/enviada`, { dia, motorista: m.motorista });
       conta.n++;
+      conta.enviadas.push({ cliente: c.nome, motorista: m.motorista });
       log(`  enviada para ${m.motorista} (${mascarar(m.telefone)})`);
     } catch (e) {
       log(`  ERRO com ${m.motorista}: ${e.message}`);
+      conta.erros.push({ cliente: c.nome, motorista: m.motorista, motivo: String(e.message || e).slice(0, 200) });
     }
     await dormir(pausaAleatoria(CFG.pausaMin, CFG.pausaMax));
+  }
+}
+
+// Teste de envio de verdade, sem tocar nos motoristas: manda UMA mensagem de exemplo (a análise de ontem do primeiro
+// motorista que houver) para o TELEFONE_TESTE do .env e não marca nada como enviado.
+async function testeEnvio(dia) {
+  const tel = String(ENV.TELEFONE_TESTE || '').replace(/\D/g, '');
+  if (!tel) throw new Error('Para o teste de envio, preencha TELEFONE_TESTE no .env com o SEU número (DDD + número).');
+  const numero = tel.length <= 11 ? '55' + tel : tel;
+  let exemplo = null;
+  for (const c of await chamar('GET', '/api/v1/clientes')) {
+    const lista = await chamar('GET', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens?dia=${dia}`).catch(() => []);
+    if (lista.length) { exemplo = { cliente: c.nome, m: lista[0] }; break; }
+  }
+  const texto = '🧪 TESTE DO ROBÔ (só para você, nenhum motorista recebeu)\n\n' + (exemplo ? exemplo.m.texto : 'Sem análise de ontem para mostrar; o envio funcionou.');
+  const wa = await abrirWhatsAppComRetentativa();
+  try {
+    const id = await wa.getNumberId(numero);
+    if (!id) throw new Error(`o número de teste (${mascarar(numero)}) não tem WhatsApp`);
+    await wa.sendMessage(id._serialized, texto);
+    log(`teste enviado para ${mascarar(numero)}${exemplo ? ` com a análise de ${exemplo.m.motorista} (${exemplo.cliente})` : ''}. Nada foi marcado como enviado.`);
+  } finally {
+    await dormir(8000);
+    await wa.fechar();
+  }
+}
+
+// Manda a análise de ontem a UM condutor (pelo nome), mesmo que já marcada como enviada, e marca de novo.
+//   node robo.mjs enviar-um "NOME DO CONDUTOR"
+async function enviarUm(dia, nome) {
+  const sem = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!sem(nome)) throw new Error('Informe o nome: node robo.mjs enviar-um "NOME DO CONDUTOR"');
+  const achados = [];
+  for (const c of await chamar('GET', '/api/v1/clientes')) {
+    const lista = await chamar('GET', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens?dia=${dia}`).catch(() => []);
+    lista.filter((m) => sem(m.motorista) === sem(nome)).forEach((m) => achados.push({ c, m }));
+  }
+  if (!achados.length) throw new Error(`${nome} não tem análise de ${dia} (não rodou nesse dia ou o nome está diferente).`);
+  if (achados.length > 1) throw new Error(`${nome} aparece em mais de um cliente: ${achados.map((a) => a.c.nome).join(', ')}.`);
+  const { c, m } = achados[0];
+  if (!m.telefone) throw new Error(`${m.motorista} (${c.nome}) não tem telefone cadastrado.`);
+  const wa = await abrirWhatsAppComRetentativa();
+  try {
+    const id = await wa.getNumberId(m.telefone);
+    if (!id) throw new Error(`o número de ${m.motorista} (${mascarar(m.telefone)}) não tem WhatsApp`);
+    await wa.sendMessage(id._serialized, m.texto);
+    await chamar('PUT', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens/enviada`, { dia, motorista: m.motorista });
+    log(`enviada para ${m.motorista} (${c.nome}, ${mascarar(m.telefone)}): análise de ${dia}`);
+  } finally {
+    await dormir(8000);
+    await wa.fechar();
   }
 }
 
@@ -165,8 +227,10 @@ async function principal() {
   }
   const dia = ontemBR();
   await entrar();
+  if (MODO === 'teste-envio') return testeEnvio(dia);
+  if (MODO === 'enviar-um') return enviarUm(dia, process.argv[3]);
   const wa = MODO === 'teste' ? null : await abrirWhatsAppComRetentativa();
-  const feitos = new Set(), conta = { n: 0 };
+  const feitos = new Set(), conta = { n: 0, enviadas: [], erros: [], pendentes: [], semTelefone: 0 };
   try {
     for (;;) {
       const clientes = (await chamar('GET', '/api/v1/clientes'))
@@ -180,14 +244,35 @@ async function principal() {
       }
       if (!esperando.length) break;
       const hora = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false }));
-      if (hora >= CFG.limiteHora || MODO === 'teste') { log(`dados de ${dia} ainda não chegaram para: ${esperando.join(', ')}. Ficam sem envio hoje.`); break; }
+      if (hora >= CFG.limiteHora || MODO === 'teste') {
+        log(`dados de ${dia} ainda não chegaram para: ${esperando.join(', ')}. Ficam sem envio hoje.`);
+        esperando.forEach((nome) => conta.pendentes.push({ cliente: nome, motorista: '', motivo: `os dados de ${dia.slice(8, 10)}/${dia.slice(5, 7)} não chegaram até ${CFG.limiteHora}h` }));
+        break;
+      }
       log(`dados de ${dia} ainda não chegaram para: ${esperando.join(', ')}. Confiro de novo em ${CFG.esperaMin} min.`);
       await dormir(CFG.esperaMin * 60000);
     }
   } finally {
     if (wa) { await dormir(8000); await wa.fechar(); }   // dá tempo da última mensagem sair
   }
-  log(`== fim: ${conta.n} mensagem(ns) enviada(s) referentes a ${dia}`);
+  log(`== fim: ${conta.n} mensagem(ns) enviada(s) referentes a ${dia}${conta.erros.length ? `, ${conta.erros.length} com erro` : ''}${conta.pendentes.length ? `, ${conta.pendentes.length} pendente(s)` : ''}`);
+  if (MODO === 'enviar') await registrarResumo(dia, conta, '');
 }
 
-principal().then(() => process.exit(0)).catch((e) => { log('ERRO: ' + e.message); process.exit(1); });
+// Resumo da execução na plataforma (coleção robo_envios, um documento por dia analisado): o sino do painel mostra
+// quantas foram enviadas e o que deu erro ou ficou pendente. Só nomes, sem telefone.
+async function registrarResumo(dia, conta, erroGeral) {
+  const doc = {
+    dia, executado_em: new Date().toISOString(), enviadas: conta.n, erros: conta.erros, pendentes: conta.pendentes,
+    sem_telefone: conta.semTelefone, erro_geral: erroGeral || ''
+  };
+  try { if (!cookie) await entrar(); await chamar('PUT', `/api/v1/base/robo_envios/${dia}`, doc); log('resumo registrado na plataforma'); }
+  catch (e) { log('não consegui registrar o resumo na plataforma: ' + e.message); }
+}
+
+principal().then(() => process.exit(0)).catch(async (e) => {
+  log('ERRO: ' + e.message);
+  // falha geral (WhatsApp desconectado, servidor fora…): também vira alerta no sino, se der para falar com a plataforma
+  if (MODO === 'enviar') await registrarResumo(ontemBR(), { n: 0, erros: [], pendentes: [], semTelefone: 0 }, String(e.message || e).slice(0, 300));
+  process.exit(1);
+});

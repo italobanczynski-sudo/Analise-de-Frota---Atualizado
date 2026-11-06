@@ -3500,6 +3500,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
+    { id: 72, data: '2026-11-06', titulo: 'Robô do WhatsApp no sino', texto: 'Quando o robô das 08:00 termina com mensagem que deu erro ou ficou pendente, o sino mostra quantas foram enviadas, quantas deram erro e quantas ficaram pendentes, com o nome de quem e o motivo. Se o robô não conseguir rodar (WhatsApp desconectado, por exemplo), o sino também avisa.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações › Clientes, abra o cliente e use a aba Condutores: veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/config', link: 'Abrir Configurações' },
     { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 69, data: '2026-11-06', titulo: 'Desenvolvimento da frota em gráficos', texto: 'Em Todos os indicadores, cada indicador virou um gráfico do período analisado contra a comparação, a evolução dia a dia virou uma linha por indicador e a variação dos motoristas virou barras para cada lado. O cartão de odômetro saiu.', href: '#/visao?aba=indicadores', link: 'Abrir Todos os indicadores' },
@@ -3576,7 +3577,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   let memoAlertas = null;
   function alertasPainel() {
     const chave = [E.linhasAll ? E.linhasAll.length : 0, E.A && E.A.ini, E.A && E.A.fim, E.cliente, E.clientes.length, planDocs.size, (E.trat || []).length,
-      (msg().clientes || []).map((c) => c.coleta && c.coleta.situacao).join(','), D.hoje()].join('|');
+      (msg().clientes || []).map((c) => c.coleta && c.coleta.situacao).join(','), docsDe('robo_envios').map((d) => d.executado_em).join(','), D.hoje()].join('|');
     if (memoAlertas && memoAlertas.chave === chave) return memoAlertas.lista;
     const out = [];
     if (E.linhasAll && E.A) {
@@ -3602,6 +3603,18 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (contaSrv()) {
       if (!msg().clientes) setTimeout(msgClientes, 0);
       (msg().clientes || []).filter((c) => c.coleta && c.coleta.situacao === 'erro').forEach((c) => out.push({ nivel: 'critico', tit: `${c.nome}: a busca da API deu erro`, txt: c.coleta.mensagem || '', href: '#/config' }));
+    }
+    // robô do WhatsApp: a última execução (dos últimos 2 dias) com erro ou mensagem pendente
+    const robo = docsDe('robo_envios').filter((d) => d.dia >= D.somar(D.hoje(), -2)).sort((a, b) => (String(a.executado_em) < String(b.executado_em) ? 1 : -1))[0];
+    if (robo) {
+      const erros = robo.erros || [], pend = robo.pendentes || [];
+      const quem = (l) => l.map((x) => (x.motorista ? x.motorista + ' (' + x.cliente + ')' : x.cliente) + ': ' + x.motivo);
+      if (robo.erro_geral) out.push({ nivel: 'critico', tit: `Robô do WhatsApp não enviou as mensagens de ${D.br(robo.dia)}`, txt: robo.erro_geral, href: '#/mensagens' });
+      else if (erros.length || pend.length) {
+        const lista = quem(erros).concat(quem(pend));
+        out.push({ nivel: erros.length ? 'critico' : 'atencao', tit: `Robô do WhatsApp (${D.br(robo.dia)}): ${robo.enviadas || 0} enviada(s), ${erros.length} com erro, ${pend.length} pendente(s)`,
+          txt: lista.slice(0, 4).join(' · ') + (lista.length > 4 ? ` · e mais ${lista.length - 4}` : ''), href: '#/mensagens' });
+      }
     }
     const ordem = { critico: 0, atencao: 1 };
     memoAlertas = { chave, lista: out.sort((p, q) => ordem[p.nivel] - ordem[q.nivel]).slice(0, 15) };
@@ -8359,6 +8372,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       ligarColecao(db, 'liberacoes', () => render());
       ['fichas', 'combinados', 'marcos', 'passos', 'dias_excluidos', 'premissas'].forEach((n) => ligarColecao(db, n, () => render()));
       ligarColecao(db, 'suspeitos_trat', () => aplicarConfirmados());
+      ligarColecao(db, 'robo_envios', () => render());   // resumo de cada execução do robô do WhatsApp (alerta no sino)
       try {   // regras mudadas por outra pessoa valem a partir do próximo carregamento
         db.collection('config').doc('regras').onSnapshot((d) => {
           const v = d.exists ? d.data() : null;

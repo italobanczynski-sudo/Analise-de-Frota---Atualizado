@@ -20,6 +20,8 @@ var Colecoes = []string{
 	"fichas", "combinados", "marcos", "passos", "dias_excluidos", "premissas",
 	// foto diária do risco, histórico do diesel, liberações de bloqueio e dados suspeitos tratados
 	"risco_foto", "diesel_hist", "liberacoes", "suspeitos_trat",
+	// resumo de cada execução do robô do WhatsApp (enviadas, erros e pendentes): vira alerta no sino do painel
+	"robo_envios",
 }
 
 // Limite de um documento: o painel divide as planilhas em partes de até 200 KB

@@ -27,7 +27,7 @@ api/           route.go (rotas e perfis), auth.go (filtros HTTP), controller (en
 api/web/       telas: paginas/*.html, estatico/ (CSS, JS, imagens) e painel/ (cópia do index.html feita pelo Dockerfile)
 background/    tarefas automáticas
 implantacao/   colocar no ar: nginx/ (analisefrota.conf com HTTPS e http-somente.conf só para gerar o certificado),
-               setup-producao.ps1 (HTTPS + e-mail) e copiar-dados-nuvem.sh (copia o banco local para a nuvem)
+               setup-producao.ps1 (HTTPS + e-mail) e trazer-dados-render.sh (copia o banco do Render)
 testes/        teste ponta a ponta (e2e.sh) e o ambiente descartável dele
 ```
 

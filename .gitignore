@@ -10,7 +10,6 @@ servidor/.env
 servidor/api/web/painel/index.html
 servidor/api/web/painel/xlsx.full.min.js
 
-# URL do banco na nuvem (servidor/implantacao/copiar-dados-nuvem.sh)
-servidor/.banco-nuvem
+# URLs de banco usadas na migração (servidor/implantacao/trazer-dados-render.sh)
 servidor/.banco-render
 servidor/backup-*.dump

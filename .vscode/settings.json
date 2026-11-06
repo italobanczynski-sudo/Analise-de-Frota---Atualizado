@@ -3,7 +3,6 @@
   "workbench.iconTheme": "material-icon-theme",
   "material-icon-theme.folders.associations": {
     "servidor": "server",
-    "api": "api",
     "scripts": "scripts",
     "documentacao": "docs",
     "busca-de-dados": "scripts",
@@ -52,8 +51,6 @@
   // Ícones dos arquivos de implantação e de dados (o tema não tem ícone próprio para eles)
   "material-icon-theme.files.associations": {
     "render.yaml": "settings",
-    ".banco-nuvem": "lock",
-    "copiar-dados-nuvem.sh": "database",
     "rodar-e2e.sh": "console",
     "e2e.sh": "console"
   },
@@ -64,7 +61,7 @@
   "explorer.fileNesting.patterns": {
     "go.mod": "go.sum",
     "Dockerfile": "Dockerfile.dockerignore, .dockerignore, docker-compose.yml, docker-compose.*.yml",
-    ".env": ".env.example, .banco-nuvem",
+    ".env": ".env.example",
     "clientes.json": "clientes.example.json",
     ".gitignore": ".gitattributes, .editorconfig, .nojekyll",
     "*.go": "${capture}_test.go"

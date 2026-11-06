@@ -15,6 +15,7 @@ Painel estático (HTML + JS). A plataforma online (login, base compartilhada, bu
 | `bibliotecas/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
 | `documentacao/` | Documentação da API Gobrax usada pelo painel |
 | `busca-de-dados/` | Script em Node que alimenta o painel no Claude até a fase 2: `puxar.mjs` (API Gobrax). Tokens em `.env` e lista em `clientes.json`, ambos fora do Git |
+| `robo-whatsapp/` | Robô em Node que roda num computador e, todo dia às 08:00, manda as Mensagens do dia pelo WhatsApp Web a cada motorista com telefone cadastrado e marca como enviada. Contra os Termos do WhatsApp: usar um número só para isso. Senha, sessão e logs fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
 | `render.yaml` | Implantação na nuvem no Render (plano grátis: https://analise-de-frota.onrender.com) |
 | `.vscode/`, `.editorconfig`, `.gitattributes` | Padrão do projeto: ícones coloridos, formatação igual em qualquer editor e fim de linha LF |

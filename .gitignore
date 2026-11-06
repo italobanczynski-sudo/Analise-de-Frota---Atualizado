@@ -13,3 +13,10 @@ servidor/api/web/painel/xlsx.full.min.js
 # URLs de banco usadas na migração (servidor/implantacao/trazer-dados-render.sh)
 servidor/.banco-render
 servidor/backup-*.dump
+
+# Robô do WhatsApp: senha do usuário do robô, sessão do WhatsApp e logs ficam só no computador dele
+robo-whatsapp/.env
+robo-whatsapp/.sessao-whatsapp/
+robo-whatsapp/.wwebjs_cache/
+robo-whatsapp/logs/
+robo-whatsapp/node_modules/

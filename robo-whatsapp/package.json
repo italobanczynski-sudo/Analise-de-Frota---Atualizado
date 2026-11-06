@@ -1,0 +1,16 @@
+{
+  "name": "robo-whatsapp-gobrax",
+  "private": true,
+  "type": "module",
+  "description": "Manda as Mensagens do dia aos motoristas pelo WhatsApp Web, todo dia de manhã",
+  "scripts": {
+    "parear": "node robo.mjs parear",
+    "teste": "node robo.mjs teste",
+    "enviar": "node robo.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "qrcode-terminal": "0.12.0",
+    "whatsapp-web.js": "1.34.7"
+  }
+}

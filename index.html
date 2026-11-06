@@ -3410,7 +3410,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
     { rodape: true, tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
     { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
-    { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente', 'carteira', 'telefones'] }
+    { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente', 'carteira'] }
   ];
   const navAtivo = (n) => ((n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo)) || (!!n.altInd && E.rota.tela === 'individual' && E.rota.tipo === n.altInd);
   const navItem = (n) => { const at = navAtivo(n); return `<a class="nav-item ${at ? 'ativo' : ''}" href="${n.href}" aria-label="${n.rot}" ${at ? 'aria-current="page"' : ''}><img src="${ASSET('i:' + n.icone + '.svg')}" alt=""><span class="nome">${n.rot}</span><span class="dica">${n.rot}</span></a>`; };
@@ -3500,7 +3500,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // ---------- Sino de novidades: o que mudou no sistema (a mais nova primeiro; id sempre crescente) ----------
   const CHAVE_NOVIDADES = 'gbx-novidades-vistas';
   const NOVIDADES = [
-    { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações, nova aba Telefones dos condutores: escolha a empresa, veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/telefones', link: 'Abrir Telefones dos condutores' },
+    { id: 71, data: '2026-11-06', titulo: 'Telefones dos condutores', texto: 'Em Configurações › Clientes, abra o cliente e use a aba Condutores: veja cada condutor que rodou nos últimos 90 dias e cadastre o telefone. O número é validado ao digitar e dá para conferir no WhatsApp. Esses telefones são usados pela fila e pelo robô das Mensagens do dia.', href: '#/config', link: 'Abrir Configurações' },
     { id: 70, data: '2026-11-06', titulo: 'Fila de envio das mensagens', texto: 'Em Mensagens do dia, cadastre o telefone de cada motorista e use "Enviar em fila": o painel abre a conversa no WhatsApp Web e copia o texto (com os emojis), você cola, aperta Enter e passa para o próximo, que já fica marcado como enviado. Nada é enviado sozinho.', href: '#/mensagens', link: 'Abrir Mensagens do dia' },
     { id: 69, data: '2026-11-06', titulo: 'Desenvolvimento da frota em gráficos', texto: 'Em Todos os indicadores, cada indicador virou um gráfico do período analisado contra a comparação, a evolução dia a dia virou uma linha por indicador e a variação dos motoristas virou barras para cada lado. O cartão de odômetro saiu.', href: '#/visao?aba=indicadores', link: 'Abrir Todos os indicadores' },
     { id: 65, data: '2026-11-03', titulo: 'Módulos de retenção', texto: 'Novo: Ficha de retenção na Saúde do cliente; Combinados (problema, evidência automática congelada, meta, prazo e veredito); Próximos passos com dono e prazo; Comparação por fase (ruído de 2 × erro-padrão, fase inconclusiva sem amostra mínima); Resumo da reunião com a economia, a fórmula e as premissas; e tratamento de dado suspeito com motivo, frescor e cobertura.' },
@@ -6247,9 +6247,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   }
 
   // ---------- Configurações: clientes e anexo de planilhas (no perfil de cada cliente) ----------
-  const abasCfg = () => abas([['config', 'Clientes', null, '#/config'], ['carteira', 'Carteira de clientes', null, '#/carteira']]
-    .concat(contaSrv() && podeMarcar() ? [['telefones', 'Telefones dos condutores', null, '#/telefones']] : []),
-    ['carteira', 'telefones'].includes(E.rota.tela) ? E.rota.tela : 'config', '', 'Configurações');
+  const abasCfg = () => abas([['config', 'Clientes', null, '#/config'], ['carteira', 'Carteira de clientes', null, '#/carteira']], E.rota.tela === 'carteira' ? 'carteira' : 'config', '', 'Configurações');
   function abasConfig() {
     return `${cabecalho(`Configurações`, `${ehAdmin() ? 'Usuários, clientes, carteira e dados da API.' : 'Clientes, carteira e dados da API.'} Para buscar os dados, abra o perfil do cliente.`)}${abasCfg()}`;
   }
@@ -9304,7 +9302,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
           <button type="button" class="btn-link peq" data-acao="msg-copiar" data-i="${i}">Copiar texto</button>
         </div></div></section>`;
   }
-  // ---------- Configurações › Telefones dos condutores: por empresa, o telefone de cada motorista (usado pela fila e pelo robô) ----------
+  // ---------- Configurações › Clientes › perfil do cliente › aba Condutores: o telefone de cada motorista (usado pela fila e pelo robô) ----------
   const telc = () => E.telc || (E.telc = { cli: '', lista: null, carregando: '', erro: '', busca: '', soSem: false, ocupado: '', rasc: {} });
   // o que foi digitado e ainda não salvo (por condutor): sobrevive a busca, filtro e redesenho
   const telcValor = (T, c) => (Object.prototype.hasOwnProperty.call(T.rasc, c.motorista) ? T.rasc[c.motorista] : (c.telefone ? fmtTel(c.telefone) : ''));
@@ -9330,19 +9328,18 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     if (T.carregando === pedido) T.carregando = '';
     if (T.cli !== pedido) return;
     T.lista = lista; T.erro = erro;
-    if (E.rota.tela === 'telefones') render();
+    if (E.rota.tela === 'cliente') render();
   }
-  function telaTelefones() {
-    const cab = cabecalho('Configurações', 'Telefone de cada condutor, por empresa. A fila de envio e o robô do WhatsApp mandam as Mensagens do dia só para quem tem telefone aqui.') + abasCfg();
-    if (!contaSrv()) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Disponível no painel com login', 'Os telefones ficam guardados no servidor.')}</div></section>`;
-    if (!podeMarcar()) return cab + `<section class="card"><div class="card-corpo">${vazioUI('Só colaborador e administrador', 'Quem só lê não vê os telefones dos condutores.')}</div></section>`;
+  // nome do cliente no painel → bloco com os condutores dele (o servidor identifica o cliente pelo id; o nome é o mesmo)
+  function blocoCondutores(nome) {
+    if (!contaSrv()) return `<section class="card"><div class="card-corpo">${vazioUI('Disponível no painel com login', 'Os telefones dos condutores ficam guardados no servidor.')}</div></section>`;
+    if (!podeMarcar()) return `<section class="card"><div class="card-corpo">${vazioUI('Só colaborador e administrador', 'Quem só lê não vê os telefones dos condutores.')}</div></section>`;
     const M = msg(), T = telc();
-    if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando as empresas…</span></div></div></section>'; }
-    const empresas = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Empresas</h2><span class="h2-sub">Clique numa empresa para ver os condutores.</span></div></div>
-      <div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:8px">${M.clientes.map((c) => `<button type="button" class="pilula ${String(c.id) === T.cli ? 'ativa' : ''}" aria-pressed="${String(c.id) === T.cli}" data-acao="telc-cli" data-id="${esc(String(c.id))}">${esc(c.nome)}</button>`).join('')}</div></section>`;
-    if (!T.cli) return cab + empresas;
+    if (!M.clientes) { setTimeout(msgClientes, 0); return '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
+    const id = cliSrv(nome);
+    if (!id) return `<section class="card"><div class="card-corpo">${vazioUI('Cliente sem cadastro no servidor', 'Salve o token da API deste cliente na aba Cadastro: os condutores vêm dos dados da API.')}</div></section>`;
+    if (T.cli !== id) Object.assign(T, { cli: id, lista: null, erro: '', busca: '', soSem: false, rasc: {} });
     if (T.lista === null && !T.carregando) setTimeout(telcCarregar, 0);
-    const emp = M.clientes.find((c) => String(c.id) === T.cli) || {};
     let corpo;
     if (T.carregando || T.lista === null) corpo = '<div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando os condutores…</span></div></div>';
     else if (T.erro) corpo = `<div class="card-corpo"><div class="alerta alerta-erro" role="alert"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">${esc(T.erro)}</span></div></div></div>`;
@@ -9370,7 +9367,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         <div class="tabela-wrap" style="max-height:620px;overflow:auto"><table class="tabela" style="min-width:760px"><thead><tr><th>Condutor</th><th>Rodou por último</th><th>Telefone</th><th>Validação</th><th></th></tr></thead>
           <tbody>${linhas || '<tr><td colspan="5" class="mudo">Ninguém com esse filtro.</td></tr>'}</tbody></table></div>`;
     }
-    return cab + empresas + `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Condutores · ${esc(emp.nome || '')}</h2><span class="h2-sub">Quem rodou nos últimos 90 dias e quem já tem telefone.</span></div></div>${corpo}</section>`;
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Condutores e telefones</h2><span class="h2-sub">Quem rodou nos últimos 90 dias e quem já tem telefone. A fila de envio e o robô do WhatsApp mandam as Mensagens do dia só para quem tem telefone aqui.</span></div></div>${corpo}</section>`;
   }
   async function telcSalvarUm(c, avisar) {
     const T = telc(), cs = contaSrv();
@@ -9612,6 +9609,11 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const fc = focoPorSlug(E.rota.id);
     if (!fc) return `${abasConfig()}<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Cliente não encontrado</span><a class="btn" href="#/config" style="text-decoration:none">Voltar para Clientes</a></div></div></section>`;
     const nome = fc.nome;
+    const perfil = '#/cliente/' + encodeURIComponent(fc.id), abaCli = E.rota.aba === 'condutores' ? 'condutores' : 'cadastro';
+    const topoCli = `${abasConfig()}
+      <nav class="migalha" aria-label="Caminho"><a href="#/config">Clientes</a><span>›</span><span>${esc(nome)}</span></nav>
+      <div class="entidade"><span class="pessoa">${avatar(nome, 44)}<span class="entidade-nome">${esc(nome)}</span></span></div>
+      ${abas([['cadastro', 'Cadastro', null, perfil], ['condutores', 'Condutores', null, perfil + '?aba=condutores']], abaCli, '', 'Perfil de ' + nome)}`;
     if (E.impCliSlug !== fc.id) { E.importacao = null; E.impVeic = null; E.cliApagar = null; E.impCliSlug = fc.id; }
     if (!E.perMot || E.perMot.cli !== nome) E.perMot = { cli: nome, editado: false };
     if (!E.perMot.editado) Object.assign(E.perMot, periodoMotPadrao(nome));
@@ -9658,10 +9660,9 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       return `<button type="button" class="btn btn-destrutivo" data-acao="cli-apagar-pedir" data-alvo="${alvo}">Apagar ${rot}</button>`;
     };
     const perMot = E.perMot;
+    if (abaCli === 'condutores') return topoCli + blocoCondutores(nome);
     return `
-      ${abasConfig()}
-      <nav class="migalha" aria-label="Caminho"><a href="#/config">Clientes</a><span>›</span><span>${esc(nome)}</span></nav>
-      <div class="entidade"><span class="pessoa">${avatar(nome, 44)}<span class="entidade-nome">${esc(nome)}</span></span></div>
+      ${topoCli}
       <div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo">
         <span class="alerta-titulo">Não inclua dados pessoais na planilha</span>
         <span class="alerta-texto">Deixe de fora CPF, telefone, e-mail e endereço. Nome (ou matrícula), placa e os indicadores bastam para a análise. ${E.planEmDb ? 'A planilha vai para a base compartilhada e fica visível a todos que acessam este painel.' : 'A planilha fica só neste navegador.'}</span>
@@ -9873,8 +9874,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
-    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, telefones: telaTelefones, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, resumo: telaResumo, jornada: telaJornada };
-    const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'carteira', 'premiacao', 'api', 'mensagens', 'telefones'].includes(E.rota.tela);
+    const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, resumo: telaResumo, jornada: telaJornada };
+    const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'carteira', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
     const html = shell(comContexto(() => (TELAS_JORNADA.includes(E.rota.tela) && E.base ? faixaJornada(E.cliente) : '') + tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
@@ -10441,7 +10442,6 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
       try { await navigator.clipboard.writeText(m.texto); toast('Mensagem de ' + m.motorista + ' copiada. Cole no WhatsApp e, depois de mandar, marque como enviada.'); }
       catch (e) { toast('Não consegui copiar: selecione o texto e use Ctrl+C.', 'erro'); }
     },
-    'telc-cli': (el) => { Object.assign(telc(), { cli: el.dataset.id, lista: null, erro: '', busca: '', soSem: false, rasc: {} }); render(); },
     'telc-salvar': async (el) => {
       const T = telc(), i = Number(el.dataset.i), c = (T.lista || [])[i];
       if (!c) return;
@@ -10452,7 +10452,8 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     },
     'telc-salvar-todos': async () => {
       const T = telc();
-      const mudou = (T.lista || []).filter((c) => Object.prototype.hasOwnProperty.call(T.rasc, c.motorista) && validarTel(T.rasc[c.motorista]).n !== (c.telefone || ''));
+      // alterado = digitado e diferente do salvo; o inválido também conta (para avisar, e não ser ignorado em silêncio)
+      const mudou = (T.lista || []).filter((c) => { if (!Object.prototype.hasOwnProperty.call(T.rasc, c.motorista)) return false; const r = validarTel(T.rasc[c.motorista]); return !r.ok || r.n !== (c.telefone || ''); });
       if (!mudou.length) { toast('Nenhum telefone alterado.'); return; }
       const ruins = mudou.filter((c) => !validarTel(T.rasc[c.motorista]).ok);
       if (ruins.length) { toast(ruins.length + ' telefone(s) inválido(s): corrija os marcados em vermelho.', 'erro'); return; }

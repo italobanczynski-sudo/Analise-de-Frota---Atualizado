@@ -1831,12 +1831,13 @@ html:not([data-tema="escuro"]) .grade-kpi > .kpi .kpi-spark { position: static; 
     background: var(--superficie); border: 1px solid var(--vidro-borda); border-radius: 18px; box-shadow: 0 1px 2px rgba(16, 18, 22, 0.05);
     -webkit-backdrop-filter: none; backdrop-filter: none; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin;
   }
-  html:not([data-tema="escuro"]) .sidebar .nav-marca { display: flex; flex-direction: column; align-items: center; gap: 4px; width: auto; padding: 4px 2px 10px; margin: 0 6px 4px; border-bottom: 1px solid var(--hairline); pointer-events: none; cursor: default; }
-  html:not([data-tema="escuro"]) .sidebar .nav-marca svg { padding: 7px; border-radius: 10px; background: var(--tinta); color: var(--amarelo); }
-  html:not([data-tema="escuro"]) .sidebar .nav-marca span { display: block; font-size: 10.5px; font-weight: 700; line-height: 1.2; text-align: center; color: var(--tinta); }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca { display: flex; flex-direction: column; align-items: center; gap: 7px; width: auto; padding: 8px 2px 12px; margin: 0 10px 6px; border-bottom: 1px solid var(--hairline); pointer-events: none; cursor: default; }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca::before { content: ""; width: 26px; height: 4px; border-radius: 999px; background: var(--amarelo); }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca svg { display: none; }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca span { display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; text-align: center; color: var(--texto-2); }
   html:not([data-tema="escuro"]) .sidebar .nav-secao { display: block; font-size: 0; height: 1px; padding: 0; margin: 6px 14px; background: var(--hairline); }
   html:not([data-tema="escuro"]) .sidebar .nav-secao:first-of-type { display: none; }
-  html:not([data-tema="escuro"]) .sidebar .nav-item { width: auto; height: auto; min-height: 0; flex-direction: column; justify-content: flex-start; align-items: center; gap: 4px; padding: 6px 2px; border-radius: 12px; background: transparent; box-shadow: none; }
+  html:not([data-tema="escuro"]) .sidebar .nav-item { flex-shrink: 0; width: auto; height: auto; min-height: 0; flex-direction: column; justify-content: flex-start; align-items: center; gap: 4px; padding: 6px 2px; border-radius: 12px; background: transparent; box-shadow: none; }
   html:not([data-tema="escuro"]) .sidebar .nav-item img { width: 24px; height: 24px; padding: 7px; box-sizing: content-box; border-radius: 10px; background: var(--apoio); opacity: .8; transition: background 140ms var(--ease); }
   html:not([data-tema="escuro"]) .sidebar .nav-item:hover { background: transparent; }
   html:not([data-tema="escuro"]) .sidebar .nav-item:hover img { background: rgba(16, 18, 22, 0.09); opacity: 1; }
@@ -1845,7 +1846,8 @@ html:not([data-tema="escuro"]) .grade-kpi > .kpi .kpi-spark { position: static; 
   html:not([data-tema="escuro"]) .sidebar .nav-item.ativo .nome { color: var(--tinta); font-weight: 700; }
   html:not([data-tema="escuro"]) .sidebar .nav-item.ativo::after { display: none; }
   html:not([data-tema="escuro"]) .sidebar .nav-item .dica { display: none; }
-  html:not([data-tema="escuro"]) .nav-rodape { align-items: stretch; padding-top: 6px; }
+  html:not([data-tema="escuro"]) .nav-rodape { align-items: stretch; padding-top: 6px; flex-shrink: 0; }
+  html:not([data-tema="escuro"]) .sidebar .nav-marca { flex-shrink: 0; }
   html:not([data-tema="escuro"]) .nav-fundo { display: none; }
   html:not([data-tema="escuro"]) .conteudo { margin-left: 130px; }
 }
@@ -3416,7 +3418,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
     { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
     { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
-    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagens do dia', srv: true },
+    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagem aos condutores', srv: true },
     { rodape: true, tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
     { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
     { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente', 'carteira'] }
@@ -9531,6 +9533,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const y = (v) => mT + (hi - v) / ((hi - lo) || 1) * (H - mT - mB);
     const grade = Array.from({ length: (hi - lo) / 10 + 1 }, (_, k) => lo + k * 10).map((g) => `<line x1="${mE}" x2="${W - mD}" y1="${y(g)}" y2="${y(g)}" stroke="var(--hairline)"/><text x="${mE - 8}" y="${y(g) + 4}" text-anchor="end" font-size="11" fill="var(--texto-2)">${fmt(g, 0)}</text>`).join('');
     const pts = vis.map((m, i) => (Number.isFinite(m.v) ? [x(i), y(m.v), m, i] : null)).filter(Boolean);
+    const area = pts.length > 1 ? `<polygon points="${pts[0][0]},${H - mB} ${pts.map((p) => p[0] + ',' + p[1]).join(' ')} ${pts[pts.length - 1][0]},${H - mB}" fill="var(--dado)" opacity=".1"/>` : '';
     const linha = pts.length > 1 ? `<polyline points="${pts.map((p) => p[0] + ',' + p[1]).join(' ')}" fill="none" stroke="var(--dado)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : '';
     const iEnv = vis.findIndex((m) => m.mes === mesEnvio);
     const envio = iEnv >= 0 ? `<line x1="${x(iEnv)}" x2="${x(iEnv)}" y1="${mT - 8}" y2="${H - mB}" stroke="var(--texto-2)" stroke-dasharray="4 4" opacity=".6"/><text x="${x(iEnv)}" y="${H - mB + 36}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--texto-2)">1º envio</text>` : '';
@@ -9541,7 +9544,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
         <span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
         <span class="apoio" style="font-size:12px">Nota do mês da premiação da API Gobrax, média ponderada pelos km, frota toda. Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
         ${resumo}
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="Nota geral da frota Gobrax por mês">${grade}${envio}${linha}${marcas}${eixo}</svg></div>`;
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="Nota geral da frota Gobrax por mês">${grade}${area}${envio}${linha}${marcas}${eixo}</svg></div>`;
   }
   function painelEnviadas(c) {
     const M = msg();

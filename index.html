@@ -779,6 +779,7 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .dv-por { width: auto; height: 36px; border-radius: 999px; }
 @media (max-width: 1280px) { .dv-minis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .dv-minis { grid-template-columns: minmax(0, 1fr); } .dv-filtro { flex: 1 1 100%; } }
+.ficha-i .linha2 { display: block; }
 .nm-lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .nm-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--hairline); }
 .nm-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -3789,7 +3790,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       ultimo.forEach((u) => { const dias = D.dif(u.d, D.hoje()); if (dias > 2) out.push({ nivel: 'atencao', tit: `${u.nome}: sem dados há ${dias} dias`, txt: `Último dado em ${D.br(u.d)}. Confira a busca da API do cliente.`, href: '#/carteira' }); });
       // risco alto de churn
       try {
-        churnCarteira().filter((c) => c.faixa === 'Alto').forEach((c) => out.push({ nivel: 'critico', tit: `${c.nome}: risco alto de churn (${fmt(c.score, 0)})`, txt: c.principal ? 'Principal sinal: ' + c.principal.nome + '.' : '', href: '#/churn' }));
+        churnCarteira().filter((c) => c.faixa === 'Alto' && !STATUS_FINAL.includes((fichaDe(c.nome) || {}).status)).forEach((c) => out.push({ nivel: 'critico', tit: `${c.nome}: risco alto de churn (${fmt(c.score, 0)})`, txt: c.principal ? 'Principal sinal: ' + c.principal.nome + '.' : '', href: '#/churn' }));
       } catch (e) { /* sem base para o índice */ }
     }
     // tratativas com prazo vencido e ainda não entregues
@@ -6125,7 +6126,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       return `<tr class="clicavel" data-acao="ver-cliente" data-cli="${esc(c.nome)}" title="Abrir a Visão geral de ${esc(c.nome)}">
         <td><span class="pessoa">${avatar(c.nome, 30)}<span style="display:flex;flex-direction:column;min-width:0"><b style="font-weight:600">${esc(c.nome)}</b><span class="apoio" style="font-size:11.5px">${c.principal ? esc(c.principal.nome) : ''}</span></span></span></td>
         <td>${(() => { const fi = fichaDe(c.nome), ab = abertosDe(c.nome), v = ab.filter(vencido).length; return `${fi ? `<span class="${fi.proximo && fi.proximo < D.hoje() ? 'txt-ruim' : ''}">contato ${fi.proximo ? D.curta(fi.proximo) : '—'}</span>` : '<span class="badge badge-vazio">sem ficha</span>'}<span class="linha2">${fi && fi.renovacao ? 'renova ' + D.br(fi.renovacao) + ' · ' : ''}${ab.length} pendência(s)${v ? ` · <b class="txt-ruim">${v} vencida(s)</b>` : ''}</span>`; })()}</td>
-        <td><span class="badge ${BADGE_RISCO[c.faixa]}">${c.faixa} · ${fmt(c.score, 0)}</span></td>
+        <td>${seloCliente(c.nome, c.faixa, c.score)}</td>
         <td class="dir">${Number.isFinite(nota) ? fmt(nota, 1) : '—'}<span class="linha2">${Number.isFinite(nota) && Number.isFinite(notaB) ? variacao(X.variacao(IND_MAP.nota, nota, notaB)) : ''}</span></td>
         ${celInd('km', a.km, b.km)}${celInd('kml', a.kml, b.kml)}${celInd('motor_ocioso', a.motor_ocioso, b.motor_ocioso)}
         <td class="dir num">${fmt(c.motoristas, 0)}</td>
@@ -6155,9 +6156,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       <path class="gauge-arco" d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="url(#${id})" stroke-width="22" stroke-linecap="round" style="stroke-dasharray:${L.toFixed(1)};stroke-dashoffset:${off.toFixed(1)};--len:${L.toFixed(1)}"/>
       ${p > 0 ? `<circle class="gauge-marca" cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="7" fill="#FFFFFF" stroke="#2B2B2B" stroke-width="3.5"/>` : ''}</svg>`;
   }
-  function gauge(score, faixa, tam) {
-    return `<div class="gauge" style="width:${tam || 220}px">${arcoMedidor(score, COR_RISCO[faixa], 'Risco de churn ' + fmt(score, 0) + ' de 100, ' + faixa)}
-      <div class="gauge-centro"><span class="gauge-num num">${fmt(score, 0)}</span><span class="gauge-rot">risco ${faixa.toLowerCase()}</span></div></div>`;
+  // rot: com ficha de retenção o medidor vira só o índice de uso (o selo é o status; B2)
+  function gauge(score, faixa, tam, rot) {
+    return `<div class="gauge" style="width:${tam || 220}px">${arcoMedidor(score, COR_RISCO[faixa], (rot ? 'Índice de uso ' : 'Risco de churn ') + fmt(score, 0) + ' de 100' + (rot ? '' : ', ' + faixa))}
+      <div class="gauge-centro"><span class="gauge-num num">${fmt(score, 0)}</span><span class="gauge-rot">${rot || 'risco ' + faixa.toLowerCase()}</span></div></div>`;
   }
   // Prova de valor: o que a gestão da frota já entregou ao cliente (apoio à retenção)
 
@@ -6386,12 +6388,13 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }
     const linhas = cart.map((c) => `<tr class="linha-clicavel" data-acao="churn-cliente" data-cli="${esc(c.nome)}" tabindex="0">
       <td><span class="pessoa">${avatar(c.nome, 30)}<b style="font-weight:600">${esc(c.nome)}</b></span></td>
-      <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b><span class="badge ${BADGE_RISCO[c.faixa]}">${c.faixa}</span></span></td>
+      <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b></span></td>
+      <td>${seloCliente(c.nome, c.faixa, c.score)}</td>
       <td>${c.principal ? esc(c.principal.nome) + '<span class="linha2">' + esc(c.principal.det) + '</span>' : '—'}</td>
       <td class="dir num">${c.dKm === null ? '—' : (c.dKm >= 0 ? '▲ ' : '▼ ') + fmt(Math.abs(c.dKm) * 100, 1) + '%'}</td>
       <td class="dir num">${c.nota > 0 ? fmt(c.nota, 1) : '—'}</td></tr>`).join('');
     const tabela = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes por risco</h2><span class="h2-sub">Clique em um cliente para ver o que pesa no risco e o plano de retenção.</span></div></div>
-      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de risco</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
+      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de uso</th><th>Status</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
     let detalhe = '';
     const sel = cart.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
     if (sel) {
@@ -6409,10 +6412,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       const fs = fotosRisco(sel.nome);
       const historico = fs.length > 1 ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="apoio">Fotos diárias do índice desde ${D.br(fs[0].dia)} (${fs.length})</span>${X.ui.sparkline(fs.map((f) => f.score), '#FCB709')}</div>` : '';
       detalhe = `<section class="card churn-detalhe"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:24px 36px;align-items:center">
-          ${gauge(sel.score, sel.faixa, 240)}
+          ${gauge(sel.score, sel.faixa, 240, fichaDe(sel.nome) ? 'índice de uso' : '')}
           <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px"><span class="h2">${esc(sel.nome)}</span>
             <span class="apoio">${fmt(sel.motoristas, 0)} motoristas ativos · ${fmt(sel.km, 0)} km no período${sel.nota > 0 ? ' · nota ' + fmt(sel.nota, 1) : ''}</span>
-            <span class="badge ${BADGE_RISCO[sel.faixa]}" style="align-self:flex-start">Risco ${sel.faixa.toLowerCase()} de churn</span>
+            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${seloCliente(sel.nome, sel.faixa, sel.score)}${fichaDe(sel.nome) ? `<span class="apoio" style="font-size:12px">status da retenção (manual) · índice de uso ${fmt(sel.score, 0)} de 100 (interno)</span>` : '<span class="apoio" style="font-size:12px">sem ficha de retenção: o selo segue o índice de uso</span>'}</span>
             <p class="churn-leitura">${leitura}</p>
             <span class="apoio" style="font-size:12px;max-width:60ch">O índice (0 a 100) usa só os resultados Gobrax da frota: uso da frota, engajamento dos motoristas, nota, consumo e motoristas críticos. É um sinal para priorizar a retenção, não uma previsão.</span></div></div></section>
         <div class="grade-2">
@@ -6426,7 +6429,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · risco calculado com os resultados Gobrax da frota`, `${alterna}`)}
       ${barraPeriodo()}
       ${!sel && E.cliente ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
-      ${sel ? detalhe : tabela}`;
+      ${sel ? detalhe + cartaoFicha(sel.nome) : tabela}
+      ${relatorioMotivos()}`;
   }
 
 
@@ -7588,16 +7592,40 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 
   // ================= Módulos B, C e F da retenção: ficha, combinados, marcos e próximos passos =================
   // ---------- B · Ficha de retenção ----------
-  const MOTIVOS_CANC = { preco: 'Preço', resultado: 'Resultado não percebido', concorrente: 'Concorrente', gestao: 'Mudança de gestão', atendimento: 'Atendimento', outro: 'Outro' };
+  // B1: lista fixa de motivos (Outro pede texto). Fichas antigas com "resultado" e "atendimento" passam para a lista nova.
+  const MOTIVOS_CANC = { preco: 'Preço', valor: 'Não vê valor', equipamento: 'Equipamento com problema', gestao: 'Troca de gestão', concorrente: 'Concorrente', outro: 'Outro' };
+  const MOTIVO_ANTIGO = { resultado: 'valor', atendimento: 'outro' };
+  // B2: status da retenção, manual e separado do índice de uso; é ele que manda no selo exibido
+  const STATUS_RET = { analise: 'Em análise', negociacao: 'Em negociação', combinado: 'Combinado', acompanhamento: 'Em acompanhamento', retido: 'Retido', cancelado: 'Cancelado' };
+  const STATUS_BADGE = { analise: 'badge-neutro', negociacao: 'badge-atencao', combinado: 'badge-atencao', acompanhamento: 'badge-neutro', retido: 'badge-ok', cancelado: 'badge-critico' };
+  const STATUS_PEDE_DECISAO = ['negociacao', 'combinado', 'acompanhamento', 'retido', 'cancelado'];   // "ninguém entra em Em negociação sem motivo, decisor e prazo"
+  const STATUS_FINAL = ['retido', 'cancelado'];
   const ESTAGIOS = { 1: '1 · Estudar o cliente', 2: '2 · Explorar a plataforma e ajustar', 3: '3 · Trazer o resultado' };
-  const fichaDe = (nome) => docsDe('fichas').find((d) => ckey(d.cliente) === ckey(nome)) || null;
+  function fichaDe(nome) {
+    const d = docsDe('fichas').find((x) => ckey(x.cliente) === ckey(nome));
+    if (!d) return null;
+    const m = (k) => MOTIVO_ANTIGO[k] || k;
+    return Object.assign({}, d, { motivos: [...new Set((d.motivos || []).map(m))], principal: d.principal ? m(d.principal) : '', status: STATUS_RET[d.status] ? d.status : 'analise' });
+  }
+  // selo do cliente: com ficha, o status de retenção; sem ficha, a faixa do índice de uso (B2: nunca os dois)
+  function seloCliente(nome, faixa, score) {
+    const fi = fichaDe(nome);
+    if (fi) return `<span class="badge ${STATUS_BADGE[fi.status]}" title="Status da retenção (manual). Índice de uso interno: ${Number.isFinite(score) ? fmt(score, 0) : '—'}">${STATUS_RET[fi.status]}</span>`;
+    return faixa ? `<span class="badge ${BADGE_RISCO[faixa]}" title="Sem ficha de retenção: selo pelo índice de uso">${faixa}${Number.isFinite(score) ? ' · ' + fmt(score, 0) : ''}</span>` : '';
+  }
   // o que falta para a ficha estar completa (obrigatórios das regras)
   function faltasFicha(f) {
     if (!f) return ['ficha não preenchida'];
     const o = [];
     if (!(f.motivos || []).length) o.push('motivo do pedido de cancelamento');
     if ((f.motivos || []).length && !f.principal) o.push('motivo principal');
+    if ((f.motivos || []).includes('outro') && String(f.detalhe || '').trim().length < 3) o.push('descrição do motivo "Outro"');
     if ((f.motivos || []).includes('concorrente') && !String(f.alternativa || '').trim()) o.push('alternativa avaliada');
+    const st = STATUS_RET[f.status] ? f.status : 'analise';
+    if (STATUS_PEDE_DECISAO.includes(st) && !String(f.decisor || '').trim()) o.push('decisor (obrigatório a partir de "Em negociação")');
+    if (STATUS_PEDE_DECISAO.includes(st) && !f.prazo) o.push('prazo de decisão (obrigatório a partir de "Em negociação")');
+    if (STATUS_FINAL.includes(st) && String(f.motivoFinal || '').trim().length < 3) o.push('motivo final (' + STATUS_RET[st] + ')');
+    if (STATUS_FINAL.includes(st) && String(f.licao || '').trim().length < 3) o.push('lição aprendida (' + STATUS_RET[st] + ')');
     if (!f.renovacao) o.push('data de renovação');
     if (!String(f.responsavel || '').trim()) o.push('responsável Gobrax');
     if (!f.proximo) o.push('próximo contato');
@@ -7613,15 +7641,16 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   async function salvarFicha() {
     const f = E.fichaForm; if (!f) return;
     const nova = { cliente: f.cliente, motivos: f.motivos || [], principal: f.principal || '', detalhe: String(f.detalhe || '').trim(), alternativa: String(f.alternativa || '').trim(),
-      renovacao: f.renovacao || '', decisor: String(f.decisor || '').trim(),
+      renovacao: f.renovacao || '', decisor: String(f.decisor || '').trim(), prazo: f.prazo || '', status: STATUS_RET[f.status] ? f.status : 'analise',
+      motivoFinal: String(f.motivoFinal || '').trim(), licao: String(f.licao || '').trim(),
       responsavel: String(f.responsavel || '').trim(), estagio: Number(f.estagio) || 1, proximo: f.proximo || '' };
     if (nova.principal && !nova.motivos.includes(nova.principal)) nova.principal = '';
     if (nova.motivos.length === 1) nova.principal = nova.motivos[0];
     const falta = faltasFicha(nova);
-    if (falta.length) { toast('Falta: ' + falta.join(', ') + '.', 'erro'); return; }
+    if (falta.length) { toast('Ficha incompleta, não salva. Falta: ' + falta.join(', ') + '.', 'erro'); return; }
     if (!estagiosPermitidos(nova.cliente)[nova.estagio]) { toast('O estágio ' + nova.estagio + ' pede um registro que o justifique (combinado ou resultado).', 'erro'); return; }
     const ant = fichaDe(nova.cliente) || {};
-    const rot = { motivos: 'motivos', principal: 'motivo principal', alternativa: 'alternativa', renovacao: 'renovação', decisor: 'decisor', responsavel: 'responsável', estagio: 'estágio', proximo: 'próximo contato', detalhe: 'detalhe' };
+    const rot = { motivos: 'motivos', principal: 'motivo principal', alternativa: 'alternativa', renovacao: 'renovação', prazo: 'prazo de decisão', status: 'status', motivoFinal: 'motivo final', licao: 'lição aprendida', decisor: 'decisor', responsavel: 'responsável', estagio: 'estágio', proximo: 'próximo contato', detalhe: 'detalhe' };
     const mudou = Object.keys(rot).filter((k) => JSON.stringify(ant[k] === undefined ? '' : ant[k]) !== JSON.stringify(nova[k] === null ? '' : nova[k])).map((k) => rot[k]);
     nova.historico = [{ em: new Date().toISOString(), por: quemSou(), mudou: ant.cliente ? mudou.join(', ') || 'sem mudança' : 'ficha criada' }].concat(ant.historico || []).slice(0, 50);
     await gravarDoc('fichas', idDoc(nova.cliente), nova);
@@ -7831,23 +7860,44 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   // ---------- Telas dos módulos B, C e F ----------
   const podeVerContrato = () => !contaSrv() || ehAdmin() || (contaSrv().eu && contaSrv().eu.papel === 'colaborador');
   const donosConhecidos = () => [...new Set([quemSou()].concat(docsDe('fichas').map((f) => f.responsavel), docsDe('passos').map((p) => p.dono)).filter((x) => x && x !== 'este navegador' && x !== 'sistema'))];
+  // B1: fichas abertas ou atualizadas no período escolhido, por motivo principal e por status
+  function relatorioMotivos() {
+    if (!E.A) return '';
+    const noPer = (fi) => (fi.historico || []).some((h) => { const d = String(h.em || '').slice(0, 10); return d >= E.A.ini && d <= E.A.fim; });
+    const fs = docsDe('fichas').map((d) => fichaDe(d.cliente)).filter((fi) => fi && noPer(fi));
+    const corpo = !fs.length ? `<span class="apoio">Nenhuma ficha aberta ou atualizada em ${esc(D.periodoBR(E.A))}.</span>` : (() => {
+      const porM = {}, porS = {};
+      fs.forEach((fi) => { porM[fi.principal || 'sem'] = (porM[fi.principal || 'sem'] || []).concat(fi.cliente); porS[fi.status] = (porS[fi.status] || 0) + 1; });
+      const linhas = Object.entries(porM).sort((a, b) => b[1].length - a[1].length).map(([k, cs]) => `<tr><td>${esc(MOTIVOS_CANC[k] || 'Sem motivo')}</td><td class="dir num">${cs.length}</td><td class="dir num">${fmt((cs.length / fs.length) * 100, 0)}%</td><td>${esc(cs.join(', '))}</td></tr>`).join('');
+      return `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Motivo principal</th><th class="dir">Fichas</th><th class="dir">%</th><th>Clientes</th></tr></thead><tbody>${linhas}</tbody></table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.keys(STATUS_RET).filter((k) => porS[k]).map((k) => `<span class="badge ${STATUS_BADGE[k]}">${STATUS_RET[k]} · ${porS[k]}</span>`).join('')}</div>`;
+    })();
+    return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Motivos de cancelamento no período</h2><span class="h2-sub">Fichas de retenção abertas ou atualizadas em ${esc(D.periodoBR(E.A))}, pelo motivo principal.</span></div></div><div class="card-corpo" style="gap:12px">${corpo}</div></section>`;
+  }
   function cartaoFicha(nome) {
     const f = fichaDe(nome), falta = faltasFicha(f), ed = E.fichaForm && ckey(E.fichaForm.cliente) === ckey(nome);
     if (ed) {
       const v = E.fichaForm, perm = estagiosPermitidos(nome);
-      return `<section class="card" id="ficha"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ficha de retenção</h2><span class="h2-sub">Quem é o cliente em risco, por que quer sair e quando renova.</span></div>${sinc}</div>
+      return `<section class="card" id="ficha"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ficha de retenção</h2><span class="h2-sub">Por que quer sair, quem decide, até quando e em que pé está a negociação. Ficha incompleta não é salva.</span></div></div>
         <div class="card-corpo" style="gap:14px">
+          <div class="grade-regras">
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-status">Status da retenção</label><select class="campo" id="fi-status" data-campo="fi-status">${Object.entries(STATUS_RET).map(([k, r]) => `<option value="${k}" ${(v.status || 'analise') === k ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-prazo">Prazo de decisão do cliente${STATUS_PEDE_DECISAO.includes(v.status) ? ' (obrigatório)' : ''}</label><input class="campo" type="date" id="fi-prazo" data-campo="fi-prazo" value="${esc(v.prazo || '')}"></div>
+          </div>
           <div class="campo-bloco"><span class="campo-rotulo">Motivo do pedido de cancelamento <span class="mudo">(marque um ou mais e escolha o principal)</span></span>
             <div class="ficha-motivos">${Object.entries(MOTIVOS_CANC).map(([k, r]) => { const on = (v.motivos || []).includes(k); return `<span class="ficha-mot ${on ? 'on' : ''}"><label><input type="checkbox" data-campo="fi-motivo" value="${k}" ${on ? 'checked' : ''}> ${r}</label>${on ? `<label class="mudo" style="font-size:12px"><input type="radio" name="fi-principal" data-campo="fi-principal" value="${k}" ${v.principal === k || (v.motivos || []).length === 1 ? 'checked' : ''}> principal</label>` : ''}</span>`; }).join('')}</div></div>
           <div class="grade-regras">
-            <div class="campo-bloco"><label class="campo-rotulo" for="fi-detalhe">Detalhe do motivo</label><input class="campo" id="fi-detalhe" data-campo="fi-detalhe" value="${esc(v.detalhe || '')}" maxlength="200"></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-detalhe">Detalhe do motivo</label><input class="campo" id="fi-detalhe" data-campo="fi-detalhe" value="${esc(v.detalhe || '')}" maxlength="200" placeholder="${(v.motivos || []).includes('outro') ? 'Obrigatório para o motivo Outro' : ''}"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-alternativa">Alternativa avaliada${(v.motivos || []).includes('concorrente') ? ' (obrigatória)' : ''}</label><input class="campo" id="fi-alternativa" data-campo="fi-alternativa" value="${esc(v.alternativa || '')}" maxlength="120"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-renovacao">Renovação ou fim do contrato</label><input class="campo" type="date" id="fi-renovacao" data-campo="fi-renovacao" value="${esc(v.renovacao || '')}"></div>
-            <div class="campo-bloco"><label class="campo-rotulo" for="fi-decisor">Decisor (cargo)</label><input class="campo" id="fi-decisor" data-campo="fi-decisor" value="${esc(v.decisor || '')}" maxlength="80" placeholder="Ex.: Diretor de operações"></div>
-            <div class="campo-bloco"><label class="campo-rotulo" for="fi-responsavel">Responsável Gobrax</label><input class="campo" id="fi-responsavel" data-campo="fi-responsavel" list="donos" value="${esc(v.responsavel || '')}" maxlength="80"></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-decisor">Decisor (cargo)${STATUS_PEDE_DECISAO.includes(v.status) ? ' (obrigatório)' : ''}</label><input class="campo" id="fi-decisor" data-campo="fi-decisor" value="${esc(v.decisor || '')}" maxlength="80" placeholder="Ex.: Diretor de operações"></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-responsavel">Responsável do CS</label><input class="campo" id="fi-responsavel" data-campo="fi-responsavel" list="donos" value="${esc(v.responsavel || '')}" maxlength="80"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-estagio">Estágio do fluxo</label><select class="campo" id="fi-estagio" data-campo="fi-estagio">${Object.entries(ESTAGIOS).map(([k, r]) => `<option value="${k}" ${String(v.estagio || 1) === k ? 'selected' : ''} ${perm[k] ? '' : 'disabled'}>${r}${perm[k] ? '' : ' (pede registro)'}</option>`).join('')}</select></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-proximo">Próximo contato</label><input class="campo" type="date" id="fi-proximo" data-campo="fi-proximo" value="${esc(v.proximo || '')}"></div>
           </div>
+          ${STATUS_FINAL.includes(v.status) ? `<div class="grade-2">
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-motivoFinal">Motivo final (${STATUS_RET[v.status]})</label><input class="campo" id="fi-motivoFinal" data-campo="fi-motivoFinal" value="${esc(v.motivoFinal || '')}" maxlength="200"></div>
+            <div class="campo-bloco"><label class="campo-rotulo" for="fi-licao">Lição aprendida</label><input class="campo" id="fi-licao" data-campo="fi-licao" value="${esc(v.licao || '')}" maxlength="300"></div></div>` : ''}
           <datalist id="donos">${donosConhecidos().map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
           <span class="apoio" style="font-size:12px">Do decisor, só o cargo (sem telefone nem e-mail). Cada alteração fica no histórico com autor e data.</span>
           <div style="display:flex;gap:8px"><button type="button" class="btn btn-primario" data-acao="ficha-salvar">Salvar ficha</button><button type="button" class="btn" data-acao="ficha-cancelar">Cancelar</button></div>
@@ -7857,16 +7907,19 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const item = (rot, val, cls) => `<div class="ficha-i"><span class="exec-rot">${rot}</span><span class="${cls || ''}">${val}</span></div>`;
     const inv = podeVerContrato() && ckey(nome) === ckey(E.cliente) ? investimento() : null;
     return `<section class="card" id="ficha"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Ficha de retenção</h2><span class="h2-sub">${f ? 'Atualizada por ' + esc(f.historico && f.historico[0] ? f.historico[0].por : '—') + (f.historico && f.historico[0] ? ' em ' + D.br(String(f.historico[0].em).slice(0, 10)) : '') : 'Ainda não preenchida.'}</span></div>
-        <span style="display:flex;gap:8px;align-items:center"><button type="button" class="btn" data-acao="ficha-editar" data-cli="${esc(nome)}">${f ? 'Editar ficha' : 'Preencher ficha'}</button></span></div>
+        <span style="display:flex;gap:8px;align-items:center">${podeEditarPremissas() ? `<button type="button" class="btn" data-acao="ficha-editar" data-cli="${esc(nome)}">${f ? 'Editar ficha' : 'Preencher ficha'}</button>` : '<span class="badge badge-neutro">Só leitura</span>'}</span></div>
       <div class="card-corpo" style="gap:12px">
         ${falta.length ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto"><b>Ficha incompleta:</b> falta ${esc(falta.join(', '))}. Os outros módulos continuam funcionando.</span></div></div>` : ''}
         ${f ? `<div class="ficha-grade">
+          ${item('Status da retenção', `<span class="badge ${STATUS_BADGE[f.status]}">${STATUS_RET[f.status]}</span>`)}
+          ${item('Prazo de decisão', f.prazo ? D.br(f.prazo) + `<span class="linha2">${D.dif(D.hoje(), f.prazo) < 0 ? 'vencido há ' + -D.dif(D.hoje(), f.prazo) + ' dias' : 'em ' + D.dif(D.hoje(), f.prazo) + ' dias'}</span>` : '—', f.prazo && f.prazo < D.hoje() && !STATUS_FINAL.includes(f.status) ? 'txt-ruim' : '')}
           ${item('Motivo principal', esc(MOTIVOS_CANC[f.principal] || '—') + ((f.motivos || []).length > 1 ? ' <span class="mudo">+ ' + (f.motivos.length - 1) + '</span>' : '') + (f.detalhe ? '<span class="linha2">' + esc(f.detalhe) + '</span>' : ''))}
           ${item('Alternativa avaliada', esc(f.alternativa || '—'))}
           ${item('Renovação', f.renovacao ? D.br(f.renovacao) + (renovDias !== null ? `<span class="linha2">${renovDias < 0 ? 'vencida há ' + -renovDias + ' dias' : 'em ' + renovDias + ' dias'}</span>` : '') : '—', renovDias !== null && renovDias <= 90 ? 'txt-ruim' : '')}
           ${item('Equipamentos', premissasDe(nome).qtd > 0 ? fmt(premissasDe(nome).qtd, 0) + '<span class="linha2">de Configurações › Premissas</span>' : '—')}
           ${item('Decisor', esc(f.decisor || '—'))}
-          ${item('Responsável Gobrax', esc(f.responsavel || '—'))}
+          ${item('Responsável do CS', esc(f.responsavel || '—'))}
+          ${STATUS_FINAL.includes(f.status) ? item('Motivo final', esc(f.motivoFinal || '—')) + item('Lição aprendida', esc(f.licao || '—')) : ''}
           ${item('Estágio', esc(ESTAGIOS[f.estagio] || ESTAGIOS[1]))}
           ${item('Próximo contato', f.proximo ? D.br(f.proximo) : '—', f.proximo && f.proximo < D.hoje() ? 'txt-ruim' : '')}
           ${inv ? item('Valor mensal do contrato', fmtReais(inv.mensal, 2) + '<span class="linha2">só CS e administrador; nunca no resumo exportado</span>') : ''}
@@ -11226,7 +11279,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       try { document.getAnimations().forEach((a) => { if (a.effect && a.effect.getTiming().iterations !== Infinity) a.finish(); }); } catch (e) { /* sem a API */ }
       try { window.print(); } catch (e) { voltar(); toast('Use Ctrl+P e "Salvar como PDF".', 'erro'); }
     },
-    'ficha-editar': (el) => { const f = fichaDe(el.dataset.cli) || {}; E.fichaForm = Object.assign({ cliente: el.dataset.cli, motivos: [], principal: '', estagio: 1, responsavel: quemSou() === 'este navegador' ? '' : quemSou(), equipamentos: f.equipamentos || (ckey(el.dataset.cli) === ckey(E.cliente) ? investimento().qtd : '') }, JSON.parse(JSON.stringify(f))); render(); },
+    'ficha-editar': (el) => { const f = fichaDe(el.dataset.cli) || {}; E.fichaForm = Object.assign({ cliente: el.dataset.cli, motivos: [], principal: '', estagio: 1, status: 'analise', responsavel: quemSou() === 'este navegador' ? '' : quemSou() }, JSON.parse(JSON.stringify(f))); render(); },
     'ficha-salvar': () => salvarFicha(),
     'ficha-cancelar': () => { E.fichaForm = null; render(); },
     'passo-novo': (el) => { E.passoForm = { cliente: el.dataset.cli, acao: '', dono: (fichaDe(el.dataset.cli) || {}).responsavel || '', prazo: D.somar(D.hoje(), 7) }; render(); },
@@ -11334,7 +11387,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     else if (k && k.indexOf('cf-') === 0 && E.combForm) { E.combForm[k.slice(3)] = ev.target.value; if (k === 'cf-data' || k === 'cf-prazo') render(); }
     else if (k && k.indexOf('pf-') === 0 && E.passoForm) E.passoForm[k.slice(3)] = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value;
     else if (k === 'fi-motivo' && E.fichaForm) { const m = new Set(E.fichaForm.motivos || []); if (ev.target.checked) m.add(ev.target.value); else m.delete(ev.target.value); E.fichaForm.motivos = [...m]; if (!m.has(E.fichaForm.principal)) E.fichaForm.principal = m.size === 1 ? [...m][0] : ''; render(); }
-    else if (k && k.indexOf('fi-') === 0 && E.fichaForm) { E.fichaForm[k.slice(3)] = ev.target.value; if (k === 'fi-principal') render(); }
+    else if (k && k.indexOf('fi-') === 0 && E.fichaForm) { E.fichaForm[k.slice(3)] = ev.target.value; if (k === 'fi-principal' || k === 'fi-status') render(); }
   });
   document.addEventListener('change', (ev) => {
     const el = ev.target, k = el.dataset.campo;

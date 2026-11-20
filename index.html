@@ -736,7 +736,7 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .dv-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dv-kpi { border-top: 4px solid var(--c); gap: 12px; padding: 16px 14px; }
 .dv-kpi .vg-kpi-ic { width: 44px; height: 44px; }
-.dv-kpi .vg-kpi-rot { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv-kpi .vg-kpi-rot { line-height: 1.25; }
 .dv-kpi .vg-var { white-space: nowrap; }
 .dv-grade { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
 .dv-seg { margin-left: auto; }
@@ -758,6 +758,27 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .dv-veredito { flex: 1 1 150px; max-width: 220px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 14px; border-radius: 14px; background: var(--apoio); text-align: center; text-decoration: none; color: var(--tinta); font-size: 14.5px; }
 .dv-ver-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
 .dv-ver-ic.vg-bom { background: var(--ok); } .dv-ver-ic.vg-ruim { background: var(--critico); }
+.dv-cab-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dv-filtros { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 16px; }
+.dv-filtro { display: flex; align-items: center; gap: 12px; min-width: 200px; padding: 10px 16px; border-radius: 16px; background: var(--superficie); border: 1px solid var(--hairline); box-shadow: 0 2px 8px rgba(32,33,36,.05); cursor: pointer; }
+.dv-filtro-ic { color: var(--tinta); display: inline-flex; }
+.dv-filtro-txt { display: flex; flex-direction: column; min-width: 0; }
+.dv-filtro-txt small { font-size: 12px; color: var(--texto-2); }
+.dv-sel { border: 0; background: transparent; padding: 0 18px 0 0; font: inherit; font-size: 15px; font-weight: 700; color: var(--tinta); cursor: pointer; max-width: 220px; }
+.dv-sel:focus-visible { outline: 2px solid #FCB709; outline-offset: 2px; border-radius: 4px; }
+.dv-minis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.dv-mini { border: 1px solid var(--hairline); border-radius: 14px; padding: 12px 12px 6px; display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow: hidden; }
+.dv-mini-cab { display: flex; gap: 10px; align-items: flex-start; }
+.dv-mini-cab .vg-kpi-ic { width: 36px; height: 36px; }
+.dv-mini-cab > div { display: flex; flex-direction: column; min-width: 0; }
+.dv-mini-rot { font-size: 12.5px; color: var(--corpo); line-height: 1.25; }
+.dv-mini b { font-size: 22px; color: var(--tinta); letter-spacing: -.01em; }
+.dv-mini small { font-size: 12px; font-weight: 700; }
+.dv-mini-spark svg { width: 100%; height: auto; }
+.dv-rk-ctl { display: inline-flex; gap: 8px; align-items: center; }
+.dv-por { width: auto; height: 36px; border-radius: 999px; }
+@media (max-width: 1280px) { .dv-minis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .dv-minis { grid-template-columns: minmax(0, 1fr); } .dv-filtro { flex: 1 1 100%; } }
 .churn-detalhe .h2 { font-size: 22px; }
 .churn-grade .card-cab .h2 { font-size: 18px; font-weight: 600; }
 .churn-leitura { border-radius: 0 10px 10px 0; }
@@ -4206,8 +4227,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 
     const aba = ['indicadores', 'qualidade'].includes(E.rota.aba) ? E.rota.aba : 'graficos';
     const topo = `
-      ${cabecalho(`Desenvolvimento da Frota`, `Acompanhe o desempenho da sua operação e identifique oportunidades de melhoria · ${c.nAtivos} motoristas com registro · ${D.periodoBR(E.A)}`)}
-      ${barraPeriodo()}
+      ${cabecalho(`Desenvolvimento da Frota`, `Acompanhe o desempenho da sua operação e identifique oportunidades de melhoria.`, `<div class="dv-cab-acoes">${chipQualidade()}<button type="button" class="sv-pilula" data-acao="relatorio-pdf">${icone('baixar', 16)}Exportar PDF</button></div>`)}
+      ${dvFiltros()}
+      ${avisosPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
       ${abas([['graficos', 'Gráficos', undefined, '#/visao'], ['indicadores', 'Todos os indicadores', undefined, '#/visao?aba=indicadores'], ['qualidade', 'Qualidade do dado', ((infoQualidade() || {}).susp || []).length || undefined, '#/visao?aba=qualidade']], aba, '', 'Seções de Desenvolvimento da frota')}`;
     if (aba === 'indicadores') return topo + abaIndicadoresFrota();
@@ -5342,16 +5364,29 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   function cartaoConducao(c) {
     const keys = ['faixa_verde', 'embalo', 'motor_ocioso', 'pressao_acelerador'].filter(temInd);
     if (!keys.length) return '';
-    const linhas = keys.map((k) => {
-      const ind = IND_MAP[k], a = c.frotaA[k], b = c.frotaB[k];
-      const v = X.variacao(ind, a, b);
-      const w = (x) => (x === null || x === undefined ? 0 : Math.max(1.5, Math.min(100, x)));
-      return `<div class="par"><div class="par-cab"><span class="par-nome">${esc(ind.label)}</span>${variacao(v)}</div>
-        <div class="par-barra"><span class="par-trilho"><span style="width:${w(a)}%;background:#FCB709"></span></span><span class="par-val num">${fmtInd(ind, a)}</span></div>
-        <div class="par-barra"><span class="par-trilho"><span style="width:${w(b)}%;background:#BDC1C6"></span></span><span class="par-val num mudo">${fmtInd(ind, b)}</span></div></div>`;
+    const minis = keys.map((k) => {
+      const ind = IND_MAP[k], [ic, cor] = DV_KPI[k], hex = DV_COR[cor], v = X.variacao(ind, c.frotaA[k], c.frotaB[k]);
+      const cls = v.semBase ? 'vg-neutro' : v.sentido === 'melhor' ? 'vg-bom' : v.sentido === 'pior' ? 'vg-ruim' : 'vg-neutro';
+      const spark = X.ui.miniArea(X.serieDiaria(c.la, ind, E.A, E.base).map((p) => p.valor), hex, 200, 54);
+      return `<div class="dv-mini" style="--c:${hex}"><div class="dv-mini-cab"><span class="vg-kpi-ic" style="--c:${hex}">${icone(ic, 18)}</span>
+          <div><span class="dv-mini-rot">${esc(ind.label)}</span><b class="num">${esc(fmtInd(ind, c.frotaA[k]))}</b><small class="${cls}">${v.semBase ? 'sem comparação' : esc(v.texto)}</small></div></div>
+        ${spark ? `<span class="dv-mini-spark">${spark}</span>` : ''}</div>`;
     }).join('');
     const cmp = `<span class="apoio dv-cmp">${c.lb.length ? 'Comparativo: ' + D.periodoBR(E.A) + ' vs ' + D.periodoBR(E.B) : 'Sem período anterior para comparar'}</span>`;
-    return vgCard('barras', 'Indicadores de condução', `<div class="vg-leg-linha"><span><i style="background:#FCB709"></i>Período analisado</span><span><i style="background:#BDC1C6"></i>Período anterior</span></div><div class="pares">${linhas}</div>`, null, cmp);
+    return vgCard('barras', 'Indicadores de condução', `<div class="dv-minis">${minis}</div>`, null, cmp);
+  }
+  // Filtros do topo de Desenvolvimento da frota: empresa e filial filtram a tela; veículo e condutor abrem a ficha
+  function dvFiltros() {
+    const filtro = (ic, rot, sel) => `<label class="dv-filtro"><span class="dv-filtro-ic">${icone(ic, 20)}</span><span class="dv-filtro-txt"><small>${rot}</small>${sel}</span></label>`;
+    const out = [];
+    const clis = opcoesClientes();
+    if (clis.length) out.push(filtro('camadas', 'Empresa', `<select class="dv-sel" data-campo="cliente-filtro" aria-label="Empresa">${clis.map((o) => `<option value="${esc(o)}" ${ckey(o) === ckey(E.cliente) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`));
+    const grupos = opcoesDim(DIMS[0].key);
+    out.push(filtro('pessoas', 'Filial / Frota', `<select class="dv-sel" data-campo="filtro-dim" data-dim="grupo" aria-label="Filial ou frota"><option value="">Todas</option>${grupos.map((o) => `<option value="${esc(o)}" ${nrm(o) === nrm(E.filtro.grupo) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`));
+    const bv = baseVeic();
+    if (bv) out.push(filtro('caminhao', 'Veículo / Placa', `<select class="dv-sel" data-campo="dv-f-veic" aria-label="Abrir um veículo"><option value="">Todos</option>${bv.motoristas.map((m) => m.nome).sort().map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}</select>`));
+    if (E.base) out.push(filtro('pessoas', 'Condutor', `<select class="dv-sel" data-campo="dv-f-mot" aria-label="Abrir um condutor"><option value="">Todos</option>${E.base.motoristas.slice().sort((p, q) => (p.nome < q.nome ? -1 : 1)).map((m) => `<option value="${esc(m.id)}">${esc(m.nome)}</option>`).join('')}</select>`));
+    return `<div class="dv-filtros">${out.join('')}</div>`;
   }
   // semConsumo: sem o cartão Veículos por consumo (a aba Gráficos já tem o ranking de consumo com busca)
   function cartoesVeiculos(semConsumo) {
@@ -5407,7 +5442,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (!ks.length) return '';
     return `<div class="vg-kpis dv-kpis">${ks.map((k) => {
       const ind = IND_MAP[k], [ic, cor] = DV_KPI[k], hex = DV_COR[cor];
-      const spark = X.ui.miniArea(X.serieDiaria(c.la, ind, E.A, E.base).map((p) => p.valor), hex, 84, 40);
+      const spark = X.ui.miniArea(X.serieDiaria(c.la, ind, E.A, E.base).map((p) => p.valor), hex, 72, 38);
       return `<div class="vg-kpi dv-kpi" style="--c:${hex}"><span class="vg-kpi-ic" style="--c:${hex}">${icone(ic, 22)}</span>
         <div class="vg-kpi-txt"><span class="vg-kpi-rot">${esc(ind.label)}</span><span class="vg-kpi-v num">${esc(fmtInd(ind, c.frotaA[k], false))}${ind.un === '%' ? '<small>%</small>' : ''}</span>${vgVar(X.variacao(ind, c.frotaA[k], c.frotaB[k]))}</div>
         ${spark ? `<span class="vg-kpi-spark">${spark}</span>` : ''}</div>`;
@@ -5455,11 +5490,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     itens.forEach((x, i) => { x.pos = i + 1; });
     const tot = itens.length, busca = nrm(E.dvBusca || '');
     const filtrados = busca ? itens.filter((x) => nrm(x.nome).includes(busca)) : itens;
-    const POR = 5, pags = Math.max(1, Math.ceil(filtrados.length / POR)), pag = clamp(E.dvPag || 1, 1, pags);
+    const POR = E.dvPor === 10 ? 10 : 5, pags = Math.max(1, Math.ceil(filtrados.length / POR)), pag = clamp(E.dvPag || 1, 1, pags);
     const vis = filtrados.slice((pag - 1) * POR, pag * POR);
     const rotNome = modo === 'veiculo' && bv ? 'Placa' : 'Condutor';
     const corpo = `<div class="dv-rk-topo"><span class="apoio">${tot ? `${fmt(tot, 0)} ${modo === 'veiculo' && bv ? 'veículos' : 'condutores'} com consumo` : 'Sem consumo no período'}</span>
-        <label class="dv-busca">${icone('busca', 15)}<input id="dv-busca" class="campo" data-campo="dv-busca" placeholder="Buscar por ${rotNome.toLowerCase()}…" value="${esc(E.dvBusca || '')}"></label></div>
+        <span class="dv-rk-ctl"><label class="dv-busca">${icone('busca', 15)}<input id="dv-busca" class="campo" data-campo="dv-busca" placeholder="Buscar por ${rotNome.toLowerCase()}…" value="${esc(E.dvBusca || '')}"></label>
+        <select class="campo dv-por" data-campo="dv-por" aria-label="Itens por página">${[5, 10].map((n) => `<option value="${n}" ${POR === n ? 'selected' : ''}>${n} itens</option>`).join('')}</select></span></div>
       ${vis.length ? `<div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>#</th><th>${rotNome}</th><th class="dir">Média de consumo</th><th class="dir">Km</th></tr></thead><tbody>
         ${vis.map((x) => `<tr><td class="num">${x.pos}</td><td><a href="${x.href}">${esc(x.nome)}</a></td><td class="dir num"><b>${esc(fmtInd(IND_MAP.kml, x.kml, false))}</b></td><td class="dir num">${esc(fmt(x.km || 0, 0))}</td></tr>`).join('')}
       </tbody></table></div>` : '<div class="vazio"><span class="apoio">Nada encontrado.</span></div>'}
@@ -5471,7 +5507,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (!q) return '';
     const suspK = new Set(q.susp.filter((l) => !tratSusp(l)).map((l) => l.veiculo || l.motorista).filter(Boolean));
     const parcial = [...q.reportaram].filter((v) => suspK.has(v)).length;
-    const fatias = [['Com dados', q.reportaram.size - parcial, '#1E8E3E'], ['Sem dados', q.faltando.length, '#F9AB00'], ['Com suspeitos', parcial, '#E37400']];
+    const fatias = [['Com dados', q.reportaram.size - parcial, '#1E8E3E'], ['Sem dados', q.faltando.length, '#F9AB00'], ['Parcial', parcial, '#E37400']];
     const tot = fatias.reduce((t, f) => t + f[1], 0) || 1, R = 52, L = 2 * Math.PI * R;
     let ac = 0;
     const arcos = fatias.filter((f) => f[1]).map((f) => { const fr = f[1] / tot, s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${f[2]}" stroke-width="14" stroke-dasharray="${(fr * L).toFixed(2)} ${L.toFixed(2)}" stroke-dashoffset="${(-ac * L).toFixed(2)}" transform="rotate(-90 70 70)"/>`; ac += fr; return s; }).join('');
@@ -11268,6 +11304,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     } else if (k === 'ind-sel') { location.hash = '#/individual/' + E.rota.tipo + '/' + encodeURIComponent(el.value) + (E.rota.aba && E.rota.aba !== 'dashboard' ? '?aba=' + E.rota.aba : ''); }
     else if (k === 'ind-graf') { E.indGraf = el.value; render(); }
     else if (k === 'vg-ind') { E.vgInd = el.value; render(); }
+    else if (k === 'dv-por') { E.dvPor = Number(el.value); E.dvPag = 1; render(); }
+    else if (k === 'dv-f-veic') { if (el.value) location.hash = '#/individual/veiculo/' + encodeURIComponent(el.value); }
+    else if (k === 'dv-f-mot') { if (el.value) location.hash = linkMotorista(el.value); }
     else if (k === 'ind-det') { E.detalhe.indGraf = el.value; render(); }
     else if (k === 'ind-comp') { E.comp.ind = el.value; render(); }
     else if (k === 'escopo') { E.comp.escopo = el.value; render(); }

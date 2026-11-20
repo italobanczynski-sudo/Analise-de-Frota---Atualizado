@@ -34,9 +34,6 @@ services:
     # só neste computador (127.0.0.1): para a internet, quem atende é o nginx
     ports:
       - "127.0.0.1:${PORTA_LOCAL:-8080}:8080"
-    volumes:
-      # só leitura: para importar os clientes do script antigo (-importar-clientes /importar/clientes.json -tokens /importar/.env)
-      - ../busca-de-dados:/importar:ro
     restart: unless-stopped
 
   nginx:

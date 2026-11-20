@@ -1,8 +1,3 @@
-# Tokens e dados de clientes nunca vão para o repositório
-busca-de-dados/.env
-busca-de-dados/clientes.json
-busca-de-dados/saida/
-
 # Servidor (Go): configuração local com segredos
 servidor/.env
 

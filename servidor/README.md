@@ -1,6 +1,6 @@
 # Plataforma Análise de Frota: servidor (Go)
 
-Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela API HTTP e pelas telas da plataforma (login, clientes e usuários). Substitui o `busca-de-dados/puxar.mjs`. Segue o padrão Go da Gobrax (Clean Architecture: `adapters` → `modules` → `api` → `background`).
+Busca os dados da API Gobrax de cada cliente, guarda no Postgres e entrega pela API HTTP e pelas telas da plataforma (login, clientes e usuários). Substituiu o antigo script `busca-de-dados/puxar.mjs`, que saiu do projeto. Segue o padrão Go da Gobrax (Clean Architecture: `adapters` → `modules` → `api` → `background`).
 
 ## Tecnologias
 
@@ -49,10 +49,6 @@ Precisa só do Docker Desktop.
    Se a pessoa já existe (convite perdido ou vencido, ninguém consegue entrar, e-mail fora do ar), gere um link novo:
    ```bash
    docker compose run --rm app -novo-convite pessoa@gobrax.com
-   ```
-4. Opcional: traga os clientes do script antigo (`busca-de-dados/clientes.json` e os tokens do `busca-de-dados/.env`):
-   ```bash
-   docker compose run --rm app -importar-clientes /importar/clientes.json -tokens /importar/.env
    ```
 
 Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose down -v` **apaga o banco**).
@@ -145,7 +141,7 @@ Respostas: `{"ok": true, "dados": ...}` ou `{"ok": false, "erro": "..."}`. Toda 
 | `GET /api/v1/clientes/:id/condutores` | colaborador, admin | Motoristas que rodaram nos últimos 90 dias e os que têm telefone, com o telefone de cada um (Configurações › Telefones dos condutores) |
 | `PUT /api/v1/clientes/:id/mensagens/telefone` `{motorista, telefone}` | colaborador, admin | Grava o telefone do motorista para a fila de envio (vazio apaga). O leitor recebe a lista de mensagens sem telefone |
 
-A documentação da API Gobrax (externa) está em [../docs/API.md](../docs/API.md).
+A documentação da API Gobrax (externa) está na aba **API Gobrax** do painel (`#/api`).
 
 ## Banco e migrações
 

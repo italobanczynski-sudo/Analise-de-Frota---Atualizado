@@ -4,8 +4,6 @@
   "material-icon-theme.folders.associations": {
     "servidor": "server",
     "scripts": "scripts",
-    "documentacao": "docs",
-    "busca-de-dados": "scripts",
     "bibliotecas": "lib",
     "adapters": "connection",
     "dbPostgres": "database",
@@ -81,7 +79,6 @@
 
   // Fora da busca: biblioteca de terceiros e dados gerados
   "search.exclude": {
-    "bibliotecas/**": true,
-    "busca-de-dados/saida/**": true
+    "bibliotecas/**": true
   }
 }

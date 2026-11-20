@@ -10,7 +10,8 @@ import (
 var (
 	ErrNome            = errors.New("informe o nome da pessoa (até 120 letras)")
 	ErrEmail           = errors.New("e-mail inválido")
-	ErrPapel           = errors.New("perfil inválido: use admin, colaborador ou leitor")
+	ErrPapel           = errors.New("perfil inválido: use Administrador, CS ou Leitura")
+	ErrDominio         = errors.New("só e-mails corporativos da Gobrax têm acesso à plataforma")
 	ErrEmailRepetido   = errors.New("já existe um usuário com esse e-mail")
 	ErrNaoEncontrado   = errors.New("usuário não encontrado")
 	ErrSenhaFraca      = errors.New("a senha precisa ter pelo menos 10 caracteres, com letras e números")
@@ -59,6 +60,20 @@ func validarEmail(email string) error {
 		return ErrEmail
 	}
 	return nil
+}
+
+// dominioOk: o e-mail termina em um dos domínios aceitos (lista vazia = qualquer domínio)
+func dominioOk(email string, dominios []string) bool {
+	if len(dominios) == 0 {
+		return true
+	}
+	email = normalizarEmail(email)
+	for _, d := range dominios {
+		if strings.HasSuffix(email, "@"+d) {
+			return true
+		}
+	}
+	return false
 }
 
 func validarPapel(p string) error {

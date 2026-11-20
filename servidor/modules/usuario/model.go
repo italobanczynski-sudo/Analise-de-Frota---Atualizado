@@ -4,9 +4,9 @@ import "time"
 
 // Perfis de acesso
 const (
-	PapelAdmin       = "admin"       // cuida de usuários, clientes e tokens
-	PapelColaborador = "colaborador" // pede buscas e vê tudo
-	PapelLeitor      = "leitor"      // só vê
+	PapelAdmin       = "admin"       // Administrador: cuida de usuários, clientes e tokens (poucas pessoas)
+	PapelColaborador = "colaborador" // CS: edita ficha, combinados e mensagens e pede buscas
+	PapelLeitor      = "leitor"      // Leitura: só vê (comercial e diretoria)
 )
 
 // Usuario_t é o que sai do módulo: a senha nunca aparece, só se ela já foi criada

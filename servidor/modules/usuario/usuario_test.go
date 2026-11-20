@@ -167,6 +167,24 @@ func (s *UsuarioSuite) TestAutenticar() {
 	s.ErrorIs(err, usuario.ErrLogin)
 }
 
+// A6: só e-mail corporativo entra; quem está fora do domínio só pode ser desativado
+func (s *UsuarioSuite) TestEmailForaDoDominio() {
+	_, _, err := s.svc.Criar(s.ctx, "Ana", "ana@gmail.com", usuario.PapelLeitor)
+	s.ErrorIs(err, usuario.ErrDominio)
+	s.repo.AssertNotCalled(s.T(), "Criar", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+	fora := linha(8, usuario.PapelAdmin, true, "senhaForte123")
+	fora.Email = "pessoa@gmail.com"
+	s.repo.On("BuscarPorEmail", s.ctx, "pessoa@gmail.com").Return(fora, nil)
+	_, err = s.svc.Autenticar(s.ctx, "pessoa@gmail.com", "senhaForte123")
+	s.ErrorIs(err, usuario.ErrDominio)
+	s.repo.AssertNotCalled(s.T(), "MarcarAcesso", mock.Anything, mock.Anything, mock.Anything)
+
+	s.repo.On("BuscarPorID", s.ctx, int64(8)).Return(fora, nil)
+	_, err = s.svc.Alterar(s.ctx, 8, usuario.PapelLeitor, true)
+	s.ErrorIs(err, usuario.ErrDominio, "não muda o perfil de quem está fora do domínio")
+}
+
 func (s *UsuarioSuite) TestEmailInexistenteDaAMesmaMensagem() {
 	s.repo.On("BuscarPorEmail", s.ctx, "ninguem@gobrax.com").Return(usuario_repo.UsuarioRow_t{}, usuario_repo.ErrNaoEncontrado)
 	_, err := s.svc.Autenticar(s.ctx, "ninguem@gobrax.com", "qualquer123")

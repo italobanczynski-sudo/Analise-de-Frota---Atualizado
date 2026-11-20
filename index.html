@@ -3516,7 +3516,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }).filter((x) => x.ativo);
     const cont = { evoluiu: 0, estavel: 0, regrediu: 0, sembase: 0 };
     mots.forEach((x) => { cont[x.st.status]++; });
-    const nAtivos = mots.filter((x) => x.la.length).length;   // com registro no período analisado (mots inclui quem só rodou na comparação)
+    const nAtivos = mots.filter((x) => x.la.some(X.rodouLinha)).length;   // A2: motorista ativo = rodou no período (uma só definição na plataforma)
     memo = { chave, base: b, la, lb, frotaA, frotaB, mots, cont, nAtivos };
     return memo;
   }
@@ -3637,10 +3637,11 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   const cliAtual = () => E.clientes.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
   // Estado escolhido na barra do topo (só neste navegador): vazio = automático, 'br' = média Brasil
   const CHAVE_UF_DIESEL = 'gbx-diesel-uf';
-  E.ufDiesel = armazem.ler(CHAVE_UF_DIESEL) || '';
+  E.ufDiesel = '';   // A3: o estado do diesel vem das premissas do cliente (Configurações), não do navegador
   // Estado usado agora: o escolhido na barra, senão o do grupo filtrado, senão o do cliente, senão a média Brasil
   function ufAtual() {
-    if (E.ufDiesel) return { uf: E.ufDiesel, de: 'barra' };
+    const ufPrem = premissasDe(E.cliente).uf;
+    if (ufPrem) return { uf: ufPrem, de: 'Configurações' };
     const c = cliAtual(); if (!c) return { uf: 'br', de: '' };
     const g = E.filtro.grupo && c.ufGrupos ? c.ufGrupos[nrm(E.filtro.grupo)] : '';
     if (g) return { uf: g, de: 'grupo ' + E.filtro.grupo };
@@ -3652,15 +3653,11 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const { uf } = ufAtual();
     return precoUF(uf) || precoUF('br') || (E.diesel && Number(E.diesel.preco_br)) || null;
   }
+  // A3: o preço do diesel só muda em Configurações; a pílula do topo só mostra o valor em uso (o mesmo de todas as telas)
   function pilulaDiesel() {
-    if (E.dieselUF) {
-      const { uf, de } = ufAtual(), p = precoUF(uf), usado = p ? uf : 'br';
-      return `<div class="dm"><button type="button" class="pilula-diesel auto" data-acao="diesel-menu" aria-haspopup="listbox" aria-expanded="${!!E.dieselMenu}" title="Clique para escolher o preço · Diesel S10 da Petrobras em ${esc(nomeUF(usado))}${de === 'barra' ? ' (escolhido na barra)' : de ? ' (estado do ' + esc(de) + ')' : ' (defina o estado do cliente no perfil)'}${!p && uf !== 'br' ? ' · sem preço para ' + uf.toUpperCase() + ', usando a média Brasil' : ''} · coleta ${esc(E.dieselUF.coleta)}"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${E.precoManual ? 'manual' : usado.toUpperCase()}</small><span class="dp-seta">▾</span></button>${E.dieselMenu ? menuDiesel() : ''}</div>`;
-    }
-    const d = E.diesel;
-    if (!d) return `<a class="pilula-diesel" href="#/visao?aba=indicadores" title="Preço usado nas contas de economia">Diesel ${fmtReais(E.preco, 2)}/L</a>`;
-    const auto = !E.precoManual;
-    return `<a class="pilula-diesel ${auto ? 'auto' : ''}" href="#/visao?aba=indicadores" title="${auto ? 'Atualizado automaticamente do site da Petrobras' : 'Preço digitado por você'} · ${esc(d.combustivel || 'Diesel')} · coleta ${esc(d.periodo || '')} · Petrobras: ${fmtReais(Number(d.preco_br), 2)}/L"><span class="pd-pulso"></span>Diesel ${fmtReais(E.preco, 2)}/L<small>${auto ? 'Petrobras' : 'manual'}</small></a>`;
+    const pm = premissasDe(E.cliente), manual = pm.preco > 0;
+    const de = manual ? 'digitado em Configurações' : (() => { const { uf } = ufAtual(); return 'Petrobras · ' + nomeUF(precoUF(uf) ? uf : 'br'); })();
+    return `<a class="pilula-diesel ${manual ? '' : 'auto'}" href="#/config?aba=premissas" title="Diesel usado nas contas de economia (${esc(de)}). Para mudar, vá em Configurações › Premissas.">Diesel ${fmtReais(E.preco, 2)}/L</a>`;
   }
   // Clique na pílula do diesel: lista para escolher o preço (automático, média Brasil ou um estado)
   function menuDiesel() {
@@ -3777,7 +3774,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   let memoAlertas = null;
   function alertasPainel() {
     const chave = [E.linhasAll ? E.linhasAll.length : 0, E.A && E.A.ini, E.A && E.A.fim, E.cliente, E.clientes.length, planDocs.size, (E.trat || []).length,
-      (msg().clientes || []).map((c) => c.coleta && c.coleta.situacao).join(','), docsDe('robo_envios').map((d) => d.executado_em).join(','), D.hoje()].join('|');
+      (msg().clientes || []).map((c) => c.coleta && c.coleta.situacao).join(','), docsDe('robo_envios').map((d) => d.executado_em).join(','), D.hoje(), (E.vivo && E.vivo.em) || '', E.veic ? E.veic.linhas.length : 0].join('|');
     if (memoAlertas && memoAlertas.chave === chave) return memoAlertas.lista;
     const out = [];
     if (E.linhasAll && E.A) {
@@ -3792,12 +3789,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }
     // tratativas com prazo vencido e ainda não entregues
     (E.trat || []).filter((t) => t.prazo && t.status !== 'entregue' && t.prazo < D.hoje()).forEach((t) => out.push({ nivel: 'atencao', tit: `${t.cliente}: prazo vencido em ${D.br(t.prazo)}`, txt: t.titulo + (t.responsavel ? ' · ' + t.responsavel : ''), href: '#/churn' }));
-    // veículos do cliente do topo sem comunicar há mais de 3 dias (odômetro da API)
-    const odo = E.cliente ? docsApi('odometro', E.cliente)[0] : null;
-    if (odo && odo.veiculos) {
-      const horas = (v) => { const t = Date.parse(String(v).replace(' ', 'T').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
-      const parados = odo.veiculos.filter((v) => { const h = horas(v.coletado); return h === null || h > 72; });
-      if (parados.length) out.push({ nivel: 'atencao', tit: `${E.cliente}: ${parados.length} veículo(s) sem comunicar há mais de 3 dias`, txt: parados.slice(0, 4).map((v) => v.placa).join(', ') + (parados.length > 4 ? '…' : '') + '. Verificar a unidade eletrônica.', href: '#/visao' });
+    // A1: veículos do cliente do topo sem sinal (a mesma regra da Frota ativa e do status dos veículos)
+    if (E.cliente && E.veic) {
+      const cf = comunicacaoFrota();
+      if (cf.semSinal.length) out.push({ nivel: 'atencao', tit: `${E.cliente}: ${cf.semSinal.length} de ${cf.total} veículo(s) sem sinal há mais de ${cf.dias} dias`, txt: cf.semSinal.slice(0, 4).join(', ') + (cf.semSinal.length > 4 ? '…' : '') + '. Verificar a unidade eletrônica.', href: '#/visao?aba=qualidade' });
     }
     // busca automática do servidor com erro
     if (contaSrv()) {
@@ -3922,7 +3917,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     for (let d = granPeriodo(b.inicio, g).ini; d <= b.fim; d = D.somar(granPeriodo(d, g).fim, 1)) {
       const p = granPeriodo(d, g), ls = X.filtrar(b.linhas, p);
       // parcial: a semana/mês começa antes ou termina depois dos dados (km e horas somados saem menores e a comparação engana)
-      if (ls.length) per.push({ p, v: X.resumo(ls, b), mot: new Set(ls.map((l) => l.motorista)).size, parcial: p.ini < b.inicio || p.fim > b.fim });
+      if (ls.length) per.push({ p, v: X.resumo(ls, b), mot: new Set(ls.filter(X.rodouLinha).map((l) => l.motorista)).size, parcial: p.ini < b.inicio || p.fim > b.fim });
     }
     if (per.length < 2) return '';
     const comValor = inds.filter((ind) => per.some((r) => r.v[ind.key] !== null && r.v[ind.key] !== undefined && Number.isFinite(r.v[ind.key])));
@@ -5178,8 +5173,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
                 <option value="frota" ${escopo === 'frota' ? 'selected' : ''}>Frota inteira</option>
                 ${c.mots.map((x) => `<option value="${esc(x.m.id)}" ${escopo === x.m.id ? 'selected' : ''}>${esc(x.m.nome)}</option>`).join('')}
               </select></label>
-            <label class="campo-bloco" style="width:150px"><span class="campo-rotulo">Preço do diesel</span>
-              <span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="preco" id="preco-diesel" value="${fmt(E.preco, 2)}" aria-label="Preço do diesel em reais por litro"><span>R$/L</span></span>${E.diesel ? (E.precoManual ? `<button type="button" class="btn-link peq" data-acao="preco-auto">Usar o da Petrobras (${fmtReais(Number(E.diesel.preco_br), 2)})</button>` : `<span class="apoio" style="font-size:11px">Petrobras · coleta ${esc(E.diesel.periodo || '')}</span>`) : ''}</label>
+            <span class="campo-bloco" style="width:170px"><span class="campo-rotulo">Preço do diesel</span><b class="num" style="font-size:15px">${fmtReais(E.preco, 2)}/L</b><a class="btn-link peq" href="#/config?aba=premissas">alterar em Configurações</a></span>
             <button type="button" class="btn btn-primario" data-acao="exportar-comparativo">${icone('baixar', 14, '#2B2B2B')}Exportar planilha</button>
           </div>
         </div>
@@ -5216,7 +5210,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     let ant = null;
     const todos = [...porDia.keys()].sort().map((d) => {
       const ls = porDia.get(d);
-      const r = { data: d, mot: new Set(ls.map((l) => l.motorista)).size, v: X.resumo(ls, E.base), ant };
+      const r = { data: d, mot: new Set(ls.filter(X.rodouLinha).map((l) => l.motorista)).size, v: X.resumo(ls, E.base), ant };
       ant = r;
       return r;
     });
@@ -6061,7 +6055,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }
     if (!la.length && !lb.length) return null;
     const a = X.resumo(la, bt), b = X.resumo(lb, bt), aC = ca === la ? a : X.resumo(ca, bt);
-    const ativos = new Set(la.map((l) => l.motorista)), ativosC = new Set(ca.map((l) => l.motorista)), antes = new Set(lb.map((l) => l.motorista));
+    const rodaram = (ls) => new Set(ls.filter(X.rodouLinha).map((l) => l.motorista));   // A2: ativo = rodou no período
+    const ativos = rodaram(la), ativosC = rodaram(ca), antes = rodaram(lb);
     const porMot = new Map();
     la.forEach((l) => { if (!porMot.has(l.motorista)) porMot.set(l.motorista, []); porMot.get(l.motorista).push(l); });
     const notas = [...porMot.values()].map((m) => X.resumo(m, bt).nota).filter((n) => n > 0);
@@ -6575,7 +6570,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
 
   // ---------- Configurações: clientes e anexo de planilhas (no perfil de cada cliente) ----------
-  const abasCfg = () => abas([['config', 'Clientes', null, '#/config'], ['carteira', 'Carteira de clientes', null, '#/carteira']], E.rota.tela === 'carteira' ? 'carteira' : 'config', '', 'Configurações');
+  const abasCfg = () => abas([['config', 'Clientes', null, '#/config'], ['premissas', 'Premissas', null, '#/config?aba=premissas'], ['carteira', 'Carteira de clientes', null, '#/carteira']], E.rota.tela === 'carteira' ? 'carteira' : E.rota.tela === 'config' && E.rota.aba === 'premissas' ? 'premissas' : 'config', '', 'Configurações');
   function abasConfig() {
     return `${cabecalho(`Configurações`, `${ehAdmin() ? 'Usuários, clientes, carteira e dados da API.' : 'Clientes, carteira e dados da API.'} Para buscar os dados, abra o perfil do cliente.`)}${abasCfg()}`;
   }
@@ -6933,7 +6928,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     return armazem.lerJSON(CHAVE_INV, {});
   }
   function investimento() {
-    const s = investimentoSalvo(), placas = new Set(E.base.linhas.map((l) => l.veiculo).filter(Boolean)).size;
+    const pm = premissasDe(E.cliente), ant = investimentoSalvo();
+    const s = { valor: pm.valorEquip > 0 ? pm.valorEquip : ant.valor, qtd: pm.qtd > 0 ? pm.qtd : ant.qtd }, placas = new Set(E.base.linhas.map((l) => l.veiculo).filter(Boolean)).size;
     const valor = Number(s.valor) > 0 ? Number(s.valor) : 159.9, qtd = Number(s.qtd) > 0 ? Number(s.qtd) : (placas || 1);
     return { valor, qtd, mensal: valor * qtd, qtdAuto: !(Number(s.qtd) > 0) };
   }
@@ -7060,9 +7056,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado: o que a frota gastaria rodando os mesmos km com o consumo do início (${fmtInd(IND_MAP.kml, base)}, ${D.periodoCurto(S.pIni)}), ao diesel de ${fmtReais(E.preco, 2)}/L.${cruzou ? ' A linha tracejada verde marca a semana em que a economia passou o investimento.' : ''}</span></div>${selo}</div>
       <div class="card-corpo" style="gap:16px">
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-          <label class="campo-bloco" style="max-width:220px"><span class="campo-rotulo">Valor por equipamento</span><span class="campo campo-sufixo"><input type="text" inputmode="decimal" data-campo="inv-valor" value="${fmt(inv.valor, 2)}" aria-label="Valor mensal por equipamento em reais"><span>R$/mês</span></span></label>
-          <label class="campo-bloco" style="max-width:180px"><span class="campo-rotulo">Equipamentos</span><span class="campo campo-sufixo"><input type="text" inputmode="numeric" data-campo="inv-qtd" value="${inv.qtd}" aria-label="Quantidade de equipamentos"><span>un.</span></span></label>
-          <span class="apoio" style="font-size:12px;padding-bottom:8px">${inv.qtdAuto ? 'Quantidade = veículos nos dados; digite a contratada. ' : ''}Mensalidade: <b>${R(inv.mensal)}</b></span>
+          <span class="apoio" style="font-size:13px">${fmt(inv.qtd, 0)} equipamentos × ${R(inv.valor)} = mensalidade de <b>${R(inv.mensal)}</b>${inv.qtdAuto ? ' (quantidade = veículos nos dados: informe a contratada)' : ''} · <a class="btn-link peq" href="#/config?aba=premissas">alterar em Configurações</a></span>
         </div>
         ${bloq ? avisoBloqueios(bloqueios().filter((x) => x.tipo === 'idade'), 'Valor em R$') : semRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A linha de base tem menos de ${X.LIMITES.faseDiasMin} dias válidos: sem o ruído não dá para dizer se a mudança é real, então nenhum valor em R$ é mostrado.</span></div></div>` : avisoRuido}
         ${semRS ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>`}
@@ -7176,16 +7170,6 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       <div class="vg-kpi-txt"><span class="vg-kpi-rot">${rot}</span><span class="vg-kpi-v num">${valor}${un ? `<small>${un}</small>` : ''}</span>${varHtml}</div>
       ${spark ? `<span class="vg-kpi-spark">${spark}</span>` : ''}</div>`;
   }
-  // veículos rodando no último dia com dados do período (sem a API de posição)
-  function vgFrotaDia(c) {
-    const bv = baseVeic();
-    if (!bv) return null;
-    const la = X.filtrar(bv.linhas, E.A), dU = la.reduce((m, l) => (l.data > m ? l.data : m), '');
-    if (!dU) return null;
-    const rod = new Set(la.filter((l) => l.data === dU && (l.km || 0) > 0).map((l) => l.motorista));
-    const tot = bv.motoristas.filter((m) => X.filtrar(m.linhas, E.A).length).length;
-    return { dia: dU, rodando: rod.size, total: tot };
-  }
   function vgStatus(c) {
     const vivoOk = E.vivo && E.vivo.em && veicVivo().length;
     let fatias, centro, rodape;
@@ -7194,10 +7178,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       fatias = VIVO_ORDEM.filter((s) => ct[s]).map((s) => ({ rot: VIVO_ROT[s], n: ct[s], cor: VIVO_COR[s] }));
       rodape = 'agora, pela API de posição';
     } else {
-      const f = vgFrotaDia(c);
-      if (!f || !f.total) return '<div class="vazio"><span class="apoio">Sem veículos no período.</span></div>';
-      fatias = [{ rot: 'Rodaram', n: f.rodando, cor: VIVO_COR.movimento }, { rot: 'Parados', n: f.total - f.rodando, cor: '#F9AB00' }].filter((x) => x.n);
-      rodape = 'no último dia com dados (' + D.br(f.dia) + ')';
+      const cf = comunicacaoFrota();
+      if (!cf.total) return '<div class="vazio"><span class="apoio">Sem veículos com registro nos últimos 90 dias.</span></div>';
+      fatias = [{ rot: 'Comunicando', n: cf.ativos.length, cor: VIVO_COR.movimento }, { rot: 'Sem sinal', n: cf.semSinal.length, cor: VIVO_COR.sem_sinal }].filter((x) => x.n);
+      rodape = 'comunicando = sinal nos últimos ' + cf.dias + ' dias';
     }
     const tot = fatias.reduce((t, x) => t + x.n, 0);
     centro = tot;
@@ -7306,10 +7290,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       const un = ind.un === '%' ? '%' : ind.un || '';
       cards.push(vgKpi(ic, cor, esc(ind.label), esc(fmtInd(ind, A[k], false)), esc(un), (k === 'km' ? vgVar(X.variacao(IND_MAP.km_dia, A.km_dia, BM.km_dia), semM, 'km/dia ' + refM) : vgVar(X.variacao(ind, A[k], BM[k]), semM, refM)), spark(k, VG_COR[cor])));
     });
-    const vivoOk = E.vivo && E.vivo.em && veicVivo().length;
-    const f = vivoOk ? null : vgFrotaDia(c);
-    if (vivoOk) { const ct = contVivo(); cards.splice(1, 0, vgKpi('escudo', 'azul', 'Frota ativa', fmt(ct.movimento + ct.ligado, 0), '/ ' + fmt(veicVivo().length, 0), '<span class="vg-var vg-neutro">com a ignição ligada agora</span>', '')); }
-    else if (f && f.total) cards.splice(1, 0, vgKpi('escudo', 'azul', 'Frota ativa', fmt(f.rodando, 0), '/ ' + fmt(f.total, 0), `<span class="vg-var vg-neutro">rodaram em ${D.curta(f.dia)}</span>`, ''));
+    const cf = comunicacaoFrota();   // A1: a mesma conta do status dos veículos, do mapa e do alerta
+    if (cf.total) cards.splice(1, 0, vgKpi('escudo', 'azul', 'Frota ativa', fmt(cf.ativos.length, 0), '/ ' + fmt(cf.total, 0), `<span class="vg-var vg-neutro">${cf.semSinal.length ? fmt(cf.semSinal.length, 0) + ' sem sinal há mais de ' + cf.dias + ' dias' : 'todos com sinal nos últimos ' + cf.dias + ' dias'}</span>`, ''));
     const e = M.ls.length ? economia(A, BM) : null;
     if (e && !rsBloqueado()) cards.push(vgKpi('gota', 'amarelo', e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', esc(fmtReais(Math.abs(e.reais), 0)), '', `<span class="vg-var"><b class="${e.reais >= 0 ? 'vg-bom' : 'vg-ruim'}">${fmt(Math.abs(e.litros), 0)} L</b> ${refM}</span>`, ''));
     const kpis = `<div class="vg-kpis">${cards.slice(0, 6).join('')}</div>`;
@@ -7599,7 +7581,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   async function salvarFicha() {
     const f = E.fichaForm; if (!f) return;
     const nova = { cliente: f.cliente, motivos: f.motivos || [], principal: f.principal || '', detalhe: String(f.detalhe || '').trim(), alternativa: String(f.alternativa || '').trim(),
-      renovacao: f.renovacao || '', equipamentos: Number(String(f.equipamentos || '').replace(',', '.')) || null, decisor: String(f.decisor || '').trim(),
+      renovacao: f.renovacao || '', decisor: String(f.decisor || '').trim(),
       responsavel: String(f.responsavel || '').trim(), estagio: Number(f.estagio) || 1, proximo: f.proximo || '' };
     if (nova.principal && !nova.motivos.includes(nova.principal)) nova.principal = '';
     if (nova.motivos.length === 1) nova.principal = nova.motivos[0];
@@ -7607,7 +7589,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (falta.length) { toast('Falta: ' + falta.join(', ') + '.', 'erro'); return; }
     if (!estagiosPermitidos(nova.cliente)[nova.estagio]) { toast('O estágio ' + nova.estagio + ' pede um registro que o justifique (combinado ou resultado).', 'erro'); return; }
     const ant = fichaDe(nova.cliente) || {};
-    const rot = { motivos: 'motivos', principal: 'motivo principal', alternativa: 'alternativa', renovacao: 'renovação', equipamentos: 'equipamentos', decisor: 'decisor', responsavel: 'responsável', estagio: 'estágio', proximo: 'próximo contato', detalhe: 'detalhe' };
+    const rot = { motivos: 'motivos', principal: 'motivo principal', alternativa: 'alternativa', renovacao: 'renovação', decisor: 'decisor', responsavel: 'responsável', estagio: 'estágio', proximo: 'próximo contato', detalhe: 'detalhe' };
     const mudou = Object.keys(rot).filter((k) => JSON.stringify(ant[k] === undefined ? '' : ant[k]) !== JSON.stringify(nova[k] === null ? '' : nova[k])).map((k) => rot[k]);
     nova.historico = [{ em: new Date().toISOString(), por: quemSou(), mudou: ant.cliente ? mudou.join(', ') || 'sem mudança' : 'ficha criada' }].concat(ant.historico || []).slice(0, 50);
     await gravarDoc('fichas', idDoc(nova.cliente), nova);
@@ -7829,7 +7811,6 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-detalhe">Detalhe do motivo</label><input class="campo" id="fi-detalhe" data-campo="fi-detalhe" value="${esc(v.detalhe || '')}" maxlength="200"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-alternativa">Alternativa avaliada${(v.motivos || []).includes('concorrente') ? ' (obrigatória)' : ''}</label><input class="campo" id="fi-alternativa" data-campo="fi-alternativa" value="${esc(v.alternativa || '')}" maxlength="120"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-renovacao">Renovação ou fim do contrato</label><input class="campo" type="date" id="fi-renovacao" data-campo="fi-renovacao" value="${esc(v.renovacao || '')}"></div>
-            <div class="campo-bloco"><label class="campo-rotulo" for="fi-equipamentos">Quantidade de equipamentos</label><input class="campo" id="fi-equipamentos" data-campo="fi-equipamentos" inputmode="numeric" value="${esc(v.equipamentos || '')}"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-decisor">Decisor (cargo)</label><input class="campo" id="fi-decisor" data-campo="fi-decisor" value="${esc(v.decisor || '')}" maxlength="80" placeholder="Ex.: Diretor de operações"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-responsavel">Responsável Gobrax</label><input class="campo" id="fi-responsavel" data-campo="fi-responsavel" list="donos" value="${esc(v.responsavel || '')}" maxlength="80"></div>
             <div class="campo-bloco"><label class="campo-rotulo" for="fi-estagio">Estágio do fluxo</label><select class="campo" id="fi-estagio" data-campo="fi-estagio">${Object.entries(ESTAGIOS).map(([k, r]) => `<option value="${k}" ${String(v.estagio || 1) === k ? 'selected' : ''} ${perm[k] ? '' : 'disabled'}>${r}${perm[k] ? '' : ' (pede registro)'}</option>`).join('')}</select></div>
@@ -7851,12 +7832,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
           ${item('Motivo principal', esc(MOTIVOS_CANC[f.principal] || '—') + ((f.motivos || []).length > 1 ? ' <span class="mudo">+ ' + (f.motivos.length - 1) + '</span>' : '') + (f.detalhe ? '<span class="linha2">' + esc(f.detalhe) + '</span>' : ''))}
           ${item('Alternativa avaliada', esc(f.alternativa || '—'))}
           ${item('Renovação', f.renovacao ? D.br(f.renovacao) + (renovDias !== null ? `<span class="linha2">${renovDias < 0 ? 'vencida há ' + -renovDias + ' dias' : 'em ' + renovDias + ' dias'}</span>` : '') : '—', renovDias !== null && renovDias <= 90 ? 'txt-ruim' : '')}
-          ${item('Equipamentos', f.equipamentos ? fmt(f.equipamentos, 0) : '—')}
+          ${item('Equipamentos', premissasDe(nome).qtd > 0 ? fmt(premissasDe(nome).qtd, 0) + '<span class="linha2">de Configurações › Premissas</span>' : '—')}
           ${item('Decisor', esc(f.decisor || '—'))}
           ${item('Responsável Gobrax', esc(f.responsavel || '—'))}
           ${item('Estágio', esc(ESTAGIOS[f.estagio] || ESTAGIOS[1]))}
           ${item('Próximo contato', f.proximo ? D.br(f.proximo) : '—', f.proximo && f.proximo < D.hoje() ? 'txt-ruim' : '')}
-          ${inv ? item('Valor mensal do contrato', fmtReais(inv.mensal, 2) + '<span class="linha2">só colaborador e administrador; nunca no resumo exportado</span>') : ''}
+          ${inv ? item('Valor mensal do contrato', fmtReais(inv.mensal, 2) + '<span class="linha2">só CS e administrador; nunca no resumo exportado</span>') : ''}
         </div>
         ${(f.historico || []).length ? `<details class="receita"><summary>Histórico da ficha</summary><ul>${f.historico.slice(0, 10).map((h) => `<li>${esc(D.br(String(h.em).slice(0, 10)))} · ${esc(h.por)} · ${esc(h.mudou)}</li>`).join('')}</ul></details>` : ''}` : ''}
       </div></section>`;
@@ -8046,16 +8027,49 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 
   // ---------- E · Resumo da reunião ----------
   const premissasDe = (nome) => docsDe('premissas').find((d) => ckey(d.cliente) === ckey(nome)) || {};
+  // A3 · Premissas do cliente: preço do diesel (automático pela Petrobras ou digitado), valor do contrato por equipamento,
+  // equipamentos contratados e consumo do motor parado. Só mudam em Configurações; toda mudança fica registrada (data e autor).
+  const podeEditarPremissas = () => !contaSrv() || podeMarcar();
+  const numCampo = (id) => { const el = document.getElementById(id); const s = String(el ? el.value : '').trim(); return s === '' ? null : Number(s.replace(/\./g, '').replace(',', '.')); };
   async function salvarPremissas() {
     const nome = E.cliente, at = premissasDe(nome);
-    const pr = Number(String((document.getElementById('pr-preco') || {}).value || '').replace(',', '.')), lh = Number(String((document.getElementById('pr-lh') || {}).value || '').replace(',', '.'));
-    if (!(pr > 0) || !(lh >= 0)) { toast('Premissas inválidas.', 'erro'); return; }
-    const precoAnt = at.preco || E.preco, lhAnt = Number.isFinite(at.lh) ? at.lh : 5, mud = [];
-    if (pr !== precoAnt) mud.push('diesel ' + fmtReais(precoAnt, 2) + ' → ' + fmtReais(pr, 2));
-    if (lh !== lhAnt) mud.push('motor parado ' + fmt(lhAnt, 1) + ' → ' + fmt(lh, 1) + ' L/h');
+    if (!nome) { toast('Escolha um cliente no topo.', 'erro'); return; }
+    if (!podeEditarPremissas()) { toast('Só CS e administrador mudam as premissas.', 'erro'); return; }
+    const pr = numCampo('pr-preco'), lh = numCampo('pr-lh'), valor = numCampo('pr-valor'), qtd = numCampo('pr-qtd');
+    const ufEl = document.getElementById('pr-uf'), uf = ufEl ? ufEl.value : (at.uf || '');
+    if ((pr !== null && !(pr > 0)) || (lh !== null && !(lh >= 0)) || (valor !== null && !(valor > 0)) || (qtd !== null && !(qtd > 0 && Number.isInteger(qtd)))) { toast('Premissas inválidas: confira os números.', 'erro'); return; }
+    const nova = { cliente: nome, preco: pr || null, uf, valorEquip: valor || null, qtd: qtd || null, lh: lh === null ? (Number.isFinite(at.lh) ? at.lh : 5) : lh };
+    const R2 = (v) => (v > 0 ? fmtReais(v, 2) : 'automático'), mud = [];
+    if ((at.preco || null) !== nova.preco) mud.push('diesel ' + R2(at.preco) + ' → ' + R2(nova.preco));
+    if ((at.uf || '') !== nova.uf) mud.push('estado do diesel ' + (at.uf ? nomeUF(at.uf) : 'do cliente') + ' → ' + (nova.uf ? nomeUF(nova.uf) : 'do cliente'));
+    if ((at.valorEquip || null) !== nova.valorEquip) mud.push('valor por equipamento ' + (at.valorEquip ? fmtReais(at.valorEquip, 2) : '—') + ' → ' + (nova.valorEquip ? fmtReais(nova.valorEquip, 2) : '—'));
+    if ((at.qtd || null) !== nova.qtd) mud.push('equipamentos ' + (at.qtd || '—') + ' → ' + (nova.qtd || '—'));
+    if ((Number.isFinite(at.lh) ? at.lh : 5) !== nova.lh) mud.push('motor parado ' + fmt(Number.isFinite(at.lh) ? at.lh : 5, 1) + ' → ' + fmt(nova.lh, 1) + ' L/h');
     if (!mud.length) { toast('Nada mudou.'); return; }
-    await gravarDoc('premissas', 'pr-' + idDoc(nome), { cliente: nome, preco: pr, lh, historico: [{ em: new Date().toISOString(), por: quemSou(), mudou: mud.join('; ') }].concat(at.historico || []).slice(0, 30) });
-    toast('Premissas salvas.'); render();
+    nova.historico = [{ em: new Date().toISOString(), por: quemSou(), mudou: mud.join('; ') }].concat(at.historico || []).slice(0, 100);
+    await gravarDoc('premissas', 'pr-' + idDoc(nome), nova);
+    toast('Premissas salvas: valem em todas as telas.'); render();
+  }
+  function blocoPremissas() {
+    const nome = E.cliente;
+    if (!nome) return `<section class="card" id="premissas"><div class="card-corpo">${vazioUI('Premissas do cliente', 'Escolha um cliente no topo para ver e mudar o diesel, o contrato e os equipamentos.')}</div></section>`;
+    const pm = premissasDe(nome), ed = podeEditarPremissas(), dis = ed ? '' : ' disabled';
+    const auto = (() => { const s = pm.uf; const u = ufAtual().uf; return precoUF(u) || precoUF('br'); })();
+    const inv = E.base ? investimento() : null;
+    const campo = (id, rot, val, suf, ajuda) => `<div class="campo-bloco"><label class="campo-rotulo" for="${id}">${rot}</label><span class="campo campo-sufixo"><input class="campo" id="${id}" inputmode="decimal" value="${val === null || val === undefined || val === '' ? '' : esc(fmt(val, id === 'pr-qtd' ? 0 : id === 'pr-lh' ? 1 : 2))}"${dis}><span>${suf}</span></span>${ajuda ? `<span class="apoio" style="font-size:12px">${ajuda}</span>` : ''}</div>`;
+    const hist = (pm.historico || []).slice(0, 12).map((h) => `<tr><td class="num" style="white-space:nowrap">${esc(dataHoraBR(h.em))}</td><td>${esc(h.por || '—')}</td><td>${esc(h.mudou || '')}</td></tr>`).join('');
+    return `<section class="card" id="premissas"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Premissas de ${esc(nome)}</h2>
+        <span class="h2-sub">Único lugar onde mudam o preço do diesel, o valor do contrato e os equipamentos. A mudança vale na hora em todas as telas (economia, ROI e resumo) e fica registrada com data e autor.</span></div>
+        ${ed ? '<button type="button" class="btn btn-primario" data-acao="premissas-salvar">Salvar premissas</button>' : '<span class="badge badge-neutro">Só leitura</span>'}</div>
+      <div class="card-corpo" style="gap:14px"><div class="grade-2" style="align-items:start">
+        ${campo('pr-preco', 'Preço do diesel (deixe vazio para o automático)', pm.preco, 'R$/L', 'Em uso: <b>' + fmtReais(E.preco, 2) + '/L</b>' + (pm.preco > 0 ? ' (digitado)' : auto ? ' (Petrobras, ' + esc(nomeUF(ufAtual().uf)) + ')' : ''))}
+        <div class="campo-bloco"><label class="campo-rotulo" for="pr-uf">Estado do diesel automático</label><select class="campo" id="pr-uf"${dis}><option value="">Do cliente ou do grupo</option><option value="br" ${pm.uf === 'br' ? 'selected' : ''}>Média Brasil</option>${UFS.map(([uf]) => `<option value="${uf}" ${pm.uf === uf ? 'selected' : ''}>${uf.toUpperCase()} · ${esc(nomeUF(uf))}</option>`).join('')}</select></div>
+        ${campo('pr-valor', 'Valor do contrato por equipamento', pm.valorEquip, 'R$/mês', inv ? 'Mensalidade em uso: <b>' + fmtReais(inv.mensal, 2) + '</b>' : '')}
+        ${campo('pr-qtd', 'Equipamentos contratados', pm.qtd, 'un.', inv && inv.qtdAuto ? 'Sem número informado: as contas usam os ' + fmt(inv.qtd, 0) + ' veículos dos dados' : '')}
+        ${campo('pr-lh', 'Consumo do motor ligado parado', Number.isFinite(pm.lh) ? pm.lh : 5, 'L/h', '')}
+      </div>
+      <div><span class="hb-bloco-t">Histórico de mudanças</span>${hist ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Quando</th><th>Quem</th><th>O que mudou</th></tr></thead><tbody>${hist}</tbody></table></div>` : '<span class="apoio">Nenhuma mudança registrada ainda.</span>'}</div>
+      </div></section>`;
   }
   function telaResumo() {
     const nome = E.cliente;
@@ -8100,9 +8114,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       </div>
       <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O que foi combinado e o que aconteceu</h2></div></div><div class="card-corpo" style="gap:0">${comb.length ? comb.map(linhaComb).join('') : '<span class="apoio">Nenhum combinado ativo.</span>'}</div></section>
       <div class="grade-2">
-        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Como calculamos (premissas editáveis)</h2></div><button type="button" class="btn peq" data-acao="premissas-salvar">Salvar premissas</button></div><div class="card-corpo" style="gap:0">
-          ${linha('Preço do diesel', `<span class="campo campo-sufixo" style="max-width:150px"><input id="pr-preco" inputmode="decimal" value="${esc(fmt(preco, 2))}"><span>R$/L</span></span>`)}
-          ${linha('Consumo do motor parado', `<span class="campo campo-sufixo" style="max-width:150px"><input id="pr-lh" inputmode="decimal" value="${esc(fmt(lh, 1))}"><span>L/h</span></span>`)}
+        <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Como calculamos</h2><span class="h2-sub">Premissas do cliente; para mudar, vá em <a class="btn-link" href="#/config?aba=premissas">Configurações › Premissas</a>.</span></div></div><div class="card-corpo" style="gap:0">
+          ${linha('Preço do diesel', `<b>${esc(fmtReais(preco, 2))}/L</b>`)}
+          ${linha('Consumo do motor parado', `<b>${esc(fmt(lh, 1))} L/h</b>`)}
           ${linha('Linha de base', `<b>Fase 1 · ${D.dif(f1.ini, f1.fim) + 1} dias</b>`)}
           ${linha(`Km rodados na Fase ${fa.n}`, `<b>${fmt(kmF, 0)} km</b>`)}
           ${linha('Fórmula', '<b>km × (1/consumo base − 1/consumo atual) × diesel</b>')}
@@ -8407,7 +8421,39 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   const veicVivo = () => ((E.vivo && E.vivo.cli === E.cliente && E.vivo.veic) || []).filter((v) => v.status !== 'nao_encontrado');
   const comPosVivo = () => veicVivo().filter((v) => Number.isFinite(v.lat) && Number.isFinite(v.lon) && !(v.lat === 0 && v.lon === 0));
-  const contVivo = () => { const c = { movimento: 0, ligado: 0, desligado: 0, sem_sinal: 0 }; veicVivo().forEach((v) => { c[v.status] = (c[v.status] || 0) + 1; }); return c; };
+  // contagem do mapa ao vivo, presa à regra de comunicação (A1): "sem sinal" é o mesmo número de todas as telas
+  const contVivo = () => {
+    const c = { movimento: 0, ligado: 0, desligado: 0, sem_sinal: 0 }, cf = comunicacaoFrota();
+    veicVivo().forEach((v) => {
+      const k = placaPos(v.placa);
+      if (cf.total && !cf.ultima.has(k)) return;   // fora da frota (sem registro nos últimos 90 dias)
+      const s = cf.semSinal.includes(k) ? 'sem_sinal' : v.status === 'sem_sinal' ? 'desligado' : v.status;
+      c[s] = (c[s] || 0) + 1;
+    });
+    return c;
+  };
+  // ---------- A1 · Comunicação da frota: fonte única de "frota ativa" e "sem sinal" ----------
+  // Frota = veículos com registro nos últimos 90 dias. Ativo = comunicou (dia com km, horas ou odômetro, odômetro coletado
+  // pela API ou posição ao vivo) nos últimos PARAM_RET.diasSemSinal dias; sem sinal = o restante. Todas as telas leem daqui.
+  const PARAM_RET = { diasSemSinal: 3 };
+  let memoCom = null;
+  function comunicacaoFrota() {
+    const bv = baseVeic(), hoje = D.hoje(), V = E.vivo && E.vivo.cli === E.cliente ? E.vivo : null;
+    const odo = E.cliente ? docsApi('odometro', E.cliente)[0] : null;
+    const chave = [bv ? bv.motoristas.length + ':' + bv.fim : '', hoje, V ? V.em : '', odo ? odo.em || odo.data : '', E.cliente].join('|');
+    if (memoCom && memoCom.chave === chave) return memoCom.r;
+    const ult = new Map(), corte = D.somar(hoje, -89);
+    const marca = (placa, dia) => { const k = placaPos(placa || ''); if (!k || !dia) return; if (!ult.has(k) || dia > ult.get(k)) ult.set(k, dia); };
+    if (bv) bv.motoristas.forEach((m) => m.linhas.forEach((l) => { if (l.data >= corte && (X.rodouLinha(l) || Number(l.odometro) > 0)) marca(m.nome, l.data); }));
+    const frota = new Set(ult.keys());
+    if (odo && odo.veiculos) odo.veiculos.forEach((v) => { const k = placaPos(v.placa || ''); if (frota.has(k) && v.coletado) marca(v.placa, String(v.coletado).slice(0, 10)); });
+    if (V && V.veic) V.veic.forEach((v) => { const k = placaPos(v.placa || ''); if (frota.has(k) && Number.isFinite(v.min)) marca(v.placa, D.somar(hoje, -Math.floor(v.min / 1440))); });
+    const ativos = [], semSinal = [];
+    ult.forEach((dia, k) => (D.dif(dia, hoje) <= PARAM_RET.diasSemSinal ? ativos : semSinal).push(k));
+    const r = { total: ult.size, ativos: ativos.sort(), semSinal: semSinal.sort(), ultima: ult, dias: PARAM_RET.diasSemSinal };
+    memoCom = { chave, r };
+    return r;
+  }
   const quandoVivo = (v) => (v.min === undefined || v.min === null ? 'sem posição nos últimos ' + VIVO_DIAS + ' dias' : v.min < 1 ? 'agora' : v.min < 60 ? 'há ' + v.min + ' min'
     : v.min < 2880 ? 'há ' + fmt(v.min / 60, v.min < 600 ? 1 : 0) + ' h' : 'há ' + fmt(v.min / 1440, 0) + ' dias');
   const estadoVivo = (v) => (v.status === 'movimento' ? 'em movimento' + (Number.isFinite(v.vel) ? ' · ~' + fmt(v.vel, 0) + ' km/h' : '')
@@ -9552,7 +9598,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 
   // ---------- Usuários: no painel do servidor (/painel), o administrador convida e gerencia quem entra ----------
   // A ponte do servidor (painel-base.js) publica window.GBX_CONTA = { eu, chamar }; no GitHub Pages e no Claude não há login e a seção não aparece.
-  const PAPEIS_USU = { admin: 'Administrador', colaborador: 'Colaborador', leitor: 'Leitor' };
+  const PAPEIS_USU = { admin: 'Administrador', colaborador: 'CS', leitor: 'Leitura' };
   const contaSrv = () => window.GBX_CONTA || null;
   const ehAdmin = () => !!(contaSrv() && contaSrv().eu && contaSrv().eu.papel === 'admin');
   const usu = () => E.usu || (E.usu = { lista: null, carregando: false, enviando: false, erro: '', form: { nome: '', email: '', papel: 'leitor' }, link: '', linkTxt: '' });
@@ -9609,8 +9655,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
           <div class="campo-bloco" style="min-width:240px"><label class="campo-rotulo" for="usu-papel-novo">Perfil</label>
             <select class="campo" id="usu-papel-novo" data-campo="usu-f-papel">
-              <option value="leitor" ${f.papel === 'leitor' ? 'selected' : ''}>Leitor: só vê</option>
-              <option value="colaborador" ${f.papel === 'colaborador' ? 'selected' : ''}>Colaborador: vê e pede buscas</option>
+              <option value="leitor" ${f.papel === 'leitor' ? 'selected' : ''}>Leitura: só vê (comercial e diretoria)</option>
+              <option value="colaborador" ${f.papel === 'colaborador' ? 'selected' : ''}>CS: edita fichas, combinados e mensagens</option>
               <option value="admin" ${f.papel === 'admin' ? 'selected' : ''}>Administrador: tudo, inclusive usuários</option>
             </select></div>
           <button type="button" class="btn btn-primario" data-acao="usu-convidar" ${U.enviando ? 'disabled' : ''}>${U.enviando ? 'Gerando…' : 'Gerar convite'}</button>
@@ -9759,7 +9805,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   // nome do cliente no painel → bloco com os condutores dele (o servidor identifica o cliente pelo id; o nome é o mesmo)
   function blocoCondutores(nome) {
     if (!contaSrv()) return `<section class="card"><div class="card-corpo">${vazioUI('Disponível no painel com login', 'Os telefones dos condutores ficam guardados no servidor.')}</div></section>`;
-    if (!podeMarcar()) return `<section class="card"><div class="card-corpo">${vazioUI('Só colaborador e administrador', 'Quem só lê não vê os telefones dos condutores.')}</div></section>`;
+    if (!podeMarcar()) return `<section class="card"><div class="card-corpo">${vazioUI('Só CS e administrador', 'Quem só lê não vê os telefones dos condutores.')}</div></section>`;
     const M = msg(), T = telc();
     if (!M.clientes) { setTimeout(msgClientes, 0); return '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
     const id = cliSrv(nome);
@@ -10021,6 +10067,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
 
   function telaClientes() {
+    if (E.rota.tela === 'config' && E.rota.aba === 'premissas') return abasConfig() + blocoPremissas();
     const f = E.clienteForm;
     const linhas = E.clientes.map((fc) => {
       const mot = linhasCli('motoristas', fc.nome), vei = linhasCli('veiculos', fc.nome);
@@ -10339,7 +10386,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   function render() {
     ajustarPeriodoSemDados();
     garantirCliente();
-    if (!E.precoManual) { const p = precoAutomatico(); if (p) E.preco = p; }
+    { const pm = premissasDe(E.cliente); if (pm.preco > 0) { E.preco = pm.preco; E.precoManual = true; } else { E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; } }   // A3: uma fonte só
     const ativo = document.activeElement;
     const foco = ativo && ativo.id ? { id: ativo.id, ini: ativo.selectionStart, fim: ativo.selectionEnd } : null;
     E.graficos = {};
@@ -11357,8 +11404,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       [CHAVE_CSV, CHAVE_VEIC, CHAVE_CLIENTES, CHAVE_CLIENTE_SEL, 'gbx-frota-periodo', CHAVE_TRAT, CHAVE_API_LOCAL, 'gbx-reset-2026-10-20'].forEach((k) => armazem.apagar(k));
       armazem.gravar('gbx-reset-2026-10-21', '1');
     }
-    const p = Number(armazem.ler(CHAVE_PRECO));
-    if (Number.isFinite(p) && p > 0) { E.preco = p; E.precoManual = true; }
+    armazem.apagar(CHAVE_PRECO); armazem.apagar(CHAVE_UF_DIESEL);   // A3: preço e estado digitados no navegador não valem mais (ficam em Configurações)
     E.cliente = armazem.ler(CHAVE_CLIENTE_SEL) || '';
     let carregou = false;
     const salvo = armazem.ler(CHAVE_CSV);

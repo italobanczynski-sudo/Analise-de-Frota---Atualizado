@@ -1,7 +1,7 @@
 // Funções comuns às telas: chamar a API do próprio servidor e avisar o resultado.
 'use strict';
 
-const PAPEIS = { admin: 'Administrador', colaborador: 'Colaborador', leitor: 'Leitor' };
+const PAPEIS = { admin: 'Administrador', colaborador: 'CS', leitor: 'Leitura' };
 
 // api chama o servidor com o cookie de login e o cabeçalho que a plataforma exige; devolve os dados ou lança o erro com a mensagem do servidor
 async function api(metodo, caminho, corpo) {

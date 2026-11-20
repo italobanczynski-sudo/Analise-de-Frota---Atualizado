@@ -108,6 +108,21 @@ func (s *MensagemSuite) SetupTest() {
 
 // ---------- análise individual ----------
 
+// A5: onde maior é melhor, piorar é "piorou" (nunca "queda", que soaria como elogio onde menor é melhor)
+func (s *MensagemSuite) TestPioraOndeMaiorEMelhorDizPiorou() {
+	antes := reg("ANA", "2026-10-25", 75, 10)
+	antes.Litros = f(160) // 3,13 km/l
+	hoje := reg("ANA", "2026-10-26", 70, 10)
+	hoje.Litros = f(200) // 2,50 km/l
+	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{antes, hoje}, nil)
+	s.Require().Len(r, 1)
+	s.Equal("2,50 km/l ⚠️ piorou 0,63 km/l", r[0].Variaveis["5"])
+	s.Equal("70,0% ⚠️ piorou 5,0 pts", r[0].Variaveis["6"])
+	for _, v := range r[0].Variaveis {
+		s.NotContains(v, "queda")
+	}
+}
+
 func (s *MensagemSuite) TestAnaliseComparaCadaIndicadorComODiaAnterior() {
 	ontem := reg("JOAO DA SILVA", "2026-10-26", 75, 20) // início da faixa verde subiu, motor ligado parado dobrou
 	ontem.Litros = f(180)                               // 2,78 km/l
@@ -126,13 +141,13 @@ func (s *MensagemSuite) TestAnaliseComparaCadaIndicadorComODiaAnterior() {
 	s.Equal("2,78 km/l ✅ melhorou 0,28 km/l", v["5"])
 	s.Equal("75,0% ✅ melhorou 3,0 pts", v["6"], "início de faixa verde: 72 → 75")
 	s.Equal("20,0% ➖ estável", v["7"])
-	s.Equal("20,0% ⚠️ queda de 10,0 pts", v["8"], "motor ligado parado: subir é piorar")
+	s.Equal("20,0% ⚠️ subiu 10,0 pts", v["8"], "motor ligado parado: subir é piorar")
 	s.Equal("3,0% ➖ estável", v["9"])
 	s.Equal("1,0% ➖ estável", v["10"])
 	s.Equal("30,5% ➖ estável", v["11"])
 	s.Equal("5,0% ➖ estável", v["12"])
 	s.Equal("ainda não calculada", v["13"])
-	s.Equal("Você evoluiu! Em relação ao dia 25/10, você melhorou em 2 e teve queda em 1 dos 8 indicadores.", v["14"])
+	s.Equal("Você evoluiu! Em relação ao dia 25/10, você melhorou em 2 e piorou em 1 dos 8 indicadores.", v["14"])
 	s.Contains(v["15"], "Motor Ligado Parado ficou em 20,0% (no dia 25/10: 10,0%)")
 	s.Contains(v["15"], "desligue o motor")
 	txt := mensagem.Texto(v)
@@ -151,7 +166,7 @@ func (s *MensagemSuite) TestComparaComOUltimoDiaEmQueRodou() {
 func (s *MensagemSuite) TestEvoluiuOuRegrediu() {
 	r := mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 60, 10), reg("Ana", "2026-10-26", 70, 5)}, nil)
 	s.True(strings.HasPrefix(r[0].Evolucao, "Você evoluiu!"), r[0].Evolucao)
-	s.Contains(r[0].Evolucao, "melhorou em 2 e teve queda em 0")
+	s.Contains(r[0].Evolucao, "melhorou em 2 e piorou em 0")
 
 	r = mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 70, 5), reg("Ana", "2026-10-26", 60, 10)}, nil)
 	s.True(strings.HasPrefix(r[0].Evolucao, "Você regrediu um pouco."), r[0].Evolucao)
@@ -204,7 +219,7 @@ func (s *MensagemSuite) TestSemDiaAnteriorESemPiora() {
 
 	r = mensagem.MontarResumos("2026-10-26", []diario.Registro_t{reg("Ana", "2026-10-25", 80, 5), reg("Ana", "2026-10-26", 80.5, 5.5)}, nil)
 	s.Contains(r[0].Evolucao, "Você manteve o nível")
-	s.Contains(r[0].Dica, "nenhum indicador teve queda em relação ao dia 25/10")
+	s.Contains(r[0].Dica, "nenhum indicador piorou em relação ao dia 25/10")
 }
 
 func (s *MensagemSuite) TestIndicadorSemDado() {

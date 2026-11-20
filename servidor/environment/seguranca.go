@@ -3,6 +3,7 @@ package environment
 import (
 	"encoding/base64"
 	"errors"
+	"strings"
 )
 
 type SegurancaConfig_t struct {
@@ -11,6 +12,19 @@ type SegurancaConfig_t struct {
 	// Quanto tempo o login dura e quanto tempo o link de convite vale
 	SessaoHoras  int `envconfig:"SESSAO_HORAS" default:"12"`
 	ConviteHoras int `envconfig:"CONVITE_HORAS" default:"72"`
+	// Domínios de e-mail com acesso (separados por vírgula): e-mail pessoal ou de fora não entra
+	DominiosEmail string `envconfig:"DOMINIOS_EMAIL" default:"gobrax.com"`
+}
+
+// Dominios devolve os domínios de e-mail aceitos, em minúsculas
+func (s SegurancaConfig_t) Dominios() []string {
+	out := []string{}
+	for _, d := range strings.Split(s.DominiosEmail, ",") {
+		if d = strings.ToLower(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(d), "@"))); d != "" {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // ChaveTokensBytes devolve a chave já decodificada (validada em Load)

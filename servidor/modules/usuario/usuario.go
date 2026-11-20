@@ -40,18 +40,19 @@ type usuario_t struct {
 	agora       func() time.Time
 	validade    time.Duration
 	custoBcrypt int
-	chave       []byte // chave do HMAC dos códigos
+	chave       []byte   // chave do HMAC dos códigos
+	dominios    []string // domínios de e-mail com acesso
 }
 
 func NewUsuario() Service_I {
 	return &usuario_t{repo: usuario_repo.NewRepository(), agora: time.Now,
 		validade: time.Duration(environment.Cfg.Seguranca.ConviteHoras) * time.Hour, custoBcrypt: 12,
-		chave: environment.Cfg.Seguranca.ChaveTokensBytes()}
+		chave: environment.Cfg.Seguranca.ChaveTokensBytes(), dominios: environment.Cfg.Seguranca.Dominios()}
 }
 
 // NewUsuarioCom recebe as dependências (usado nos testes, com bcrypt barato)
 func NewUsuarioCom(repo usuario_repo.Repository_I, agora func() time.Time, validade time.Duration, chave []byte) Service_I {
-	return &usuario_t{repo: repo, agora: agora, validade: validade, custoBcrypt: bcrypt.MinCost, chave: chave}
+	return &usuario_t{repo: repo, agora: agora, validade: validade, custoBcrypt: bcrypt.MinCost, chave: chave, dominios: []string{"gobrax.com"}}
 }
 
 func (u *usuario_t) SolicitarCodigo(ctx context.Context, email string) (Codigo_t, error) {
@@ -61,6 +62,9 @@ func (u *usuario_t) SolicitarCodigo(ctx context.Context, email string) (Codigo_t
 	}
 	if !r.Ativo {
 		return Codigo_t{}, ErrInativo
+	}
+	if !dominioOk(r.Email, u.dominios) {
+		return Codigo_t{}, ErrDominio
 	}
 	agora := u.agora()
 	ultimo, err := u.repo.UltimoCodigoEm(ctx, r.ID)
@@ -91,7 +95,7 @@ func (u *usuario_t) UsarCodigo(ctx context.Context, email, codigo, senha string)
 	}
 	// e-mail desconhecido ou desativado dá a mesma resposta de código errado (não revela quem tem conta)
 	r, err := u.repo.BuscarPorEmail(ctx, normalizarEmail(email))
-	if err != nil || !r.Ativo {
+	if err != nil || !r.Ativo || !dominioOk(r.Email, u.dominios) {
 		if err != nil && !errors.Is(err, usuario_repo.ErrNaoEncontrado) {
 			return Usuario_t{}, err
 		}
@@ -156,6 +160,9 @@ func (u *usuario_t) Criar(ctx context.Context, nome, email, papel string) (Usuar
 	if err := validarCadastro(nome, email, papel); err != nil {
 		return Usuario_t{}, Convite_t{}, err
 	}
+	if !dominioOk(email, u.dominios) {
+		return Usuario_t{}, Convite_t{}, ErrDominio
+	}
 	id, err := u.repo.Criar(ctx, nome, email, papel)
 	if err != nil {
 		return Usuario_t{}, Convite_t{}, traduzir(err)
@@ -175,6 +182,9 @@ func (u *usuario_t) NovoConvite(ctx context.Context, id int64) (Convite_t, error
 	}
 	if !r.Ativo {
 		return Convite_t{}, ErrInativo
+	}
+	if !dominioOk(r.Email, u.dominios) {
+		return Convite_t{}, ErrDominio
 	}
 	token, err := cripto.TokenAleatorio()
 	if err != nil {
@@ -221,6 +231,9 @@ func (u *usuario_t) Autenticar(ctx context.Context, email, senha string) (Usuari
 	if !r.Ativo {
 		return Usuario_t{}, ErrInativo
 	}
+	if !dominioOk(r.Email, u.dominios) {
+		return Usuario_t{}, ErrDominio
+	}
 	_ = u.repo.MarcarAcesso(ctx, r.ID, u.agora())
 	return deRow(r), nil
 }
@@ -232,6 +245,10 @@ func (u *usuario_t) Alterar(ctx context.Context, id int64, papel string, ativo b
 	atual, err := u.repo.BuscarPorID(ctx, id)
 	if err != nil {
 		return Usuario_t{}, traduzir(err)
+	}
+	// fora do domínio só dá para desativar
+	if ativo && !dominioOk(atual.Email, u.dominios) {
+		return Usuario_t{}, ErrDominio
 	}
 	deixaDeSerAdmin := atual.Papel == PapelAdmin && atual.Ativo && (papel != PapelAdmin || !ativo)
 	if deixaDeSerAdmin {

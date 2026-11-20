@@ -2246,6 +2246,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 .sv-pilula:focus-visible { outline: 2px solid #FCB709; outline-offset: 2px; }
 .sv-per { position: relative; }
 .sv-per .dp-pop { left: auto; right: 0; }
+.sv-icones { display: inline-flex; align-items: center; gap: 10px; margin: 0; padding: 0; border: 0; }
+.sv-icones .conta .btn-tema { width: 44px; height: 44px; border-radius: 50%; }
 .sv-avatar { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--superficie); border: 1px solid var(--hairline); font-size: 14px; font-weight: 700; color: var(--tinta); box-shadow: 0 2px 8px rgba(32,33,36,.05); }
 .sv-menu { all: unset; display: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; place-items: center; background: var(--superficie); border: 1px solid var(--hairline); color: var(--tinta); box-sizing: border-box; }
 .sv-fundo { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.35); }
@@ -3839,7 +3841,6 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   function shell(conteudo) {
     const ops = E.base ? opcoesBusca() : [];
-    const eu = contaSrv() && contaSrv().eu, nomeEu = eu && eu.nome ? String(eu.nome) : '';
     const periodo = E.A ? `<span class="dp-ancora sv-per"><button type="button" class="sv-pilula" data-acao="cal-topo" aria-haspopup="dialog" aria-expanded="${!!(E.cal.aberto && E.cal.onde === 'topo')}">${icone('calendario', 17)}<span>${D.periodoBR(E.A)}</span>${icone('chevron', 14)}</button>${E.cal.aberto && E.cal.onde === 'topo' ? painelCalendario() : ''}</span>` : '';
     const itens = NAV.filter((n) => !n.rodape && (!n.srv || window.GBX_CONTA)).map((n) => (n.sec ? `<span class="sv-secao">${n.sec}</span>` : svItem(n))).join('');
     return `<div class="app shell-v4 ${E.navAberto ? 'nav-aberta' : ''}">
@@ -3854,7 +3855,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
           <button type="button" class="sv-menu" data-acao="nav-alternar" aria-expanded="${!!E.navAberto}" aria-label="${E.navAberto ? 'Fechar o menu' : 'Abrir o menu'}">${icone(E.navAberto ? 'fechar' : 'menu', 20)}</button>
           ${E.base ? `<label class="sv-busca">${icone('busca', 18)}<input id="sv-busca" type="search" list="sv-busca-lista" data-campo="sv-busca" placeholder="Buscar por placa, condutor ou veículo…" aria-label="Buscar por placa, condutor ou veículo" autocomplete="off">
             <datalist id="sv-busca-lista">${ops.map((o) => `<option value="${esc(o.nome)}">${o.tipo}</option>`).join('')}</datalist></label>` : '<span class="sv-busca-vazio"></span>'}
-          <span class="sv-acoes">${seletorCliente()}${seletorGrupo()}${periodo}${pilulaDiesel()}${botaoTema()}${sino()}${nomeEu ? `<span class="sv-avatar" title="${esc(nomeEu)}">${esc(iniciais(nomeEu))}</span>` : ''}</span>
+          <span class="sv-acoes">${seletorCliente()}${seletorGrupo()}${periodo}${pilulaDiesel()}<span class="topo-acoes sv-icones">${botaoTema()}${sino()}</span></span>
         </header>
         <main class="pagina" id="pagina">${conteudo}</main>
       </div>

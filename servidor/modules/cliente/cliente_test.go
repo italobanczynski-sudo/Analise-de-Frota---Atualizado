@@ -34,6 +34,9 @@ func (m *RepositoryMock_t) Criar(ctx context.Context, nome string) (int64, error
 func (m *RepositoryMock_t) SalvarTokenCifrado(ctx context.Context, id int64, cifrado []byte) error {
 	return m.Called(ctx, id, cifrado).Error(0)
 }
+func (m *RepositoryMock_t) Excluir(ctx context.Context, id int64) error {
+	return m.Called(ctx, id).Error(0)
+}
 func (m *RepositoryMock_t) TokenCifrado(ctx context.Context, id int64) ([]byte, error) {
 	a := m.Called(ctx, id)
 	b, _ := a.Get(0).([]byte)
@@ -102,6 +105,17 @@ func (s *ClienteSuite) TestBuscarNaoEncontrado() {
 	s.repo.On("BuscarPorID", s.ctx, int64(9)).Return(cliente_repo.ClienteRow_t{}, cliente_repo.ErrNaoEncontrado)
 	_, err := s.svc.Buscar(s.ctx, 9)
 	s.ErrorIs(err, cliente.ErrNaoEncontrado)
+}
+
+func (s *ClienteSuite) TestExcluir() {
+	s.repo.On("Excluir", s.ctx, int64(4)).Return(nil)
+	s.NoError(s.svc.Excluir(s.ctx, 4))
+	s.repo.AssertCalled(s.T(), "Excluir", s.ctx, int64(4))
+}
+
+func (s *ClienteSuite) TestExcluirInexistente() {
+	s.repo.On("Excluir", s.ctx, int64(9)).Return(cliente_repo.ErrNaoEncontrado)
+	s.ErrorIs(s.svc.Excluir(s.ctx, 9), cliente.ErrNaoEncontrado)
 }
 
 func TestClienteSuite(t *testing.T) { suite.Run(t, new(ClienteSuite)) }

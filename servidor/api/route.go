@@ -80,6 +80,7 @@ func GetRoutes(r *gin.Engine) {
 	adm := v1.Group("", exigirPapel(usuario.PapelAdmin))
 	adm.POST("/clientes", ctcliente.Criar)
 	adm.PUT("/clientes/:id/token", ctcliente.SalvarToken)
+	adm.DELETE("/clientes/:id", ctcliente.Excluir)
 	adm.GET("/usuarios", ctusuario.Listar)
 	adm.POST("/usuarios", ctusuario.Criar)
 	adm.POST("/usuarios/:id/convite", ctusuario.NovoConvite)

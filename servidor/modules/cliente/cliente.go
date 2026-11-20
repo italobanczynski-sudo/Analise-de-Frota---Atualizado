@@ -21,6 +21,8 @@ type Service_I interface {
 	SalvarToken(ctx context.Context, id int64, token string) error
 	// Token devolve o token decifrado, só para chamar a API Gobrax; nunca vai para uma resposta
 	Token(ctx context.Context, id int64) (string, error)
+	// Excluir apaga o cliente com todos os dados dele; não tem volta
+	Excluir(ctx context.Context, id int64) error
 }
 
 type cliente_t struct {
@@ -92,6 +94,10 @@ func (c *cliente_t) Token(ctx context.Context, id int64) (string, error) {
 		return "", ErrSemToken
 	}
 	return cripto.Decifrar(c.chave, cifrado)
+}
+
+func (c *cliente_t) Excluir(ctx context.Context, id int64) error {
+	return traduzir(c.repo.Excluir(ctx, id))
 }
 
 func deRow(r cliente_repo.ClienteRow_t) Cliente_t {

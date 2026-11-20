@@ -71,6 +71,7 @@ async function carregarClientes() {
     } else if (!c.tem_token) {
       acoes.append(el('span', { class: 'ajuda', text: 'Sem token da API' }));
     }
+    if (eu.papel === 'admin') acoes.append(el('button', { class: 'btn btn-peq btn-perigo', type: 'button', onclick: () => excluirCliente(c) }, 'Excluir'));
     return el('tr', {},
       el('td', {}, el('div', { class: 'pessoa' }, el('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(c.nome)), el('div', {}, el('b', { text: c.nome }), col.situacao === 'erro' && col.mensagem ? el('span', { text: col.mensagem }) : null))),
       el('td', {}, selo),
@@ -81,6 +82,19 @@ async function carregarClientes() {
   // enquanto alguma busca roda, atualiza a lista a cada 5 s
   clearTimeout(espera);
   if (clientes.some((c) => c.coleta && c.coleta.situacao === 'rodando') && !$('sec-clientes').hidden) espera = setTimeout(carregarClientes, 5000);
+}
+
+async function excluirCliente(c) {
+  const digitado = prompt('Excluir ' + c.nome + ' apaga o cliente e TODOS os dados dele (registros, premiações, mensagens, telefones e fichas do painel). Não tem volta.\n\nPara confirmar, digite o nome do cliente:');
+  if (digitado === null) return;
+  if (digitado.trim().toLowerCase() !== c.nome.trim().toLowerCase()) { toast('O nome não confere. Nada foi apagado.', true); return; }
+  try {
+    await api('DELETE', '/api/v1/clientes/' + c.id);
+    toast(c.nome + ' foi excluído.');
+  } catch (e) {
+    toast(e.message, true);
+  }
+  carregarClientes();
 }
 
 async function buscarAgora(c) {

@@ -24,6 +24,8 @@ type Repository_I interface {
 	Criar(ctx context.Context, nome string) (int64, error)
 	SalvarTokenCifrado(ctx context.Context, id int64, cifrado []byte) error
 	TokenCifrado(ctx context.Context, id int64) ([]byte, error)
+	// Excluir apaga o cliente, tudo o que depende dele e os documentos do painel com o nome dele
+	Excluir(ctx context.Context, id int64) error
 }
 
 type Repository_t struct {
@@ -77,6 +79,28 @@ func (r *Repository_t) SalvarTokenCifrado(ctx context.Context, id int64, cifrado
 		return ErrNaoEncontrado
 	}
 	return nil
+}
+
+func (r *Repository_t) Excluir(ctx context.Context, id int64) error {
+	tx, err := r.Db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck // depois do Commit não faz nada
+	var nome string
+	if err := tx.GetContext(ctx, &nome, sqlNomePorID, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNaoEncontrado
+		}
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, sqlApagarDocsDoCliente, nome); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, sqlExcluir, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *Repository_t) TokenCifrado(ctx context.Context, id int64) ([]byte, error) {

@@ -92,6 +92,9 @@ func (m *ClientesMock_t) Criar(ctx context.Context, nome string) (cliente.Client
 func (m *ClientesMock_t) SalvarToken(ctx context.Context, id int64, token string) error {
 	return m.Called(ctx, id, token).Error(0)
 }
+func (m *ClientesMock_t) Excluir(ctx context.Context, id int64) error {
+	return m.Called(ctx, id).Error(0)
+}
 func (m *ClientesMock_t) Token(ctx context.Context, id int64) (string, error) {
 	a := m.Called(ctx, id)
 	return a.String(0), a.Error(1)

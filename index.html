@@ -7063,10 +7063,16 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
   // embaixo, a evolução dia a dia por indicador e os grupos.
   const VG_COR = { verde: '#1E8E3E', azul: '#1A73E8', teal: '#12A4AF', laranja: '#F29900', amarelo: '#FCB709', roxo: '#7B61FF' };
   const VG_KPI = { kml: ['bomba', 'verde'], km: ['estrada', 'azul'], faixa_verde: ['velocimetro', 'teal'], motor_ocioso: ['relogio', 'laranja'], nota: ['trofeu', 'amarelo'], embalo: ['folha', 'verde'], pressao_acelerador: ['velocimetro', 'roxo'] };
-  function vgVar(v, txtSem) {
+  function vgVar(v, txtSem, ref) {
     if (v.semBase) return `<span class="vg-var vg-neutro">${txtSem || 'sem período anterior'}</span>`;
     const cls = v.sentido === 'melhor' ? 'vg-bom' : v.sentido === 'pior' ? 'vg-ruim' : 'vg-neutro';
-    return `<span class="vg-var"><b class="${cls}">${esc(v.texto)}</b> vs período anterior</span>`;
+    return `<span class="vg-var"><b class="${cls}">${esc(v.texto)}</b> ${ref || 'vs período anterior'}</span>`;
+  }
+  // Tela inicial: comparação com o mês anterior inteiro (o mês antes do fim do período escolhido)
+  function mesAnterior() {
+    const ini = D.somarMeses(E.A.fim, -1), p = { ini, fim: D.fimMes(ini) };
+    const ls = X.filtrar(E.base.linhas, p);
+    return { p, ls, r: ls.length ? X.resumo(ls, E.base) : {}, rot: MESES_CURTOS[Number(ini.slice(5, 7)) - 1] + '/' + ini.slice(0, 4) };
   }
   function vgKpi(ic, cor, rot, valor, un, varHtml, spark) {
     return `<div class="vg-kpi"><span class="vg-kpi-ic" style="--c:${VG_COR[cor]}">${icone(ic, 22)}</span>
@@ -7123,15 +7129,15 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return `<ul class="vg-alertas">${out.slice(0, 4).map((a) => `<li class="vg-al-${a.nivel}"><span class="vg-al-ic">${a.nivel === 'info' ? 'i' : '!'}</span>
       <span class="vg-al-tit">${a.href ? `<a href="${a.href}">${esc(a.tit)}</a>` : esc(a.tit)}</span><span class="apoio vg-al-q">${esc(a.quando)}</span></li>`).join('')}</ul>`;
   }
-  function vgInsights(c) {
-    const A = c.frotaA, B = c.frotaB, out = [];
+  function vgInsights(c, M) {
+    const A = c.frotaA, B = M.r, out = [];
     const add = (bom, txt) => out.push(`<li class="${bom ? 'vg-in-bom' : 'vg-in-atencao'}"><span class="vg-in-ic">${bom ? '▲' : '!'}</span><span>${txt}</span></li>`);
     if (temInd('kml')) {
       const v = X.variacao(IND_MAP.kml, A.kml, B.kml);
-      if (!v.semBase && !v.estavel) add(v.sentido === 'melhor', `Seu consumo está <b>${esc(v.texto.replace(/^[▲▼] /, ''))} ${v.sentido === 'melhor' ? 'melhor' : 'pior'}</b> que no período anterior.`);
+      if (!v.semBase && !v.estavel) add(v.sentido === 'melhor', `Seu consumo está <b>${esc(v.texto.replace(/^[▲▼] /, ''))} ${v.sentido === 'melhor' ? 'melhor' : 'pior'}</b> que em ${esc(M.rot)}.`);
     }
-    const e = economia(A, B);
-    if (e && !rsBloqueado() && Math.abs(e.reais) >= 1) add(e.reais >= 0, `${e.reais >= 0 ? 'Economia' : 'Custo adicional'} de <b>${esc(fmtReais(Math.abs(e.reais), 0))}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) para os mesmos km.`);
+    const e = M.ls.length ? economia(A, B) : null;
+    if (e && !rsBloqueado() && Math.abs(e.reais) >= 1) add(e.reais >= 0, `${e.reais >= 0 ? 'Economia' : 'Custo adicional'} de <b>${esc(fmtReais(Math.abs(e.reais), 0))}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) com o consumo de ${esc(M.rot)} nos mesmos km.`);
     const metas = metasCliente();
     ['motor_ocioso', 'faixa_verde', 'kml', 'nota'].filter((k) => temInd(k) && Number.isFinite(metas[k]) && Number.isFinite(A[k])).slice(0, 2).forEach((k) => {
       const ind = IND_MAP[k], bateu = ind.melhor < 0 ? A[k] <= metas[k] : A[k] >= metas[k];
@@ -7142,11 +7148,11 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     return out.length ? `<ul class="vg-insights">${out.slice(0, 3).join('')}</ul>` : '<div class="vazio"><span class="apoio">Sem comparação suficiente para gerar insights.</span></div>';
   }
   // gráfico de linha do desempenho diário com a meta (ou a média do período anterior) tracejada
-  function vgLinha(c, k) {
+  function vgLinha(c, k, M) {
     const ind = IND_MAP[k], serie = X.serieDiaria(c.la, ind, E.A, E.base);
     const vals = serie.map((p) => p.valor).filter((v) => v !== null && v !== undefined);
     if (vals.length < 2) return '<div class="vazio"><span class="apoio">Poucos dias com dados para o gráfico.</span></div>';
-    const meta = metasCliente()[k], ref = Number.isFinite(meta) ? meta : (c.lb.length && Number.isFinite(c.frotaB[k]) ? c.frotaB[k] : null);
+    const meta = metasCliente()[k], ref = Number.isFinite(meta) ? meta : (Number.isFinite(M.r[k]) ? M.r[k] : null);
     const W = 640, H = 240, m = { l: 44, r: 16, t: 16, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
     let lo = Math.min(...vals, ref === null ? Infinity : ref), hi = Math.max(...vals, ref === null ? -Infinity : ref);
     const folga = (hi - lo) * 0.15 || Math.abs(hi) * 0.1 || 1; lo -= folga; hi += folga;
@@ -7162,7 +7168,7 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const refLinha = ref === null ? '' : `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke="#9AA0A6" stroke-width="1.5" stroke-dasharray="6 5"/>`;
     const pontos = pts.length <= 40 ? pts.map((p) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="#1E8E3E" stroke="#fff" stroke-width="1.5"/>`).join('') : '';
     const u = pts[pts.length - 1], id = X.ui.novoId('vgl');
-    return `<div class="vg-leg-linha"><span><i style="background:#1E8E3E"></i>Seu resultado</span>${ref === null ? '' : `<span><i class="tracejado"></i>${Number.isFinite(meta) ? 'Meta' : 'Média do período anterior'} (${esc(fmtInd(ind, ref))})</span>`}<b class="num">${esc(fmtInd(ind, c.frotaA[k]))} no período</b></div>
+    return `<div class="vg-leg-linha"><span><i style="background:#1E8E3E"></i>Seu resultado</span>${ref === null ? '' : `<span><i class="tracejado"></i>${Number.isFinite(meta) ? 'Meta' : 'Média de ' + esc(M.rot)} (${esc(fmtInd(ind, ref))})</span>`}<b class="num">${esc(fmtInd(ind, c.frotaA[k]))} no período</b></div>
       <svg class="vg-linha" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(ind.label)} por dia no período"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E8E3E" stop-opacity=".22"/><stop offset="1" stop-color="#1E8E3E" stop-opacity="0"/></linearGradient></defs>
         ${grade}${refLinha}<path d="${area}" fill="url(#${id})"/><path d="${linha}" fill="none" stroke="#1E8E3E" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pontos}
         <circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="6" fill="#1E8E3E" stroke="#fff" stroke-width="2.5"/>${eixoX}</svg>`;
@@ -7185,12 +7191,13 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const c = calc();
     const A = c.frotaA, B = c.frotaB;
     const cliente = E.cliente || 'Relatório';
+    const M = mesAnterior(), BM = M.r, refM = 'vs ' + esc(M.rot), semM = 'sem dados de ' + esc(M.rot);
 
     // ---- cabeçalho com os atalhos de período ----
     const chips = [['7', '7 dias'], ['30', '30 dias'], ['90', '90 dias']].map(([k, r]) => `<button type="button" class="${E.presetA === k ? 'ativo' : ''}" data-acao="periodo-rapido" data-k="${k}">${r}</button>`).join('');
     const pers = !['7', '30', '90'].includes(E.presetA);
     const cab = `<div class="vg-cab"><div><h1 class="vg-titulo">Visão Geral da Frota</h1>
-        <span class="vg-sub">${esc(cliente)} · ${D.periodoBR(E.A)}${c.lb.length ? ' · comparado a ' + D.periodoBR(E.B) : ''}</span></div>
+        <span class="vg-sub">${esc(cliente)} · ${D.periodoBR(E.A)}${M.ls.length ? ' · comparado ao mês de ' + esc(M.rot) + ' inteiro' : ' · ' + semM}</span></div>
       <div class="vg-cab-acoes"><div class="vg-chips">${chips}<span class="dp-ancora"><button type="button" class="${pers ? 'ativo' : ''}" data-acao="cal-alternar" aria-haspopup="dialog" aria-expanded="${!!E.cal.aberto}">${pers ? esc(D.periodoBR(E.A)) : 'Personalizado'}</button>${E.cal.aberto ? painelCalendario() : ''}</span></div>
         <button type="button" class="btn" data-acao="relatorio-pdf">${icone('baixar', 14)}PDF</button></div></div>`;
 
@@ -7200,14 +7207,14 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     ['kml', 'faixa_verde', 'motor_ocioso', 'km', 'nota'].filter(temInd).forEach((k) => {
       const ind = IND_MAP[k], [ic, cor] = VG_KPI[k];
       const un = ind.un === '%' ? '%' : ind.un || '';
-      cards.push(vgKpi(ic, cor, esc(ind.label), esc(fmtInd(ind, A[k], false)), esc(un), vgVar(X.variacao(ind, A[k], B[k])), spark(k, VG_COR[cor])));
+      cards.push(vgKpi(ic, cor, esc(ind.label), esc(fmtInd(ind, A[k], false)), esc(un), (k === 'km' ? vgVar(X.variacao(IND_MAP.km_dia, A.km_dia, BM.km_dia), semM, 'km/dia ' + refM) : vgVar(X.variacao(ind, A[k], BM[k]), semM, refM)), spark(k, VG_COR[cor])));
     });
     const vivoOk = E.vivo && E.vivo.em && veicVivo().length;
     const f = vivoOk ? null : vgFrotaDia(c);
     if (vivoOk) { const ct = contVivo(); cards.splice(1, 0, vgKpi('escudo', 'azul', 'Frota ativa', fmt(ct.movimento + ct.ligado, 0), '/ ' + fmt(veicVivo().length, 0), '<span class="vg-var vg-neutro">com a ignição ligada agora</span>', '')); }
     else if (f && f.total) cards.splice(1, 0, vgKpi('escudo', 'azul', 'Frota ativa', fmt(f.rodando, 0), '/ ' + fmt(f.total, 0), `<span class="vg-var vg-neutro">rodaram em ${D.curta(f.dia)}</span>`, ''));
-    const e = economia(A, B);
-    if (e && !rsBloqueado()) cards.push(vgKpi('gota', 'amarelo', e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', esc(fmtReais(Math.abs(e.reais), 0)), '', `<span class="vg-var"><b class="${e.reais >= 0 ? 'vg-bom' : 'vg-ruim'}">${fmt(Math.abs(e.litros), 0)} L</b> vs período anterior</span>`, ''));
+    const e = M.ls.length ? economia(A, BM) : null;
+    if (e && !rsBloqueado()) cards.push(vgKpi('gota', 'amarelo', e.reais >= 0 ? 'Diesel economizado' : 'Diesel a mais', esc(fmtReais(Math.abs(e.reais), 0)), '', `<span class="vg-var"><b class="${e.reais >= 0 ? 'vg-bom' : 'vg-ruim'}">${fmt(Math.abs(e.litros), 0)} L</b> ${refM}</span>`, ''));
     const kpis = `<div class="vg-kpis">${cards.slice(0, 6).join('')}</div>`;
 
     // ---- mapa da frota + desempenho ----
@@ -7220,11 +7227,11 @@ html[data-tema="escuro"] .res-eco { background: rgba(254, 219, 0, .08); }
     const opcoes = ['kml', 'faixa_verde', 'motor_ocioso', 'nota', 'km', 'embalo', 'pressao_acelerador'].filter(temInd);
     const indSel = opcoes.includes(E.vgInd) ? E.vgInd : opcoes[0];
     const sel = indSel ? `<select class="campo vg-sel" data-campo="vg-ind" aria-label="Indicador do gráfico">${opcoes.map((k) => `<option value="${k}" ${k === indSel ? 'selected' : ''}>${esc(IND_MAP[k].label)}</option>`).join('')}</select>` : '';
-    const desemp = vgCard('barras', 'Desempenho da Frota', indSel ? vgLinha(c, indSel) : '<div class="vazio"><span class="apoio">Sem indicadores.</span></div>', null, sel);
+    const desemp = vgCard('barras', 'Desempenho da Frota', indSel ? vgLinha(c, indSel, M) : '<div class="vazio"><span class="apoio">Sem indicadores.</span></div>', null, sel);
 
     // ---- condutores, insights e alertas, status dos veículos ----
     const cond = vgCard('pessoas', 'Principais Indicadores por Condutor', vgCondutores(c), ['#/motoristas', 'Ver ranking']);
-    const insights = vgCard('lampada', 'Insights', vgInsights(c), ['#/visao?aba=indicadores', 'Ver detalhes']);
+    const insights = vgCard('lampada', 'Insights', vgInsights(c, M), ['#/visao?aba=indicadores', 'Ver detalhes']);
     const alertas = vgCard('sino', 'Alertas da Frota', `<div id="vg-alertas">${vgAlertas()}</div>`, ['#/visao?aba=qualidade', 'Ver todos']);
     const status = vgCard('caminhao', 'Status dos Veículos', `<div id="vg-status">${vgStatus(c)}</div>`, ['#/individual/veiculo', 'Ver frota']);
 

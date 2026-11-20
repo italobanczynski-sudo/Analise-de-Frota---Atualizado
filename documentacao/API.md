@@ -34,16 +34,14 @@ O painel no Claude não deixa a página chamar endereços de fora, então a busc
 1. Copie `busca-de-dados/.env.example` para `busca-de-dados/.env` e cole o token de cada cliente depois do `=`:
    ```
    GOBRAX_TOKEN_XTSUL=<token da Xtsul>
-   GOBRAX_TOKEN_CAJU=<token da Caju>
    ```
 2. Copie `busca-de-dados/clientes.example.json` para `busca-de-dados/clientes.json` e escreva o nome de cada cliente como está no painel, junto com o nome da variável do token:
    ```json
    [
-     { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL" },
-     { "cliente": "Caju Transportes", "token": "GOBRAX_TOKEN_CAJU" }
+     { "cliente": "Xtsul Transportes LTDA", "token": "GOBRAX_TOKEN_XTSUL" }
    ]
    ```
-3. Rode `node busca-de-dados/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Caju Transportes"` (só um cliente).
+3. Rode `node busca-de-dados/puxar.mjs`. Por padrão ele busca os últimos 30 dias. As opções são `--dias 7` e `--cliente "Xtsul Transportes LTDA"` (só um cliente).
 
 Para incluir um cliente novo: uma linha `GOBRAX_TOKEN_<NOME>=` no `busca-de-dados/.env` e uma entrada no `busca-de-dados/clientes.json`. O cliente precisa existir no painel com o mesmo nome.
 

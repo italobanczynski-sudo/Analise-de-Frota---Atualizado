@@ -2,9 +2,5 @@
   {
     "cliente": "Xtsul Transportes LTDA",
     "token": "GOBRAX_TOKEN_XTSUL"
-  },
-  {
-    "cliente": "Caju Transportes",
-    "token": "GOBRAX_TOKEN_CAJU"
   }
 ]

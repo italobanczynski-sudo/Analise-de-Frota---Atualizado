@@ -779,6 +779,11 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .dv-por { width: auto; height: 36px; border-radius: 999px; }
 @media (max-width: 1280px) { .dv-minis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .dv-minis { grid-template-columns: minmax(0, 1fr); } .dv-filtro { flex: 1 1 100%; } }
+.nm-lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.nm-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--hairline); }
+.nm-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.nm-form select.campo { width: auto; min-width: 200px; }
+.nm-form input.campo { flex: 1 1 220px; min-width: 0; }
 .churn-detalhe .h2 { font-size: 22px; }
 .churn-grade .card-cab .h2 { font-size: 18px; font-weight: 600; }
 .churn-leitura { border-radius: 0 10px 10px 0; }
@@ -6920,6 +6925,33 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     g += `<circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="6" style="fill:none;stroke:var(--dado)" stroke-width="2"/>`;
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} semana a semana" style="display:block;max-height:${Math.round(H * 1.2)}px">${g}</svg>`;
   }
+  // ---------- A4 · Mês com economia negativa: continua visível e no total, sempre com a nota da causa ----------
+  const CAUSAS_NEG = { sem_sinal: 'Equipamento sem sinal', rota: 'Mudança de rota ou de operação', motoristas: 'Troca de motoristas', sazonal: 'Sazonalidade (carga, safra, clima)', outro: 'Outro' };
+  const notaMesDe = (nome, mes) => docsDe('notas_mes').find((d) => ckey(d.cliente) === ckey(nome) && d.mes === mes) || null;
+  function blocoMesesNegativos(meses) {
+    const nome = E.cliente, neg = meses.filter((o) => o.e < 0);
+    if (!nome || !neg.length) return '';
+    const ed = podeEditarPremissas();
+    const sem = neg.filter((o) => !notaMesDe(nome, o.p.mes)).length;
+    const itens = neg.map((o) => {
+      const n = notaMesDe(nome, o.p.mes), mes = o.p.mes, id = 'nm-' + mes.replace(/[^0-9]/g, '');
+      const cab = `<b>${esc(D.nomeMes(mes))}</b> · economia de <b class="vg-ruim">${esc(fmtReais(o.e, 0))}</b> (entra no total)`;
+      if (n && E.notaMesEdit !== mes) return `<li class="nm-item">${cab}<span><span class="badge badge-neutro">${esc(CAUSAS_NEG[n.causa] || n.causa)}</span> ${esc(n.texto)}</span><span class="apoio" style="font-size:12px">${esc(n.por || '—')} · ${esc(dataHoraBR(n.em))}${ed ? ` · <button type="button" class="btn-link peq" data-acao="nota-mes-editar" data-mes="${mes}">editar</button>` : ''}</span></li>`;
+      if (!ed) return `<li class="nm-item">${cab}<span class="badge badge-atencao">Nota da causa pendente: o CS preenche</span></li>`;
+      const sug = (() => { const c = coberturaEm(linhasRet(nome), { ini: o.p.ini, fim: o.p.fim }); return c.vistos && c.rep < c.vistos ? `Sugestão: ${c.vistos - c.rep} de ${c.vistos} veículo(s) sem rodagem no mês.` : ''; })();
+      return `<li class="nm-item">${cab}<div class="nm-form"><select class="campo" id="${id}-causa" aria-label="Causa do mês negativo"><option value="">Causa…</option>${Object.entries(CAUSAS_NEG).map(([k, r]) => `<option value="${k}" ${n && n.causa === k ? 'selected' : ''}>${r}</option>`).join('')}</select>
+        <input class="campo" id="${id}-texto" maxlength="300" placeholder="O que aconteceu no mês (obrigatório)" value="${esc(n ? n.texto : '')}"><button type="button" class="btn btn-primario peq" data-acao="nota-mes-salvar" data-mes="${mes}">Salvar nota</button></div>${sug ? `<span class="apoio" style="font-size:12px">${sug}</span>` : ''}</li>`;
+    }).join('');
+    return `<div class="alerta ${sem ? 'alerta-atencao' : ''}" style="margin:6px 0 0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto"><b>${neg.length} mês(es) com economia negativa.</b> Continuam no gráfico e no total; cada um leva a nota da causa${sem ? ` (${sem} sem nota)` : ''}.</span><ul class="nm-lista">${itens}</ul></div></div>`;
+  }
+  async function salvarNotaMes(mes) {
+    const nome = E.cliente, id = 'nm-' + mes.replace(/[^0-9]/g, '');
+    if (!podeEditarPremissas()) { toast('Só CS e administrador escrevem a nota.', 'erro'); return; }
+    const causa = (document.getElementById(id + '-causa') || {}).value || '', texto = String((document.getElementById(id + '-texto') || {}).value || '').trim();
+    if (!causa || texto.length < 5) { toast('Escolha a causa e explique o que aconteceu no mês.', 'erro'); return; }
+    await gravarDoc('notas_mes', idDoc(nome) + '_' + mes, { cliente: nome, mes, causa, texto, por: quemSou(), em: new Date().toISOString() });
+    E.notaMesEdit = null; toast('Nota do mês salva.'); render();
+  }
   // ---------- O projeto se paga? Mensalidade da Gobrax (valor por equipamento × quantidade) contra o diesel economizado ----------
   const CHAVE_INV = 'gbx-investimento';
   function investimentoSalvo() {
@@ -7061,7 +7093,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         ${bloq ? avisoBloqueios(bloqueios().filter((x) => x.tipo === 'idade'), 'Valor em R$') : semRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A linha de base tem menos de ${X.LIMITES.faseDiasMin} dias válidos: sem o ruído não dá para dizer se a mudança é real, então nenhum valor em R$ é mostrado.</span></div></div>` : avisoRuido}
         ${semRS ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>`}
         ${receita}
-        ${semRS ? '' : `<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}</div>
+        ${semRS ? '' : `<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}${blocoMesesNegativos(meses)}</div>
         <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
         ${tabela}`}
       </div></section>`;
@@ -8828,7 +8860,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       ligarColecao(db, 'risco_foto');
       ligarColecao(db, 'diesel_hist');
       ligarColecao(db, 'liberacoes', () => render());
-      ['fichas', 'combinados', 'marcos', 'passos', 'dias_excluidos', 'premissas'].forEach((n) => ligarColecao(db, n, () => render()));
+      ['fichas', 'combinados', 'marcos', 'passos', 'dias_excluidos', 'premissas', 'notas_mes'].forEach((n) => ligarColecao(db, n, () => render()));
       ligarColecao(db, 'suspeitos_trat', () => aplicarConfirmados());
       ligarColecao(db, 'robo_envios', () => render());   // resumo de cada execução do robô do WhatsApp (alerta no sino)
       try {   // regras mudadas por outra pessoa valem a partir do próximo carregamento
@@ -11182,6 +11214,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     'vivo-sel': (el) => { E.vivoSel = el.dataset.placa; pintarVivo(); },
     'vivo-centralizar': () => enquadrarFrota(),
     'premissas-salvar': () => salvarPremissas(),
+    'nota-mes-salvar': (el) => salvarNotaMes(el.dataset.mes),
+    'nota-mes-editar': (el) => { E.notaMesEdit = el.dataset.mes; render(); },
     'resumo-exportar': () => {   // deck/PDF: só o resumo (sem nomes de motoristas, contatos nem valor de contrato)
       document.body.classList.add('imprime-resumo');
       const antes = document.title;

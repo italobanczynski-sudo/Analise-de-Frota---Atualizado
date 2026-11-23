@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pendentes, dadosProntos, ontemBR, mascarar, pausaAleatoria } from './regras.mjs';
+import { pendentes, telefonesRepetidos, dadosProntos, ontemBR, mascarar, pausaAleatoria } from './regras.mjs';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const MODO = process.argv[2] || 'enviar';
@@ -134,7 +134,14 @@ async function abrirWhatsAppComRetentativa() {
 // ---------- envio ----------
 async function enviarDoCliente(wa, c, dia, conta) {
   const lista = await chamar('GET', `/api/v1/clientes/${encodeURIComponent(c.id)}/mensagens?dia=${dia}`);
-  const fila = pendentes(lista);
+  const repetidos = telefonesRepetidos(lista);
+  const fila = pendentes(lista).filter((m) => {
+    if (!repetidos.has(m.telefone)) return true;
+    const outros = lista.filter((x) => x.telefone === m.telefone && x.motorista !== m.motorista).map((x) => x.motorista).join(', ');
+    log(`  ${m.motorista} (${mascarar(m.telefone)}): mesmo telefone de ${outros}; não enviada, corrija o cadastro`);
+    conta.erros.push({ cliente: c.nome, motorista: m.motorista, motivo: `mesmo telefone de ${outros}; corrija o cadastro em Mensagens do dia` });
+    return false;
+  });
   const semTel = lista.filter((m) => !m.enviada && !m.telefone).length;
   conta.semTelefone += semTel;
   log(`${c.nome}: ${lista.length} mensagens, ${fila.length} para enviar${semTel ? `, ${semTel} sem telefone (não vão)` : ''}`);

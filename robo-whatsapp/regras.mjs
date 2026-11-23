@@ -3,6 +3,13 @@
 // Mensagens a enviar: não enviadas e com telefone cadastrado
 export const pendentes = (lista) => (lista || []).filter((m) => !m.enviada && m.telefone);
 
+// Telefones cadastrados em mais de um motorista: quem tem o número receberia a análise do outro, então nenhum vai
+export function telefonesRepetidos(lista) {
+  const por = new Map();
+  (lista || []).forEach((m) => { if (m.telefone) por.set(m.telefone, (por.get(m.telefone) || 0) + 1); });
+  return new Set([...por].filter(([, n]) => n > 1).map(([t]) => t));
+}
+
 // Os dados do dia já chegaram por completo? (a busca da API roda de hora em hora no servidor)
 export function dadosProntos(coleta, dia) {
   if (!coleta) return false;

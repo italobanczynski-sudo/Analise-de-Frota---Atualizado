@@ -44,11 +44,11 @@ var (
 		trajeto.ErrPlaca, trajeto.ErrDia, trajeto.ErrDiaFuturo, trajeto.ErrDiaAntigo, trajeto.ErrHoras, trajeto.ErrPlacas,
 	}
 	errosNaoAutenticado = []error{usuario.ErrLogin, sessao.ErrSessaoInvalida, ErrMuitasTentativas}
-	errosProibido       = []error{usuario.ErrInativo, ErrSemPermissao}
+	errosProibido       = []error{usuario.ErrInativo, usuario.ErrDominio, ErrSemPermissao}
 	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada, gobraxapi.ErrVeiculoNaoEncontrado}
 	// serviço externo fora do ar ou mal configurado: a mensagem diz o que acertar
 	errosIndisponivel = []error{gobraxapi.ErrTokenInvalido, gobraxapi.ErrSemAcesso, gobraxapi.ErrLimite}
-	errosConflito     = []error{cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
+	errosConflito     = []error{mensagem.ErrTelefoneRepetido, cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
 
 	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")
 	ErrMuitasTentativas = errors.New("muitas tentativas de entrar; espere 15 minutos e tente de novo")

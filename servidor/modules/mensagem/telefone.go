@@ -3,6 +3,7 @@ package mensagem
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"unicode"
@@ -11,7 +12,10 @@ import (
 	"analisefrota/modules/mensagem/mensagem_repo"
 )
 
-var ErrTelefone = errors.New("telefone inválido: use DDD + número (10 ou 11 dígitos), com ou sem o 55 do Brasil")
+var (
+	ErrTelefone         = errors.New("telefone inválido: use DDD + número (10 ou 11 dígitos), com ou sem o 55 do Brasil")
+	ErrTelefoneRepetido = errors.New("este telefone já está cadastrado para outro motorista do cliente")
+)
 
 // NormalizarTelefone deixa só os dígitos e põe o 55 do Brasil quando vier só DDD + número.
 // Vazio continua vazio (apaga o telefone). Aceita 10–11 dígitos (Brasil sem o 55) ou 12–13 começando com 55.
@@ -46,6 +50,16 @@ func (m *mensagem_t) SalvarTelefone(ctx context.Context, clienteID int64, motori
 	}
 	if n == "" {
 		return "", m.d.Telefones.Apagar(ctx, clienteID, chave)
+	}
+	// um número, um motorista: com o mesmo telefone em dois cadastros, um recebe a análise do outro
+	tels, err := m.d.Telefones.Linhas(ctx, clienteID)
+	if err != nil {
+		return "", err
+	}
+	for _, t := range tels {
+		if t.Telefone == n && t.Chave != chave {
+			return "", fmt.Errorf("%w (%s); corrija ou apague o telefone de lá primeiro", ErrTelefoneRepetido, t.Motorista)
+		}
 	}
 	var por *int64
 	if usuarioID > 0 {

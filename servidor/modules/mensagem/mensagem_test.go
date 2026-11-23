@@ -353,6 +353,7 @@ func (s *MensagemSuite) TestSalvarTelefoneGravaPeloNomeEApagaQuandoVazio() {
 	var gravado mensagem_repo.TelefoneRow_t
 	s.tel.On("Salvar", s.ctx, mock.Anything).Run(func(a mock.Arguments) { gravado = a.Get(1).(mensagem_repo.TelefoneRow_t) }).Return(nil)
 	s.tel.On("Apagar", s.ctx, int64(1), "ANA LIMA").Return(nil)
+	s.tel.On("Linhas", s.ctx, int64(1)).Return([]mensagem_repo.TelefoneRow_t{{Chave: "ANA LIMA", Motorista: "Ana Lima", Telefone: "5511900000000"}}, nil)
 
 	n, err := s.svc.SalvarTelefone(s.ctx, 1, " Ana  Lima ", "(11) 90000-0000", 9)
 	s.Require().NoError(err)
@@ -368,6 +369,15 @@ func (s *MensagemSuite) TestSalvarTelefoneGravaPeloNomeEApagaQuandoVazio() {
 
 	_, err = s.svc.SalvarTelefone(s.ctx, 1, "ana lima", "123", 9)
 	s.ErrorIs(err, mensagem.ErrTelefone)
+}
+
+// o mesmo número em dois motoristas faz um receber a análise do outro: não grava
+func (s *MensagemSuite) TestSalvarTelefoneRecusaNumeroDeOutroMotorista() {
+	s.tel.On("Linhas", s.ctx, int64(1)).Return([]mensagem_repo.TelefoneRow_t{{Chave: "MARCOS", Motorista: "Marcos", Telefone: "5511900000000"}}, nil)
+	_, err := s.svc.SalvarTelefone(s.ctx, 1, "Silmar", "11 90000-0000", 9)
+	s.ErrorIs(err, mensagem.ErrTelefoneRepetido)
+	s.Contains(err.Error(), "Marcos")
+	s.tel.AssertNotCalled(s.T(), "Salvar", mock.Anything, mock.Anything)
 }
 
 func (s *MensagemSuite) TestAcompanhamentoMedeOPontoApontadoNosDiasSeguintes() {

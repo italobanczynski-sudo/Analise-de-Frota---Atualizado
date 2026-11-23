@@ -1,7 +1,13 @@
 // node --test robo-whatsapp/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pendentes, dadosProntos, ontemBR, mascarar, pausaAleatoria } from './regras.mjs';
+import { pendentes, telefonesRepetidos, dadosProntos, ontemBR, mascarar, pausaAleatoria } from './regras.mjs';
+
+test('telefone em mais de um motorista é barrado', () => {
+  const l = [{ motorista: 'MARCOS', telefone: '5551900000687' }, { motorista: 'SILMAR', telefone: '5551900000687', enviada: '2026-11-17T08:00:00Z' }, { motorista: 'ANA', telefone: '5551900001111' }, { motorista: 'BIA', telefone: '' }];
+  assert.deepEqual([...telefonesRepetidos(l)], ['5551900000687']);
+  assert.equal(telefonesRepetidos(null).size, 0);
+});
 
 test('só manda o que não foi enviado e tem telefone', () => {
   const l = [{ motorista: 'A', telefone: '5511900000000' }, { motorista: 'B', telefone: '' }, { motorista: 'C', telefone: '5511900000001', enviada: '2026-11-06T08:00:00Z' }];

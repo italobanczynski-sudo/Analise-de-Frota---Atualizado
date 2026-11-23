@@ -6570,16 +6570,16 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // Nota oficial do motorista no mês do fim do período analisado (ou no último mês buscado antes dele), vinda da premiação da API
   // Nota Gobrax da frota num período pela Premiação (scores mensais da API): média dos meses que tocam o período,
-  // ponderada pelos km de cada motorista. Serve quando os dados do dia não trazem a nota (a performance da API vem sem ela).
+  // ponderada pelos km de cada motorista (num mês só, é o "Nota média" da tela Premiação). Serve quando os dados do dia não trazem a nota (a performance da API vem sem ela).
   function notaFrotaPremiacao(p, cli) {
     if (!p) return null;
     const ini = p.ini.slice(0, 7), fim = p.fim.slice(0, 7);
     const docs = docsApi('premiacao', cli || E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && d.data >= ini && d.data <= fim).sort((a, b) => (a.data < b.data ? -1 : 1));
+    // mesma conta da tela Premiação (notaMediaPremiacao): ponderada pelos km, quem não rodou fica fora
     let s = 0, w = 0, n = 0;
     docs.forEach((d) => (d.motoristas || []).forEach((m) => {
-      if (!Number.isFinite(m.nota)) return;
-      const km = m.km > 0 ? m.km : 0;
-      s += m.nota * (km || 1); w += km || 1; n++;
+      if (!(m.km > 0)) return;
+      s += (m.nota || 0) * m.km; w += m.km; n++;
     }));
     if (!w) return null;
     const hoje = D.hoje().slice(0, 7);
@@ -10017,21 +10017,26 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // Mensagem aos condutores › Evolução por condutor: a nota do mês em cada dia em que o condutor recebeu a análise,
   // do primeiro envio ao último, e se ele melhorou no ponto apontado (dados guardados no servidor a cada envio)
+  // nota do condutor em cada dia em que recebeu a análise (a nota do mês naquele dia), no visual do gráfico mensal
   function graficoNotaEnvios(envios) {
     const pts0 = envios.filter((e) => Number.isFinite(e.nota));
-    if (pts0.length < 2) return `<div class="vazio"><span class="apoio">${pts0.length ? 'Só um envio com nota até agora: o gráfico aparece a partir do segundo.' : 'Nenhum envio com nota ainda.'}</span></div>`;
+    if (pts0.length < 2) return `<div class="vazio"><span class="apoio">${pts0.length ? 'Só um dia com nota até agora: a linha aparece a partir do segundo envio.' : 'Nenhum envio com nota ainda.'}</span></div>`;
     const vals = pts0.map((e) => e.nota);
     const lo = Math.max(0, Math.floor((Math.min(...vals) - 3) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...vals) + 3) / 10) * 10);
-    const W = 680, H = 230, mE = 40, mD = 24, mT = 26, mB = 40, n = pts0.length;
-    const x = (i) => mE + 16 + i * (W - mE - 16 - mD) / (n - 1), y = (v) => mT + (hi - v) / ((hi - lo) || 1) * (H - mT - mB);
-    const grade = Array.from({ length: (hi - lo) / 10 + 1 }, (_, k) => lo + k * 10).map((g) => `<line x1="${mE}" x2="${W - mD}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" style="stroke:var(--hairline)"/><text x="${mE - 8}" y="${(y(g) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${fmt(g, 0)}</text>`).join('');
+    const W = 680, H = 240, mE = 40, mD = 30, mT = 26, mB = 50, n = pts0.length;
+    const x0 = mE + 24, x = (i) => x0 + i * (W - x0 - mD) / (n - 1), y = (v) => mT + (hi - v) / ((hi - lo) || 1) * (H - mT - mB);
+    const grade = Array.from({ length: (hi - lo) / 10 + 1 }, (_, k) => lo + k * 10).map((g) => `<line x1="${mE}" x2="${W - mD}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" stroke="var(--hairline)"/><text x="${mE - 8}" y="${(y(g) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--texto-2)">${fmt(g, 0)}</text>`).join('');
     const pts = pts0.map((e, i) => [x(i), y(e.nota), e]);
-    const passo = Math.max(1, Math.ceil(n / 12));   // rótulos do eixo sem encavalar
-    const linha = `<polyline points="${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="#FCB709" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
-    const marcas = pts.map(([px, py, e], i) => `<g><title>${D.br(e.dia)}: nota ${fmt(e.nota, 1)}${e.foco_rotulo ? ' · ponto apontado: ' + esc(e.foco_rotulo) : ''}</title><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" style="fill:var(--superficie)" stroke="#FCB709" stroke-width="2.5"/>
-      ${n <= 15 || i === 0 || i === n - 1 ? `<text x="${px.toFixed(1)}" y="${(py - 11).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--tinta)">${fmt(e.nota, 1)}</text>` : ''}</g>`).join('');
-    const eixo = pts.map(([px, , e], i) => (i % passo && i !== n - 1 ? '' : `<text x="${px.toFixed(1)}" y="${H - mB + 18}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${D.br(e.dia).slice(0, 5)}</text>`)).join('');
-    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Nota do condutor em cada dia de mensagem">${grade}${linha}${marcas}${eixo}</svg>`;
+    const area = `<polygon points="${pts[0][0].toFixed(1)},${H - mB} ${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')} ${pts[n - 1][0].toFixed(1)},${H - mB}" fill="var(--dado)" opacity=".1"/>`;
+    const linha = `<polyline points="${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="var(--dado)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const envio = `<line x1="${pts[0][0].toFixed(1)}" x2="${pts[0][0].toFixed(1)}" y1="${mT - 8}" y2="${H - mB}" stroke="var(--texto-2)" stroke-dasharray="4 4" opacity=".6"/>`;
+    const rotulo = n <= 16 ? () => true : (i) => i === 0 || i === n - 1 || pts0[i].nota !== pts0[i - 1].nota;   // muitos dias: valor só onde a nota muda
+    const marcas = pts.map(([px, py, e], i) => `<g><title>${D.br(e.dia)} (${D.semana(e.dia)}): nota ${fmt(e.nota, 1)}${e.foco_rotulo ? ' · ponto apontado: ' + esc(e.foco_rotulo) : ''}</title><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4.5" fill="var(--superficie)" stroke="var(--dado)" stroke-width="2.5"/>
+      ${rotulo(i) ? `<text x="${px.toFixed(1)}" y="${(py - 11).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--tinta)">${fmt(e.nota, 1)}</text>` : ''}</g>`).join('');
+    const passo = Math.max(1, Math.ceil(n / 10));   // rótulos do eixo sem encavalar
+    const eixo = pts.map(([px, , e], i) => (i % passo && i !== n - 1 ? '' : `<text x="${px.toFixed(1)}" y="${H - mB + 20}" text-anchor="middle" font-size="11.5" fill="var(--texto-2)">${D.br(e.dia).slice(0, 5)}</text>`)).join('')
+      + `<text x="${pts[0][0].toFixed(1)}" y="${H - mB + 36}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--texto-2)">1º envio</text>`;
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="Nota do condutor em cada dia de mensagem">${grade}${area}${envio}${linha}${marcas}${eixo}</svg>`;
   }
   // nota do condutor por mês (premiação da API Gobrax), do mês anterior ao 1º envio até agora (no máximo 12 meses)
   function notaCondutorMeses(cliNome, nome) {
@@ -10039,7 +10044,14 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     return docs.map((d) => { const m = d.motoristas.find((y) => ckey(y.nome) === ckey(nome)); return { mes: d.data, v: m && Number.isFinite(m.nota) ? m.nota : null }; })
       .filter((m) => m.v !== null);
   }
-  function graficoCondutor(cliNome, nome, envios) {
+  function graficoCondutor(cliNome, nome, envios, vista) {
+    if (vista !== 'mes') {
+      const cn = envios.filter((e) => Number.isFinite(e.nota)), p = cn[0], u = cn[cn.length - 1];
+      const resumo = cn.length > 1 ? `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
+          <span class="num" style="font-size:13px"><span class="mudo">${D.br(p.dia).slice(0, 5)} ${fmt(p.nota, 1)} →</span> <b style="font-size:24px">${fmt(u.nota, 1)}</b> ${variacao(X.variacao(IND_MAP.nota, u.nota, p.nota))}</span>
+          <span class="apoio">em ${D.br(u.dia)}</span></div>` : '';
+      return { svg: resumo + graficoNotaEnvios(envios), sub: 'Nota do condutor em cada dia em que ele recebeu a análise (a nota do mês da Gobrax naquele dia). A Gobrax não dá nota por dia: os dias sem mensagem não aparecem. Passe o mouse num ponto para ver o dia e o ponto apontado.' };
+    }
     const mesEnvio = envios[0].dia.slice(0, 7), meses = notaCondutorMeses(cliNome, nome), hojeMes = D.hoje().slice(0, 7);
     if (!meses.length) return { svg: graficoNotaEnvios(envios), sub: 'Sem a premiação da API para este cliente: a linha mostra a nota do mês em cada dia de mensagem. No perfil do cliente, busque "Scores e premiação" para ver mês a mês.' };
     const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
@@ -10101,8 +10113,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }).join('');
     const seletor = `<select class="campo vg-sel" data-campo="evo-mot" aria-label="Condutor">${conds.map((c) => `<option value="${esc(c.x.motorista)}" ${c === sel ? 'selected' : ''}>${esc(c.x.motorista)}</option>`).join('')}</select>`;
     const cliNome = (M.clientes.find((c) => String(c.id) === M.cli) || {}).nome || E.cliente;
-    const gc = graficoCondutor(cliNome, sel.x.motorista, sel.envios);
-    const grafico = vgCard('grafico', `Evolução da nota de ${esc(sel.x.motorista)}`, `<span class="apoio" style="display:block;margin-bottom:8px;font-size:12px">${esc(gc.sub)}</span>${gc.svg}`, null, seletor);
+    const vista = M.evoVista === 'mes' ? 'mes' : 'dia', gc = graficoCondutor(cliNome, sel.x.motorista, sel.envios, vista);
+    const chips = `<div class="vg-chips dv-seg">${[['dia', 'Por dia'], ['mes', 'Por mês']].map(([k, r]) => `<button type="button" class="${k === vista ? 'ativo' : ''}" data-acao="evo-vista" data-k="${k}">${r}</button>`).join('')}</div>`;
+    const grafico = vgCard('grafico', `Evolução da nota de ${esc(sel.x.motorista)}`, `<span class="apoio" style="display:block;margin-bottom:8px;font-size:12px">${esc(gc.sub)}</span>${gc.svg}`, null, chips + seletor);
     const tabela = vgCard('calendario', 'Cada mensagem recebida', `<span class="apoio" style="display:block;margin-bottom:10px">Mais recente primeiro. "Resultado" compara o ponto apontado no dia com a média dele nos 7 dias seguintes.</span>
       <div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>Dia da análise</th><th class="dir">Nota do mês</th><th>vs envio anterior</th><th>Ponto apontado</th><th>Resultado</th><th>Evolução no dia</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
     return `${kpis}<div class="evo-grade">${grafico}${resumo}</div>${tabela}`;
@@ -11439,6 +11452,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
+    'evo-vista': (el) => { msg().evoVista = el.dataset.k; render(); },
     'evo-mot': (el) => { msg().evoMot = el.dataset.mot; render(); },
     'churn-cliente': (el) => { trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'regras-salvar': () => salvarRegras(),

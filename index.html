@@ -6953,13 +6953,13 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // ranking da Nota Gobrax em barras: a barra vai até a nota (0 a 100), na cor da faixa; os km ao lado
   function rankingBarras(lista, S) {
-    const item = (x, i) => { const f = faixaNota(x.nota) || 'critico'; return `<li class="rb-item">
+    const item = (x, i) => { const f = X.faixaNota(x.nota) || 'critico'; return `<li class="rb-item">
       <span class="rb-pos ${i < 3 ? 'rb-top' : ''}">${i + 1}</span>
       <div class="rb-corpo"><div class="rb-cab"><a href="${linkMotorista(x.m.id)}">${esc(x.m.nome)}</a><span class="num"><b style="color:${COR_FAIXA[f]}">${fmt(x.nota, 1)}</b> <span class="mudo">· ${esc(fmtInd(IND_MAP.km, x.km))}</span></span></div>
         <span class="rb-trilho"><i style="width:${Math.max(2, Math.min(100, x.nota))}%;background:${COR_FAIXA[f]}"></i></span></div></li>`; };
     const top = lista.slice(0, 10), resto = lista.slice(10);
     const cont = { bom: 0, atencao: 0, critico: 0 };
-    lista.forEach((x) => { cont[faixaNota(x.nota) || 'critico']++; });
+    lista.forEach((x) => { cont[X.faixaNota(x.nota) || 'critico']++; });
     return `<div class="rb"><div class="rb-topo"><span class="hb-bloco-t">Ranking de motoristas · Nota Gobrax</span><span class="apoio">${esc(D.periodoCurto(S.pMes))} · ${lista.length} motorista${lista.length === 1 ? '' : 's'} com nota</span>
         <span class="rb-faixas">${['bom', 'atencao', 'critico'].map((k) => `<span><i style="background:${COR_FAIXA[k]}"></i>${ROT_FAIXA[k]} <b class="num">${cont[k]}</b></span>`).join('')}</span></div>
       <ol class="rb-lista">${top.map(item).join('')}</ol>
@@ -10187,12 +10187,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   function abaEvolucaoCondutores(M) {
     const card = (corpo) => vgCard('pessoas', 'Evolução por condutor', corpo);
     const carregando = (t) => card(`<div class="vazio"><span class="spinner"></span><span class="apoio">${t}</span></div>`);
-    if (!M.cli) return card(vazio('Nenhum cliente no servidor', 'As mensagens existem para os clientes buscados pela API Gobrax.'));
+    if (!M.cli) return card(vazioUI('Nenhum cliente no servidor', 'As mensagens existem para os clientes buscados pela API Gobrax.'));
     const R = M.enviadas[M.cli];
     if (!R || podeRetentar(R)) setTimeout(() => msgEnviadas(M.cli), 0);
     if (!R || R.carregando) return carregando('Carregando as mensagens enviadas…');
-    if (R.erro) return card(vazio('Não consegui carregar', esc(R.erro)));
-    if (!R.lista.length) return card(vazio('Nenhuma mensagem enviada ainda', 'A evolução aparece depois que o condutor recebe a primeira análise (pelo robô ou marcada como enviada na aba Mensagens do dia).'));
+    if (R.erro) return card(vazioUI('Não consegui carregar', esc(R.erro)));
+    if (!R.lista.length) return card(vazioUI('Nenhuma mensagem enviada ainda', 'A evolução aparece depois que o condutor recebe a primeira análise (pelo robô ou marcada como enviada na aba Mensagens do dia).'));
     // por condutor: envios em ordem de data, nota do 1º e do último envio com nota
     const conds = R.lista.map((x) => {
       const envios = x.envios.slice().sort((a, b) => (a.dia < b.dia ? -1 : 1)), comNota = envios.filter((e) => Number.isFinite(e.nota));

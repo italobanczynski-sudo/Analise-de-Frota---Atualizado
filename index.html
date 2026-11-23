@@ -788,6 +788,25 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .churn-detalhe .h2 { font-size: 22px; }
 .churn-grade .card-cab .h2 { font-size: 18px; font-weight: 600; }
 .churn-leitura { border-radius: 0 10px 10px 0; }
+.churn-pilha { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.churn-tab tbody tr { cursor: pointer; }
+.churn-tab tbody tr:hover td { background: var(--apoio); }
+.churn-tab td { white-space: normal; }
+.churn-saude { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; }
+.churn-saude-txt { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.churn-hist { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.churn-como { display: flex; flex-direction: column; gap: 14px; }
+.churn-como-passos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--corpo); }
+.churn-como-passos b { color: var(--tinta); }
+.churn-como-sinais { list-style: none; margin: 0; padding: 0; }
+.churn-como-sinais li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--hairline); }
+.churn-como-sinais li > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 13px; }
+.churn-como-ic { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--apoio); color: var(--tinta); }
+.churn-como-tit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--tinta); font-size: 14px; }
+.churn-como-regra { color: var(--corpo); }
+.churn-como-cli { font-size: 12px; color: var(--texto-2); }
+.churn-como-conta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--apoio); }
+.churn-como-conta b { color: var(--tinta); font-size: 14px; }
 @media (max-width: 1180px) { .dv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dv-grade { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .dv-kpis { grid-template-columns: minmax(0, 1fr); } .dv-busca .campo { width: 120px; } }
 .exec { background: #2B2B2B; color: #fff; border-radius: 12px; padding: 20px 22px; border-top: 4px solid #FCB709; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
@@ -6093,7 +6112,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     f.forEach((x) => { x.contrib = (CHURN_PESOS[x.k] * x.risco) / pesoTot; x.peso = CHURN_PESOS[x.k] / pesoTot; });
     const score = calc0;
     const faixa = score >= CHURN_FAIXAS.alto ? 'Alto' : score >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo';
-    return { nome, score, faixa, fatores: f, a, b, km: a.km, dKm, nota: a.nota, motoristas: ativos.size, crit, principal: f.slice().sort((p, q) => q.contrib - p.contrib)[0] };
+    return { nome, score, faixa, fatores: f, a, b, ref, km: a.km, dKm, nota: a.nota, motoristas: ativos.size, crit, principal: f.slice().sort((p, q) => q.contrib - p.contrib)[0] };
   }
   function churnCarteira() {
     const bt = baseTodos();
@@ -6379,58 +6398,105 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
 
   // Saúde do cliente: risco de churn calculado só com os resultados Gobrax da frota (uso, engajamento, nota, consumo e
-  // motoristas críticos). Sem dados de CRM nem registros manuais.
+  // motoristas críticos). Sem dados de CRM nem registros manuais. Layout novo (cartões vg-card), com a regra do índice à vista.
+  // As regras abaixo descrevem as fórmulas de churnCliente: mudou lá, muda aqui.
+  const CHURN_REGRAS = {
+    uso: ['Uso da frota', 'estrada', 'Km rodados comparados ao período de comparação.', 'Cada 1% de queda soma 3 pontos (queda de 33% ou mais = 100). Se a frota rodou mais, o risco é 0.'],
+    engaj: ['Engajamento dos motoristas', 'pessoas', 'Dias trabalhados e motoristas ativos (que rodaram) comparados ao período de comparação.', 'Cada 1% de queda soma 2,8 pontos (queda de 36% ou mais = 100). Vale a média dos dois.'],
+    perf: ['Performance (Nota Gobrax)', 'trofeu', 'Nota Gobrax do período e quanto ela mudou.', 'Cada ponto abaixo de 70 soma 2,5 (nota 30 = 100). Com período de comparação, vale 60% desse nível + 40% da queda (cada ponto perdido soma 8).'],
+    consumo: ['Resultado de consumo', 'gota', 'Média de km/l comparada ao período de comparação.', 'Só a piora conta: cada 1% de piora soma 5 pontos (20% pior = 100).'],
+    criticos: ['Motoristas com nota crítica', 'alerta', 'Parte dos motoristas com nota abaixo de 40.', 'Cada 1% dos motoristas nessa faixa soma 2,5 pontos (40% ou mais = 100).']
+  };
+  function churnComoCalcula(sel) {
+    const ks = Object.keys(CHURN_REGRAS), tot = ks.reduce((t, k) => t + (CHURN_PESOS[k] || 0), 0) || 1;
+    const doCli = sel ? new Map(sel.fatores.map((x) => [x.k, x])) : null;
+    const linhas = ks.map((k) => {
+      const [nome, ic, oque, regra] = CHURN_REGRAS[k], x = doCli && doCli.get(k);
+      const cli = !doCli ? '' : x ? `<span class="churn-como-cli">neste cliente: risco <b class="num">${fmt(x.risco, 0)}</b> · peso ${fmt(x.peso * 100, 0)}%</span>` : '<span class="churn-como-cli mudo">neste cliente: sem dado, fica fora da conta</span>';
+      return `<li><span class="churn-como-ic">${icone(ic, 16)}</span><div><span class="churn-como-tit"><b>${nome}</b><span class="badge badge-vazio">peso ${fmt(((CHURN_PESOS[k] || 0) / tot) * 100, 0)}%</span></span>
+        <span class="apoio">${oque}</span><span class="churn-como-regra">${regra}</span>${cli}</div></li>`;
+    }).join('');
+    const conta = sel ? `<div class="churn-como-conta"><span class="apoio">Conta de ${esc(sel.nome)}</span><b class="num">${sel.fatores.slice().sort((p, q) => q.contrib - p.contrib).map((x) => fmt(x.contrib, 1)).join(' + ')} = ${fmt(sel.score, 0)}</b></div>` : '';
+    return vgCard('lampada', 'Como o índice é calculado', `<div class="churn-como">
+      <ol class="churn-como-passos">
+        <li><b>Compara dois períodos.</b> O período escolhido contra o de comparação (${esc(D.periodoBR(E.A))} × ${esc(D.periodoBR(E.B))}). Sem dados no de comparação, a 2ª metade do período é comparada com a 1ª.</li>
+        <li><b>Cada sinal vira um risco de 0 a 100.</b> 0 é tudo bem; 100 é o pior caso. As regras de cada sinal estão abaixo.</li>
+        <li><b>O índice é a média ponderada dos riscos.</b> Risco do sinal × peso, somados. Sinal sem dado sai da conta e os pesos dos outros são redistribuídos.</li>
+        <li><b>A faixa sai do índice.</b> <span class="badge ${BADGE_RISCO.Baixo}">Baixo</span> abaixo de ${CHURN_FAIXAS.medio} · <span class="badge ${BADGE_RISCO['Médio']}">Médio</span> de ${CHURN_FAIXAS.medio} a ${CHURN_FAIXAS.alto - 1} · <span class="badge ${BADGE_RISCO.Alto}">Alto</span> de ${CHURN_FAIXAS.alto} a 100.</li>
+      </ol>
+      <ul class="churn-como-sinais">${linhas}</ul>${conta}
+      <span class="apoio" style="font-size:12px">Quanto maior o índice, maior o risco: é um sinal para priorizar a retenção, não uma previsão. Usa só os resultados Gobrax da frota. Com ficha de retenção, o selo segue o status manual e o número vira o índice de uso. Pesos e faixas em <a class="btn-link" href="#/config">Configurações</a>.</span></div>`);
+  }
   function telaChurn() {
     const cart = churnCarteira();
+    const acoes = `<div class="dv-cab-acoes"><a class="sv-pilula" href="#/carteira" style="text-decoration:none">${icone('tabela', 16)}Carteira de clientes</a></div>`;
     if (!cart.length) {
-      return `${cabecalho(`Saúde do cliente`, `Sem dados da API para calcular o risco de cada cliente.`)}
-        <section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Sem dados para calcular</span><span class="apoio">O índice usa os resultados Gobrax da frota: rodagem, engajamento dos motoristas, nota, consumo e motoristas críticos.</span>
-        <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div></div></section>`;
+      return `${cabecalho(`Saúde do cliente`, `Sem dados da API para calcular o risco de cada cliente.`, acoes)}
+        ${vgCard('escudo', 'Sem dados para calcular', `<div class="vazio"><span class="apoio">O índice usa os resultados Gobrax da frota: rodagem, engajamento dos motoristas, nota, consumo e motoristas críticos.</span>
+        <div style="display:flex;gap:8px;margin-top:6px"><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none">Buscar dados pela API</a></div></div>`)}
+        ${churnComoCalcula(null)}`;
     }
-    const linhas = cart.map((c) => `<tr class="linha-clicavel" data-acao="churn-cliente" data-cli="${esc(c.nome)}" tabindex="0">
-      <td><span class="pessoa">${avatar(c.nome, 30)}<b style="font-weight:600">${esc(c.nome)}</b></span></td>
-      <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b></span></td>
-      <td>${seloCliente(c.nome, c.faixa, c.score)}</td>
-      <td>${c.principal ? esc(c.principal.nome) + '<span class="linha2">' + esc(c.principal.det) + '</span>' : '—'}</td>
-      <td class="dir num">${c.dKm === null ? '—' : (c.dKm >= 0 ? '▲ ' : '▼ ') + fmt(Math.abs(c.dKm) * 100, 1) + '%'}</td>
-      <td class="dir num">${c.nota > 0 ? fmt(c.nota, 1) : '—'}</td></tr>`).join('');
-    const tabela = `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Clientes por risco</h2><span class="h2-sub">Clique em um cliente para ver o que pesa no risco e o plano de retenção.</span></div></div>
-      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Cliente</th><th>Índice de uso</th><th>Status</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th></tr></thead><tbody>${linhas}</tbody></table></div></section>`;
-    let detalhe = '';
+    const kpi = (ic, cor, rot, v, sub) => `<div class="vg-kpi dv-kpi" style="--c:${cor}"><span class="vg-kpi-ic" style="--c:${cor}">${icone(ic, 22)}</span>
+      <div class="vg-kpi-txt"><span class="vg-kpi-rot">${rot}</span><span class="vg-kpi-v num">${v}</span>${sub}</div></div>`;
     const sel = cart.find((c) => ckey(c.nome) === ckey(E.cliente)) || null;
-    if (sel) {
-      const fat = sel.fatores.slice().sort((p, q) => q.contrib - p.contrib);
-      const barras = fat.map((x) => { const fx = x.risco >= CHURN_FAIXAS.alto ? 'Alto' : x.risco >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo'; return `<div class="churn-fat">
-        <div class="churn-fat-cab"><span><b>${esc(x.nome)}</b> <span class="mudo" style="font-size:11.5px">peso ${fmt((x.peso || 0) * 100, 0)}% · soma ${fmt(x.contrib, 1)} pts</span><span class="apoio" style="display:block;font-size:11.5px">${esc(x.det)}</span></span><span class="churn-fat-v"><b class="num">${fmt(x.risco, 0)}</b><span class="badge ${BADGE_RISCO[fx]}">${fx}</span></span></div>
-        <span class="churn-trilho"><i style="width:${Math.max(3, x.risco)}%;background:${COR_RISCO[fx]}"></i></span></div>`; }).join('');
-      const alertas = fat.filter((x) => x.risco >= 50);
-      const passos = fat.filter((x) => x.risco >= 25 && CHURN_ACAO[x.k]).slice(0, 4);
-      const prazos = ['Hoje', 'Esta semana', 'Em 15 dias', 'Em 30 dias'];
-      const bons = fat.filter((x) => x.risco < 15).map((x) => x.nome.toLowerCase()), p0 = fat[0];
-      const leitura = `<b>Nossa leitura:</b> ${esc(sel.nome)} está com risco ${sel.faixa.toLowerCase()} (${fmt(sel.score, 0)} de 100). ` +
-        (p0 && p0.risco >= 15 ? `O que mais pesa é “${esc(p0.nome.toLowerCase())}”: ${esc(p0.det)}. ` : 'Nenhum sinal pesa de forma relevante neste período. ') +
-        (bons.length ? `Pontos a favor: ${esc(bons.slice(0, 3).join(', '))}.` : '');
-      const fs = fotosRisco(sel.nome);
-      const historico = fs.length > 1 ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="apoio">Fotos diárias do índice desde ${D.br(fs[0].dia)} (${fs.length})</span>${X.ui.sparkline(fs.map((f) => f.score), '#FCB709')}</div>` : '';
-      detalhe = `<section class="card churn-detalhe"><div class="card-corpo" style="flex-direction:row;flex-wrap:wrap;gap:24px 36px;align-items:center">
-          ${gauge(sel.score, sel.faixa, 240, fichaDe(sel.nome) ? 'índice de uso' : '')}
-          <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:6px"><span class="h2">${esc(sel.nome)}</span>
-            <span class="apoio">${fmt(sel.motoristas, 0)} motoristas ativos · ${fmt(sel.km, 0)} km no período${sel.nota > 0 ? ' · nota ' + fmt(sel.nota, 1) : ''}</span>
-            <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${seloCliente(sel.nome, sel.faixa, sel.score)}${fichaDe(sel.nome) ? `<span class="apoio" style="font-size:12px">status da retenção (manual) · índice de uso ${fmt(sel.score, 0)} de 100 (interno)</span>` : '<span class="apoio" style="font-size:12px">sem ficha de retenção: o selo segue o índice de uso</span>'}</span>
-            <p class="churn-leitura">${leitura}</p>
-            <span class="apoio" style="font-size:12px;max-width:60ch">O índice (0 a 100) usa só os resultados Gobrax da frota: uso da frota, engajamento dos motoristas, nota, consumo e motoristas críticos. É um sinal para priorizar a retenção, não uma previsão.</span></div></div></section>
-        <div class="grade-2">
-          <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O que pesa no risco</h2><span class="h2-sub">Índice = soma dos pontos de cada sinal (risco do sinal × peso). Pesos em <a class="btn-link" href="#/config">Configurações</a>.</span></div></div><div class="card-corpo">${barras}${historico}</div></section>
-          <section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Plano de retenção</h2><span class="h2-sub">${alertas.length ? fmt(alertas.length, 0) + ' sinal(is) de alerta' : 'Sem sinais fortes. Manter o acompanhamento.'}</span></div></div>
-            <div class="card-corpo">${passos.length ? passos.map((x, i) => `<div class="churn-passo"><span class="churn-passo-n">${i + 1}</span><div><b>${CHURN_ACAO[x.k][0]}</b><span class="churn-prazo">${prazos[i]}</span><p>${CHURN_ACAO[x.k][1]}</p></div></div>`).join('') : '<span class="apoio">Nenhuma ação urgente. Continue acompanhando os indicadores.</span>'}</div></section>
-        </div>`;
-      detalhe = detalhe.replace('<div class="grade-2">', '<div class="grade-2 churn-grade">');
+    const topo = `${cabecalho(`Saúde do cliente`, `Risco de churn de cada cliente, calculado com os resultados Gobrax da frota. ${esc(D.periodoBR(E.A))} comparado a ${esc(D.periodoBR(E.B))}.`, acoes)}
+      ${barraPeriodo()}`;
+    if (!sel) {
+      const cont = { Alto: 0, 'Médio': 0, Baixo: 0 };
+      cart.forEach((c) => { cont[c.faixa]++; });
+      const kpis = `<div class="vg-kpis dv-kpis">
+        ${kpi('camadas', '#1A73E8', 'Clientes avaliados', fmt(cart.length, 0), '<span class="vg-var">com dados no período</span>')}
+        ${kpi('alerta', '#D93025', 'Risco alto', fmt(cont.Alto, 0), `<span class="vg-var">índice de ${CHURN_FAIXAS.alto} a 100</span>`)}
+        ${kpi('relogio', '#F9AB00', 'Risco médio', fmt(cont['Médio'], 0), `<span class="vg-var">índice de ${CHURN_FAIXAS.medio} a ${CHURN_FAIXAS.alto - 1}</span>`)}
+        ${kpi('escudo', '#1E8E3E', 'Risco baixo', fmt(cont.Baixo, 0), `<span class="vg-var">índice abaixo de ${CHURN_FAIXAS.medio}</span>`)}</div>`;
+      const linhas = cart.map((c) => `<tr class="linha-clicavel" data-acao="churn-cliente" data-cli="${esc(c.nome)}" tabindex="0">
+        <td><span class="pessoa">${avatar(c.nome, 30)}<b style="font-weight:600">${esc(c.nome)}</b></span></td>
+        <td style="min-width:200px"><span class="churn-lin"><span class="churn-trilho"><i style="width:${Math.max(3, c.score)}%;background:${COR_RISCO[c.faixa]}"></i></span><b class="num">${fmt(c.score, 0)}</b></span></td>
+        <td>${seloCliente(c.nome, c.faixa, c.score)}</td>
+        <td>${c.principal ? esc(c.principal.nome) + '<span class="linha2">' + esc(c.principal.det) + '</span>' : '—'}</td>
+        <td class="dir num">${c.dKm === null ? '—' : (c.dKm >= 0 ? '▲ ' : '▼ ') + fmt(Math.abs(c.dKm) * 100, 1) + '%'}</td>
+        <td class="dir num">${c.nota > 0 ? fmt(c.nota, 1) : '—'}</td></tr>`).join('');
+      const tabela = vgCard('tabela', 'Clientes por risco', `<span class="apoio" style="display:block;margin-bottom:10px">Maior risco primeiro. Clique em um cliente para ver o que pesa no risco e o plano de retenção.</span>
+        <div class="tabela-wrap"><table class="vg-tab churn-tab"><thead><tr><th>Cliente</th><th>Índice de risco</th><th>Status</th><th>Principal sinal</th><th class="dir">Km vs. anterior</th><th class="dir">Nota</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
+      return `${topo}
+        ${E.cliente ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido. Abaixo, os outros clientes da carteira.</span><div class="alerta-acoes"><a class="btn-link peq" href="#/carteira">Abrir a carteira de clientes</a></div></div></div>' : ''}
+        ${kpis}<div class="churn-pilha">${tabela}${churnComoCalcula(null)}</div>
+        ${relatorioMotivos()}`;
     }
-    const alterna = `<a class="btn" href="#/carteira" style="text-decoration:none">Carteira de clientes</a>`;
-    return `${cabecalho(`Saúde do cliente`, `${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)} · risco calculado com os resultados Gobrax da frota`, `${alterna}`)}
-      ${barraPeriodo()}
-      ${!sel && E.cliente ? '<div class="alerta alerta-atencao"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Este cliente não tem dados no período escolhido.</span><div class="alerta-acoes"><button type="button" class="btn-link peq" data-acao="churn-todos">Ver a carteira</button></div></div></div>' : ''}
-      ${sel ? detalhe + cartaoFicha(sel.nome) : tabela}
+    const fat = sel.fatores.slice().sort((p, q) => q.contrib - p.contrib);
+    const corFx = { Alto: '#D93025', 'Médio': '#F9AB00', Baixo: '#1E8E3E' };
+    const refTxt = 'vs ' + (sel.ref || 'período anterior');
+    const kpis = `<div class="vg-kpis dv-kpis">
+      ${kpi('escudo', corFx[sel.faixa], fichaDe(sel.nome) ? 'Índice de uso' : 'Índice de risco', `${fmt(sel.score, 0)}<small>de 100</small>`, `<span class="vg-var"><b class="${sel.faixa === 'Baixo' ? 'vg-bom' : 'vg-ruim'}">risco ${sel.faixa.toLowerCase()}</b></span>`)}
+      ${kpi('pessoas', '#1A73E8', 'Motoristas ativos', fmt(sel.motoristas, 0), `<span class="vg-var">${fmt(sel.crit, 0)} com nota crítica</span>`)}
+      ${kpi('estrada', '#FCB709', 'Km rodados', fmt(sel.km, 0), vgVar(X.variacao(IND_MAP.km, sel.a.km, sel.b.km), undefined, refTxt))}
+      ${kpi('trofeu', '#1E8E3E', 'Nota Gobrax', sel.nota > 0 ? fmt(sel.nota, 1) : '—', sel.nota > 0 ? vgVar(X.variacao(IND_MAP.nota, sel.a.nota, sel.b.nota), undefined, refTxt) : '<span class="vg-var">sem nota no período</span>')}</div>`;
+    const barras = fat.map((x) => { const fx = x.risco >= CHURN_FAIXAS.alto ? 'Alto' : x.risco >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo'; return `<div class="churn-fat">
+      <div class="churn-fat-cab"><span><b>${esc(x.nome)}</b> <span class="mudo" style="font-size:11.5px">peso ${fmt((x.peso || 0) * 100, 0)}% · soma ${fmt(x.contrib, 1)} pts</span><span class="apoio" style="display:block;font-size:11.5px">${esc(x.det)}</span></span><span class="churn-fat-v"><b class="num">${fmt(x.risco, 0)}</b><span class="badge ${BADGE_RISCO[fx]}">${fx}</span></span></div>
+      <span class="churn-trilho"><i style="width:${Math.max(3, x.risco)}%;background:${COR_RISCO[fx]}"></i></span></div>`; }).join('');
+    const alertas = fat.filter((x) => x.risco >= 50);
+    const passos = fat.filter((x) => x.risco >= 25 && CHURN_ACAO[x.k]).slice(0, 4);
+    const prazos = ['Hoje', 'Esta semana', 'Em 15 dias', 'Em 30 dias'];
+    const bons = fat.filter((x) => x.risco < 15).map((x) => x.nome.toLowerCase()), p0 = fat[0];
+    const leitura = `<b>Nossa leitura:</b> ${esc(sel.nome)} está com risco ${sel.faixa.toLowerCase()} (${fmt(sel.score, 0)} de 100). ` +
+      (p0 && p0.risco >= 15 ? `O que mais pesa é “${esc(p0.nome.toLowerCase())}”: ${esc(p0.det)}. ` : 'Nenhum sinal pesa de forma relevante neste período. ') +
+      (bons.length ? `Pontos a favor: ${esc(bons.slice(0, 3).join(', '))}.` : '');
+    const fs = fotosRisco(sel.nome);
+    const historico = fs.length > 1 ? `<div class="churn-hist"><span class="apoio">Fotos diárias do índice desde ${D.br(fs[0].dia)} (${fs.length})</span>${X.ui.sparkline(fs.map((f) => f.score), '#FCB709')}</div>` : '';
+    const saude = vgCard('escudo', `Saúde de ${esc(sel.nome)}`, `<div class="churn-saude">
+        ${gauge(sel.score, sel.faixa, 220, fichaDe(sel.nome) ? 'índice de uso' : '')}
+        <div class="churn-saude-txt">
+          <span class="apoio">${fmt(sel.motoristas, 0)} motoristas ativos · ${fmt(sel.km, 0)} km no período${sel.nota > 0 ? ' · nota ' + fmt(sel.nota, 1) : ''}</span>
+          <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${seloCliente(sel.nome, sel.faixa, sel.score)}${fichaDe(sel.nome) ? `<span class="apoio" style="font-size:12px">status da retenção (manual) · índice de uso ${fmt(sel.score, 0)} de 100 (interno)</span>` : '<span class="apoio" style="font-size:12px">sem ficha de retenção: o selo segue o índice</span>'}</span>
+          <p class="churn-leitura">${leitura}</p>${historico}</div></div>`);
+    const plano = vgCard('alerta', 'Plano de retenção', `<span class="apoio" style="display:block;margin-bottom:4px">${alertas.length ? fmt(alertas.length, 0) + ' sinal(is) de alerta (risco 50 ou mais).' : 'Sem sinais fortes. Manter o acompanhamento.'}</span>
+      ${passos.length ? passos.map((x, i) => `<div class="churn-passo"><span class="churn-passo-n">${i + 1}</span><div><b>${CHURN_ACAO[x.k][0]}</b><span class="churn-prazo">${prazos[i]}</span><p>${CHURN_ACAO[x.k][1]}</p></div></div>`).join('') : '<span class="apoio">Nenhuma ação urgente. Continue acompanhando os indicadores.</span>'}`);
+    const pesa = vgCard('barras', 'O que pesa no risco', `<span class="apoio" style="display:block;margin-bottom:4px">Cada sinal com o risco dele (0 a 100), o peso e quantos pontos soma no índice.</span>${barras}`);
+    return `${topo}
+      ${kpis}
+      <div class="dv-grade">${saude}${plano}</div>
+      <div class="dv-grade">${pesa}${churnComoCalcula(sel)}</div>
+      ${cartaoFicha(sel.nome)}
       ${relatorioMotivos()}`;
   }
 

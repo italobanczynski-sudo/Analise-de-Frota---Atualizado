@@ -5618,6 +5618,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     }
     svg.querySelectorAll('[stroke-dasharray]').forEach((el) => {
       if ((Number(el.getAttribute('stroke-width')) || 1) < 1.5) return;   // linhas de grade ficam paradas
+      if (el.tagName.toLowerCase() === 'circle') return;   // arcos de donut usam dasharray para a fatia: animar faria o arco girar
       const passo = String(el.getAttribute('stroke-dasharray')).split(/[\s,]+/).reduce((a, v) => a + (Number(v) || 0), 0);
       if (!passo) return;
       el.style.setProperty('--passo', -(passo * 2) + 'px');

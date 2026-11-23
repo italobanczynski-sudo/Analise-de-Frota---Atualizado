@@ -9583,6 +9583,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
 
   // Tela: Premiação (scores mensais dos motoristas, da API)
+  // Nota média da frota num mês, como a tela Premiação mostra: média das notas ponderada pelos km (quem não rodou fica fora).
+  // O gráfico de evolução das Mensagens enviadas usa a mesma conta, para os números baterem.
+  function notaMediaPremiacao(motoristas) {
+    const w = (motoristas || []).reduce((t, m) => t + (m.km || 0), 0);
+    return w ? motoristas.reduce((t, m) => t + (m.nota || 0) * (m.km || 0), 0) / w : null;
+  }
   function telaPremiacao() {
     // vem da base compartilhada: só mês no formato 'AAAA-MM' entra no HTML
     const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data))).sort((a, b) => (a.data < b.data ? -1 : 1));
@@ -9595,7 +9601,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const antPor = new Map((ant ? ant.motoristas : []).map((m) => [ckey(m.nome), m]));
     const ls = atual.motoristas.slice().sort((a, b) => (b.nota || 0) - (a.nota || 0));
     const soma = (arr, k) => arr.reduce((s, m) => s + (m[k] || 0), 0);
-    const notaMedia = (arr) => { const w = soma(arr, 'km'); return w ? arr.reduce((s, m) => s + (m.nota || 0) * (m.km || 0), 0) / w : null; };
+    const notaMedia = notaMediaPremiacao;
     const indN = IND_MAP.nota, indKm = IND_MAP.km;
     const rotMes = (k) => D.nomeMes(k + '-01');
     const kp = (rot, v, vb, ind, txt) => `<div class="kpi"><span class="kpi-titulo">${rot}</span><span class="kpi-valor num">${txt}</span>${ant ? variacao(X.variacao(ind, v, vb), 'vs. ' + rotMes(ant.data)) : '<span class="kpi-ref">sem mês anterior buscado</span>'}</div>`;
@@ -10027,6 +10033,26 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const eixo = pts.map(([px, , e], i) => (i % passo && i !== n - 1 ? '' : `<text x="${px.toFixed(1)}" y="${H - mB + 18}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${D.br(e.dia).slice(0, 5)}</text>`)).join('');
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Nota do condutor em cada dia de mensagem">${grade}${linha}${marcas}${eixo}</svg>`;
   }
+  // nota do condutor por mês (premiação da API Gobrax), do mês anterior ao 1º envio até agora (no máximo 12 meses)
+  function notaCondutorMeses(cliNome, nome) {
+    const docs = docsApi('premiacao', cliNome).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && Array.isArray(d.motoristas)).sort((a, b) => (a.data < b.data ? -1 : 1));
+    return docs.map((d) => { const m = d.motoristas.find((y) => ckey(y.nome) === ckey(nome)); return { mes: d.data, v: m && Number.isFinite(m.nota) ? m.nota : null }; })
+      .filter((m) => m.v !== null);
+  }
+  function graficoCondutor(cliNome, nome, envios) {
+    const mesEnvio = envios[0].dia.slice(0, 7), meses = notaCondutorMeses(cliNome, nome), hojeMes = D.hoje().slice(0, 7);
+    if (!meses.length) return { svg: graficoNotaEnvios(envios), sub: 'Sem a premiação da API para este cliente: a linha mostra a nota do mês em cada dia de mensagem. No perfil do cliente, busque "Scores e premiação" para ver mês a mês.' };
+    const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
+    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 12)));
+    const antes = meses[iAntes], agora = meses[meses.length - 1];
+    const num = (v) => fmt(v, 1), curto = (k) => D.nomeMes(k + '-01').slice(0, 3) + '/' + k.slice(2, 4);
+    const varia = antes !== agora ? variacao(X.variacao(IND_MAP.nota, agora.v, antes.v)) : '';
+    const resumo = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
+        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(antes.v)} →</span> ` : ''}<b style="font-size:24px">${num(agora.v)}</b> ${varia}</span>
+        <span class="apoio">${agora.mes === hojeMes ? 'neste mês (parcial)' : 'em ' + D.nomeMes(agora.mes + '-01')}</span></div>`;
+    return { svg: resumo + svgNotaMeses(vis, mesEnvio, 'Nota de ' + nome + ' por mês'),
+      sub: `Nota do mês (premiação Gobrax). Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}. A linha tracejada marca o mês da 1ª mensagem.` };
+  }
   function abaEvolucaoCondutores(M) {
     const card = (corpo) => vgCard('pessoas', 'Evolução por condutor', corpo);
     const carregando = (t) => card(`<div class="vazio"><span class="spinner"></span><span class="apoio">${t}</span></div>`);
@@ -10074,7 +10100,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         <td class="apoio">${r && r.comparados ? `melhorou ${esc(r.melhorou)} · piorou ${esc(r.piorou)} de ${esc(r.comparados)}` : '—'}</td></tr>`;
     }).join('');
     const seletor = `<select class="campo vg-sel" data-campo="evo-mot" aria-label="Condutor">${conds.map((c) => `<option value="${esc(c.x.motorista)}" ${c === sel ? 'selected' : ''}>${esc(c.x.motorista)}</option>`).join('')}</select>`;
-    const grafico = vgCard('grafico', `Nota de ${esc(sel.x.motorista)} a cada mensagem`, `<span class="apoio" style="display:block;margin-bottom:8px">Nota do mês (Gobrax) no dia de cada análise enviada. Passe o mouse num ponto para ver o dia e o ponto apontado.</span>${graficoNotaEnvios(sel.envios)}`, null, seletor);
+    const cliNome = (M.clientes.find((c) => String(c.id) === M.cli) || {}).nome || E.cliente;
+    const gc = graficoCondutor(cliNome, sel.x.motorista, sel.envios);
+    const grafico = vgCard('grafico', `Evolução da nota de ${esc(sel.x.motorista)}`, `<span class="apoio" style="display:block;margin-bottom:8px;font-size:12px">${esc(gc.sub)}</span>${gc.svg}`, null, seletor);
     const tabela = vgCard('calendario', 'Cada mensagem recebida', `<span class="apoio" style="display:block;margin-bottom:10px">Mais recente primeiro. "Resultado" compara o ponto apontado no dia com a média dele nos 7 dias seguintes.</span>
       <div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>Dia da análise</th><th class="dir">Nota do mês</th><th>vs envio anterior</th><th>Ponto apontado</th><th>Resultado</th><th>Evolução no dia</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
     return `${kpis}<div class="evo-grade">${grafico}${resumo}</div>${tabela}`;
@@ -10186,25 +10214,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // Nota geral da frota (Gobrax) por mês, em linha (premiação da API; a API não manda a nota por dia),
   // com a nota de antes (mês anterior ao 1º envio) e a de agora (último mês, parcial no mês corrente). Média ponderada pelos km.
-  function graficoNotaEnviadas(lista, diasEnvio) {
-    const ind = IND_MAP.nota;
-    if (!ind || !diasEnvio.length || !E.cliente) return '';
-    const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && Array.isArray(d.motoristas)).sort((a, b) => (a.data < b.data ? -1 : 1));
-    if (!docs.length) return `<div style="display:flex;flex-direction:column;gap:6px;padding:0 16px 16px"><span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
-        <span class="apoio">Sem a premiação da API para este cliente. No perfil do cliente, busque "Scores e premiação" para ver a nota de cada mês.</span></div>`;
-    const media = (ms) => { let s = 0, w = 0; ms.forEach((m) => { if (!Number.isFinite(m.nota)) return; const k = m.km > 0 ? m.km : 1; s += m.nota * k; w += k; }); return w ? s / w : null; };
-    const meses = docs.map((d) => ({ mes: d.data, v: media(d.motoristas) }));
-    const mesEnvio = diasEnvio[0].slice(0, 7), hojeMes = D.hoje().slice(0, 7);
-    const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
-    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 12)));   // até 12 meses, sempre com o "antes"
-    const antes = meses[iAntes], agora = meses[meses.length - 1];
+  // Linha da nota por mês (o gráfico da evolução da nota): escala que acompanha as notas, com folga; área sob a linha,
+  // pontos com o valor, o mês do 1º envio tracejado e o mês corrente marcado como parcial. vis = [{ mes: 'AAAA-MM', v }]
+  function svgNotaMeses(vis, mesEnvio, aria) {
     const num = (v) => (Number.isFinite(v) ? fmt(v, 1) : '—');
     const curto = (k) => D.nomeMes(k + '-01').slice(0, 3) + '/' + k.slice(2, 4);
-    const varia = antes !== agora && Number.isFinite(antes.v) && Number.isFinite(agora.v) ? variacao(X.variacao(ind, agora.v, antes.v)) : '';
-    const resumo = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
-        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(antes.v)} →</span> ` : ''}<b style="font-size:24px">${num(agora.v)}</b> ${varia}</span>
-        <span class="apoio">${agora.mes === hojeMes ? 'neste mês (parcial)' : 'em ' + D.nomeMes(agora.mes + '-01')}</span></div>`;
-    // linha (SVG): a escala acompanha as notas do período, com folga; pontos com o valor; o mês do 1º envio marcado
+    const hojeMes = D.hoje().slice(0, 7);
     const vals = vis.map((m) => m.v).filter(Number.isFinite);
     const lo = Math.max(0, Math.floor((Math.min(...vals) - 3) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...vals) + 3) / 10) * 10);
     const W = 680, H = 240, mE = 40, mD = 40, mT = 26, mB = 50, n = vis.length;
@@ -10219,11 +10234,30 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const marcas = pts.map(([px, py, m]) => `<g><title>${esc(D.nomeMes(m.mes + '-01'))}: ${num(m.v)}</title><circle cx="${px}" cy="${py}" r="4.5" fill="var(--superficie)" stroke="var(--dado)" stroke-width="2.5"/>
         <text x="${px}" y="${py - 11}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--tinta)">${num(m.v)}</text></g>`).join('');
     const eixo = vis.map((m, i) => `<text x="${x(i)}" y="${H - mB + 20}" text-anchor="middle" font-size="11.5" fill="var(--texto-2)">${curto(m.mes)}</text>${m.mes === hojeMes && m.mes !== mesEnvio ? `<text x="${x(i)}" y="${H - mB + 36}" text-anchor="middle" font-size="10.5" fill="var(--texto-2)">(parcial)</text>` : ''}`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="${esc(aria)}">${grade}${area}${envio}${linha}${marcas}${eixo}</svg>`;
+  }
+  function graficoNotaEnviadas(lista, diasEnvio) {
+    const ind = IND_MAP.nota;
+    if (!ind || !diasEnvio.length || !E.cliente) return '';
+    const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data)) && Array.isArray(d.motoristas)).sort((a, b) => (a.data < b.data ? -1 : 1));
+    if (!docs.length) return `<div style="display:flex;flex-direction:column;gap:6px;padding:0 16px 16px"><span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
+        <span class="apoio">Sem a premiação da API para este cliente. No perfil do cliente, busque "Scores e premiação" para ver a nota de cada mês.</span></div>`;
+    const meses = docs.map((d) => ({ mes: d.data, v: notaMediaPremiacao(d.motoristas) }));
+    const mesEnvio = diasEnvio[0].slice(0, 7), hojeMes = D.hoje().slice(0, 7);
+    const iAntes = (() => { let i = -1; meses.forEach((m, k) => { if (m.mes < mesEnvio) i = k; }); return i >= 0 ? i : 0; })();
+    const vis = meses.slice(Math.max(0, Math.min(iAntes, meses.length - 12)));   // até 12 meses, sempre com o "antes"
+    const antes = meses[iAntes], agora = meses[meses.length - 1];
+    const num = (v) => (Number.isFinite(v) ? fmt(v, 1) : '—');
+    const curto = (k) => D.nomeMes(k + '-01').slice(0, 3) + '/' + k.slice(2, 4);
+    const varia = antes !== agora && Number.isFinite(antes.v) && Number.isFinite(agora.v) ? variacao(X.variacao(ind, agora.v, antes.v)) : '';
+    const resumo = `<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <span class="num" style="font-size:13px">${antes !== agora ? `<span class="mudo">${curto(antes.mes)} ${num(antes.v)} →</span> ` : ''}<b style="font-size:24px">${num(agora.v)}</b> ${varia}</span>
+        <span class="apoio">${agora.mes === hojeMes ? 'neste mês (parcial)' : 'em ' + D.nomeMes(agora.mes + '-01')}</span></div>`;
     return `<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">
         <span class="hb-bloco-t">Evolução da nota geral da frota (Gobrax)</span>
-        <span class="apoio" style="font-size:12px">Nota do mês da premiação da API Gobrax, média ponderada pelos km, frota toda. Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
+        <span class="apoio" style="font-size:12px">Nota média do mês, a mesma da tela <a class="btn-link" href="#/premiacao">Premiação</a>: notas dos motoristas ponderadas pelos km (quem não rodou fica fora). Antes = ${D.nomeMes(antes.mes + '-01')}${antes.mes < mesEnvio ? ' (mês anterior ao 1º envio)' : ''}; agora = ${D.nomeMes(agora.mes + '-01')}${agora.mes === hojeMes ? ' (parcial)' : ''}.</span>
         ${resumo}
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;display:block" role="img" aria-label="Nota geral da frota Gobrax por mês">${grade}${area}${envio}${linha}${marcas}${eixo}</svg></div>`;
+        ${svgNotaMeses(vis, mesEnvio, 'Nota geral da frota Gobrax por mês')}</div>`;
   }
   function painelEnviadas(c) {
     const M = msg();

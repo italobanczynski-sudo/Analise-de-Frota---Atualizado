@@ -788,6 +788,11 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .churn-detalhe .h2 { font-size: 22px; }
 .churn-grade .card-cab .h2 { font-size: 18px; font-weight: 600; }
 .churn-leitura { border-radius: 0 10px 10px 0; }
+.evo-grade { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 1180px) { .evo-grade { grid-template-columns: minmax(0, 1fr); } }
+.evo-tab tbody tr { cursor: pointer; }
+.evo-tab tbody tr:hover td { background: var(--apoio); }
+.evo-tab tr.evo-sel td { background: color-mix(in srgb, #FCB709 16%, transparent); }
 .churn-pilha { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
 .churn-tab tbody tr { cursor: pointer; }
 .churn-tab tbody tr:hover td { background: var(--apoio); }
@@ -10004,12 +10009,88 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (msg().cli === T.cli) msg().lista = null;   // Mensagens do dia relê com o telefone novo
     return true;
   }
+  // Mensagem aos condutores › Evolução por condutor: a nota do mês em cada dia em que o condutor recebeu a análise,
+  // do primeiro envio ao último, e se ele melhorou no ponto apontado (dados guardados no servidor a cada envio)
+  function graficoNotaEnvios(envios) {
+    const pts0 = envios.filter((e) => Number.isFinite(e.nota));
+    if (pts0.length < 2) return `<div class="vazio"><span class="apoio">${pts0.length ? 'Só um envio com nota até agora: o gráfico aparece a partir do segundo.' : 'Nenhum envio com nota ainda.'}</span></div>`;
+    const vals = pts0.map((e) => e.nota);
+    const lo = Math.max(0, Math.floor((Math.min(...vals) - 3) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...vals) + 3) / 10) * 10);
+    const W = 680, H = 230, mE = 40, mD = 24, mT = 26, mB = 40, n = pts0.length;
+    const x = (i) => mE + 16 + i * (W - mE - 16 - mD) / (n - 1), y = (v) => mT + (hi - v) / ((hi - lo) || 1) * (H - mT - mB);
+    const grade = Array.from({ length: (hi - lo) / 10 + 1 }, (_, k) => lo + k * 10).map((g) => `<line x1="${mE}" x2="${W - mD}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" style="stroke:var(--hairline)"/><text x="${mE - 8}" y="${(y(g) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${fmt(g, 0)}</text>`).join('');
+    const pts = pts0.map((e, i) => [x(i), y(e.nota), e]);
+    const passo = Math.max(1, Math.ceil(n / 12));   // rótulos do eixo sem encavalar
+    const linha = `<polyline points="${pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="#FCB709" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const marcas = pts.map(([px, py, e], i) => `<g><title>${D.br(e.dia)}: nota ${fmt(e.nota, 1)}${e.foco_rotulo ? ' · ponto apontado: ' + esc(e.foco_rotulo) : ''}</title><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" style="fill:var(--superficie)" stroke="#FCB709" stroke-width="2.5"/>
+      ${n <= 15 || i === 0 || i === n - 1 ? `<text x="${px.toFixed(1)}" y="${(py - 11).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--tinta)">${fmt(e.nota, 1)}</text>` : ''}</g>`).join('');
+    const eixo = pts.map(([px, , e], i) => (i % passo && i !== n - 1 ? '' : `<text x="${px.toFixed(1)}" y="${H - mB + 18}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${D.br(e.dia).slice(0, 5)}</text>`)).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Nota do condutor em cada dia de mensagem">${grade}${linha}${marcas}${eixo}</svg>`;
+  }
+  function abaEvolucaoCondutores(M) {
+    const card = (corpo) => vgCard('pessoas', 'Evolução por condutor', corpo);
+    const carregando = (t) => card(`<div class="vazio"><span class="spinner"></span><span class="apoio">${t}</span></div>`);
+    if (!M.cli) return card(vazio('Nenhum cliente no servidor', 'As mensagens existem para os clientes buscados pela API Gobrax.'));
+    const R = M.enviadas[M.cli];
+    if (!R || podeRetentar(R)) setTimeout(() => msgEnviadas(M.cli), 0);
+    if (!R || R.carregando) return carregando('Carregando as mensagens enviadas…');
+    if (R.erro) return card(vazio('Não consegui carregar', esc(R.erro)));
+    if (!R.lista.length) return card(vazio('Nenhuma mensagem enviada ainda', 'A evolução aparece depois que o condutor recebe a primeira análise (pelo robô ou marcada como enviada na aba Mensagens do dia).'));
+    // por condutor: envios em ordem de data, nota do 1º e do último envio com nota
+    const conds = R.lista.map((x) => {
+      const envios = x.envios.slice().sort((a, b) => (a.dia < b.dia ? -1 : 1)), comNota = envios.filter((e) => Number.isFinite(e.nota));
+      return { x, envios, n1: comNota.length ? comNota[0].nota : null, nU: comNota.length ? comNota[comNota.length - 1].nota : null, nNotas: comNota.length };
+    });
+    const sel = conds.find((c) => c.x.motorista === M.evoMot) || conds[0];
+    M.evoMot = sel.x.motorista;
+    const notaTxt = (v) => (Number.isFinite(v) ? fmt(v, 1) : '—');
+    const varNota = (a, b) => (Number.isFinite(a) && Number.isFinite(b) ? variacao(X.variacao(IND_MAP.nota, a, b)) : '');
+    // todos os condutores: clique para ver a evolução
+    const resumo = vgCard('tabela', 'Condutores com mensagem', `<span class="apoio" style="display:block;margin-bottom:10px">Nota do mês no 1º e no último envio. Clique em um condutor para ver a evolução dele.</span>
+      <div class="tabela-wrap" style="max-height:420px;overflow:auto"><table class="vg-tab evo-tab"><thead><tr><th>Condutor</th><th class="dir">Mensagens</th><th class="dir">Nota no 1º envio</th><th class="dir">Nota no último</th><th>Evolução</th></tr></thead><tbody>
+      ${conds.map((c) => `<tr class="${c === sel ? 'evo-sel' : ''}" data-acao="evo-mot" data-mot="${esc(c.x.motorista)}" tabindex="0"><td><span class="pessoa">${avatar(c.x.motorista, 26)}<span class="pessoa-nome">${esc(c.x.motorista)}</span></span></td>
+        <td class="dir num">${esc(c.x.dias_enviada)}</td><td class="dir num">${notaTxt(c.n1)}</td><td class="dir num"><b>${notaTxt(c.nU)}</b></td><td>${c.nNotas > 1 ? varNota(c.nU, c.n1) : '<span class="mudo">1 envio</span>'}</td></tr>`).join('')}
+      </tbody></table></div>`);
+    // condutor escolhido: acompanhamento do servidor (resultado do ponto apontado nos 7 dias seguintes)
+    const A = M.acomp[M.cli + '|' + sel.x.motorista];
+    if (!A || podeRetentar(A)) setTimeout(() => msgAcomp(M.cli, sel.x.motorista), 0);
+    const resPorDia = new Map(A && A.envios ? A.envios.map((e) => [e.dia, e]) : []);
+    const avaliados = A && A.envios ? A.envios.filter((e) => e.resultado === 'melhorou' || e.resultado === 'nao_melhorou') : [];
+    const melhorou = avaliados.filter((e) => e.resultado === 'melhorou').length;
+    const kpi = (ic, cor, rot, v, sub) => `<div class="vg-kpi dv-kpi" style="--c:${cor}"><span class="vg-kpi-ic" style="--c:${cor}">${icone(ic, 22)}</span><div class="vg-kpi-txt"><span class="vg-kpi-rot">${rot}</span><span class="vg-kpi-v num">${v}</span>${sub}</div></div>`;
+    const ultimoEnv = sel.envios[sel.envios.length - 1];
+    const kpis = `<div class="vg-kpis dv-kpis">
+      ${kpi('sino', '#1A73E8', 'Mensagens recebidas', esc(sel.x.dias_enviada), `<span class="vg-var">de ${D.br(sel.envios[0].dia)} a ${D.br(ultimoEnv.dia)}</span>`)}
+      ${kpi('trofeu', '#80868B', 'Nota no 1º envio', notaTxt(sel.n1), `<span class="vg-var">${sel.nNotas ? 'nota do mês naquele dia' : 'sem nota nos envios'}</span>`)}
+      ${kpi('trofeu', '#FCB709', 'Nota no último envio', notaTxt(sel.nU), sel.nNotas > 1 ? `<span class="vg-var">${varNota(sel.nU, sel.n1)} vs 1º envio</span>` : '<span class="vg-var">ainda sem comparação</span>')}
+      ${kpi('alerta', '#1E8E3E', 'Melhorou no ponto apontado', A && A.envios ? (avaliados.length ? `${melhorou}<small>de ${avaliados.length}</small>` : '—') : '…', `<span class="vg-var">${A && A.envios ? 'nos 7 dias depois de cada aviso' : 'carregando…'}</span>`)}</div>`;
+    const linhas = sel.envios.slice().reverse().map((e, i, arr) => {
+      const ant = arr.slice(i + 1).find((p) => Number.isFinite(p.nota)), r = resPorDia.get(e.dia);
+      const [rt, rc] = r ? (RESULT_MSG[r.resultado] || ['—', 'neutro']) : ['…', 'vazio'];
+      return `<tr><td class="num">${D.br(e.dia)} <span class="mudo">${D.semana(e.dia)}</span></td><td class="dir num"><b>${notaTxt(e.nota)}</b></td>
+        <td>${ant && Number.isFinite(e.nota) ? varNota(e.nota, ant.nota) : '<span class="mudo">—</span>'}</td>
+        <td>${e.foco_rotulo ? esc(e.foco_rotulo) : '<span class="mudo">nenhum piorou</span>'}</td>
+        <td><span class="badge badge-${rc}">${rt}</span></td>
+        <td class="apoio">${r && r.comparados ? `melhorou ${esc(r.melhorou)} · piorou ${esc(r.piorou)} de ${esc(r.comparados)}` : '—'}</td></tr>`;
+    }).join('');
+    const seletor = `<select class="campo vg-sel" data-campo="evo-mot" aria-label="Condutor">${conds.map((c) => `<option value="${esc(c.x.motorista)}" ${c === sel ? 'selected' : ''}>${esc(c.x.motorista)}</option>`).join('')}</select>`;
+    const grafico = vgCard('grafico', `Nota de ${esc(sel.x.motorista)} a cada mensagem`, `<span class="apoio" style="display:block;margin-bottom:8px">Nota do mês (Gobrax) no dia de cada análise enviada. Passe o mouse num ponto para ver o dia e o ponto apontado.</span>${graficoNotaEnvios(sel.envios)}`, null, seletor);
+    const tabela = vgCard('calendario', 'Cada mensagem recebida', `<span class="apoio" style="display:block;margin-bottom:10px">Mais recente primeiro. "Resultado" compara o ponto apontado no dia com a média dele nos 7 dias seguintes.</span>
+      <div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>Dia da análise</th><th class="dir">Nota do mês</th><th>vs envio anterior</th><th>Ponto apontado</th><th>Resultado</th><th>Evolução no dia</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
+    return `${kpis}<div class="evo-grade">${grafico}${resumo}</div>${tabela}`;
+  }
   function telaMensagens() {
     const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp Web e copia o texto, você cola com Ctrl+V, aperta Enter e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
     const M = msg();
     if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
     if (!M.cli) M.cli = cliSrv(E.cliente) || (M.clientes[0] ? String(M.clientes[0].id) : '');
+    const aba = E.rota.aba === 'evolucao' ? 'evolucao' : 'dia';
+    const tabs = abas([['dia', 'Mensagens do dia', null, '#/mensagens'], ['evolucao', 'Evolução por condutor', null, '#/mensagens?aba=evolucao']], aba, '', 'Seções de Mensagem aos condutores');
+    if (aba === 'evolucao') {
+      const filtroCli = `<div class="dv-filtros"><label class="dv-filtro"><span class="dv-filtro-ic">${icone('camadas', 20)}</span><span class="dv-filtro-txt"><small>Cliente</small><select class="dv-sel" data-campo="msg-cli" aria-label="Cliente">${M.clientes.map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === M.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></span></label></div>`;
+      return `${cabecalho('Evolução por condutor', 'A nota de cada condutor em cada dia em que ele recebeu a análise pelo WhatsApp, do primeiro envio ao último, e se melhorou no ponto apontado.')}${tabs}${filtroCli}${abaEvolucaoCondutores(M)}`;
+    }
     if (M.cli && M.lista === null && !M.carregando) setTimeout(msgCarregar, 0);
     const lista = M.lista || [], enviadas = lista.filter((m) => m.enviada).length;
     const cliAtual = M.clientes.find((c) => String(c.id) === M.cli) || {}, col = cliAtual.coleta || {};
@@ -10048,7 +10129,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
                 ${podeMarcar() ? (m.enviada ? `<button type="button" class="btn-link peq" data-acao="msg-desmarcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Desmarcar</button>`
                   : `<button type="button" class="btn btn-primario" data-acao="msg-marcar" data-i="${i}" ${M.ocupado === m.motorista ? 'disabled' : ''}>Marcar como enviada</button>`) : ''}
               </div></div></section>`).join('')}</div>`;
-    return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${filtros}${cartoes}</div>`;
+    return `${cab}${tabs}<div style="display:flex;flex-direction:column;gap:16px">${filtros}${cartoes}</div>`;
   }
 
   // Motorista individual: dias com mensagem enviada e se ele melhorou no que foi apontado (vem do servidor)
@@ -10061,7 +10142,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     M.acomp[k] = { carregando: true };
     try { M.acomp[k] = await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/acompanhamento?motorista=' + encodeURIComponent(nome)); }
     catch (e) { M.acomp[k] = { erro: e.message, em: Date.now() }; }
-    if (E.rota.tela === 'individual') render();
+    if (E.rota.tela === 'individual' || E.rota.tela === 'mensagens') render();
   }
   function blocoMsgMotorista(nome) {
     if (!contaSrv() || !nome) return '';
@@ -10101,7 +10182,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     M.enviadas[cli] = { carregando: true };
     try { M.enviadas[cli] = { lista: await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/enviadas') }; }
     catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
-    if (E.rota.tela === 'motoristas' && E.motAba === 'enviadas') render();
+    if ((E.rota.tela === 'motoristas' && E.motAba === 'enviadas') || E.rota.tela === 'mensagens') render();
   }
   // Nota geral da frota (Gobrax) por mês, em linha (premiação da API; a API não manda a nota por dia),
   // com a nota de antes (mês anterior ao 1º envio) e a de agora (último mês, parcial no mês corrente). Média ponderada pelos km.
@@ -11324,6 +11405,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     'api-aba': (el) => { E.apiAba = el.dataset.aba; render(); },
     'hub-det': (el) => { E.hubDet = E.hubDet === el.dataset.k ? null : el.dataset.k; render(); },
     'preco-auto': () => { armazem.apagar(CHAVE_PRECO); E.precoManual = false; const p = precoAutomatico(); if (p) E.preco = p; render(); toast('Usando o preço da Petrobras do estado onde o cliente opera.'); },
+    'evo-mot': (el) => { msg().evoMot = el.dataset.mot; render(); },
     'churn-cliente': (el) => { trocarCliente(el.dataset.cli); render(); window.scrollTo(0, 0); },
     'regras-salvar': () => salvarRegras(),
     'excl-salvar': () => excluirDia(),
@@ -11471,6 +11553,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (k === 'bkp-arquivo' && el.files && el.files[0]) { const arq = el.files[0]; el.value = ''; arq.text().then(importarBackup).catch((e) => { E.bkpImportando = false; toast('Não foi possível importar: ' + e.message, 'erro'); render(); }); return; }
     if (k === 'usu-papel') { usuAlterar(el.dataset.id, el.value, null); return; }
     if (k === 'telc-sem') { telc().soSem = el.checked; render(); return; }
+    if (k === 'evo-mot') { msg().evoMot = el.value; render(); return; }
     if (k === 'msg-cli') { Object.assign(msg(), { cli: el.value, lista: null, erro: '', fila: false, filaPulados: [] }); render(); return; }
     if (k === 'msg-dia') { if (el.value) Object.assign(msg(), { dia: el.value, lista: null, erro: '', fila: false, filaPulados: [] }); render(); return; }
     if (k === 'mot-comp') { E.motComp = el.value; render(); return; }

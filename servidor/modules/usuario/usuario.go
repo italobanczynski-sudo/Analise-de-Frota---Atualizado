@@ -29,6 +29,8 @@ type Service_I interface {
 	Autenticar(ctx context.Context, email, senha string) (Usuario_t, error)
 	// Alterar troca o perfil e ativa/desativa; nunca deixa a plataforma sem administrador ativo
 	Alterar(ctx context.Context, id int64, papel string, ativo bool) (Usuario_t, error)
+	// Excluir apaga a pessoa de vez; ninguém exclui a si mesmo nem o último administrador ativo
+	Excluir(ctx context.Context, id, quemPede int64) (Usuario_t, error)
 	// SolicitarCodigo gera o código de 6 dígitos (primeiro acesso ou senha esquecida) para quem já foi cadastrado
 	SolicitarCodigo(ctx context.Context, email string) (Codigo_t, error)
 	// UsarCodigo confere o código, grava a senha escolhida e devolve a pessoa
@@ -264,6 +266,29 @@ func (u *usuario_t) Alterar(ctx context.Context, id int64, papel string, ativo b
 		return Usuario_t{}, traduzir(err)
 	}
 	return u.Buscar(ctx, id)
+}
+
+func (u *usuario_t) Excluir(ctx context.Context, id, quemPede int64) (Usuario_t, error) {
+	if id == quemPede {
+		return Usuario_t{}, ErrExcluirASiMesmo
+	}
+	atual, err := u.repo.BuscarPorID(ctx, id)
+	if err != nil {
+		return Usuario_t{}, traduzir(err)
+	}
+	if atual.Papel == PapelAdmin && atual.Ativo {
+		n, err := u.repo.ContarAdminsAtivos(ctx)
+		if err != nil {
+			return Usuario_t{}, err
+		}
+		if n <= 1 {
+			return Usuario_t{}, ErrUltimoAdmin
+		}
+	}
+	if err := u.repo.Excluir(ctx, id); err != nil {
+		return Usuario_t{}, traduzir(err)
+	}
+	return deRow(atual), nil
 }
 
 func deRow(r usuario_repo.UsuarioRow_t) Usuario_t {

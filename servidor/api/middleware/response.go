@@ -48,7 +48,7 @@ var (
 	errosNaoEncontrado  = []error{cliente.ErrNaoEncontrado, usuario.ErrNaoEncontrado, mensagem.ErrNaoMarcada, gobraxapi.ErrVeiculoNaoEncontrado}
 	// serviço externo fora do ar ou mal configurado: a mensagem diz o que acertar
 	errosIndisponivel = []error{gobraxapi.ErrTokenInvalido, gobraxapi.ErrSemAcesso, gobraxapi.ErrLimite}
-	errosConflito     = []error{mensagem.ErrTelefoneRepetido, cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin}
+	errosConflito     = []error{mensagem.ErrTelefoneRepetido, cliente.ErrNomeRepetido, coleta.ErrEmAndamento, usuario.ErrEmailRepetido, usuario.ErrUltimoAdmin, usuario.ErrExcluirASiMesmo}
 
 	ErrSemPermissao     = errors.New("seu perfil não permite esta ação; fale com um administrador")
 	ErrMuitasTentativas = errors.New("muitas tentativas de entrar; espere 15 minutos e tente de novo")

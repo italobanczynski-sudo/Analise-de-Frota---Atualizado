@@ -36,6 +36,9 @@ func (m *RepositoryMock_t) Criar(ctx context.Context, nome, email, papel string)
 func (m *RepositoryMock_t) Alterar(ctx context.Context, id int64, papel string, ativo bool) error {
 	return m.Called(ctx, id, papel, ativo).Error(0)
 }
+func (m *RepositoryMock_t) Excluir(ctx context.Context, id int64) error {
+	return m.Called(ctx, id).Error(0)
+}
 func (m *RepositoryMock_t) ContarAdminsAtivos(ctx context.Context) (int, error) {
 	a := m.Called(ctx)
 	return a.Int(0), a.Error(1)
@@ -322,4 +325,25 @@ func (s *UsuarioSuite) TestCodigoForaDoFormato() {
 	_, err := s.svc.UsarCodigo(s.ctx, "pessoa@gobrax.com", "12a456", "senhaForte123")
 	s.ErrorIs(err, usuario.ErrCodigoInvalido)
 	s.repo.AssertNotCalled(s.T(), "BuscarPorEmail", mock.Anything, mock.Anything)
+}
+
+func (s *UsuarioSuite) TestExcluir() {
+	_, err := s.svc.Excluir(s.ctx, 5, 5)
+	s.ErrorIs(err, usuario.ErrExcluirASiMesmo, "ninguém exclui a si mesmo")
+
+	s.repo.On("BuscarPorID", s.ctx, int64(7)).Return(linha(7, usuario.PapelAdmin, true, "senhaForte123"), nil)
+	s.repo.On("ContarAdminsAtivos", s.ctx).Return(1, nil).Once()
+	_, err = s.svc.Excluir(s.ctx, 7, 5)
+	s.ErrorIs(err, usuario.ErrUltimoAdmin)
+	s.repo.AssertNotCalled(s.T(), "Excluir", mock.Anything, mock.Anything)
+
+	s.repo.On("ContarAdminsAtivos", s.ctx).Return(2, nil).Once()
+	s.repo.On("Excluir", s.ctx, int64(7)).Return(nil)
+	u, err := s.svc.Excluir(s.ctx, 7, 5)
+	s.Require().NoError(err)
+	s.Equal(int64(7), u.ID)
+
+	s.repo.On("BuscarPorID", s.ctx, int64(9)).Return(usuario_repo.UsuarioRow_t{}, usuario_repo.ErrNaoEncontrado)
+	_, err = s.svc.Excluir(s.ctx, 9, 5)
+	s.ErrorIs(err, usuario.ErrNaoEncontrado)
 }

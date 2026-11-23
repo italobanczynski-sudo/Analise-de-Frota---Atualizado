@@ -85,4 +85,5 @@ func GetRoutes(r *gin.Engine) {
 	adm.POST("/usuarios", ctusuario.Criar)
 	adm.POST("/usuarios/:id/convite", ctusuario.NovoConvite)
 	adm.PUT("/usuarios/:id", ctusuario.Alterar)
+	adm.DELETE("/usuarios/:id", ctusuario.Excluir)
 }

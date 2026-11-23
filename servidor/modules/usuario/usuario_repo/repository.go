@@ -25,6 +25,8 @@ type Repository_I interface {
 	BuscarPorEmail(ctx context.Context, email string) (UsuarioRow_t, error)
 	Criar(ctx context.Context, nome, email, papel string) (int64, error)
 	Alterar(ctx context.Context, id int64, papel string, ativo bool) error
+	// Excluir apaga a pessoa; sessões, convites e códigos saem junto e as marcas de autoria ficam sem autor
+	Excluir(ctx context.Context, id int64) error
 	ContarAdminsAtivos(ctx context.Context) (int, error)
 	MarcarAcesso(ctx context.Context, id int64, em time.Time) error
 	// CriarConvite invalida os convites pendentes da pessoa e grava o novo, numa transação
@@ -85,6 +87,17 @@ func (r *Repository_t) Criar(ctx context.Context, nome, email, papel string) (in
 
 func (r *Repository_t) Alterar(ctx context.Context, id int64, papel string, ativo bool) error {
 	res, err := r.Db.ExecContext(ctx, sqlAlterar, id, papel, ativo)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNaoEncontrado
+	}
+	return nil
+}
+
+func (r *Repository_t) Excluir(ctx context.Context, id int64) error {
+	res, err := r.Db.ExecContext(ctx, sqlExcluir, id)
 	if err != nil {
 		return err
 	}

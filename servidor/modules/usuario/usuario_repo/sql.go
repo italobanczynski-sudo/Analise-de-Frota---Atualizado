@@ -12,6 +12,9 @@ const sqlCriar = `INSERT INTO usuarios (nome, email, papel) VALUES ($1, $2, $3) 
 
 const sqlAlterar = `UPDATE usuarios SET papel = $2, ativo = $3, atualizado_em = now() WHERE id = $1`
 
+// sessões, convites e códigos saem junto (ON DELETE CASCADE); autoria em painel, mensagens e telefones vira NULL
+const sqlExcluir = `DELETE FROM usuarios WHERE id = $1`
+
 const sqlContarAdminsAtivos = `SELECT count(*) FROM usuarios WHERE papel = 'admin' AND ativo`
 
 const sqlMarcarAcesso = `UPDATE usuarios SET ultimo_acesso = $2 WHERE id = $1`

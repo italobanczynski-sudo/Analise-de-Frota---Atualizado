@@ -19,6 +19,7 @@ var (
 	ErrConviteInvalido = errors.New("este link de convite não vale mais (já foi usado ou venceu); peça um novo a um administrador")
 	ErrLogin           = errors.New("e-mail ou senha incorretos")
 	ErrInativo         = errors.New("este usuário está desativado")
+	ErrExcluirASiMesmo = errors.New("você não pode excluir o seu próprio usuário")
 	ErrUltimoAdmin     = errors.New("a plataforma precisa de pelo menos um administrador ativo")
 	ErrCodigoInvalido  = errors.New("código incorreto ou vencido; confira o e-mail ou peça um novo")
 	ErrAguarde         = errors.New("aguarde um minuto para pedir outro código")

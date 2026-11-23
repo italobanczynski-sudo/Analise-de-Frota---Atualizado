@@ -130,6 +130,7 @@ async function carregarUsuarios() {
       acoes.append(u.ativo
         ? el('button', { class: 'btn-link btn btn-perigo', type: 'button', onclick: () => alterar(u, u.papel, false) }, 'Desativar')
         : el('button', { class: 'btn-link btn', type: 'button', onclick: () => alterar(u, u.papel, true) }, 'Reativar'));
+      acoes.append(el('button', { class: 'btn-link btn btn-perigo', type: 'button', onclick: () => excluirUsuario(u) }, 'Excluir'));
     }
     return el('tr', {},
       el('td', {}, el('div', { class: 'pessoa' }, el('span', { class: 'avatar', 'aria-hidden': 'true' }, iniciais(u.nome)),
@@ -178,6 +179,17 @@ async function novoLink(u) {
   } catch (e) {
     toast(e.message, true);
   }
+}
+
+async function excluirUsuario(u) {
+  if (!confirm('Excluir ' + u.nome + ' (' + u.email + ')? O usuário é apagado de vez e sai da plataforma na hora. Não tem volta: para voltar, é preciso convidar de novo.\n\nSe for só tirar o acesso por um tempo, use Desativar.')) return;
+  try {
+    await api('DELETE', '/api/v1/usuarios/' + u.id);
+    toast(u.nome + ' foi excluído.');
+  } catch (e) {
+    toast(e.message, true);
+  }
+  carregarUsuarios();
 }
 
 async function alterar(u, papel, ativo) {

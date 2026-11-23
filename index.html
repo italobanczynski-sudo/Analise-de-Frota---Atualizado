@@ -788,8 +788,50 @@ html[data-tema="escuro"] .vg-kpi, html[data-tema="escuro"] .vg-card { box-shadow
 .churn-detalhe .h2 { font-size: 22px; }
 .churn-grade .card-cab .h2 { font-size: 18px; font-weight: 600; }
 .churn-leitura { border-radius: 0 10px 10px 0; }
-.evo-grade { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
-@media (max-width: 1180px) { .evo-grade { grid-template-columns: minmax(0, 1fr); } }
+.sm-dest { display: flex; flex-direction: column; gap: 10px; }
+.sm-dest-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.sm-dest-v { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.sm-dest-v > b { font-size: 28px; font-weight: 700; color: var(--tinta); letter-spacing: -.02em; }
+.sm-chips { flex-wrap: wrap; border-radius: 16px; }
+.sm-chips button { padding: 6px 12px; font-size: 12.5px; }
+.sm-leg { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12px; }
+.sm-bloco { display: flex; flex-direction: column; gap: 8px; }
+.sm-bloco-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sm-mapa { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 13px; }
+.sm-mapa th { font-weight: 500; color: var(--texto-2); font-size: 12px; padding: 4px 8px; white-space: nowrap; text-align: left; }
+.sm-mapa th.dir, .sm-mapa td.dir { text-align: right; }
+.sm-mapa tbody th { color: var(--tinta); font-weight: 600; font-size: 13px; }
+.sm-mapa td { padding: 7px 8px; border-radius: 8px; background: var(--apoio); color: var(--tinta); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sm-mapa td.sm-bom { background: color-mix(in srgb, #1E8E3E 16%, transparent); color: #137333; }
+.sm-mapa td.sm-ruim { background: color-mix(in srgb, #D93025 14%, transparent); color: #B3261E; }
+html[data-tema="escuro"] .sm-mapa td.sm-bom { color: #81C995; }
+html[data-tema="escuro"] .sm-mapa td.sm-ruim { color: #F28B82; }
+.sm-mapa .sm-per { border-left: 2px solid var(--hairline); }
+.sm-mapa td.sm-per b { display: block; }
+.sm-un, .sm-var { display: block; font-size: 11px; font-weight: 500; color: var(--texto-2); }
+.sm-mapa td .sm-var { color: inherit; opacity: .85; }
+.sm-mapa tbody tr { cursor: pointer; }
+.sm-mapa tbody tr:hover th { color: #1A73E8; }
+.sm-mapa tr.sm-sel th { box-shadow: inset 3px 0 0 #FCB709; }
+.rb { display: flex; flex-direction: column; gap: 10px; }
+.rb-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.rb-faixas { display: inline-flex; gap: 14px; font-size: 12.5px; color: var(--corpo); }
+.rb-faixas span { display: inline-flex; align-items: center; gap: 6px; }
+.rb-faixas i { width: 10px; height: 10px; border-radius: 50%; }
+.rb-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; }
+@media (max-width: 900px) { .rb-lista { grid-template-columns: minmax(0, 1fr); } }
+.rb-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+.rb-pos { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--apoio); color: var(--corpo); }
+.rb-pos.rb-top { background: #FCB709; color: #202124; }
+.rb-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.rb-cab { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.rb-cab a { color: var(--tinta); font-weight: 600; text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rb-cab a:hover { text-decoration: underline; }
+.rb-cab .num { white-space: nowrap; }
+.rb-trilho { display: block; height: 7px; border-radius: 999px; background: var(--apoio); overflow: hidden; }
+.rb-trilho i { display: block; height: 100%; border-radius: 999px; }
+.evc-grade { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 1180px) { .evc-grade { grid-template-columns: minmax(0, 1fr); } }
 .evo-tab tbody tr { cursor: pointer; }
 .evo-tab tbody tr:hover td { background: var(--apoio); }
 .evo-tab tr.evo-sel td { background: color-mix(in srgb, #FCB709 16%, transparent); }
@@ -6848,6 +6890,81 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     });
     return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Quantos evoluíram, ficaram estáveis ou regrediram em cada fatia" style="display:block">${g}</svg>`;
   }
+  // Tela inicial › Evolução: um indicador em destaque (linha suave com área; ponto verde/vermelho = melhorou/piorou contra a
+  // fatia anterior; tracejado = média do período de comparação) e o mapa de calor de todos os indicadores por fatia
+  let idGrafDestaque = 0;
+  function graficoDestaque(S, k) {
+    const ind = IND_MAP[k], soma = ind.tipo === 'soma', vals = S.fr.map((r) => r[k]), ref = soma ? null : S.frAnt[k];
+    const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
+    const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
+    if (!vals.some(tem)) return '<div class="vazio"><span class="apoio">Sem dados deste indicador no período.</span></div>';
+    const W = 760, H = 260, m = { l: 48, r: 24, t: 34, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = S.ws.length;
+    let lo = Math.min(...todos), hi = Math.max(...todos);
+    const folga = (hi - lo) * 0.18 || Math.abs(hi) * 0.1 || 1;
+    lo = soma ? 0 : Math.max(lo - folga, Math.min(...todos) >= 0 ? 0 : -Infinity); hi += folga;
+    const x = (i) => (n === 1 ? m.l + iw / 2 : m.l + (i / (n - 1)) * iw), y = (v) => m.t + ih - ((v - lo) / ((hi - lo) || 1)) * ih;
+    const gid = 'gd' + (++idGrafDestaque);
+    let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCB709" stop-opacity=".38"/><stop offset="1" stop-color="#FCB709" stop-opacity=".02"/></linearGradient></defs>`;
+    for (let t = 0; t <= 4; t++) {
+      const v = lo + ((hi - lo) * t) / 4;
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke-dasharray="2 5" style="stroke:var(--hairline)"/><text x="${m.l - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${esc(fmtInd(ind, v, false))}</text>`;
+    }
+    if (tem(ref)) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke-dasharray="6 5" stroke-width="1.5" style="stroke:var(--texto-2)" opacity=".8"/><text x="${W - m.r}" y="${(y(ref) - 6).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" style="fill:var(--texto-2)">Comparação ${esc(fmtInd(ind, ref))}</text>`;
+    const pts = vals.map((v, i) => (tem(v) ? [x(i), y(v), i] : null)).filter(Boolean);
+    if (pts.length > 1) {
+      const d = curvaSuave(pts);
+      g += `<path d="${d}L${pts[pts.length - 1][0].toFixed(1)},${(m.t + ih).toFixed(1)}L${pts[0][0].toFixed(1)},${(m.t + ih).toFixed(1)}Z" fill="url(#${gid})"/>`;
+      g += `<path d="${d}" fill="none" stroke="#FCB709" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    const passoRot = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 62)))), mostraValor = n <= 14;
+    S.ws.forEach((w, i) => {
+      const v = vals[i], inc = mesSemIncompleta(w), cx = x(i);
+      if (tem(v)) {
+        const v0 = S.frAntes[i][k], vr = !(soma && inc) && tem(v0) ? X.variacao(ind, v, v0) : null;
+        const cor = !vr || vr.semBase || vr.estavel || vr.sentido === 'neutro' ? '#FCB709' : vr.sentido === 'melhor' ? '#1E8E3E' : '#D93025';
+        g += `<g><title>${esc(rotFatia(w, S.g))} (${esc(D.periodoCurto(w))}): ${esc(fmtInd(ind, v))}${vr && !vr.semBase ? ' · ' + esc(vr.texto) + ' vs anterior' : ''}${inc ? ' · incompleta' : ''}</title>
+          <circle cx="${cx.toFixed(1)}" cy="${y(v).toFixed(1)}" r="${inc ? 5 : 6}" style="fill:${inc ? 'var(--superficie)' : cor}" stroke="${cor}" stroke-width="2.5"${inc ? ' stroke-dasharray="3 2"' : ''}/>
+          ${mostraValor || i === pts[pts.length - 1][2] ? `<text x="${cx.toFixed(1)}" y="${(y(v) - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" paint-order="stroke" stroke-width="3" style="stroke:var(--superficie);fill:var(--tinta)">${esc(fmtInd(ind, v, false))}</text>` : ''}</g>`;
+      }
+      if (i % passoRot === 0 || i === n - 1) {
+        const anc = n > 1 && i === 0 ? 'start' : n > 1 && i === n - 1 ? 'end' : 'middle';
+        g += `<text x="${cx.toFixed(1)}" y="${H - 22}" text-anchor="${anc}" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(n <= 6 ? rotFatia(w, S.g) : rotCurto(w, S.g))}${inc ? '*' : ''}</text>`;
+        if (S.g !== 'dia' && n <= 8) g += `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="${anc}" font-size="11" style="fill:var(--texto-2)">${esc(D.periodoCurto(w))}</text>`;
+      }
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} ${esc((GRAN_GERAL.find((q) => q[0] === S.g) || [])[2] || '')}" style="display:block">${g}</svg>`;
+  }
+  // mapa de calor: cada indicador (linha) em cada fatia (coluna), verde = melhorou e vermelho = piorou contra a fatia anterior;
+  // a última coluna é o período todo contra a comparação. Clique numa linha para levá-la ao gráfico em destaque.
+  function mapaIndicadores(S, chaves, kSel) {
+    const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
+    const tom = (vr) => (!vr || vr.semBase || vr.estavel || vr.sentido === 'neutro' ? '' : vr.sentido === 'melhor' ? 'sm-bom' : 'sm-ruim');
+    const linhas = chaves.map((k) => {
+      const ind = IND_MAP[k], soma = ind.tipo === 'soma';
+      const cels = S.ws.map((w, i) => {
+        const v = S.fr[i][k], v0 = S.frAntes[i][k], vr = tem(v) && tem(v0) && !(soma && mesSemIncompleta(w)) ? X.variacao(ind, v, v0) : null;
+        return `<td class="dir ${tom(vr)}" title="${esc(rotFatia(w, S.g))}: ${esc(tem(v) ? fmtInd(ind, v) : 'sem dados')}${vr && !vr.semBase ? ' · ' + esc(vr.texto) + ' vs anterior' : ''}">${tem(v) ? esc(fmtInd(ind, v, false)) : '<span class="mudo">—</span>'}</td>`;
+      }).join('');
+      const vM = S.frMes[k], vA = S.frAnt[k], vrM = tem(vM) && tem(vA) ? X.variacao(ind, vM, vA) : null;
+      return `<tr class="${k === kSel ? 'sm-sel' : ''}" data-acao="sem-graf" data-k="${k}" tabindex="0"><th scope="row">${esc(ind.label)}<span class="sm-un">${esc(ind.un || '')}</span></th>${cels}
+        <td class="dir sm-per ${tom(vrM)}"><b>${tem(vM) ? esc(fmtInd(ind, vM, false)) : '—'}</b>${vrM && !vrM.semBase ? `<span class="sm-var">${esc(vrM.texto)}</span>` : ''}</td></tr>`;
+    }).join('');
+    return `<div class="tabela-wrap"><table class="sm-mapa"><thead><tr><th>Indicador</th>${S.ws.map((w) => `<th class="dir">${esc(rotCurto(w, S.g))}${mesSemIncompleta(w) ? '*' : ''}</th>`).join('')}<th class="dir sm-per">Período<span class="sm-un">vs comparação</span></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+  }
+  // ranking da Nota Gobrax em barras: a barra vai até a nota (0 a 100), na cor da faixa; os km ao lado
+  function rankingBarras(lista, S) {
+    const item = (x, i) => { const f = faixaNota(x.nota) || 'critico'; return `<li class="rb-item">
+      <span class="rb-pos ${i < 3 ? 'rb-top' : ''}">${i + 1}</span>
+      <div class="rb-corpo"><div class="rb-cab"><a href="${linkMotorista(x.m.id)}">${esc(x.m.nome)}</a><span class="num"><b style="color:${COR_FAIXA[f]}">${fmt(x.nota, 1)}</b> <span class="mudo">· ${esc(fmtInd(IND_MAP.km, x.km))}</span></span></div>
+        <span class="rb-trilho"><i style="width:${Math.max(2, Math.min(100, x.nota))}%;background:${COR_FAIXA[f]}"></i></span></div></li>`; };
+    const top = lista.slice(0, 10), resto = lista.slice(10);
+    const cont = { bom: 0, atencao: 0, critico: 0 };
+    lista.forEach((x) => { cont[faixaNota(x.nota) || 'critico']++; });
+    return `<div class="rb"><div class="rb-topo"><span class="hb-bloco-t">Ranking de motoristas · Nota Gobrax</span><span class="apoio">${esc(D.periodoCurto(S.pMes))} · ${lista.length} motorista${lista.length === 1 ? '' : 's'} com nota</span>
+        <span class="rb-faixas">${['bom', 'atencao', 'critico'].map((k) => `<span><i style="background:${COR_FAIXA[k]}"></i>${ROT_FAIXA[k]} <b class="num">${cont[k]}</b></span>`).join('')}</span></div>
+      <ol class="rb-lista">${top.map(item).join('')}</ol>
+      ${resto.length ? `<details><summary class="btn-link" style="cursor:pointer;display:inline-block;margin-top:8px">Ver os outros ${resto.length}</summary><ol class="rb-lista" start="11">${resto.map((x, i) => item(x, i + 10)).join('')}</ol></details>` : ''}</div>`;
+  }
   function blocoMesSemanal() {
     if (!E.base || !E.base.linhas.length || !E.A) return '';
     const S = dadosMesSemanal(), G = GRAN_GERAL.find((x) => x[0] === S.g);
@@ -6890,14 +7007,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         return { m, nota, km: a.km };
       }).filter((x) => Number.isFinite(x.nota) && x.km > 0).sort((p, q) => q.nota - p.nota || q.km - p.km);
       if (!lista.length) return '';
-      const cab = '<thead><tr><th style="width:44px">#</th><th>Motorista</th><th class="dir">Nota Gobrax</th><th class="dir">Km rodados</th></tr></thead>';
-      const lin = (x, i) => `<tr><td class="num" style="color:var(--texto-2);font-weight:600">${i + 1}º</td><td><a class="btn-link" href="${linkMotorista(x.m.id)}">${esc(x.m.nome)}</a></td><td class="dir">${badgeNota(x.nota)}</td><td class="dir num">${fmtInd(IND_MAP.km, x.km)}</td></tr>`;
-      const top = lista.slice(0, 10), resto = lista.slice(10);
-      return `<div style="display:flex;flex-direction:column;gap:10px;min-width:0">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="hb-bloco-t">Ranking de motoristas · melhor Nota Gobrax</span><span class="apoio" style="font-size:12px">${esc(D.periodoCurto(S.pMes))} · ${lista.length} motorista${lista.length === 1 ? '' : 's'} com nota</span></div>
-        <div class="grade-2">${[top.slice(0, 5), top.slice(5)].filter((p) => p.length).map((p, j) => `<div class="tabela-wrap"><table class="tabela">${cab}<tbody>${p.map((x, i) => lin(x, i + j * 5)).join('')}</tbody></table></div>`).join('')}</div>
-        ${resto.length ? `<details><summary class="btn-link" style="cursor:pointer;display:inline-block;margin:4px 0">Ver os outros ${resto.length}</summary><div class="tabela-wrap"><table class="tabela">${cab}<tbody>${resto.map((x, i) => lin(x, i + 10)).join('')}</tbody></table></div></details>` : ''}
-      </div>`;
+      return rankingBarras(lista, S);
     })();
     const inc = S.ws.some(mesSemIncompleta);
     const verTab = false;   // só gráficos (a tabela saiu a pedido)
@@ -6913,7 +7023,16 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const fem = nomeG === 'semana' || nomeG === 'quinzena';
     const amostra = (estilo, txt) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;flex:none;${estilo}"></span>${txt}</span>`;
     const legBarras = `<div class="apoio" style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">${amostra('background:#1E8E3E', 'Melhorou vs ' + nomeG + ' anterior')}${amostra('background:#D93025', 'Piorou')}${amostra('background:var(--dado)', 'Estável ou sem comparação')}${inc ? amostra('background:#D93025;opacity:.55', 'Cor clara = ' + nomeG + ' incomplet' + (fem ? 'a' : 'o') + ' (*)') : ''}${amostra('border-top:2px dashed var(--texto-2);height:0;border-radius:0', 'Média do período de comparação')}</div>`;
-    const grade = `${legBarras}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">${chaves.map(mini).join('')}</div>`;
+    const kSel = chaves.includes(E.semGrafInd) ? E.semGrafInd : chaves.includes('nota') ? 'nota' : chaves.includes('kml') ? 'kml' : chaves[0];
+    const indSel = IND_MAP[kSel], vSel = S.frMes[kSel], aSel = S.frAnt[kSel];
+    const chipsInd = `<div class="vg-chips sm-chips" role="group" aria-label="Indicador em destaque">${chaves.map((k) => `<button type="button" class="${k === kSel ? 'ativo' : ''}" data-acao="sem-graf" data-k="${k}" aria-pressed="${k === kSel}">${esc(IND_MAP[k].label)}</button>`).join('')}</div>`;
+    const legDest = `<div class="apoio sm-leg">${amostra('background:#1E8E3E;border-radius:50%', 'Melhorou vs ' + nomeG + ' anterior')}${amostra('background:#D93025;border-radius:50%', 'Piorou')}${amostra('background:#FCB709;border-radius:50%', 'Estável ou sem comparação')}${inc ? amostra('border:2px dashed #FCB709;border-radius:50%;background:transparent', nomeG.charAt(0).toUpperCase() + nomeG.slice(1) + ' incomplet' + (fem ? 'a' : 'o') + ' (*)') : ''}${indSel.tipo === 'soma' ? '' : amostra('border-top:2px dashed var(--texto-2);height:0;border-radius:0', 'Média do período de comparação')}</div>`;
+    const grade = `<div class="sm-dest">
+        <div class="sm-dest-cab"><div><span class="hb-bloco-t">${esc(indSel.label)} ${esc(G[2])}</span>
+          <div class="sm-dest-v"><b class="num">${esc(fmtInd(indSel, vSel))}</b> ${vSel === null || vSel === undefined || aSel === null || aSel === undefined ? '' : variacao(X.variacao(indSel, vSel, aSel), 'no período vs comparação')}</div></div></div>
+        ${chipsInd}${legDest}${graficoDestaque(S, kSel)}</div>
+      <div class="sm-bloco"><div class="sm-bloco-cab"><span class="hb-bloco-t">Todos os indicadores ${esc(G[2])}</span><span class="apoio" style="font-size:12px">Verde = melhorou e vermelho = piorou contra ${fem ? 'a' : 'o'} ${esc(nomeG)} anterior. Clique numa linha para ver o gráfico.</span></div>
+        ${mapaIndicadores(S, chaves, kSel)}</div>`;
     const opG = [['nota', 'Nota Gobrax'], ['km', 'Km rodados'], ['kml', 'Média de consumo']].filter(([k]) => temInd(k) && S.fr.some((f) => Number.isFinite(f[k])));
     const kG = opG.some(([k]) => k === E.semGrafInd) ? E.semGrafInd : (opG[0] || [])[0];
     const pilG = opG.length > 1 ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${opG.map(([k, rot]) => `<button type="button" class="pilula ${k === kG ? 'ativa' : ''}" data-acao="sem-graf" data-k="${k}" aria-pressed="${k === kG}">${rot}</button>`).join('')}</div>` : '';
@@ -10118,7 +10237,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const grafico = vgCard('grafico', `Evolução da nota de ${esc(sel.x.motorista)}`, `<span class="apoio" style="display:block;margin-bottom:8px;font-size:12px">${esc(gc.sub)}</span>${gc.svg}`, null, chips + seletor);
     const tabela = vgCard('calendario', 'Cada mensagem recebida', `<span class="apoio" style="display:block;margin-bottom:10px">Mais recente primeiro. "Resultado" compara o ponto apontado no dia com a média dele nos 7 dias seguintes.</span>
       <div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>Dia da análise</th><th class="dir">Nota do mês</th><th>vs envio anterior</th><th>Ponto apontado</th><th>Resultado</th><th>Evolução no dia</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
-    return `${kpis}<div class="evo-grade">${grafico}${resumo}</div>${tabela}`;
+    return `${kpis}<div class="evc-grade">${grafico}${resumo}</div>${tabela}`;
   }
   function telaMensagens() {
     const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp Web e copia o texto, você cola com Ctrl+V, aperta Enter e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;

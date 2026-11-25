@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,7 +23,12 @@ func GetRoutes(r *gin.Engine) {
 	// público e sem credencial: o painel no GitHub Pages confere aqui se a plataforma está no ar antes de levar a pessoa para ela
 	r.GET("/saude", func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
-		c.JSON(http.StatusOK, gin.H{"ok": true})
+		// versao: o commit publicado (o Render informa em RENDER_GIT_COMMIT), para conferir se a última mudança já está no ar
+		versao := os.Getenv("RENDER_GIT_COMMIT")
+		if len(versao) > 7 {
+			versao = versao[:7]
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true, "versao": versao})
 	})
 
 	// telas

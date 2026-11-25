@@ -25,7 +25,7 @@ const ROTAS = ['geral', 'retencao', 'retencao?aba=carteira', 'plano', 'estudo', 
   'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao', 'dados?aba=diagnostico'];
 
 /* roda dentro da página: percorre rotas, abas, segmentos e o painel do condutor; grava o relatório no DOM */
-function varredura(rotas) {
+function varredura(rotas, longo) {
   var rel = [], erros = [], suspeito = /\bNaN\b|\bundefined\b|Infinity|\[object/g;
   window.addEventListener('error', function (e) { erros.push(e.message + ' @' + e.lineno); });
   window.addEventListener('unhandledrejection', function (e) { erros.push('promise: ' + (e.reason && e.reason.message || e.reason)); });
@@ -46,6 +46,15 @@ function varredura(rotas) {
     rel.push({ r: rotulo, len: t.length, erros: erros.splice(0), sus: ctx.length, ctx: ctx, attr: attr, falhou: falhou, vazios: vazios, nota: nota ? nota.innerText.trim() : null });
   }
   var SEL = '#view [role=tab],#view .seg button', fila = [];
+  // período longo (mais de 60 dias), escolhido como no seletor de período
+  if (longo) {
+    var mudar = function (sel, v) { var i = document.querySelector(sel); if (!i) { erros.push('HARNESS sem campo ' + sel); return; } i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); };
+    fila.push(function () { var b = document.querySelector('[data-act=pop][data-p=period]'); if (b) b.click(); else erros.push('HARNESS sem botão de período'); },
+      function () { var b = document.querySelector('[data-act=period][data-v=custom]'); if (b) b.click(); },
+      function () { if (!document.querySelector('[data-chg=pfrom]')) { var b = document.querySelector('[data-act=pop][data-p=period]'); if (b) b.click(); } },
+      function () { var h = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10), d = new Date(Date.now() - 3 * 36e5 - (longo - 1) * 864e5).toISOString().slice(0, 10); mudar('[data-chg=pfrom]', d); mudar('[data-chg=pto]', h); },
+      function () { var p = document.querySelector('.pop.open'); if (p) p.classList.remove('open'); });
+  }
   rotas.forEach(function (r) {
     fila.push(function () { location.hash = '#/' + r; });
     fila.push(function () {
@@ -77,7 +86,7 @@ function varredura(rotas) {
   }
   setTimeout(passo, 2500);
 }
-const injetar = (html) => html.replace('</body>', '<script>(' + varredura.toString() + ')(' + JSON.stringify(ROTAS) + ');</script></body>');
+const injetar = (html, longo) => html.replace('</body>', '<script>(' + varredura.toString() + ')(' + JSON.stringify(ROTAS) + ',' + (longo || 0) + ');</script></body>');
 
 /* ---------- dados sintéticos no formato do servidor Go ---------- */
 function dadosServidor() {
@@ -90,7 +99,7 @@ function dadosServidor() {
     const registros = [], motoristas = [], placas = [];
     for (let v = 0; v < nVeic; v++) placas.push('TST' + v + 'A' + (10 + v));
     placas.forEach((p, v) => {
-      for (let n = 90; n >= 0; n--) {
+      for (let n = 200; n >= 0; n--) {
         if (v === nVeic - 1 && n < 6) continue;                 // um veículo sem sinal
         if (rnd() < 0.25) continue;
         const km = Math.round(200 + rnd() * 300), rodou = rnd() > 0.05;
@@ -194,6 +203,10 @@ async function fotos(dir) {
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   falhas += relatorio('modo plataforma (dados no formato do servidor)', await chromeDom('http://127.0.0.1:' + srv.address().port + '/painel#/geral'));
   srv.close();
+  const srv2 = servidor(injetar(fs.readFileSync(HTML, 'utf8'), 150));
+  await new Promise((r) => srv2.listen(0, '127.0.0.1', r));
+  falhas += relatorio('modo plataforma com período de 150 dias', await chromeDom('http://127.0.0.1:' + srv2.address().port + '/painel#/geral'));
+  srv2.close();
   fs.rmSync(tmp, { recursive: true, force: true });
   process.exit(falhas ? 1 : 0);
 })();

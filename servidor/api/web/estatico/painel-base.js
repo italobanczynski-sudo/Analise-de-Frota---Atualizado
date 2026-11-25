@@ -170,7 +170,7 @@
     const item = (texto, acao) => { const a = document.createElement('button'); a.type = 'button'; a.className = 'dm-op'; a.textContent = texto; a.addEventListener('click', acao); return a; };
     if (eu.papel === 'admin') menu.append(nome, item('Usuários', () => { abrir(false); location.hash = '#/config'; setTimeout(() => { const s = document.getElementById('usuarios'); if (s) s.scrollIntoView({ block: 'start' }); }, 300); }));
     else menu.append(nome);
-    menu.append(item('Clientes e coleta', () => location.assign('/plataforma')),
+    menu.append(item('Painel novo', () => location.assign('/painel')), item('Clientes e coleta', () => location.assign('/plataforma')),
       item('Sair', async () => { try { await chamar('POST', '/api/v1/auth/sair'); } catch (e) { /* sai mesmo assim */ } location.replace('/'); }));
     const abrir = (sim) => { menu.hidden = !sim; btn.setAttribute('aria-expanded', String(sim)); };
     btn.addEventListener('click', (ev) => { ev.stopPropagation(); abrir(menu.hidden); });

@@ -11,7 +11,8 @@ Painel estático (HTML + JS). A plataforma online (login, base compartilhada, bu
 
 | Pasta ou arquivo | O que é |
 |---|---|
-| `index.html` | O painel (telas, gráficos e regras), publicado no GitHub Pages e no Claude |
+| `painel-v2/` | Painel novo com a identidade visual Gobrax, servido em `/painel` na plataforma com os dados reais. Veja [painel-v2/README.md](painel-v2/README.md) |
+| `index.html` | O painel clássico (telas, gráficos e regras), publicado no GitHub Pages e no Claude; na plataforma fica em `/painel/classico` |
 | `bibliotecas/` | Biblioteca de terceiros usada pelo painel (leitor de Excel) |
 | `robo-whatsapp/` | Robô em Node que roda num computador e, todo dia às 08:00, manda as Mensagens do dia pelo WhatsApp Web a cada motorista com telefone cadastrado e marca como enviada. Contra os Termos do WhatsApp: usar um número só para isso. Senha, sessão e logs fora do Git |
 | `servidor/` | Plataforma em Go: login, perfis, busca automática, banco e API. Veja [servidor/README.md](servidor/README.md) |
@@ -57,6 +58,7 @@ Para trazer os dados da plataforma antiga: entre nela, abra **Configurações �
 ## Testes
 A cada envio para o GitHub rodam (aba Actions → Testes):
 - **Painel:** `node testes/painel/rodar.js` abre todas as telas e abas num Chrome sem janela, com dados sintéticos (com e sem Nota Gobrax), e falha se alguma tela der erro ou mostrar NaN/undefined.
+- **Painel novo:** confere se `painel-v2/dist/` foi remontado (`python painel-v2/build.py`) e roda `node testes/painel-v2/rodar.js`, que varre as telas em modo demonstração e com um servidor falso que responde no formato do servidor Go.
 - **Servidor:** `go build`, `go vet` e `go test` em `servidor/`.
 
 ## Observações

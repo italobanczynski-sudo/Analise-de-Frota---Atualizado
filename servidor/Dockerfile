@@ -5,7 +5,9 @@ WORKDIR /src
 COPY servidor/go.mod servidor/go.sum ./
 RUN go mod download
 COPY servidor/ .
-# o painel servido em /painel é o mesmo index.html do GitHub Pages
+# /painel: o painel novo, já montado (python painel-v2/build.py gera o dist/)
+COPY painel-v2/dist/analise-de-frota.html api/web/painel/novo.html
+# /painel/classico: o mesmo index.html do GitHub Pages
 COPY index.html api/web/painel/index.html
 COPY bibliotecas/xlsx.full.min.js api/web/painel/xlsx.full.min.js
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/servidor .

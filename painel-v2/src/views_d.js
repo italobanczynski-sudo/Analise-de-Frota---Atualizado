@@ -8,17 +8,23 @@ const spanCmp=C=>`${C.P.label} · comparado a ${C.P.cmpLabel}`;
 function evoBlock(C,id){
   const u=S.u,gran=u.evoGran||'semana',mk=u.evoMetric||'kmpl';const ind=INDK[mk];
   const bs=buckets(C,gran,id);const pv=bs.map(b=>b.a?ind.get(b.a):null);
-  const dc=pv.map((v,i)=>{if(v==null)return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0)return'var(--n400)';const g=indGood(ind,(v-pv[j])/Math.abs(pv[j]||1)*100);return g==null?'var(--n400)':g?'var(--ok)':'var(--bad)'});
+  /* período incompleto (semana, quinzena ou mês que ainda não fechou, ou cortado no início do acompanhamento): cinza, sem variação;
+     o período seguinte também não calcula variação contra ele */
+  const parc=b=>b.parcial;
+  const dc=pv.map((v,i)=>{if(v==null)return'var(--n300)';if(parc(bs[i]))return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0||parc(bs[j]))return'var(--n400)';const g=indGood(ind,(v-pv[j])/Math.abs(pv[j]||1)*100);return g==null?'var(--n400)':g?'var(--ok)':'var(--bad)'});
   const chart=lineChart({labels:bs.map(b=>b.label),series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],yfmt:v=>fmt.n(v,ind.d),h:230,
-    tip:i=>bs[i].a?`<b>${esc(bs[i].label)}</b><br>${esc(ind.l)}: ${fInd(ind,pv[i])}<br>${fmt.n(bs[i].a.km,0)} km`:'',aria:'Evolução de '+ind.l});
+    tip:i=>bs[i].a?`<b>${esc(bs[i].label)}</b>${parc(bs[i])?` · parcial (${bs[i].dias} dias)`:''}<br>${esc(ind.l)}: ${fInd(ind,pv[i])}<br>${fmt.n(bs[i].a.km,0)} km`:'',aria:'Evolução de '+ind.l});
   const rows=IND.filter(i=>!(i.veh&&!id)&&i.k!=='n'||id&&i.k==='n').slice(0,10);
-  const cell=(i,b,k)=>{if(!b.a)return'<td class="r muted">—</td>';const v=i.get(b.a);if(v==null)return'<td class="r muted">—</td>';let j=k-1;while(j>=0&&!bs[j].a)j--;let cls='',dv='';
+  const cell=(i,b,k)=>{if(!b.a)return'<td class="r muted">—</td>';const v=i.get(b.a);if(v==null)return'<td class="r muted">—</td>';
+    if(parc(b))return`<td class="r part"><div class="num evv">${fmt.n(v,i.d)}</div><span class="evd">parcial (${b.dias} dia${b.dias>1?'s':''})</span></td>`;
+    let j=k-1;while(j>=0&&!bs[j].a)j--;let cls='',dv='';
+    if(j>=0&&parc(bs[j]))return`<td class="r"><div class="num evv">${fmt.n(v,i.d)}</div><span class="evd muted">sem variação (anterior parcial)</span></td>`;
     if(j>=0){const pvv=i.get(bs[j].a);if(pvv){const chg=(v-pvv)/Math.abs(pvv)*100,g=indGood(i,chg);if(Math.abs(chg)>=2&&g!=null)cls=g?'cg':'cb';dv=`<span class="evd">${chg>0?'▲':chg<0?'▼':''} ${fmt.n(Math.abs(chg),1)}%</span>`}}
     return`<td class="r ${cls}"><div class="num evv">${fmt.n(v,i.d)}</div>${dv}</td>`};
   const unit=i=>{const u=(i.u||'').trim();return i.k==='lph100'?'L por 100 km':u.startsWith('/')?'por '+u.slice(1).trim():u==='%'?'% do tempo':u==='pts'?'pontos (0–100)':u};
-  const tbl=`<div class="scroll-x"><table class="tbl evo"><thead><tr><th>Indicador</th><th>Unidade</th>${bs.map(b=>`<th class="r">${esc(b.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(i=>`<tr><td><b>${esc(i.l)}</b></td><td class="muted xs">${esc(unit(i))}</td>${bs.map((b,k)=>cell(i,b,k)).join('')}</tr>`).join('')}</tbody></table></div><div class="xs muted" style="margin-top:10px">Cada célula traz o valor do período e, abaixo, a variação em % contra a coluna anterior (▲ subiu, ▼ caiu). Verde melhorou e vermelho piorou (variações menores que 2% não são coloridas).</div>`;
+  const tbl=`<div class="scroll-x"><table class="tbl evo"><thead><tr><th>Indicador</th><th>Unidade</th>${bs.map(b=>`<th class="r">${esc(b.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(i=>`<tr><td><b>${esc(i.l)}</b></td><td class="muted xs">${esc(unit(i))}</td>${bs.map((b,k)=>cell(i,b,k)).join('')}</tr>`).join('')}</tbody></table></div><div class="xs muted" style="margin-top:10px">Cada célula traz o valor do período e, abaixo, a variação em % contra a coluna anterior (▲ subiu, ▼ caiu). Verde melhorou e vermelho piorou (variações menores que 2% não são coloridas). Período incompleto fica em cinza, com "parcial (N dias)", sem cor e sem variação.</div>`;
   const opts=IND.filter(i=>!i.veh).map(i=>`<option value="${i.k}" ${i.k===mk?'selected':''}>${esc(i.l)}</option>`).join('');
-  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span></div>${tbl}</div>`;
+  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial (N dias): sem cor e sem variação</span></div>${tbl}</div>`;
 }
 function improvedRows(C,rows,keys){
   return keys.map(k=>{const i=INDK[k];let b=0,s=0,w=0;rows.forEach(r=>{const x=indRes(i,r.c,r.p);if(x.k==='better')b++;else if(x.k==='worse')w++;else if(x.k==='same')s++});
@@ -29,7 +35,7 @@ function improvedRows(C,rows,keys){
 function drvResumo(C){
   const rows=drvRows(C);const withBase=rows.filter(r=>r.st.k!=='base');
   const up=rows.filter(r=>r.st.k==='up').length,down=rows.filter(r=>r.st.k==='down').length,flat=rows.filter(r=>r.st.k==='flat').length;
-  const gl=gainsLosses(C.cur,C.prev,C.price);const net=gl.reduce((a,g)=>a+g.money,0);
+  const gl=C.gl;const net=gl.reduce((a,g)=>a+g.money,0);
   const kpi=(t,v,s,c='',y='')=>`<div class="card kpi lift rise ${y}"><div class="tag">${t}</div><div class="v" ${c?`style="color:${c}"`:''}>${v}</div><div class="xs muted">${s}</div></div>`;
   const kp=`<div class="grid g4">${kpi('Condutores no período',count(rows.length,0),`${withBase.length} com base de comparação`)}${kpi('Evoluíram',count(up,0),'consumo subiu mais de 2%','var(--ok-t)')}${kpi('Regrediram',count(down,0),`${flat} estáveis`,'var(--bad-t)')}${kpi(net>=0?'Economia no período':'Perda no período',count(Math.abs(net),0,'R$ '),(net>=0?'diesel a menos':'diesel a mais')+' nos mesmos km','','yel')}</div>`;
   const pts=withBase.map(r=>({id:r.v.id,x:r.c.kmpl,y:r.st.ch,tip:`<b>${esc(r.v.driver)}</b> · ${esc(r.v.id)}<br>${fmt.kmpl(r.c.kmpl)} km/l · ${fmt.sp(r.st.ch)} vs comparação`}));
@@ -42,7 +48,7 @@ function drvResumo(C){
   const podium=pod.length?`<div class="podium">${[1,0,2].map(i=>{const r=pod[i];if(!r)return'<div></div>';return`<div class="pd p${i+1}" data-act="drv-open" data-id="${esc(r.v.id)}" style="--i:${i}"><svg class="medal" width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l4 12h-6zM28 2h-6l-4 12h6z" fill="${md[i]}" opacity=".5"/><circle cx="20" cy="25" r="11" fill="${md[i]}"/><text x="20" y="30" text-anchor="middle" style="fill:#fff;font:800 14px var(--num)">${i+1}</text></svg><b>${esc(r.v.driver)}</b><span class="xs muted">${esc(r.v.id)}</span><span class="num b" style="font-size:20px">${fmt.n(r.c.score,0)}</span><span class="tag">nota</span><div class="pdb"></div></div>`}).join('')}</div>`:'<div class="empty"><b>Sem nota no período</b></div>';
   const imp=improvedRows(C,rows,['kmpl','br100','green','idle','score']);
   return kp+`<div class="grid sec" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))"><div class="card rise">${cardH('Onde cada condutor está','Cada ponto é um condutor. Clique para abrir. As linhas tracejadas são a média da frota e a variação zero.')}${sc}</div>
-  <div class="card rise">${cardH('Quem ganhou e quem perdeu',`Em diesel, nos mesmos km · ganhos ${fmt.brl(sumG)} · perdas ${fmt.brl(Math.abs(sumL))}`)}${dv}</div></div>
+  <div class="card rise">${cardH('Quem ganhou e quem perdeu',`Diesel economizado ${esc(C.ec.b.rotulo)} · ganhos ${fmt.brl(sumG)} · perdas ${fmt.brl(Math.abs(sumL))}`)}${dv}</div></div>
   <div class="grid g-main sec"><div class="card rise">${cardH('Em que os condutores melhoraram','Quantos melhoraram, ficaram estáveis ou pioraram em cada indicador.')}${improvedStack(imp)}<div class="leg" style="margin-top:10px"><span><i style="background:var(--ok)"></i>Melhoraram</span><span><i style="background:var(--n300)"></i>Estáveis</span><span><i style="background:var(--bad)"></i>Pioraram</span></div></div>
   <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Pódio da nota Gobrax',C.P.label)}${podium}</div></div>`+evoBlock(C,null);
 }
@@ -76,7 +82,7 @@ function drvCompare2(C){
 function weekMsg(name,r,w,v){return`Olá${v&&v.noDriver?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
 function drvWeekly2(C){
   const wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);if(!wk.length)return'<div class="card empty"><b>Sem semanas no período</b></div>';
-  if(S.u.weekSel==null||S.u.weekSel>wk.length)S.u.weekSel=wk.length;const w=wk[S.u.weekSel-1],pw=wk[S.u.weekSel-2];
+  if(S.u.weekSel==null||S.u.weekSel>wk.length)S.u.weekSel=wk.length;const w=wk[S.u.weekSel-1],pw0=wk[S.u.weekSel-2];const pw=w.partial||(pw0&&pw0.partial)?null:pw0;
   const fleetAvg=w.a.kmpl;
   const rows=Object.values(w.a.byVeh).filter(a=>a.km>0&&C.fleet.byId[a.id]).map(a=>{const pa=pw?pw.a.byVeh[a.id]:null;const ch=pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null;
     const days=[];for(let t=w.from;t<=w.to;t++){const r=aggFor(C,t,t,a.id);days.push({t,a:r.n?r:null})}
@@ -97,17 +103,18 @@ function drvWeekly2(C){
     <div class="row" style="justify-content:space-between;margin-top:10px"><span class="tag">Dias da semana</span><span class="xs b"><span style="color:var(--ok-t)">${r.good} bons</span> · <span style="color:var(--warn-t)">${r.att} de atenção</span></span></div><div class="wdays">${circles}</div>
     <div class="tag" style="margin:10px 0 6px">Média de consumo nas semanas</div><div class="wchips">${chips}</div>
     <div class="row" style="margin-top:12px;flex-wrap:nowrap"><button class="btn primary sm" style="flex:1" data-act="wk-wa" data-id="${esc(r.v.id)}" data-w="${w.n}">${ico('msg',14)} WhatsApp</button><button class="btn ghost sm icon" data-act="drv-open" data-id="${esc(r.v.id)}" aria-label="Abrir condutor">${ico('user',14)}</button><button class="btn ghost sm icon" data-act="wk-copy" data-id="${esc(r.v.id)}" data-w="${w.n}" aria-label="Copiar mensagem">${ico('copy',14)}</button></div></div>`}).join('');
-  return`<div class="card rise sec">${cardH(`Resumo da frota na semana ${w.n}`,`${fmt.dm(dIso(w.from))} a ${fmt.dm(dIso(w.to))}${pw?` · comparada à semana ${pw.n}`:''}${w.partial?' (semana parcial)':''}`,segHtml(wk.map(x=>[String(x.n),'Sem '+x.n]),String(S.u.weekSel),'week-sel')+`<button class="btn ghost sm" data-act="csv" data-w="drivers">${ico('download',14)} Planilha</button>`)}${sum}</div><div class="wgrid sec">${cards}</div>`;
+  return`<div class="card rise sec">${cardH(`Resumo da frota na semana ${w.n}`,`${fmt.dm(dIso(w.from))} a ${fmt.dm(dIso(w.to))}${pw?` · comparada à semana ${pw.n}`:''}${w.partial?` · parcial (${w.dias} dia${w.dias>1?'s':''}): sem comparação`:pw0&&pw0.partial?` · semana ${pw0.n} parcial: sem comparação`:''}`,segHtml(wk.map(x=>[String(x.n),'Sem '+x.n]),String(S.u.weekSel),'week-sel')+`<button class="btn ghost sm" data-act="csv" data-w="drivers">${ico('download',14)} Planilha</button>`)}${sum}</div><div class="wgrid sec">${cards}</div>`;
 }
 
 /* ---------- Painel do condutor ---------- */
 function drvDash(C,id){
-  const u=S.u;const c=C.cur.byVeh[id],p=C.prev.byVeh[id];const gl=gainsLosses(C.cur,C.prev,C.price).find(x=>x.id===id);
+  const u=S.u;const c=C.cur.byVeh[id],p=C.prev.byVeh[id];const gl=C.gl.find(x=>x.id===id),gp=gainsVsPrev(C.cur,C.prev,C.price).find(x=>x.id===id);
   const kp=(t,val,cur,prev,up,d)=>`<div class="kpl"><div class="tag">${t}</div><div class="num kv">${val}</div><div class="xs">${prev!=null&&prev?dl(pc(cur,prev),up,d>1?1:d)+` <span class="muted">vs. ${fmt.dm(dIso(C.P.cf))} a ${fmt.dm(dIso(C.P.ct))}</span>`:'<span class="muted">sem comparação</span>'}</div></div>`;
   const strip=`<div class="card rise kpstrip sec"><div class="gblock"><span class="wm" aria-hidden="true">go</span>${gaugeNota(c.score,'NOTA GOBRAX',true)}</div>${kp('Km rodados',fmt.n(c.km,0)+' km',c.km,p&&p.km,true,0)}${kp('Média de consumo',fmt.kmpl(c.kmpl)+' km/l',c.kmpl,p&&p.kmpl,true,2)}${kp('Diesel consumido',fmt.n(c.l,0)+' L',c.l,p&&p.l,null,0)}${kp('Dias trabalhados',c.n+' dias',c.n,p&&p.n,true,0)}${kp('Km por dia',fmt.n(c.kmDay,0)+' km',c.kmDay,p&&p.kmDay,true,0)}</div>`;
   /* leitura automática */
   const reads=[];
-  if(gl)reads.push({ok:gl.money>=0,t:gl.money>=0?`Gastou <b>${fmt.brl(gl.money)} a menos</b> em diesel (${fmt.n(gl.liters,0)} L) que na comparação, para os mesmos km.`:`Gastou <b>${fmt.brl(Math.abs(gl.money))} a mais</b> em diesel (${fmt.n(Math.abs(gl.liters),0)} L) que na comparação, para os mesmos km.`});
+  if(gl)reads.push({ok:gl.money>=0,t:gl.money>=0?`Economizou <b>${fmt.brl(gl.money)}</b> em diesel (${fmt.n(gl.liters,0)} L) ${esc(C.ec.b.rotulo)}.`:`Gastou <b>${fmt.brl(Math.abs(gl.money))} a mais</b> em diesel (${fmt.n(Math.abs(gl.liters),0)} L) ${esc(C.ec.b.rotulo)}.`});
+  if(gp)reads.push({ok:gp.money>=0,t:`Vs. período anterior (${esc(C.P.cmpLabel)}): ${gp.money>=0?'gastou':'gastou a mais'} <b>${fmt.brl(Math.abs(gp.money))}</b> ${gp.money>=0?'a menos ':''}em diesel nos mesmos km.`});
   const sc=IND.filter(i=>['br100','green','idle','score','kmpl'].includes(i.k)).map(i=>({i,v:i.get(c),f:i.get(C.cur)})).filter(x=>x.v!=null&&x.f);
   let best=null,worst=null;sc.forEach(x=>{const q=x.i.up?x.v/x.f:x.f/(x.v||1e-9);if(!best||q>best.q)best={...x,q};if(!worst||q<worst.q)worst={...x,q}});
   if(best&&best.q>1.03)reads.push({ok:true,t:`Ponto forte: <b>${esc(best.i.l)}</b> em ${fInd(best.i,best.v)}, melhor que ${fInd(best.i,best.f)} da frota.`});
@@ -141,7 +148,7 @@ function drvIndTable(C,id){
 
 /* ---------- PLANO DE AÇÃO ---------- */
 function vPlan(C){
-  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);const gl=gainsLosses(cur,prev,price);
+  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);const gl=C.gl;
   const losers=gl.filter(g=>g.money<0).slice(-5).reverse();
   /* gargalos: meta x atual */
   const g=[
@@ -166,7 +173,7 @@ function vPlan(C){
   const lose=losers.map(g=>li(g,false)).join('')||'<div class="empty"><b>Ninguém com perda relevante</b></div>';
   return`${pageH('Plano de ação',`${esc(C.def.name)} · ${spanCmp(C)}`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}
   <div class="grid g-main" style="align-items:start"><div class="card rise">${cardH('Onde trabalhar primeiro','Ordenado pelo dinheiro e pelo número de condutores envolvidos.')}<div class="stack" style="gap:10px">${prio}</div></div><div class="card rise">${cardH('Gargalos operacionais','Atual contra a meta. A linha marca a meta.')}<div class="stack" style="gap:14px">${gar}</div></div></div>
-  <div class="grid g2 sec"><div class="card rise">${cardH('Maiores perdas em diesel','Condutores que mais gastaram a mais nos mesmos km.')}<div class="stack" style="gap:2px">${lose}</div></div><div class="card rise">${cardH('Maiores ganhos em diesel','Condutores que mais economizaram nos mesmos km.')}<div class="stack" style="gap:2px">${win}</div></div></div>`;
+  <div class="grid g2 sec"><div class="card rise">${cardH('Maiores perdas em diesel','Quem mais gastou a mais nos mesmos km, '+esc(C.ec.b.rotulo)+'.')}<div class="stack" style="gap:2px">${lose}</div></div><div class="card rise">${cardH('Maiores ganhos em diesel','Quem mais economizou nos mesmos km, '+esc(C.ec.b.rotulo)+'.')}<div class="stack" style="gap:2px">${win}</div></div></div>`;
 }
 
 /* ---------- Visão geral · blocos extras (nota, perfil, calendário, evolução) ---------- */

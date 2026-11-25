@@ -39,15 +39,15 @@ function aggFor(C,from,to,id){
 }
 /* séries por granularidade: dia · semana · quinzena · mês */
 function buckets(C,gran,id){
-  const start=dIdx(C.def.start),out=[];const push=(f,e,label)=>{f=Math.max(f,start);if(e<f)return;const a=aggFor(C,f,e,id);out.push({from:f,to:e,label,a:a.n?a:null})};
+  const start=dIdx(C.def.start),out=[];const push=(f,e,label,full)=>{const f0=f,e0=full!=null?full:e;f=Math.max(f,start);if(e<f)return;const a=aggFor(C,f,e,id);out.push({from:f,to:e,label,a:a.n?a:null,dias:e-f+1,parcial:gran!=='dia'&&(f>f0||e<e0)})};
   if(gran==='dia'){for(let t=C.P.from;t<=C.P.to;t++)push(t,t,fmt.dm(dIso(t)))}
-  else if(gran==='semana'){const mon=T0-((wdOf(T0)+6)%7);for(let i=7;i>=0;i--){const f=mon-7*i,e=Math.min(T0,f+6);if(e<start)continue;push(f,e,fmt.dm(dIso(Math.max(f,start))))}}
+  else if(gran==='semana'){const mon=T0-((wdOf(T0)+6)%7);for(let i=7;i>=0;i--){const f=mon-7*i,e=Math.min(T0,f+6);if(e<start)continue;push(f,e,fmt.dm(dIso(Math.max(f,start))),f+6)}}
   else if(gran==='quinzena'){const d=new Date(T0*DAY);let y=d.getUTCFullYear(),m=d.getUTCMonth();const list=[];
-    for(let k=0;k<7;k++){const first=dIdx(`${y}-${String(m+1).padStart(2,'0')}-01`),mid=first+14,last=Math.round(Date.UTC(y,m+1,1)/DAY)-1;list.unshift([mid+1,Math.min(T0,last),`2ª quinz. ${MESES[m]}`],[first,Math.min(T0,mid),`1ª quinz. ${MESES[m]}`]);m--;if(m<0){m=11;y--}}
-    list.filter(x=>x[0]<=T0&&x[1]>=start).slice(-6).forEach(x=>push(x[0],x[1],x[2]))}
+    for(let k=0;k<7;k++){const first=dIdx(`${y}-${String(m+1).padStart(2,'0')}-01`),mid=first+14,last=Math.round(Date.UTC(y,m+1,1)/DAY)-1;list.unshift([mid+1,Math.min(T0,last),`2ª quinz. ${MESES[m]}`,last],[first,Math.min(T0,mid),`1ª quinz. ${MESES[m]}`,mid]);m--;if(m<0){m=11;y--}}
+    list.filter(x=>x[0]<=T0&&x[1]>=start).slice(-6).forEach(x=>push(x[0],x[1],x[2],x[3]))}
   else{const d=new Date(T0*DAY);let y=d.getUTCFullYear(),m=d.getUTCMonth();const list=[];
-    for(let k=0;k<6;k++){const first=dIdx(`${y}-${String(m+1).padStart(2,'0')}-01`),last=Math.round(Date.UTC(y,m+1,1)/DAY)-1;list.unshift([first,Math.min(T0,last),MESES[m]+'/'+String(y).slice(2)]);m--;if(m<0){m=11;y--}}
-    list.filter(x=>x[1]>=start).forEach(x=>push(x[0],x[1],x[2]))}
+    for(let k=0;k<6;k++){const first=dIdx(`${y}-${String(m+1).padStart(2,'0')}-01`),last=Math.round(Date.UTC(y,m+1,1)/DAY)-1;list.unshift([first,Math.min(T0,last),MESES[m]+'/'+String(y).slice(2),last]);m--;if(m<0){m=11;y--}}
+    list.filter(x=>x[1]>=start).forEach(x=>push(x[0],x[1],x[2],x[3]))}
   return out;
 }
 

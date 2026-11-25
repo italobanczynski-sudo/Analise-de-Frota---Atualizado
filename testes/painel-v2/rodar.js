@@ -22,7 +22,7 @@ if (!chrome) { console.error('Chrome não encontrado: defina CHROME com o caminh
 
 const ROTAS = ['geral', 'retencao', 'retencao?aba=carteira', 'plano', 'estudo', 'frota', 'frota?aba=indicadores', 'frota?aba=qualidade', 'frota?aba=mapa',
   'motoristas', 'motoristas?aba=comportamento', 'motoristas?aba=comparativo', 'motoristas?aba=semanal', 'motoristas?aba=lista', 'motoristas?aba=mensagens',
-  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao', 'dados?aba=diagnostico'];
+  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao', 'dados?aba=diagnostico', 'dados?aba=notaconsumo'];
 
 /* roda dentro da página: percorre rotas, abas, segmentos e o painel do condutor; grava o relatório no DOM */
 function varredura(rotas, longo) {
@@ -154,7 +154,7 @@ function servidor(html) {
 
 function chromeDom(url) {
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
-  return new Promise((ok, falha) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--user-data-dir=' + perfil, '--virtual-time-budget=180000', '--dump-dom', url],
+  return new Promise((ok, falha) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--host-resolver-rules=MAP combustivelapi.com.br 127.0.0.1', '--user-data-dir=' + perfil, '--virtual-time-budget=180000', '--dump-dom', url],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 240000 }, (e, out) => { try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (x) {} e && !out ? falha(e) : ok(out); }));
 }
 const decod = (t) => t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
@@ -178,10 +178,10 @@ async function fotos(dir) {
   fs.mkdirSync(dir, { recursive: true });
   const srv = servidor(fs.readFileSync(HTML, 'utf8'));
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  for (const r of ['geral', 'dados?aba=diagnostico', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
+  for (const r of ['geral', 'retencao', 'frota', 'estudo', 'dados?aba=notaconsumo', 'dados?aba=diagnostico', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'plano']) {
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
     const arq = path.join(dir, r.replace(/\W+/g, '-') + '.png');
-    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',
+    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--host-resolver-rules=MAP combustivelapi.com.br 127.0.0.1', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',
       '--virtual-time-budget=15000', '--screenshot=' + arq, 'http://127.0.0.1:' + srv.address().port + '/painel#/' + r], { timeout: 120000 }, () => ok()));
     try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (x) {}
     console.log(arq);

@@ -11,7 +11,7 @@ const ROUTES={
   dados:{t:'Regras e integração',i:'sliders',f:vSettings,g:'Sistema'}
 };
 const LEGACY={churn:'retencao',visao:'frota','individual/veiculo':'frota','individual/motorista':'motoristas',premiacao:'motoristas?aba=premiacao',mensagens:'motoristas?aba=mensagens',api:'dados?aba=integracao',config:'dados',individual:'motoristas'};
-const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1}]};
+const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1,notaconsumo:1}]};
 let LASTC=null,RTOK=0,CUR_ROUTE='geral';
 
 function parseHash(){
@@ -26,9 +26,29 @@ async function buildCtx(){
   const cid=S.client;const fleet=await DB.load(cid);const P=resolvePeriod(S);
   const cur=metrics(cid,ST,P.from,P.to),prev=metrics(cid,ST,P.cf,P.ct);
   const def=CLIENT_DEFS.find(c=>c.id===cid);
-  const C={cid,def,fleet,P,cur,prev,price:dieselDe(def)};
-  C.hl=health(cur,prev,ST.rules);LASTC=C;loadExtras(cid);return C;
+  const dsl=dieselInfo(def);
+  const C={cid,def,fleet,P,cur,prev,price:dsl.preco,dsl};
+  /* um só número de economia (vs. linha de base do projeto) e uma só contagem de situação dos equipamentos, para todas as telas */
+  C.st=study(cid,ST,C.price);C.ec=econOf(cur,C.price);C.gl=gainsLosses(cur,prev,C.price);C.conc=concOf(C.gl,ST.rules);C.conf=confOf(cid,cur,ST.rules);
+  C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv});C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
 }
+/* ---------- Situação dos equipamentos (item 4): critérios com nome, os mesmos em todas as telas ----------
+   sem transmitir = nenhum dia de dado nos últimos 3 dias (dia a dia da API)
+   sem sinal agora = a posição ao vivo não veio nesta consulta (pode ser momentâneo)
+   sem base de comparação = rodou no período, mas não no período de comparação
+   sem motorista identificado = rodou no período sem vínculo de motorista na API */
+function eqSit(C){
+  const R=ST.rules,ct=contratoDe(C.def);
+  const semTransmitir=C.cur.noSignal;const longos=semTransmitir.filter(x=>x.days>=R.diasCobranca);
+  const semSinalAgora=C.fleet.vehicles.filter(v=>vehStat(C,v)==='off').map(v=>v.id);
+  const semBase=Object.keys(C.cur.byVeh).filter(id=>!(C.prev.byVeh[id]&&C.prev.byVeh[id].kmpl)&&C.fleet.byId[id]);
+  const semMotorista=Object.keys(C.cur.byVeh).filter(id=>C.fleet.byId[id]&&C.fleet.byId[id].noDriver);
+  return{semTransmitir,longos,semSinalAgora,semBase,semMotorista,valorUnit:ct.unitAuto?null:ct.unit,cobrado:ct.unitAuto?null:longos.length*ct.unit};
+}
+function eqInfo(){return infoDot('Critérios da situação dos equipamentos',`<ul><li><b>Sem transmitir</b>: nenhum dia de dado nos últimos 3 dias (dia a dia da API).</li><li><b>Sem sinal agora</b>: a posição ao vivo não veio nesta consulta; pode ser só momentâneo.</li><li><b>Sem base de comparação</b>: rodou no período, mas não no período de comparação.</li><li><b>Sem motorista identificado</b>: rodou sem vínculo de motorista na API.</li></ul><p>As mesmas contagens aparecem na Visão geral, na Frota, no mapa e nos avisos.</p>`,{left:true})}
+function eqLine(C){const e=C.eq;return[['bad',e.semTransmitir.length,'sem transmitir'],['warn',e.semSinalAgora==null?null:e.semSinalAgora.length,'sem sinal agora'],['n',e.semBase.length,'sem base de comparação'],['n',e.semMotorista.length,'sem motorista identificado']].map(([c,n,l])=>`<span class="badge ${n?c:'n'}">${n==null?'sem dado':n} ${l}</span>`).join('')}
+/* cabeçalho do PDF: cliente, período, diesel usado e a base da economia (aparece só na impressão) */
+function printHead(C){return`<div class="print-head"><b>${esc(C.def.name)} · ${esc(ROUTES[CUR_ROUTE]?ROUTES[CUR_ROUTE].t:'')} · ${C.P.label}</b><br>Diesel: <b>${fmt.brl(C.price,2)}/L</b> (${esc(C.dsl.fonte)}) · Economia ${esc(C.ec.b.rotulo)} · gerado em ${new Date().toLocaleString('pt-BR')}</div>`;}
 const skeleton=()=>`<div class="page-h"><div><h1 style="opacity:.25">Carregando</h1></div></div><div class="grid g4">${'<div class="skel"></div>'.repeat(4)}</div><div class="grid g-main sec"><div class="skel" style="min-height:300px"></div><div class="skel" style="min-height:300px"></div></div>`;
 
 async function render(opt={}){
@@ -38,7 +58,7 @@ async function render(opt={}){
   if(opt.skeleton){view.innerHTML=skeleton();view.classList.remove('noanim')}
   let html;
   if(!CLIENT_DEFS.length){html=`<div class="card" style="margin-top:24px"><div class="empty"><b>Nenhum cliente com dados ainda</b>${REAL.on?'Cadastre o cliente e o token em <a href="/plataforma">Clientes e coleta</a>. A busca na API Gobrax roda de hora em hora.':''}</div></div>`}
-  else try{const C=await buildCtx();if(tok!==RTOK)return;html=await ROUTES[path].f(C)}
+  else try{const C=await buildCtx();if(tok!==RTOK)return;html=printHead(C)+await ROUTES[path].f(C)}
   catch(e){console.error(e);html=`<div class="card" style="margin-top:24px"><h2>Algo deu errado ao montar esta tela</h2><p class="muted">${esc(e.message)}</p></div>`}
   if(tok!==RTOK)return;
   view.classList.toggle('noanim',!anim);view.innerHTML=html;enhance(view,anim);
@@ -89,7 +109,7 @@ function shell(){
     <div style="flex:1"></div>${badge}
     <div class="relative"><select class="ctl" id="clientSel" aria-label="Cliente"></select></div>
     <div class="relative"><button class="ctl" data-act="pop" data-p="period" id="periodBtn"></button><div class="pop" id="pop-period"></div></div>
-    <button class="ctl diesel" data-act="go-prem" id="dieselBtn" title="Preço do diesel usado nos cálculos"></button>
+    <div class="relative"><button class="ctl diesel" data-act="pop" data-p="diesel" id="dieselBtn" title="Preço do diesel usado nos cálculos"></button><div class="pop" id="pop-diesel" style="min-width:300px;max-height:70vh;overflow:auto"></div></div>
     <button class="ctl icon" data-act="theme" aria-label="Alternar tema" id="themeBtn"></button>
     <div class="relative"><button class="ctl icon" data-act="pop" data-p="bell" aria-label="Alertas" style="position:relative">${ico('bell',18)}<span class="dot" id="bellDot" hidden></span></button><div class="pop" id="pop-bell" style="min-width:400px;max-width:92vw;max-height:78vh;overflow:auto"></div></div>
     <div class="relative"><button class="avatar" data-act="pop" data-p="acct" title="${esc(eu.nome)}" aria-label="Sua conta: ${esc(eu.nome)}">${esc(initials(eu.nome))}</button><div class="pop acct" id="pop-acct"></div></div></header>
@@ -103,12 +123,12 @@ function acctPop(){
 function renderTop(){
   const C=LASTC;
   $('#clientSel').innerHTML=CLIENT_DEFS.map(c=>`<option value="${esc(c.id)}" ${c.id===S.client?'selected':''}>${esc(c.name)}</option>`).join('');
-  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(C?C.price:ST.rules.diesel,2)}/L`;
+  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(C?C.price:ST.rules.diesel,2)}/L`;if(C)$('#dieselBtn').title='Diesel usado nos cálculos: '+C.dsl.fonte;
   $('#themeBtn').innerHTML=ico(S.theme==='dark'?'sun':'moon',18);
   if(!C)return;
   $('#periodBtn').innerHTML=`${ico('refresh',16)} ${C.P.label}`;
   const alerts=buildAlerts(C);const d=$('#bellDot');d.hidden=!alerts.length||ST.notifRead;d.textContent=alerts.length;
-  const fc=$('#cnt-frota');const n=suspCount(C)+C.cur.noSignal.length;fc.hidden=!n;fc.textContent=n;
+  const fc=$('#cnt-frota');const n=suspCount(C)+C.eq.semTransmitir.length;fc.hidden=!n;fc.textContent=n;
   if($('#pop-period').classList.contains('open'))$('#pop-period').innerHTML=periodPop();
 }
 function buildAlerts(C){
@@ -121,8 +141,11 @@ function buildAlerts(C){
   if(hl.band!=='BAIXO')a.push({ic:'shield',t:`Risco ${hl.band.toLowerCase()} de cancelamento (${hl.idx}/100)`,s:hl.top?'Principal sinal: '+hl.top.label.toLowerCase():'',r:'retencao'});
   if(cmpShort(C))a.push({ic:'alert',t:'Período de comparação com poucos dados',s:`Só ${C.prev.dataDays} dias com dado (de ${C.P.clen}): as variações de km, dias e diesel ficam infladas`,r:'frota?aba=qualidade'});
   const sc=suspCount(C);if(sc)a.push({ic:'alert',t:`${sc} registros suspeitos fora das médias`,s:'Veja quais registros ficaram fora das médias',r:'frota?aba=qualidade'});
-  if(C.cur.noSignal.length)a.push({ic:'truck',t:`${C.cur.noSignal.length} veículos sem sinal há mais de 3 dias`,s:C.cur.noSignal.slice(0,3).map(x=>x.id).join(', '),r:'frota?aba=mapa'});
-  const st=study(C.cid,ST,C.price);if(!st.pays)a.push({ic:'coin',t:'O projeto ainda não se paga',s:`Faltam ${fmt.brl(st.miss)} de economia`,r:'estudo'});
+  const e=C.eq;
+  if(e.longos.length)a.push({ic:'alert',t:`${e.longos.length} equipamento${e.longos.length>1?'s':''} sem transmitir há mais de ${ST.rules.diasCobranca} dias: risco de cobrança indevida`,s:e.longos.slice(0,4).map(x=>x.id+' ('+x.days+' dias)').join(', ')+' · '+(e.cobrado!=null?fmt.brl(e.cobrado,2)+'/mês cobrados':'valor cobrado: sem dado (contrato não cadastrado)'),r:'frota?aba=mapa'});
+  if(e.semTransmitir.length)a.push({ic:'truck',t:`${e.semTransmitir.length} veículo${e.semTransmitir.length>1?'s':''} sem transmitir (nenhum dado nos últimos 3 dias)`,s:e.semTransmitir.slice(0,3).map(x=>x.id).join(', '),r:'frota?aba=mapa'});
+  const st=C.st;if(!st.noBase&&!st.pays)a.push({ic:'coin',t:'O projeto ainda não se paga',s:`Economia acumulada ${fmt.brl(st.econ)} contra ${fmt.brl(st.inv)} investidos (cobertura ${fmt.n(st.econ/st.inv,2)}×, vs. linha de base do projeto). Faltam ${fmt.brl(st.miss)}.`,r:'estudo'});
+  if(C.conc.alerta)a.push({ic:'user',t:`${C.conc.top.id} responde por ${fmt.n(C.conc.share,0)}% da perda de diesel`,s:`Saldo da frota ${fmt.brl(C.conc.saldo)}; sem esse veículo, ${fmt.brl(C.conc.semTop)} (vs. linha de base do projeto)`,r:'geral'});
   return a;
 }
 function bellPop(C){
@@ -132,6 +155,14 @@ function bellPop(C){
   const li=x=>`<a class="li" href="#/${x.r}" data-act="pop-close" style="text-decoration:none;color:inherit"><div class="ava">${ico(x.ic,16)}</div><div><b class="sm">${x.t}</b><div class="xs muted">${esc(x.s)}</div></div></a>`;
   const ac=x=>`<div class="nact"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:10px"><b class="sm">${x.t}</b><span class="num b nv">${esc(x.v)}</span></div><div class="xs">${esc(x.s)}</div><div class="row" style="gap:6px"><button class="btn primary sm" data-act="go-drv" data-f="${x.f}">Ver condutores</button></div></div>`;
   return`<div class="stack" style="gap:6px"><div class="tag">Onde agir primeiro</div><div class="xs muted" style="margin-top:-4px">Ordenado pelo dinheiro em jogo no período</div>${acts.map(ac).join('')}${oth.length?`<div class="tag" style="margin-top:8px">Avisos</div>${oth.map(li).join('')}`:''}</div>`;
+}
+function dieselPop(){
+  const C=LASTC;if(!C)return'';const d=C.dsl,pode=podeEditarContrato();
+  const op=(uf,nome)=>{const v=DIESEL.uf?DIESEL.uf[uf]:null;return`<button class="li" ${pode?`data-act="diesel-uf" data-v="${uf}"`:'disabled'} style="width:100%;border:0;background:${d.uf===uf&&d.api?'var(--a200)':'transparent'};text-align:left;cursor:${pode?'pointer':'default'}"><span style="flex:1">${esc(nome)}</span><b class="num">${v?fmt.brl(v,2):'sem dado'}</b></button>`};
+  return`<div class="stack" style="gap:4px"><div class="tag">Preço do diesel</div><div class="xs muted">Em uso: <b>${fmt.brl(d.preco,2)}/L</b> · ${esc(d.fonte)}</div>
+  ${DIESEL.uf?'':'<div class="xs" style="color:var(--bad-t)">A API de preço (Petrobras, combustivelapi.com.br) não respondeu agora.</div>'}
+  ${pode?'<div class="xs muted">Escolha a média Brasil ou o estado do cliente. Vale para todas as telas, o PDF e o CSV deste cliente.</div>':'<div class="xs muted">Só CS e administrador mudam o estado do diesel.</div>'}
+  ${op('br','Média Brasil (geral)')}<div class="tag" style="margin-top:6px">Por estado</div>${UFS.map(([uf,n])=>op(uf,uf.toUpperCase()+' · '+n)).join('')}</div>`;
 }
 function periodPop(){
   const p=S.period;const pre=[['month','Mês atual'],['7d','7 dias'],['30d','30 dias'],['90d','90 dias']];
@@ -147,9 +178,10 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);return tru
 const csvQ=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 function csvFor(C,what){
   const gl=Object.fromEntries(gainsLosses(C.cur,C.prev,C.price).map(g=>[g.id,g]));const n=(v,d)=>v==null||!isFinite(v)?'':fmt.n(v,d).replace('−','-');
-  const head=['Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Ganho/perda (R$)');
+  const head=['Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Diesel economizado vs. linha de base (R$)');
   const rows=C.fleet.vehicles.map(v=>{const c=C.cur.byVeh[v.id];if(!c)return null;const r=[v.id,v.driver,n(c.km,0),n(c.l,0),n(c.kmpl,2),n(c.br100,1),n(c.green,1),n(c.idle,1),n(c.score,0)];if(what==='drivers'){const g=gl[v.id];r.push(vehStatus(C.cur,C.prev,v.id).label,g?n(g.money,0):'')}return r}).filter(Boolean);
-  return'﻿'+[head,...rows].map(r=>r.map(csvQ).join(';')).join('\n');
+  const pre=[['Cliente',C.def.name],['Período',fmt.dmy(dIso(C.P.from))+' a '+fmt.dmy(dIso(C.P.to))],['Diesel (R$/L)',fmt.n(C.price,2)+' ('+C.dsl.fonte+')'],['Economia',C.ec.b.rotulo],[]];
+  return'﻿'+[...pre,head,...rows].map(r=>r.map(csvQ).join(';')).join('\n');
 }
 function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.drvSel)return;el.innerHTML=drvDetail(C,S.u.drvSel);enhance(el,true);$$('.md .li').forEach(l=>l.classList.toggle('on',l.dataset.id===S.u.drvSel))}
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
@@ -162,7 +194,7 @@ function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to)
 const ACT={
   'ov-close':()=>closeOv(),
   'pop-close':()=>closePops(),
-  pop:el=>{const id='pop-'+el.dataset.p;const p=$('#'+id);const was=p.classList.contains('open');closePops();if(!was){if(el.dataset.p==='period')p.innerHTML=periodPop();else if(el.dataset.p==='acct')p.innerHTML=acctPop();else if(el.dataset.p==='bell'){p.innerHTML=bellPop(LASTC);ST.notifRead=true;$('#bellDot').hidden=true}p.classList.add('open')}},
+  pop:el=>{const id='pop-'+el.dataset.p;const p=$('#'+id);const was=p.classList.contains('open');closePops();if(!was){if(el.dataset.p==='period')p.innerHTML=periodPop();else if(el.dataset.p==='diesel')p.innerHTML=dieselPop();else if(el.dataset.p==='acct')p.innerHTML=acctPop();else if(el.dataset.p==='bell'){p.innerHTML=bellPop(LASTC);ST.notifRead=true;$('#bellDot').hidden=true}p.classList.add('open')}},
   logout:async()=>{try{await srv('/api/v1/auth/sair','POST')}catch(e){}location.replace('/')},
   theme:()=>{S.theme=S.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=S.theme;savePrefs();renderTop();mapsTheme()},
   menu:()=>$('#sidebar').classList.toggle('open'),
@@ -170,6 +202,7 @@ const ACT={
   period:el=>{S.period.preset=el.dataset.v;if(el.dataset.v==='custom'&&!S.period.from){S.period.from=dIso(T0-29);S.period.to=TODAY}render({anim:false,keepScroll:true})},
   compare:el=>{S.compare=el.dataset.v;render({anim:false,keepScroll:true})},
   'go-prem':()=>{S.u.dataTab='regras';nav('dados')},
+  'diesel-uf':async el=>{const C=LASTC;if(!C)return;try{await salvarUfDiesel(C.def,el.dataset.v);closePops();toast('Diesel: '+nomeUF(el.dataset.v));DB.bump();go()}catch(e){toast('Não foi possível salvar: '+e.message)}},
   print:()=>window.print(),
   csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'ov-metric':el=>{S.u.ovMetric=el.dataset.v;go()},
@@ -273,5 +306,6 @@ async function boot(){
   bind();
   const {path,q}=parseHash();const t=TABKEY[path];if(t&&q.aba&&t[1][q.aba])S.u[t[0]]=t[1][q.aba]===1?q.aba:t[1][q.aba];
   await render({skeleton:true});
+  buscarDiesel().then(ok=>{if(ok){DB.bump();go()}});setInterval(()=>buscarDiesel().then(ok=>{if(ok){DB.bump();go()}}),6*3600000);
   document.fonts&&document.fonts.ready.then(()=>{placeNav();placeTabs()});
 }

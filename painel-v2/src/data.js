@@ -34,7 +34,7 @@ const FIRST=['Adalberto','Benedito','Caio','Davi','Edgar','Fabrício','Geraldo',
 const LAST=['Almeida','Barros','Cardoso','Duarte','Esteves','Furtado','Guedes','Holanda','Jardim','Klein','Lacerda','Medeiros','Nogueira','Ornelas','Pacheco','Queiroz','Rezende','Siqueira','Teles','Uchoa','Vasques','Xavier','Zanetti','Amaral','Bastos','Caldas','Dantas','Fontes','Godoy','Lima'];
 const FILIAIS=['Matriz','Filial Sul','Filial Norte'];
 
-const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:28,wEng:22,wNota:22,wCons:17,wCrit:11,bandAlto:60,bandMedio:35,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
+const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:24,wEng:19,wNota:19,wCons:14,wCrit:9,wRoi:15,bandAlto:60,bandMedio:35,concPerda:50,diasCobranca:30,difPequena:3,kmDiaMuda:15,mixMin:85,veicMuda:10,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
 
 function moodFn(mood,start){
   const peak=T0-9;
@@ -169,14 +169,38 @@ const ckeyCli=v=>nkey(v).replace(/[.,/\-]/g,' ').replace(/\b(ltda|eireli|epp|me|
 const idDocCli=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').slice(0,140);
 function premissasDe(def){
   if(!def)return{};
-  if(!REAL.on){const c=ST.contracts[def.id]||{};return{valorEquip:c.unit,qtd:c.units}}
+  if(!REAL.on){const c=ST.contracts[def.id]||{};return{valorEquip:c.unit,qtd:c.units,uf:c.uf}}
   return REAL.prem.find(d=>ckeyCli(d.cliente)===ckeyCli(def.name))||{};
 }
 /* contrato que vale nas contas: o digitado; sem ele, R$ 159,90 por veículo com dado */
 function contratoDe(def){const pm=premissasDe(def);const unit=pm.valorEquip>0?+pm.valorEquip:DEFAULT_RULES.defUnit,units=pm.qtd>0?+pm.qtd:(def.vehicles||def.units||1);return{unit,units,unitAuto:!(pm.valorEquip>0),unitsAuto:!(pm.qtd>0)}}
-const dieselDe=def=>{const pm=premissasDe(def);return pm.preco>0?+pm.preco:ST.rules.diesel};
+/* Preço do diesel: Petrobras via combustivelapi.com.br (o mesmo do painel clássico), média Brasil ou o estado
+   escolhido para o cliente (premissas.uf). Um preço digitado nas premissas do clássico tem prioridade. */
+const UFS=[['ac','Acre'],['al','Alagoas'],['ap','Amapá'],['am','Amazonas'],['ba','Bahia'],['ce','Ceará'],['df','Distrito Federal'],['es','Espírito Santo'],['go','Goiás'],['ma','Maranhão'],['mt','Mato Grosso'],['ms','Mato Grosso do Sul'],['mg','Minas Gerais'],['pa','Pará'],['pb','Paraíba'],['pr','Paraná'],['pe','Pernambuco'],['pi','Piauí'],['rj','Rio de Janeiro'],['rn','Rio Grande do Norte'],['rs','Rio Grande do Sul'],['ro','Rondônia'],['rr','Roraima'],['sc','Santa Catarina'],['sp','São Paulo'],['se','Sergipe'],['to','Tocantins']];
+const DIESEL={uf:null,coleta:'',fonte:''};
+async function buscarDiesel(){
+  try{const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),8000);const r=await fetch('https://combustivelapi.com.br/api/precos/',{signal:ac.signal});clearTimeout(tm);if(!r.ok)return false;const j=await r.json();const d=j&&j.precos&&j.precos.diesel;if(!d)return false;
+    const o={};Object.entries(d).forEach(([k,v])=>{const n=Number(String(v==null?'':v).replace(',','.'));if(isFinite(n)&&n>0)o[k.toLowerCase()]=n});
+    if(!o.br)return false;DIESEL.uf=o;DIESEL.coleta=String(j.data_coleta||'');DIESEL.fonte=String(j.fonte||'Petrobras');return true}catch(e){return false}
+}
+const nomeUF=uf=>uf==='br'?'média Brasil':((UFS.find(x=>x[0]===uf)||[])[1]||String(uf).toUpperCase());
+function dieselInfo(def){
+  const pm=premissasDe(def);
+  if(pm.preco>0)return{preco:+pm.preco,fonte:'digitado nas premissas do cliente',uf:pm.uf||'br',api:false};
+  const uf=pm.uf||'br';
+  if(DIESEL.uf){const v=DIESEL.uf[uf]||DIESEL.uf.br;const u=DIESEL.uf[uf]?uf:'br';return{preco:v,fonte:(DIESEL.fonte||'Petrobras')+' · '+nomeUF(u)+(DIESEL.coleta?' · coleta '+DIESEL.coleta:''),uf,api:true}}
+  return{preco:ST.rules.diesel,fonte:'padrão da plataforma (API de preço indisponível agora)',uf,api:false};
+}
+const dieselDe=def=>dieselInfo(def).preco;
+async function salvarUfDiesel(def,uf){
+  if(!REAL.on){ST.contracts[def.id]={...(ST.contracts[def.id]||{}),uf};persist();return}
+  const at=premissasDe(def);const nova={...at,cliente:at.cliente||def.name,uf};delete nova.id;
+  nova.historico=[{em:new Date().toISOString(),por:(REAL.eu&&REAL.eu.nome)||'',mudou:'diesel '+nomeUF(at.uf||'br')+' → '+nomeUF(uf)+' (pelo painel novo)'}].concat(at.historico||[]).slice(0,100);
+  const id=at.id||'pr-'+idDocCli(def.name);await Gobrax.api.savePremissas(id,nova);
+  const i=REAL.prem.findIndex(d=>d.id===id);const doc={id,...nova};if(i>=0)REAL.prem[i]=doc;else REAL.prem.push(doc);
+}
 async function salvarContrato(def,unit,units){
-  if(!REAL.on){ST.contracts[def.id]={unit:unit||undefined,units:units||undefined};persist();return}
+  if(!REAL.on){ST.contracts[def.id]={...(ST.contracts[def.id]||{}),unit:unit||undefined,units:units||undefined};persist();return}
   const at=premissasDe(def);const mud=[];const R=v=>v?fmt.brl(v,2):'—';
   if((at.valorEquip||null)!==(unit||null))mud.push('valor por equipamento '+R(at.valorEquip)+' → '+R(unit));
   if((at.qtd||null)!==(units||null))mud.push('equipamentos '+(at.qtd||'—')+' → '+(units||'—'));
@@ -231,7 +255,7 @@ function metrics(cid,store,from,to,vehFilter){
   const key=['m',cid,from,to,vehFilter||'',DB.ver].join('|');if(DB.cache.has(key))return DB.cache.get(key);
   let rs=validRecs(cid,store).filter(r=>r.t>=from&&r.t<=to);
   if(vehFilter)rs=rs.filter(r=>vehFilter(r.veh));
-  const m=aggregate(rs);m.len=to-from+1;m.from=from;m.to=to;
+  const m=aggregate(rs);m.len=to-from+1;m.from=from;m.to=to;m.cid=cid;
   const by={};for(const r of rs)(by[r.veh]=by[r.veh]||[]).push(r);
   m.byVeh={};for(const id in by){const a=aggregate(by[id]);a.id=id;m.byVeh[id]=a}
   m.active=Object.keys(by).length;
@@ -253,7 +277,7 @@ function dailySeries(cid,store,from,to,vehFilter){
 function weeklySeries(cid,store,from,to){
   const out=[];let t=from;let n=1;
   while(t<=to){const dow=(wdOf(t)+6)%7;const end=Math.min(to,t+(6-dow));const a=metrics(cid,store,t,end);
-    out.push({n,from:t,to:end,partial:(dow!==0&&t===from)||end-t<6,a});t=end+1;n++}
+    out.push({n,from:t,to:end,dias:end-t+1,partial:end-t<6,a});t=end+1;n++}
   return out;
 }
 
@@ -270,7 +294,7 @@ function resolvePeriod(st){
 }
 
 /* ---------- Índice de risco (regras da plataforma) ---------- */
-function health(cur,prev,rules){
+function health(cur,prev,rules,cov){
   const S=[];const pct=(c,p)=>p?(c-p)/p*100:null;
   const cd=cur.km/cur.len,pd=prev.km/prev.len;
   const short=prev.dataDays<prev.len*rules.minCmpPct/100;const shortTxt='Base de comparação curta ('+prev.dataDays+' de '+prev.len+' dias com dado). Sinal fora do índice';
@@ -283,12 +307,19 @@ function health(cur,prev,rules){
   if(prev.kmpl&&cur.kmpl){const worse=Math.max(0,(prev.kmpl-cur.kmpl)/prev.kmpl*100);S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:clamp(worse*5,0,100),txt:'Média '+fmt.n(cur.kmpl,2)+' km/l ('+fmt.sp(pct(cur.kmpl,prev.kmpl))+')'})}else S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:null,txt:'Sem base de comparação'});
   const vs=Object.values(cur.byVeh).filter(v=>v.score!=null);
   if(vs.length){const sh=vs.filter(v=>v.score<40).length/vs.length*100;S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:clamp(sh*2.5,0,100),txt:fmt.n(sh,0)+'% dos veículos com nota abaixo de 40'})}else S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:null,txt:'Sem dado'});
+  /* cobertura do investimento: economia acumulada (vs. linha de base do projeto) ÷ investimento acumulado, desde o início */
+  const cob=cov&&cov.inv>0&&cov.econ!=null?cov.econ/cov.inv:null;
+  if(cob!=null){const r=cob>=1.2?0:cob>=1?(1.2-cob)/0.2*30:Math.min(100,50+150*(1-cob));
+    S.push({k:'roi',label:'Cobertura do investimento',w:rules.wRoi,risk:clamp(r,0,100),txt:fmt.n(cob,2)+'× (economia '+fmt.brl(cov.econ)+' contra '+fmt.brl(cov.inv)+' investidos, vs. linha de base do projeto)'})}
+  else S.push({k:'roi',label:'Cobertura do investimento',w:rules.wRoi,risk:null,txt:'sem dado (sem linha de base ou sem investimento)'});
   const av=S.filter(s=>s.risk!=null);const tw=av.reduce((a,s)=>a+s.w,0)||1;
   for(const s of S){s.share=s.risk!=null?s.w/tw*100:null;s.pts=s.risk!=null?s.risk*s.w/tw:null}
-  const idx=av.reduce((a,s)=>a+s.pts,0);
+  const calc=av.reduce((a,s)=>a+s.pts,0);
+  /* projeto que ainda não se paga fica no mínimo em risco médio */
+  const piso=cob!=null&&cob<1&&calc<rules.bandMedio;const idx=piso?rules.bandMedio:calc;
   const band=idx>=rules.bandAlto?'ALTO':idx>=rules.bandMedio?'MÉDIO':'BAIXO';
   const top=[...av].sort((a,b)=>b.pts-a.pts)[0];
-  return{idx:Math.round(idx),band,signals:S,top};
+  return{idx:Math.round(idx),calc:Math.round(calc),piso,cob,band,signals:S,top};
 }
 
 /* ---------- Oportunidades / ganhos e perdas ---------- */
@@ -304,10 +335,53 @@ function opportunities(cur,prev,price){
   const brRef=quant(vs.map(v=>v.br100),0.25);const brW=brRef!=null?vs.filter(v=>v.br100!=null&&v.br100>brRef).length:0;
   return{ref,worse,potential,fell,evaluated:vs.length,kdRef,low,brRef,brW};
 }
+/* ---------- Diesel economizado: a regra oficial (item 1) ----------
+   litros que a frota gastaria no consumo da linha de base do projeto nos mesmos km − litros realmente gastos, × preço do diesel.
+   A linha de base é a do Estudo: primeiras 4 semanas do acompanhamento (com menos de 8 semanas, a primeira metade). */
+function baseOf(cid){
+  const k='base|'+cid+'|'+DB.ver;if(DB.cache.has(k))return DB.cache.get(k);
+  const def=CLIENT_DEFS.find(c=>c.id===cid);const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
+  const curto=weeklySeries(cid,ST,ps,T0).length<8;
+  const pIni=curto?[ps,half]:[ps,ps+27],pAgora=curto?[half+1,T0]:[T0-27,T0];
+  const first=metrics(cid,ST,pIni[0],pIni[1]);
+  const o={ps,len,half,curto,pIni,pAgora,rotIni:curto?'primeira metade do período':'primeiras 4 semanas',rotAgora:curto?'segunda metade':'últimas 4 semanas',first,base:first.kmpl||null};
+  o.rotulo=o.base?`vs. linha de base do projeto (${fmt.dm(dIso(pIni[0]))} a ${fmt.dm(dIso(pIni[1]))}, ${fmt.n(o.base,2)} km/l)`:'sem linha de base';
+  DB.cache.set(k,o);return o;
+}
+/* economia de um conjunto de registros (período, mês, veículo) contra a linha de base; sem base = sem dado */
+function econOf(m,price){const b=baseOf(m.cid);if(!b.base||!m.km)return{base:b.base,lit:b.base?0:null,money:b.base?0:null,b};const lit=m.km/b.base-m.l;return{base:b.base,lit,money:lit*price,b}}
+/* contribuição de cada veículo para o número oficial: a soma de todos é exatamente a economia da frota no período */
 function gainsLosses(cur,prev,price){
+  const b=baseOf(cur.cid);if(!b.base)return[];const out=[];
+  for(const id in cur.byVeh){const v=cur.byVeh[id];if(!v.km)continue;const saved=v.km/b.base-v.l;out.push({id,money:saved*price,liters:saved,from:b.base,to:v.kmpl,km:v.km})}
+  out.sort((a,b)=>b.money-a.money);return out;
+}
+/* a mesma conta contra o próprio veículo no período de comparação: sempre rotulada "vs. período anterior" */
+function gainsVsPrev(cur,prev,price){
   const out=[];
   for(const id in cur.byVeh){const v=cur.byVeh[id],p=prev.byVeh[id];if(!p||!p.kmpl||!v.kmpl||v.km<100)continue;const saved=(v.km/p.kmpl-v.l);out.push({id,money:saved*price,liters:saved,from:p.kmpl,to:v.kmpl})}
   out.sort((a,b)=>b.money-a.money);return out;
+}
+/* concentração da perda: quanto da perda total vem do maior caso (item 3) */
+function concOf(gl,rules){
+  const perdas=gl.filter(g=>g.money<0);const tot=perdas.reduce((a,g)=>a+g.money,0);const saldo=gl.reduce((a,g)=>a+g.money,0);
+  if(!perdas.length)return{top:null,share:0,saldo,semTop:saldo,perda:0,alerta:false};
+  const top=perdas.reduce((a,g)=>g.money<a.money?g:a);const share=tot?top.money/tot*100:0;
+  return{top,share,saldo,semTop:saldo-top.money,perda:tot,alerta:share>=rules.concPerda&&perdas.length>0};
+}
+/* confiança da linha de base (item 6): só sinaliza, não ajusta o número */
+function confOf(cid,cur,rules){
+  const b=baseOf(cid);const f=b.first;if(!b.base)return{nivel:'sem dado',avisos:['Sem linha de base: o início do acompanhamento não tem consumo válido.'],b,f,cur};
+  const avisos=[];const dk=cur.kmpl&&b.base?(cur.kmpl-b.base)/b.base*100:null;
+  if(dk!=null&&Math.abs(dk)<rules.difPequena)avisos.push(`Diferença de consumo pequena (${fmt.sp(dk)}, abaixo de ${rules.difPequena}%): o resultado pode estar dentro da variação normal da operação.`);
+  const kd=f.kmDay&&cur.kmDay?(cur.kmDay-f.kmDay)/f.kmDay*100:null;
+  if(kd!=null&&Math.abs(kd)>rules.kmDiaMuda)avisos.push(`Km por dia por veículo mudou ${fmt.sp(kd)} entre a base e agora (limite: ${rules.kmDiaMuda}%): rota ou uso diferentes mexem no consumo.`);
+  const vd=f.active?(cur.active-f.active)/f.active*100:null;
+  if(vd!=null&&Math.abs(vd)>=rules.veicMuda)avisos.push(`Número de veículos com dado mudou: ${f.active} na base, ${cur.active} agora.`);
+  let mix=null;if(cur.km){let k=0;for(const id in cur.byVeh)if(f.byVeh[id])k+=cur.byVeh[id].km;mix=k/cur.km*100}
+  if(mix!=null&&mix<rules.mixMin)avisos.push(`Mix de veículos mudou: só ${fmt.n(mix,0)}% dos km de agora são de veículos que também rodaram na base (limite: ${rules.mixMin}%).`);
+  const nivel=avisos.length===0?'alta':avisos.length<=2?'média':'baixa';
+  return{nivel,avisos,b,f,cur,dk,kd,vd,mix};
 }
 function vehStatus(cur,prev,id){
   const v=cur.byVeh[id],p=prev.byVeh[id];if(!v||!p||!p.kmpl||!v.kmpl)return{k:'base',label:'SEM BASE',cls:'n',ch:null};
@@ -317,13 +391,11 @@ function vehStatus(cur,prev,id){
 /* ---------- Estudo do projeto ---------- */
 function study(cid,store,price){
   const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=contratoDe(def);
-  const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
-  /* linha de base igual à do painel clássico: com 8 semanas ou mais, início = primeiras 4 semanas e agora = últimas 4;
-     com menos, a primeira e a segunda metade do período */
-  const nWk=weeklySeries(cid,store,ps,T0).length,curto=nWk<8;
-  const pIni=curto?[ps,half]:[ps,ps+27],pAgora=curto?[half+1,T0]:[T0-27,T0];
-  const rotIni=curto?'primeira metade do período':'primeiras 4 semanas',rotAgora=curto?'segunda metade':'últimas 4 semanas';
-  const first=metrics(cid,store,pIni[0],pIni[1]);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
+  /* linha de base igual à do painel clássico (baseOf): com 8 semanas ou mais, início = primeiras 4 semanas e agora = últimas 4;
+     com menos, a primeira e a segunda metade do período. Sem consumo válido na base, o estudo fica "sem dado". */
+  const B=baseOf(cid);const {ps,len,half,pIni,pAgora,rotIni,rotAgora,first}=B;
+  if(!B.base)return{noBase:true,ct,mens:ct.unit*ct.units,ps,len,pIni,rotIni,econ:null,inv:null,pays:null,months:[],weeks:[],days:[]};
+  const base=B.base;
   const mens=ct.unit*ct.units;const months=[];
   let cum=0,cumI=0;const weeks=[];
   const recs=validRecs(cid,store).filter(r=>r.t>=ps);

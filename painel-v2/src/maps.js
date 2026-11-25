@@ -25,7 +25,7 @@ const GEO={
     hubs:[['Matriz · Porto Alegre',-30.03,-51.23],['Filial · Caxias do Sul',-29.17,-51.18],['Filial · Passo Fundo',-28.26,-52.41]]}
 };
 const geoFor=cid=>REAL.on?{routes:[],hubs:[]}:(GEO[cid]||GEO.via);
-const ST_LBL={mov:'Em movimento',idle:'Motor ligado parado',stop:'Desligado',off:'Sem sinal',unk:'Sem posição'};
+const ST_LBL={mov:'Em movimento',idle:'Motor ligado parado',stop:'Desligado',off:'Sem sinal agora',unk:'Sem posição'};
 const ST_COL={mov:'var(--ok)',idle:'var(--warn)',stop:'var(--n400)',off:'var(--bad)',unk:'var(--n300)'};
 const ST_ORDER=['mov','idle','stop','off','unk'];
 const LIVE_ST={movimento:'mov',ligado:'idle',desligado:'stop',sem_sinal:'off',nao_encontrado:'off'};
@@ -181,7 +181,7 @@ function fleetMapBlock(C){
   const sc=statusCounts(C);const f=S.u.mapFilter||'all';
   const chip=(k,l,n,c)=>n||k==='all'?`<button class="chip ${f===k?'on':''}" data-act="map-filter" data-v="${k}">${c?`<i style="background:${c}"></i>`:''}${l} · ${n}</button>`:'';
   const list=C.fleet.vehicles.map(v=>({v,st:vehStat(C,v)})).sort((a,b)=>ST_ORDER.indexOf(a.st)-ST_ORDER.indexOf(b.st)).map(({v,st})=>`<div class="li" data-act="map-focus" data-id="${esc(v.id)}" data-st="${st}"><span class="dotst" style="background:${ST_COL[st]}"></span><div style="flex:1;min-width:0"><b style="display:block">${esc(v.id)}</b><span class="xs muted">${esc(v.driver)}</span></div><span class="xs muted">${ST_LBL[st]}</span></div>`).join('');
-  return`<div class="mapwrap sec rise"><aside class="mside card"><div class="tag" style="margin-bottom:8px">Frota agora</div>${liveNote(C)}<div class="chips" style="margin-bottom:12px">${chip('all','Todos',C.fleet.vehicles.length)}${chip('mov','Movimento',sc.mov,'var(--ok)')}${chip('idle','Parado ligado',sc.idle,'var(--warn)')}${chip('stop','Desligado',sc.stop,'var(--n400)')}${chip('off','Sem sinal',sc.off,'var(--bad)')}${chip('unk','Sem posição',sc.unk,'var(--n300)')}</div><div class="scrolly stack" style="gap:2px">${list}</div></aside>
+  return`<div class="mapwrap sec rise"><aside class="mside card"><div class="tag" style="margin-bottom:8px">Frota agora</div>${liveNote(C)}<div class="chips" style="margin-bottom:12px">${chip('all','Todos',C.fleet.vehicles.length)}${chip('mov','Movimento',sc.mov,'var(--ok)')}${chip('idle','Parado ligado',sc.idle,'var(--warn)')}${chip('stop','Desligado',sc.stop,'var(--n400)')}${chip('off','Sem sinal agora',sc.off,'var(--bad)')}${chip('unk','Sem posição',sc.unk,'var(--n300)')}</div><div class="scrolly stack" style="gap:2px">${list}</div></aside>
   <div class="mapcol"><div id="routeBar" class="routebar" hidden></div>${mapEl('',{mode:'full',h:600})}<div class="notiles-msg">Mapa-base indisponível agora. Os veículos continuam posicionados.</div></div></div>`;
 }
 function miniMapBlock(C,h=240){return`<div class="map" style="position:relative">${mapEl('',{mode:'mini',h})}<div class="notiles-msg">Sem internet para o mapa-base</div></div>`}

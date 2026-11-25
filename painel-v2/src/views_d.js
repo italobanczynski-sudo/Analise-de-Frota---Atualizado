@@ -12,9 +12,10 @@ function evoBlock(C,id){
      o período seguinte também não calcula variação contra ele */
   const parc=b=>b.parcial;
   const dc=pv.map((v,i)=>{if(v==null)return'var(--n300)';if(parc(bs[i]))return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0||parc(bs[j]))return'var(--n400)';const g=indGood(ind,(v-pv[j])/Math.abs(pv[j]||1)*100);return g==null?'var(--n400)':g?'var(--ok)':'var(--bad)'});
-  const chart=lineChart({labels:bs.map(b=>b.label),series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],yfmt:v=>fmt.n(v,ind.d),h:230,
+  const iv=intervencoes(C,id);const marks=bs.map((b,i)=>{let n=0;for(const t in iv)if(+t>=b.from&&+t<=b.to)n+=iv[t];return n?{i,n}:null}).filter(Boolean);
+  const chart=lineChart({labels:bs.map(b=>b.label),marks:marks.length?marks:null,series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],yfmt:v=>fmt.n(v,ind.d),h:230,
     tip:i=>bs[i].a?`<b>${esc(bs[i].label)}</b>${parc(bs[i])?` · parcial (${bs[i].dias} dias)`:''}<br>${esc(ind.l)}: ${fInd(ind,pv[i])}<br>${fmt.n(bs[i].a.km,0)} km`:'',aria:'Evolução de '+ind.l});
-  const rows=IND.filter(i=>!(i.veh&&!id)&&i.k!=='n'||id&&i.k==='n').slice(0,10);
+  const rows=IND.filter(i=>!(i.veh&&!id)&&i.k!=='n'||id&&i.k==='n').slice(0,14);
   const cell=(i,b,k)=>{if(!b.a)return'<td class="r muted">—</td>';const v=i.get(b.a);if(v==null)return'<td class="r muted">—</td>';
     if(parc(b))return`<td class="r part"><div class="num evv">${fmt.n(v,i.d)}</div><span class="evd">parcial (${b.dias} dia${b.dias>1?'s':''})</span></td>`;
     let j=k-1;while(j>=0&&!bs[j].a)j--;let cls='',dv='';
@@ -24,7 +25,7 @@ function evoBlock(C,id){
   const unit=i=>{const u=(i.u||'').trim();return i.k==='lph100'?'L por 100 km':u.startsWith('/')?'por '+u.slice(1).trim():u==='%'?'% do tempo':u==='pts'?'pontos (0–100)':u};
   const tbl=`<div class="scroll-x"><table class="tbl evo"><thead><tr><th>Indicador</th><th>Unidade</th>${bs.map(b=>`<th class="r">${esc(b.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(i=>`<tr><td><b>${esc(i.l)}</b></td><td class="muted xs">${esc(unit(i))}</td>${bs.map((b,k)=>cell(i,b,k)).join('')}</tr>`).join('')}</tbody></table></div><div class="xs muted" style="margin-top:10px">Cada célula traz o valor do período e, abaixo, a variação em % contra a coluna anterior (▲ subiu, ▼ caiu). Verde melhorou e vermelho piorou (variações menores que 2% não são coloridas). Período incompleto fica em cinza, com "parcial (N dias)", sem cor e sem variação.</div>`;
   const opts=IND.filter(i=>!i.veh).map(i=>`<option value="${i.k}" ${i.k===mk?'selected':''}>${esc(i.l)}</option>`).join('');
-  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial (N dias): sem cor e sem variação</span></div>${tbl}</div>`;
+  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial (N dias): sem cor e sem variação</span>${marks.length?'<span>● nº = condutores com mensagem enviada</span>':''}</div>${tbl}</div>`;
 }
 function improvedRows(C,rows,keys){
   return keys.map(k=>{const i=INDK[k];let b=0,s=0,w=0;rows.forEach(r=>{const x=indRes(i,r.c,r.p);if(x.k==='better')b++;else if(x.k==='worse')w++;else if(x.k==='same')s++});
@@ -136,7 +137,7 @@ function drvDash(C,id){
   const kmv=ds.map(d=>d.a?d.a.km:null);const kmAvg=c.n?c.km/c.n:null;
   const evo=`<div class="grid ga2 sec"><div class="card rise">${cardH('Evolução dia a dia',`${esc(ind.s)}. Passe o mouse para comparar dia a dia.`,`<select class="inp" data-chg="day-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['grafico','Gráfico'],['tabela','Tabela']],u.dayView||'grafico','day-view')}`)}<div class="leg" style="margin-bottom:6px"><span><i style="background:var(--laranja)"></i>Período analisado</span><span><i style="background:var(--n400)"></i>Comparação</span></div>${view}</div>
   <div class="card rise">${cardH('Km rodados por dia','Dias sem barra não têm registro.')}${dailyBars(kmv,ds.map(d=>fmt.dm(d.date)),{avg:kmAvg,u:' km',aria:'Km rodados por dia'})}</div></div>`;
-  return strip+lido+rd+cal+evo;
+  return strip+lido+contatoBlock(C,id)+rd+cal+evo;
 }
 function drvIndTable(C,id){
   const c=C.cur.byVeh[id],p=C.prev.byVeh[id];let h='',g='';
@@ -186,7 +187,7 @@ function ovExtra(C){
   const ajuda=`<div style="position:absolute;top:14px;right:14px;z-index:3;text-align:left">${infoDot('Como funciona a saúde da frota',`<p style="margin:6px 0">É um índice de risco de 0 a 100: quanto <b>menor</b>, mais saudável. Cada sinal abaixo vira um risco de 0 a 100, comparando o período atual com o anterior, e o índice é a média ponderada desses riscos.</p><ul style="margin:4px 0 6px 16px;padding:0">${sinais}</ul><p style="margin:6px 0">Pesos padrão: uso da frota ${R.wUso}, engajamento ${R.wEng}, Nota Gobrax ${R.wNota}, consumo ${R.wCons}, motoristas críticos ${R.wCrit}. Sinal sem dado sai e os pesos se redistribuem.</p><p style="margin:6px 0 0">Faixas: risco baixo abaixo de ${R.bandMedio}, médio de ${R.bandMedio} a ${R.bandAlto-1}, alto a partir de ${R.bandAlto}.</p>`,{dark:true})}</div>`;
   return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center;position:relative;overflow:hidden"><span class="wm" aria-hidden="true">gobrax</span>${ajuda}${cardH('Saúde da frota',`${C.P.label} contra ${esc(C.P.cmpLabel)}`)}<div style="display:flex;justify-content:center">${gauge(hl.idx,hl.band)}</div><div class="row" style="justify-content:center;margin-top:8px">${bandBadge(hl.band)}</div><div class="sm" style="margin-top:8px">${hl.top?`Pesa mais: ${esc(hl.top.label)}.`:''}</div><a class="b sm" href="#/retencao" style="display:inline-block;margin-top:8px">Abrir saúde do cliente</a></div>
   <div class="card rise">${cardH('Perfil de condução','Agora contra o período anterior')}${radar(radarAxes(C.cur,C.prev,C.cur))}</div>
-  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${evoBlock(C,null)}`;
+  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${idleBlock(C)}${trendBlock(C)}${evoBlock(C,null)}`;
 }
 
 /* ---------- MOTORISTAS · Mensagens (evolução da nota depois do aviso) ---------- */
@@ -282,4 +283,75 @@ function msgEvolution(C,hist){
   return kp+`<div class="grid sec" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))">
     <div class="card rise">${cardH(fr?'Evolução da nota da frota':'Evolução da nota de '+esc(h.name),'',`<select class="inp" data-chg="msg-drv" style="width:auto;max-width:260px" aria-label="Condutor">${opts}</select>${segHtml([['dia','Por dia'],['mes','Por mês']],gran,'msg-gran')}`)}<div class="xs muted" style="margin:-4px 0 10px">${sub}</div><div class="msghead">${head}</div>${chart}</div>
     <div class="card rise">${cardH('Condutores com mensagem','Nota do mês no 1º e no último envio. Clique em um condutor para ver a evolução dele.',fr?'':'<button class="btn ghost sm" data-act="msg-drv" data-id="__frota">Ver a frota toda</button>')}<div class="msgscroll"><table class="tbl msgtbl"><thead><tr><th>Condutor</th><th class="r">Mensagens</th><th class="r">Nota no 1º envio</th><th class="r">Nota no último</th><th class="r">Evolução</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+}
+
+/* ---------- Intervenções (item 3): dias com mensagem marcada como enviada, contados por condutor ----------
+   vem do registro de mensagens (aba Mensagens); id = um veículo, ou a frota toda */
+function intervencoes(C,id){
+  const out={};let h=[];try{h=msgHist(C)}catch(e){h=[]}
+  for(const d of h){if(id&&d.id!==id)continue;for(const m of d.msgs||[]){out[m.t]=(out[m.t]||0)+1}}
+  return out;
+}
+/* antes e depois do primeiro contato: média de 14 dias de cada lado; nota pela premiação do mês do contato e do seguinte */
+function contatoBlock(C,id){
+  let h=[];try{h=msgHist(C)}catch(e){}const d=h.find(x=>x.id===id&&x.first);
+  if(!d)return`<div class="card rise sec">${cardH('Antes e depois do primeiro contato','Média de 14 dias antes e depois da primeira mensagem')}<div class="empty"><b>Sem contato registrado</b>Nenhuma mensagem marcada como enviada para este condutor.</div></div>`;
+  const t0=d.first.t,fim=Math.min(T0,t0+14);const a=aggFor(C,t0-14,t0-1,id),b=aggFor(C,t0+1,fim,id);const sd='<span class="muted">sem dado</span>';
+  const row=k=>{const i=INDK[k];const x=a.n?i.get(a):null,y=b.n?i.get(b):null;const r=x!=null&&y!=null&&x?indRes(i,b,a):null;
+    return`<tr><td>${esc(i.l)}</td><td class="r num">${x!=null?fInd(i,x):sd}</td><td class="r num">${y!=null?fInd(i,y):sd}</td><td class="r">${r&&r.ch!=null?`<span class="dl ${r.cls==='ok'?'good':r.cls==='bad'?'bad':'n'}">${r.ch>0?'▲':'▼'} ${fmt.n(Math.abs(r.ch),1)}%</span>`:''}</td></tr>`};
+  const mes=dIso(t0).slice(0,7),prox=(()=>{const [y,m]=mes.split('-').map(Number);return new Date(Date.UTC(y,m,1)).toISOString().slice(0,7)})();
+  const pr=(C.fleet.prem||[]).filter(p=>nkey(p.motorista)===nkey(d.name));const n1=(pr.find(p=>p.mes===mes)||{}).nota,n2=(pr.find(p=>p.mes===prox)||{}).nota;
+  const nota=`<tr><td>Nota Gobrax (premiação)</td><td class="r num">${n1!=null?MESES[+mes.slice(5)-1]+': '+fmt.n(n1,0):sd}</td><td class="r num">${n2!=null?MESES[+prox.slice(5)-1]+': '+fmt.n(n2,0):sd}</td><td class="r">${n1!=null&&n2!=null?`<span class="dl ${n2>=n1?'good':'bad'}">${n2-n1>0?'+':''}${fmt.n(n2-n1,0)}</span>`:''}</td></tr>`;
+  return`<div class="card rise sec">${cardH('Antes e depois do primeiro contato',`Primeira mensagem em ${fmt.dmy(dIso(t0))} · média de ${fmt.dm(dIso(t0-14))} a ${fmt.dm(dIso(t0-1))} contra ${fmt.dm(dIso(t0+1))} a ${fmt.dm(dIso(fim))}${fim<t0+14?` (só ${fim-t0} dias até hoje)`:''}`)}
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Indicador</th><th class="r">14 dias antes</th><th class="r">Depois</th><th class="r">Variação</th></tr></thead><tbody>${['kmpl','br100','idle','emb','green'].map(row).join('')}${nota}</tbody></table></div>
+  <div class="xs muted" style="margin-top:8px">${d.msgs.length} mensage${d.msgs.length>1?'ns':'m'} marcada${d.msgs.length>1?'s':''} como enviada${d.msgs.length>1?'s':''}. A API não manda nota por dia: a nota compara a premiação do mês do contato com a do mês seguinte. Dias sem rodagem ficam fora da média.</div></div>`;
+}
+/* ---------- Motor ligado parado (item 1): horas × 5 L/h × diesel ---------- */
+function idleBlock(C){
+  const R=ST.rules,cur=C.cur,price=C.price;
+  if(!cur.hm)return`<div class="card rise sec">${cardH('Motor ligado parado','Horas de ignição e % parado ligado vêm da performance da API')}<div class="empty"><b>Sem dado</b>A API não trouxe horas de motor ligado para este cliente no período. Nada é estimado.</div></div>`;
+  const pct=cur.idleHp,h=cur.idleH,L=h*R.idleLph,rs=L*price;
+  const alvo=pct>R.idleMeta?h-cur.hm*R.idleMeta/100:0;const aL=alvo*R.idleLph;
+  const bs=buckets(C,'semana',null);const pv=bs.map(b=>b.a&&b.a.hm?b.a.idleHp:null);
+  const dc=pv.map((v,i)=>{if(v==null||bs[i].parcial)return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0||bs[j].parcial)return'var(--n400)';const ch=(v-pv[j])/(pv[j]||1)*100;return Math.abs(ch)<2?'var(--n400)':ch<0?'var(--ok)':'var(--bad)'});
+  const chart=lineChart({labels:bs.map(b=>b.label),series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],base:{v:R.idleMeta,label:'meta '+R.idleMeta+'%'},yfmt:v=>fmt.n(v,1)+'%',h:200,tip:i=>bs[i].a&&pv[i]!=null?`<b>${esc(bs[i].label)}</b>${bs[i].parcial?` · parcial (${bs[i].dias} dias)`:''}<br>${fmt.n(pv[i],1)}% parado ligado<br>${fmt.n(bs[i].a.idleH,0)} h · ${fmt.n(bs[i].a.idleH*R.idleLph,0)} L`:'',aria:'Motor ligado parado por semana'});
+  const top=Object.values(cur.byVeh).filter(v=>v.hm).sort((a,b)=>b.idleH-a.idleH).slice(0,5);
+  const mini=(t,v,s,cls='')=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num ${cls}" style="font-size:22px">${v}</b><div class="xs">${s}</div></div>`;
+  return`<div class="grid g2 sec"><div class="card rise">${cardH('Motor ligado parado',`${C.P.label} · ${R.idleLph} L por hora parado · diesel ${fmt.brl(price,2)}/L`)}
+  <div class="grid g3" style="gap:10px">${mini('Tempo parado ligado',fmt.n(pct,1)+'%',fmt.n(h,0)+' h · meta '+R.idleMeta+'%')}${mini('Diesel desperdiçado',fmt.n(L,0)+' L',fmt.n(h,0)+' h × '+R.idleLph+' L/h')}${mini('Em reais',fmt.brl(rs),fmt.n(L,0)+' L × '+fmt.brl(price,2),'')}</div>
+  <div class="sm" style="margin:12px 0;background:var(--ok-s);border-left:4px solid var(--ok);border-radius:8px;padding:8px 12px">${alvo>0?`<b>Se a frota chegasse a ${R.idleMeta}%:</b> ${fmt.n(alvo,0)} h a menos, <b>${fmt.n(aL,0)} L</b> e <b>${fmt.brl(aL*price)}</b> a menos no período.`:`A frota já está dentro da meta de ${R.idleMeta}%.`}</div>
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Quem mais pesa</th><th class="r">Parado ligado</th><th class="r">Horas</th><th class="r">R$</th></tr></thead><tbody>${top.map(v=>`<tr class="click" data-act="drv-open" data-id="${esc(v.id)}"><td><b>${esc(v.id)}</b> <span class="xs muted">${esc((C.fleet.byId[v.id]||{}).driver||'')}</span></td><td class="r num">${fmt.n(v.idleHp,0)}%</td><td class="r num">${fmt.n(v.idleH,0)} h</td><td class="r num">${fmt.brl(v.idleH*R.idleLph*price)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="xs muted" style="margin-top:8px">Horas = horas de ignição ligada × % de motor ligado parado (os dois da API). Dia sem um dos dois fica fora da conta; nada é estimado.</div></div>
+  <div class="card rise">${cardH('Evolução por semana','% do tempo de ignição parado ligado · linha tracejada = meta')}${chart}<div class="leg" style="margin-top:8px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial: sem cor e sem variação</span></div></div></div>`;
+}
+/* ---------- Tendência longa (item 6): consumo por mês, média móvel de 3 meses, nota e economia acumulada ---------- */
+function trendBlock(C){
+  const st=C.st;if(st.noBase||!st.months.length)return'';
+  const win=['3','6','ini'].includes(S.u.trendWin)?S.u.trendWin:'6';
+  const dim=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(Date.UTC(y,m,0)).getUTCDate()};
+  let ms=st.months.map(m=>({...m,parcial:m.cal<dim(m.ym)}));if(win!=='ini')ms=ms.slice(-(+win));
+  const kv=ms.map(m=>m.km?m.kmpl:null);
+  const mm=ms.map((m,i)=>{const sl=ms.slice(Math.max(0,i-2),i+1).filter(x=>x.km&&x.kmpl);if(!sl.length)return null;const km=sl.reduce((a,x)=>a+x.km,0),l=sl.reduce((a,x)=>a+x.km/x.kmpl,0);return km/l});
+  const dc=kv.map((v,i)=>{if(v==null||ms[i].parcial)return'var(--n300)';let j=i-1;while(j>=0&&kv[j]==null)j--;if(j<0||ms[j].parcial)return'var(--n400)';const ch=(v-kv[j])/kv[j]*100;return Math.abs(ch)<2?'var(--n400)':ch>0?'var(--ok)':'var(--bad)'});
+  let acc=0;const all=st.months;const cum={};all.forEach(m=>{acc+=m.econ;cum[m.ym]=acc});
+  const chart=lineChart({labels:ms.map(m=>m.label.replace(/ \d{4}$/,'')+'/'+m.ym.slice(2,4)),sub:ms.map(m=>m.parcial?`parcial (${m.cal} dias)`:''),series:[{vals:mm,color:'var(--text)',dash:'6 4',w:1.8},{vals:kv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],base:{v:st.base,label:'linha de base '+fmt.n(st.base,2)},yfmt:v=>fmt.n(v,2),h:240,
+    tip:i=>`<b>${esc(ms[i].label)}</b>${ms[i].parcial?` · parcial (${ms[i].cal} dias)`:''}<br>Consumo: ${kv[i]!=null?fmt.n(kv[i],2)+' km/l':'sem dado'}<br>Média móvel 3 meses: ${mm[i]!=null?fmt.n(mm[i],2):'sem dado'}<br>Nota (premiação): ${ms[i].score!=null?fmt.n(ms[i].score,0):'sem dado'}<br>Economia acumulada até aqui: ${fmt.brl(cum[ms[i].ym])}`,aria:'Tendência de consumo por mês'});
+  const km=ms.reduce((a,m)=>a+(m.km||0),0),l=ms.reduce((a,m)=>a+(m.km&&m.kmpl?m.km/m.kmpl:0),0);
+  const notas=ms.filter(m=>!m.parcial&&m.score!=null);const nota=notas.length?notas.reduce((a,m)=>a+m.score,0)/notas.length:null;
+  const econ=ms.reduce((a,m)=>a+m.econ,0);const nome={3:'3 meses',6:'6 meses',ini:'desde o início'}[win];
+  const mini=(t,v,cls='')=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num ${cls}" style="font-size:22px">${v}</b></div>`;
+  return`<div class="card rise sec">${cardH('Tendência '+nome,'Consumo de cada mês, média móvel de 3 meses e a linha de base do projeto',segHtml([['3','3 meses'],['6','6 meses'],['ini','Desde o início']],win,'trend-win'))}${chart}
+  <div class="leg" style="margin:8px 0 12px"><span><i style="background:var(--laranja)"></i>Consumo do mês</span><span><i style="background:none;border-top:2px dashed var(--text);height:0;margin-top:5px"></i>Média móvel 3 meses</span><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n300);border-radius:99px"></i>Mês parcial: sem cor e sem variação</span></div>
+  <div class="grid g3" style="gap:10px">${mini('Consumo no período ('+nome+')',l?fmt.n(km/l,2)+' km/l':'sem dado')}${mini('Nota média (premiação, meses fechados)',nota!=null?fmt.n(nota,0):'sem dado')}${mini('Diesel economizado ('+nome+', '+C.ec.b.rotulo+')',fmt.brl(econ),econ>=0?'ok-t':'bad-t')}</div></div>`;
+}
+/* ---------- Adoção do app e da premiação (item 2) ---------- */
+function adocaoBlock(C){
+  let h=[];try{h=msgHist(C)}catch(e){}
+  let melhor=0,tot=0;for(const d of h){if(!d.first)continue;const mes=dIso(d.first.t).slice(0,7);const [y,m]=mes.split('-').map(Number);const prox=new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);
+    const pr=(C.fleet.prem||[]).filter(p=>nkey(p.motorista)===nkey(d.name));const n1=(pr.find(p=>p.mes===mes)||{}).nota,n2=(pr.find(p=>p.mes===prox)||{}).nota;if(n1!=null&&n2!=null){tot++;if(n2>n1)melhor++}}
+  const mini=(t,v,s)=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num" style="font-size:22px">${v}</b><div class="xs">${s}</div></div>`;
+  return`<div class="card rise sec">${cardH('Adoção do app e da premiação','O que existe hoje e o que não existe')}<div class="grid g3" style="gap:12px">
+  ${mini('Motoristas com app ativo','<span class="muted">sem dado</span>','A API Gobrax usada hoje não informa uso do app.')}
+  ${mini('Abriram as mensagens','<span class="muted">sem dado</span>','As mensagens vão à mão pelo WhatsApp; não há confirmação de leitura.')}
+  ${mini('Nota maior depois do contato',tot?`${melhor} de ${tot}`:'<span class="muted">sem dado</span>',tot?'condutores com nota maior no mês seguinte ao primeiro contato (premiação)':'precisa da premiação do mês do contato e do seguinte')}</div></div>`;
 }

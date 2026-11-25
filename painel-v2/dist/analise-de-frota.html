@@ -1273,7 +1273,7 @@ const FIRST=['Adalberto','Benedito','Caio','Davi','Edgar','Fabrício','Geraldo',
 const LAST=['Almeida','Barros','Cardoso','Duarte','Esteves','Furtado','Guedes','Holanda','Jardim','Klein','Lacerda','Medeiros','Nogueira','Ornelas','Pacheco','Queiroz','Rezende','Siqueira','Teles','Uchoa','Vasques','Xavier','Zanetti','Amaral','Bastos','Caldas','Dantas','Fontes','Godoy','Lima'];
 const FILIAIS=['Matriz','Filial Sul','Filial Norte'];
 
-const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:24,wEng:19,wNota:19,wCons:14,wCrit:9,wRoi:15,bandAlto:60,bandMedio:35,concPerda:50,diasCobranca:30,difPequena:3,kmDiaMuda:15,mixMin:85,veicMuda:10,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
+const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:24,wEng:19,wNota:19,wCons:14,wCrit:9,wRoi:15,bandAlto:60,bandMedio:35,concPerda:50,idleLph:5,idleMeta:10,diasCobranca:30,difPequena:3,kmDiaMuda:15,mixMin:85,veicMuda:10,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
 
 function moodFn(mood,start){
   const peak=T0-9;
@@ -1309,7 +1309,7 @@ function genClient(def){
       const kmpl=clamp(v.base+v.slope*((t-tStart)/7)+mood(t)+(rnd()-0.5)*0.12,1.0,2.7);
       const br=v.br*(0.8+rnd()*0.4);const gr=clamp(v.gr*(0.92+rnd()*0.16)+mood(t)*40,20,92);const idl=clamp(v.idl*(0.8+rnd()*0.4)-mood(t)*20,1,25);
       const sc=clamp(Math.round(28+gr*0.55-idl*1.4-br*0.55+(kmpl-1.5)*30+(rnd()-0.5)*8),4,95);
-      recs.push({t,date:dIso(t),veh:v.id,km,l:+(km/kmpl).toFixed(1),br:Math.round(km*br/100),brh:Math.round(km*(rnd()<0.3?rnd()*1.2:0)/100),sp:+(v.sp*(0.9+rnd()*0.2)).toFixed(1),gr:+gr.toFixed(1),id:+idl.toFixed(1),sc});
+      recs.push({t,date:dIso(t),veh:v.id,km,l:+(km/kmpl).toFixed(1),br:Math.round(km*br/100),brh:Math.round(km*(rnd()<0.3?rnd()*1.2:0)/100),sp:+(v.sp*(0.9+rnd()*0.2)).toFixed(1),gr:+gr.toFixed(1),id:+idl.toFixed(1),sc,emb:+clamp(22+gr/5+(rnd()-0.5)*8,5,60).toFixed(1),fm:+clamp(8+(rnd()-0.5)*6,1,30).toFixed(1),pa:+clamp(18+(rnd()-0.5)*14,0,60).toFixed(1),exv:+clamp(2+(rnd()-0.5)*3,0,12).toFixed(1),hm:+(km/48+1+rnd()).toFixed(1)});
     }
   }
   const recent=recs.filter(r=>r.t>T0-30&&r.km>120);
@@ -1353,7 +1353,7 @@ function fleetFromServer(c){
     if(!r.rodou||km<=0||l<=0)continue;
     let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
     const nota=scd!=null?scd:r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd});
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd,emb:nv(r.embalo),fm:nv(r.freio_motor),pa:nv(r.piloto_automatico),exv:nv(r.tempo_excesso_velocidade),hm:nv(r.horas_motor),drv:r.motorista||''});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -1468,13 +1468,14 @@ function validRecs(cid,store){
 function suspRecs(cid,store){return DB.fleets[cid].recs.filter(r=>{if(!isSusp(r,store.rules))return false;const fl=store.flags[flagId(cid,r)];if(fl==='confirmed'||fl==='ignored')return false;if(fl&&fl.l&&!isSusp({...r,l:fl.l},store.rules))return false;return true})}
 /* médias ponderadas pelos km; campo sem dado (null) fica fora da média daquele indicador */
 function aggregate(rs){
-  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0]};
-  for(const r of rs){o.km+=r.km;o.l+=r.l;
+  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0],emb:[0,0],fm:[0,0],pa:[0,0],exv:[0,0]};o.hm=0;o.idleH=0;
+  /* motor ligado parado em horas: horas de ignição (API) × % parado ligado (API); dia sem um dos dois fica fora */
+  for(const r of rs){o.km+=r.km;o.l+=r.l;if(r.hm!=null&&r.id!=null&&r.hm>0){o.hm+=r.hm;o.idleH+=r.hm*r.id/100}
     for(const f in w){const v=r[f];if(v!=null&&isFinite(v)){w[f][0]+=(f==='br'||f==='brh')?v:v*r.km;w[f][1]+=r.km}}}
   const k=o.km;const wv=f=>w[f][1]?w[f][0]/w[f][1]:null;
   o.br=w.br[0];o.brh=w.brh[0];
   o.kmpl=o.l?o.km/o.l:null;o.kmDay=o.n?o.km/o.n:null;o.br100=w.br[1]?w.br[0]/w.br[1]*100:null;o.brh100=w.brh[1]?w.brh[0]/w.brh[1]*100:null;
-  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.score=wv('sc');o.scd=wv('scd');
+  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.emb=wv('emb');o.fm=wv('fm');o.pa=wv('pa');o.exv=wv('exv');o.idleHp=o.hm?o.idleH/o.hm*100:null;o.score=wv('sc');o.scd=wv('scd');
   o.lph100=k?o.l/k*100:null;
   return o;
 }
@@ -1853,7 +1854,11 @@ const IND=[
   {k:'brh100',l:'Freadas em alta velocidade',s:'Freadas em alta velocidade a cada 100 km',g:'Indicadores de condução',get:a=>a.brh100,d:2,u:' /100 km',up:false},
   {k:'speed',l:'Velocidade média',s:'Média ponderada pelos km rodados',g:'Indicadores de condução',get:a=>a.speed,d:1,u:' km/h',up:null},
   {k:'green',l:'Faixa verde',s:'Tempo dirigindo na faixa econômica do motor',g:'Indicadores de condução',get:a=>a.green,d:1,u:'%',up:true},
-  {k:'idle',l:'Motor ocioso',s:'Motor ligado com o veículo parado',g:'Indicadores de condução',get:a=>a.idle,d:1,u:'%',up:false},
+  {k:'idle',l:'Motor ligado parado',s:'Motor ligado com o veículo parado',g:'Indicadores de condução',get:a=>a.idle,d:1,u:'%',up:false},
+  {k:'emb',l:'Aproveitamento de embalo',s:'Tempo rodando no embalo, sem acelerar',g:'Indicadores de condução',get:a=>a.emb,d:1,u:'%',up:true},
+  {k:'fm',l:'Freio motor',s:'Uso do freio motor nas reduções',g:'Indicadores de condução',get:a=>a.fm,d:1,u:'%',up:true},
+  {k:'pa',l:'Piloto automático',s:'Tempo rodando com piloto automático',g:'Indicadores de condução',get:a=>a.pa,d:1,u:'%',up:true},
+  {k:'exv',l:'Excesso de velocidade',s:'Tempo acima do limite de velocidade',g:'Indicadores de condução',get:a=>a.exv,d:1,u:'%',up:false},
   {k:'score',l:'Nota Gobrax',s:'Nota ponderada pelos km rodados',g:'Indicadores de condução',get:a=>a.score,d:0,u:' pts',up:true},
   {k:'kmpl',l:'Média de consumo',s:'Quilômetros por litro',g:'Consumo e eficiência',get:a=>a.kmpl,d:2,u:' km/l',up:true},
   {k:'lph100',l:'Litros a cada 100 km',s:'Consumo relativo à distância',g:'Consumo e eficiência',get:a=>a.lph100,d:1,u:' L',up:false},
@@ -1921,7 +1926,7 @@ function radar(axes){
   return`<svg class="chart radar" viewBox="${-30} 0 ${Sz+60} ${Sz}" role="img" aria-label="Perfil de condução">${g}${body}</svg><div class="leg" style="justify-content:center;margin-top:6px"><span><i style="background:var(--amarelo)"></i>Agora</span>${hasPrev?'<span><i style="background:var(--info)"></i>Antes</span>':''}<span><i style="background:var(--n400)"></i>Média da frota</span></div>`;
 }
 function radarAxes(cur,prev,fleet){
-  const ks=['kmpl','br100','green','idle','score','kmDay'],lab={kmpl:'Consumo',br100:'Freadas',green:'Faixa verde',idle:'Ociosidade',score:'Nota',kmDay:'Km/dia'};
+  const ks=['kmpl','br100','green','idle','emb','fm','pa','exv','score','kmDay'],lab={kmpl:'Consumo',br100:'Freadas',green:'Faixa verde',idle:'Parado ligado',emb:'Embalo',fm:'Freio motor',pa:'Piloto aut.',exv:'Excesso vel.',score:'Nota',kmDay:'Km/dia'};
   return ks.map(k=>{const i=INDK[k];return{l:lab[k],cur:cur?i.get(cur):null,prev:prev?i.get(prev):null,fleet:fleet?i.get(fleet):null,up:i.up,fc:v=>fInd(i,v)}});
 }
 
@@ -2260,11 +2265,12 @@ function metricDef(k){return{
   kmpl:{label:'Consumo',get:a=>a.kmpl,fmt:v=>fmt.n(v,2),unit:' km/l',up:true},
   kmday:{label:'Km por dia',get:a=>a.kmDay,fmt:v=>fmt.n(v,0),unit:' km',up:true},
   br100:{label:'Freadas',get:a=>a.br100,fmt:v=>fmt.n(v,1),unit:' /100 km',up:false},
-  score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true}}[k]}
+  score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true},
+  idle:{label:'Motor ligado parado',get:a=>a.idle,fmt:v=>fmt.n(v,1),unit:'%',up:false}}[k]}
 function vOverview(C){
   const {cur,prev,P,hl,price}=C;const u=S.u;
   /* km por dia já está nas barras logo abaixo: o gráfico de cima mostra consumo, freadas ou nota */
-  if(!['kmpl','br100','score'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
+  if(!['kmpl','br100','score','idle'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
   const ds=dailySeries(C.cid,ST,P.from,P.to);const wk=weeklySeries(C.cid,ST,P.from,P.to);
   const sc=statusCounts(C);const gl=C.gl;const ec=C.ec;
   const k=(label,val,delta,note,icon,cls='')=>`<div class="card kpi kp2 lift rise ${cls}"><span class="kico k-${icon}" aria-hidden="true">${ico(icon,26)}</span><div class="tag">${label}</div><div class="v">${val}</div><div>${delta} <span class="dl-n">${note||''}</span></div></div>`;
@@ -2275,7 +2281,8 @@ function vOverview(C){
     k('Frota ativa',count(cur.active,0)+`<small>de ${cur.total}</small>`,`<span class="dl ${C.eq.semTransmitir.length?'bad':'good'}">${C.eq.semTransmitir.length} sem transmitir</span>`,'nenhum dado nos últimos 3 dias','truck')
   ].join('');
   const dsv=ds.map(d=>d.a?md.get(d.a):null);const pv=md.get(prev);
-  const chart=lineChart({labels:ds.map(d=>fmt.dm(d.date)),series:[{vals:dsv,color:'var(--laranja)',area:true,dots:ds.length<=31}],base:pv!=null?{v:pv,label:'média do período de comparação '+md.fmt(pv)}:null,yfmt:v=>md.fmt(v),
+  const ivd=intervencoes(C,null);const mko=ds.map((d,i)=>ivd[d.t]?{i,n:ivd[d.t]}:null).filter(Boolean);
+  const chart=lineChart({labels:ds.map(d=>fmt.dm(d.date)),marks:mko.length?mko:null,series:[{vals:dsv,color:'var(--laranja)',area:true,dots:ds.length<=31}],base:pv!=null?{v:pv,label:'média do período de comparação '+md.fmt(pv)}:null,yfmt:v=>md.fmt(v),
     tip:i=>ds[i].a?`<b>${fmt.dm(ds[i].date)}</b><br>${md.label}: ${md.fmt(dsv[i])}${md.unit}<br>${fmt.n(ds[i].a.km,0)} km · ${ds[i].a.n} veículos`:`<b>${fmt.dm(ds[i].date)}</b><br>Sem rodagem`,aria:'Evolução diária de '+md.label})+`<div class="tag" style="margin:18px 0 2px">Km rodados por dia</div>`+dailyBars(ds.map(d=>d.a?d.a.km:null),ds.map(d=>fmt.dm(d.date)),{avg:cur.km/Math.max(1,cur.dataDays),u:' km',h:200,aria:'Km rodados por dia'});
   const maxAbs=Math.max(1,...gl.map(g=>Math.abs(g.money)));
   const top=[...gl.slice(0,4),...gl.slice(-4).filter(g=>g.money<0)].filter((g,i,a)=>a.findIndex(x=>x.id===g.id)===i);
@@ -2288,7 +2295,7 @@ function vOverview(C){
     ${kpis}
   </div>
   <div class="sec">
-    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
+    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota'],['idle','Parado ligado']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
   </div>
   <div class="grid g-main sec">
     <div class="card rise">${cardH('Quem puxa e quem derruba o resultado',`Contribuição de cada veículo para o diesel economizado, ${esc(ec.b.rotulo)}, a ${fmt.brl(price,2)}/L`,`<a class="b sm" href="#/motoristas">Abrir motoristas</a>`)}<div class="bars">${bars}</div><div class="row sm" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--soft);gap:22px"><span><b style="color:var(--ok-t)">+${fmt.brl(sumG)}</b> ganhos</span><span><b style="color:var(--bad-t)">−${fmt.brl(Math.abs(sumL))}</b> perdas</span><span><b>${fmt.brl(sumG+sumL)}</b> saldo (= diesel economizado)</span></div>${concBlock(C)}</div>
@@ -2321,7 +2328,7 @@ async function vRetention(C){
   <div class="grid g2 sec top">
     <div class="card brand rise"><div class="swoosh"></div>${cardH('O projeto se paga?',`Desde ${fmt.dm(dIso(st.ps))} · ${esc(C.ec.b.rotulo)}`)}${st.noBase?'<div class="empty"><b>Sem dado</b>Sem linha de base: o início do acompanhamento não tem consumo válido.</div>':`<div class="stack"><div><div class="muted sm">Economia de diesel acumulada</div><b class="num" style="font-size:30px;color:${st.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(st.econ)}</b></div><div><div class="muted sm">Investido na Gobrax</div><b class="num" style="font-size:30px">${fmt.brl(st.inv)}</b></div><div class="btrack" style="height:12px;background:var(--a200)"><div class="bfill" style="left:0;width:${clamp(ratio/3*100,0,100)}%;background:${st.pays?'var(--ok)':'var(--bad)'}"></div><div style="position:absolute;top:-4px;bottom:-4px;left:33.3%;width:3px;background:var(--text)"></div></div><div class="sm" style="color:var(--n600)">${st.pays?`A economia cobre a mensalidade ${fmt.n(st.roi,1)} vez(es).`:`Faltam ${fmt.brl(st.miss)} para a economia cobrir o investimento.`}</div><a class="b sm" href="#/estudo">Abrir estudo do projeto</a></div>`}</div>
     <div class="card rise">${cardH('Sinais de atenção','O que merece olhar agora neste cliente')}<div class="stack" style="gap:2px">${alh}</div></div>
-  </div>`;
+  </div>${adocaoBlock(C)}`;
 }
 async function vPortfolio(C){
   await Promise.all(CLIENT_DEFS.map(c=>DB.load(c.id)));const P=C.P;const rows=CLIENT_DEFS.map(def=>{
@@ -2551,7 +2558,7 @@ function pendBlock(C){
   const e=C.eq;const li=(id,motivo,desde)=>`<tr class="click" data-act="veh-open" data-id="${esc(id)}"><td><b>${esc(id)}</b></td><td>${motivo}</td><td class="r">${desde}</td></tr>`;
   const ultimo=id=>{const l=C.fleet.lastComm&&C.fleet.lastComm[id];return l!=null?fmt.dmy(dIso(l))+' ('+(T0-l)+' dias)':'sem dado'};
   const rows=[...e.semTransmitir.map(x=>li(x.id,'Sem transmitir: nenhum dado nos últimos 3 dias',x.days+' dias')),
-    ...e.semMotorista.map(id=>li(id,'Sem motorista identificado: rodou sem vínculo de motorista na API','no período')),
+    ...e.semMotorista.map(id=>li(id,'Sem motorista identificado: rodou sem vínculo de motorista na API',e.desde[id]!=null?'desde '+fmt.dmy(dIso(e.desde[id]))+' ('+(T0-e.desde[id])+' dias)':'sem dado')),
     ...e.semBase.map(id=>li(id,'Sem base de comparação: rodou no período, mas não no de comparação','último dado '+ultimo(id)))].join('');
   const cob=e.longos.length?`<div class="sm" style="margin-top:10px;background:var(--bad-s,#fde8e6);border:1px solid var(--bad);border-radius:10px;padding:10px 12px">⚠ <b>${e.longos.length} equipamento${e.longos.length>1?'s':''} sem transmitir há mais de ${ST.rules.diasCobranca} dias: risco de cobrança indevida.</b> ${e.longos.map(x=>esc(x.id)+' ('+x.days+' dias)').join(', ')} · ${e.cobrado!=null?'cobrado por mês: <b>'+fmt.brl(e.cobrado,2)+'</b> ('+fmt.brl(e.valorUnit,2)+' por unidade)':'valor cobrado: <b>sem dado</b> (contrato não cadastrado no Estudo)'}</div>`:'';
   return`<div class="card rise sec">${cardH('Pendências de implantação',`${e.semTransmitir.length} sem transmitir · ${e.semSinalAgora.length} sem sinal agora · ${e.semBase.length} sem base de comparação · ${e.semMotorista.length} sem motorista identificado`,eqInfo())}${rows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Veículo</th><th>Motivo</th><th class="r">Há quanto tempo</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty"><b>Nenhuma pendência</b></div>'}${cob}</div>`;
@@ -2571,9 +2578,10 @@ function evoBlock(C,id){
      o período seguinte também não calcula variação contra ele */
   const parc=b=>b.parcial;
   const dc=pv.map((v,i)=>{if(v==null)return'var(--n300)';if(parc(bs[i]))return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0||parc(bs[j]))return'var(--n400)';const g=indGood(ind,(v-pv[j])/Math.abs(pv[j]||1)*100);return g==null?'var(--n400)':g?'var(--ok)':'var(--bad)'});
-  const chart=lineChart({labels:bs.map(b=>b.label),series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],yfmt:v=>fmt.n(v,ind.d),h:230,
+  const iv=intervencoes(C,id);const marks=bs.map((b,i)=>{let n=0;for(const t in iv)if(+t>=b.from&&+t<=b.to)n+=iv[t];return n?{i,n}:null}).filter(Boolean);
+  const chart=lineChart({labels:bs.map(b=>b.label),marks:marks.length?marks:null,series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],yfmt:v=>fmt.n(v,ind.d),h:230,
     tip:i=>bs[i].a?`<b>${esc(bs[i].label)}</b>${parc(bs[i])?` · parcial (${bs[i].dias} dias)`:''}<br>${esc(ind.l)}: ${fInd(ind,pv[i])}<br>${fmt.n(bs[i].a.km,0)} km`:'',aria:'Evolução de '+ind.l});
-  const rows=IND.filter(i=>!(i.veh&&!id)&&i.k!=='n'||id&&i.k==='n').slice(0,10);
+  const rows=IND.filter(i=>!(i.veh&&!id)&&i.k!=='n'||id&&i.k==='n').slice(0,14);
   const cell=(i,b,k)=>{if(!b.a)return'<td class="r muted">—</td>';const v=i.get(b.a);if(v==null)return'<td class="r muted">—</td>';
     if(parc(b))return`<td class="r part"><div class="num evv">${fmt.n(v,i.d)}</div><span class="evd">parcial (${b.dias} dia${b.dias>1?'s':''})</span></td>`;
     let j=k-1;while(j>=0&&!bs[j].a)j--;let cls='',dv='';
@@ -2583,7 +2591,7 @@ function evoBlock(C,id){
   const unit=i=>{const u=(i.u||'').trim();return i.k==='lph100'?'L por 100 km':u.startsWith('/')?'por '+u.slice(1).trim():u==='%'?'% do tempo':u==='pts'?'pontos (0–100)':u};
   const tbl=`<div class="scroll-x"><table class="tbl evo"><thead><tr><th>Indicador</th><th>Unidade</th>${bs.map(b=>`<th class="r">${esc(b.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(i=>`<tr><td><b>${esc(i.l)}</b></td><td class="muted xs">${esc(unit(i))}</td>${bs.map((b,k)=>cell(i,b,k)).join('')}</tr>`).join('')}</tbody></table></div><div class="xs muted" style="margin-top:10px">Cada célula traz o valor do período e, abaixo, a variação em % contra a coluna anterior (▲ subiu, ▼ caiu). Verde melhorou e vermelho piorou (variações menores que 2% não são coloridas). Período incompleto fica em cinza, com "parcial (N dias)", sem cor e sem variação.</div>`;
   const opts=IND.filter(i=>!i.veh).map(i=>`<option value="${i.k}" ${i.k===mk?'selected':''}>${esc(i.l)}</option>`).join('');
-  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial (N dias): sem cor e sem variação</span></div>${tbl}</div>`;
+  return`<div class="card sec rise">${cardH('Evolução '+({dia:'dia a dia',semana:'por semana',quinzena:'por quinzena',mes:'mês a mês'}[gran]),'Pontos verdes melhoraram contra o período anterior; vermelhos pioraram.',`<select class="inp" data-chg="evo-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['dia','Dia'],['semana','Semana'],['quinzena','Quinzena'],['mes','Mês']],gran,'evo-gran')}`)}${chart}<div class="leg" style="margin:8px 0 14px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n400);border-radius:99px"></i>Primeiro período / estável</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial (N dias): sem cor e sem variação</span>${marks.length?'<span>● nº = condutores com mensagem enviada</span>':''}</div>${tbl}</div>`;
 }
 function improvedRows(C,rows,keys){
   return keys.map(k=>{const i=INDK[k];let b=0,s=0,w=0;rows.forEach(r=>{const x=indRes(i,r.c,r.p);if(x.k==='better')b++;else if(x.k==='worse')w++;else if(x.k==='same')s++});
@@ -2695,7 +2703,7 @@ function drvDash(C,id){
   const kmv=ds.map(d=>d.a?d.a.km:null);const kmAvg=c.n?c.km/c.n:null;
   const evo=`<div class="grid ga2 sec"><div class="card rise">${cardH('Evolução dia a dia',`${esc(ind.s)}. Passe o mouse para comparar dia a dia.`,`<select class="inp" data-chg="day-metric" style="width:auto" aria-label="Indicador">${opts}</select>${segHtml([['grafico','Gráfico'],['tabela','Tabela']],u.dayView||'grafico','day-view')}`)}<div class="leg" style="margin-bottom:6px"><span><i style="background:var(--laranja)"></i>Período analisado</span><span><i style="background:var(--n400)"></i>Comparação</span></div>${view}</div>
   <div class="card rise">${cardH('Km rodados por dia','Dias sem barra não têm registro.')}${dailyBars(kmv,ds.map(d=>fmt.dm(d.date)),{avg:kmAvg,u:' km',aria:'Km rodados por dia'})}</div></div>`;
-  return strip+lido+rd+cal+evo;
+  return strip+lido+contatoBlock(C,id)+rd+cal+evo;
 }
 function drvIndTable(C,id){
   const c=C.cur.byVeh[id],p=C.prev.byVeh[id];let h='',g='';
@@ -2745,7 +2753,7 @@ function ovExtra(C){
   const ajuda=`<div style="position:absolute;top:14px;right:14px;z-index:3;text-align:left">${infoDot('Como funciona a saúde da frota',`<p style="margin:6px 0">É um índice de risco de 0 a 100: quanto <b>menor</b>, mais saudável. Cada sinal abaixo vira um risco de 0 a 100, comparando o período atual com o anterior, e o índice é a média ponderada desses riscos.</p><ul style="margin:4px 0 6px 16px;padding:0">${sinais}</ul><p style="margin:6px 0">Pesos padrão: uso da frota ${R.wUso}, engajamento ${R.wEng}, Nota Gobrax ${R.wNota}, consumo ${R.wCons}, motoristas críticos ${R.wCrit}. Sinal sem dado sai e os pesos se redistribuem.</p><p style="margin:6px 0 0">Faixas: risco baixo abaixo de ${R.bandMedio}, médio de ${R.bandMedio} a ${R.bandAlto-1}, alto a partir de ${R.bandAlto}.</p>`,{dark:true})}</div>`;
   return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center;position:relative;overflow:hidden"><span class="wm" aria-hidden="true">gobrax</span>${ajuda}${cardH('Saúde da frota',`${C.P.label} contra ${esc(C.P.cmpLabel)}`)}<div style="display:flex;justify-content:center">${gauge(hl.idx,hl.band)}</div><div class="row" style="justify-content:center;margin-top:8px">${bandBadge(hl.band)}</div><div class="sm" style="margin-top:8px">${hl.top?`Pesa mais: ${esc(hl.top.label)}.`:''}</div><a class="b sm" href="#/retencao" style="display:inline-block;margin-top:8px">Abrir saúde do cliente</a></div>
   <div class="card rise">${cardH('Perfil de condução','Agora contra o período anterior')}${radar(radarAxes(C.cur,C.prev,C.cur))}</div>
-  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${evoBlock(C,null)}`;
+  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${idleBlock(C)}${trendBlock(C)}${evoBlock(C,null)}`;
 }
 
 /* ---------- MOTORISTAS · Mensagens (evolução da nota depois do aviso) ---------- */
@@ -2843,6 +2851,77 @@ function msgEvolution(C,hist){
     <div class="card rise">${cardH('Condutores com mensagem','Nota do mês no 1º e no último envio. Clique em um condutor para ver a evolução dele.',fr?'':'<button class="btn ghost sm" data-act="msg-drv" data-id="__frota">Ver a frota toda</button>')}<div class="msgscroll"><table class="tbl msgtbl"><thead><tr><th>Condutor</th><th class="r">Mensagens</th><th class="r">Nota no 1º envio</th><th class="r">Nota no último</th><th class="r">Evolução</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 
+/* ---------- Intervenções (item 3): dias com mensagem marcada como enviada, contados por condutor ----------
+   vem do registro de mensagens (aba Mensagens); id = um veículo, ou a frota toda */
+function intervencoes(C,id){
+  const out={};let h=[];try{h=msgHist(C)}catch(e){h=[]}
+  for(const d of h){if(id&&d.id!==id)continue;for(const m of d.msgs||[]){out[m.t]=(out[m.t]||0)+1}}
+  return out;
+}
+/* antes e depois do primeiro contato: média de 14 dias de cada lado; nota pela premiação do mês do contato e do seguinte */
+function contatoBlock(C,id){
+  let h=[];try{h=msgHist(C)}catch(e){}const d=h.find(x=>x.id===id&&x.first);
+  if(!d)return`<div class="card rise sec">${cardH('Antes e depois do primeiro contato','Média de 14 dias antes e depois da primeira mensagem')}<div class="empty"><b>Sem contato registrado</b>Nenhuma mensagem marcada como enviada para este condutor.</div></div>`;
+  const t0=d.first.t,fim=Math.min(T0,t0+14);const a=aggFor(C,t0-14,t0-1,id),b=aggFor(C,t0+1,fim,id);const sd='<span class="muted">sem dado</span>';
+  const row=k=>{const i=INDK[k];const x=a.n?i.get(a):null,y=b.n?i.get(b):null;const r=x!=null&&y!=null&&x?indRes(i,b,a):null;
+    return`<tr><td>${esc(i.l)}</td><td class="r num">${x!=null?fInd(i,x):sd}</td><td class="r num">${y!=null?fInd(i,y):sd}</td><td class="r">${r&&r.ch!=null?`<span class="dl ${r.cls==='ok'?'good':r.cls==='bad'?'bad':'n'}">${r.ch>0?'▲':'▼'} ${fmt.n(Math.abs(r.ch),1)}%</span>`:''}</td></tr>`};
+  const mes=dIso(t0).slice(0,7),prox=(()=>{const [y,m]=mes.split('-').map(Number);return new Date(Date.UTC(y,m,1)).toISOString().slice(0,7)})();
+  const pr=(C.fleet.prem||[]).filter(p=>nkey(p.motorista)===nkey(d.name));const n1=(pr.find(p=>p.mes===mes)||{}).nota,n2=(pr.find(p=>p.mes===prox)||{}).nota;
+  const nota=`<tr><td>Nota Gobrax (premiação)</td><td class="r num">${n1!=null?MESES[+mes.slice(5)-1]+': '+fmt.n(n1,0):sd}</td><td class="r num">${n2!=null?MESES[+prox.slice(5)-1]+': '+fmt.n(n2,0):sd}</td><td class="r">${n1!=null&&n2!=null?`<span class="dl ${n2>=n1?'good':'bad'}">${n2-n1>0?'+':''}${fmt.n(n2-n1,0)}</span>`:''}</td></tr>`;
+  return`<div class="card rise sec">${cardH('Antes e depois do primeiro contato',`Primeira mensagem em ${fmt.dmy(dIso(t0))} · média de ${fmt.dm(dIso(t0-14))} a ${fmt.dm(dIso(t0-1))} contra ${fmt.dm(dIso(t0+1))} a ${fmt.dm(dIso(fim))}${fim<t0+14?` (só ${fim-t0} dias até hoje)`:''}`)}
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Indicador</th><th class="r">14 dias antes</th><th class="r">Depois</th><th class="r">Variação</th></tr></thead><tbody>${['kmpl','br100','idle','emb','green'].map(row).join('')}${nota}</tbody></table></div>
+  <div class="xs muted" style="margin-top:8px">${d.msgs.length} mensage${d.msgs.length>1?'ns':'m'} marcada${d.msgs.length>1?'s':''} como enviada${d.msgs.length>1?'s':''}. A API não manda nota por dia: a nota compara a premiação do mês do contato com a do mês seguinte. Dias sem rodagem ficam fora da média.</div></div>`;
+}
+/* ---------- Motor ligado parado (item 1): horas × 5 L/h × diesel ---------- */
+function idleBlock(C){
+  const R=ST.rules,cur=C.cur,price=C.price;
+  if(!cur.hm)return`<div class="card rise sec">${cardH('Motor ligado parado','Horas de ignição e % parado ligado vêm da performance da API')}<div class="empty"><b>Sem dado</b>A API não trouxe horas de motor ligado para este cliente no período. Nada é estimado.</div></div>`;
+  const pct=cur.idleHp,h=cur.idleH,L=h*R.idleLph,rs=L*price;
+  const alvo=pct>R.idleMeta?h-cur.hm*R.idleMeta/100:0;const aL=alvo*R.idleLph;
+  const bs=buckets(C,'semana',null);const pv=bs.map(b=>b.a&&b.a.hm?b.a.idleHp:null);
+  const dc=pv.map((v,i)=>{if(v==null||bs[i].parcial)return'var(--n300)';let j=i-1;while(j>=0&&pv[j]==null)j--;if(j<0||bs[j].parcial)return'var(--n400)';const ch=(v-pv[j])/(pv[j]||1)*100;return Math.abs(ch)<2?'var(--n400)':ch<0?'var(--ok)':'var(--bad)'});
+  const chart=lineChart({labels:bs.map(b=>b.label),series:[{vals:pv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],base:{v:R.idleMeta,label:'meta '+R.idleMeta+'%'},yfmt:v=>fmt.n(v,1)+'%',h:200,tip:i=>bs[i].a&&pv[i]!=null?`<b>${esc(bs[i].label)}</b>${bs[i].parcial?` · parcial (${bs[i].dias} dias)`:''}<br>${fmt.n(pv[i],1)}% parado ligado<br>${fmt.n(bs[i].a.idleH,0)} h · ${fmt.n(bs[i].a.idleH*R.idleLph,0)} L`:'',aria:'Motor ligado parado por semana'});
+  const top=Object.values(cur.byVeh).filter(v=>v.hm).sort((a,b)=>b.idleH-a.idleH).slice(0,5);
+  const mini=(t,v,s,cls='')=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num ${cls}" style="font-size:22px">${v}</b><div class="xs">${s}</div></div>`;
+  return`<div class="grid g2 sec"><div class="card rise">${cardH('Motor ligado parado',`${C.P.label} · ${R.idleLph} L por hora parado · diesel ${fmt.brl(price,2)}/L`)}
+  <div class="grid g3" style="gap:10px">${mini('Tempo parado ligado',fmt.n(pct,1)+'%',fmt.n(h,0)+' h · meta '+R.idleMeta+'%')}${mini('Diesel desperdiçado',fmt.n(L,0)+' L',fmt.n(h,0)+' h × '+R.idleLph+' L/h')}${mini('Em reais',fmt.brl(rs),fmt.n(L,0)+' L × '+fmt.brl(price,2),'')}</div>
+  <div class="sm" style="margin:12px 0;background:var(--ok-s);border-left:4px solid var(--ok);border-radius:8px;padding:8px 12px">${alvo>0?`<b>Se a frota chegasse a ${R.idleMeta}%:</b> ${fmt.n(alvo,0)} h a menos, <b>${fmt.n(aL,0)} L</b> e <b>${fmt.brl(aL*price)}</b> a menos no período.`:`A frota já está dentro da meta de ${R.idleMeta}%.`}</div>
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Quem mais pesa</th><th class="r">Parado ligado</th><th class="r">Horas</th><th class="r">R$</th></tr></thead><tbody>${top.map(v=>`<tr class="click" data-act="drv-open" data-id="${esc(v.id)}"><td><b>${esc(v.id)}</b> <span class="xs muted">${esc((C.fleet.byId[v.id]||{}).driver||'')}</span></td><td class="r num">${fmt.n(v.idleHp,0)}%</td><td class="r num">${fmt.n(v.idleH,0)} h</td><td class="r num">${fmt.brl(v.idleH*R.idleLph*price)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="xs muted" style="margin-top:8px">Horas = horas de ignição ligada × % de motor ligado parado (os dois da API). Dia sem um dos dois fica fora da conta; nada é estimado.</div></div>
+  <div class="card rise">${cardH('Evolução por semana','% do tempo de ignição parado ligado · linha tracejada = meta')}${chart}<div class="leg" style="margin-top:8px"><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n300);border-radius:99px"></i>Parcial: sem cor e sem variação</span></div></div></div>`;
+}
+/* ---------- Tendência longa (item 6): consumo por mês, média móvel de 3 meses, nota e economia acumulada ---------- */
+function trendBlock(C){
+  const st=C.st;if(st.noBase||!st.months.length)return'';
+  const win=['3','6','ini'].includes(S.u.trendWin)?S.u.trendWin:'6';
+  const dim=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(Date.UTC(y,m,0)).getUTCDate()};
+  let ms=st.months.map(m=>({...m,parcial:m.cal<dim(m.ym)}));if(win!=='ini')ms=ms.slice(-(+win));
+  const kv=ms.map(m=>m.km?m.kmpl:null);
+  const mm=ms.map((m,i)=>{const sl=ms.slice(Math.max(0,i-2),i+1).filter(x=>x.km&&x.kmpl);if(!sl.length)return null;const km=sl.reduce((a,x)=>a+x.km,0),l=sl.reduce((a,x)=>a+x.km/x.kmpl,0);return km/l});
+  const dc=kv.map((v,i)=>{if(v==null||ms[i].parcial)return'var(--n300)';let j=i-1;while(j>=0&&kv[j]==null)j--;if(j<0||ms[j].parcial)return'var(--n400)';const ch=(v-kv[j])/kv[j]*100;return Math.abs(ch)<2?'var(--n400)':ch>0?'var(--ok)':'var(--bad)'});
+  let acc=0;const all=st.months;const cum={};all.forEach(m=>{acc+=m.econ;cum[m.ym]=acc});
+  const chart=lineChart({labels:ms.map(m=>m.label.replace(/ \d{4}$/,'')+'/'+m.ym.slice(2,4)),sub:ms.map(m=>m.parcial?`parcial (${m.cal} dias)`:''),series:[{vals:mm,color:'var(--text)',dash:'6 4',w:1.8},{vals:kv,color:'var(--laranja)',area:true,dots:true,dotColors:dc}],base:{v:st.base,label:'linha de base '+fmt.n(st.base,2)},yfmt:v=>fmt.n(v,2),h:240,
+    tip:i=>`<b>${esc(ms[i].label)}</b>${ms[i].parcial?` · parcial (${ms[i].cal} dias)`:''}<br>Consumo: ${kv[i]!=null?fmt.n(kv[i],2)+' km/l':'sem dado'}<br>Média móvel 3 meses: ${mm[i]!=null?fmt.n(mm[i],2):'sem dado'}<br>Nota (premiação): ${ms[i].score!=null?fmt.n(ms[i].score,0):'sem dado'}<br>Economia acumulada até aqui: ${fmt.brl(cum[ms[i].ym])}`,aria:'Tendência de consumo por mês'});
+  const km=ms.reduce((a,m)=>a+(m.km||0),0),l=ms.reduce((a,m)=>a+(m.km&&m.kmpl?m.km/m.kmpl:0),0);
+  const notas=ms.filter(m=>!m.parcial&&m.score!=null);const nota=notas.length?notas.reduce((a,m)=>a+m.score,0)/notas.length:null;
+  const econ=ms.reduce((a,m)=>a+m.econ,0);const nome={3:'3 meses',6:'6 meses',ini:'desde o início'}[win];
+  const mini=(t,v,cls='')=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num ${cls}" style="font-size:22px">${v}</b></div>`;
+  return`<div class="card rise sec">${cardH('Tendência '+nome,'Consumo de cada mês, média móvel de 3 meses e a linha de base do projeto',segHtml([['3','3 meses'],['6','6 meses'],['ini','Desde o início']],win,'trend-win'))}${chart}
+  <div class="leg" style="margin:8px 0 12px"><span><i style="background:var(--laranja)"></i>Consumo do mês</span><span><i style="background:none;border-top:2px dashed var(--text);height:0;margin-top:5px"></i>Média móvel 3 meses</span><span><i style="background:var(--ok);border-radius:99px"></i>Melhorou</span><span><i style="background:var(--bad);border-radius:99px"></i>Piorou</span><span><i style="background:var(--n300);border-radius:99px"></i>Mês parcial: sem cor e sem variação</span></div>
+  <div class="grid g3" style="gap:10px">${mini('Consumo no período ('+nome+')',l?fmt.n(km/l,2)+' km/l':'sem dado')}${mini('Nota média (premiação, meses fechados)',nota!=null?fmt.n(nota,0):'sem dado')}${mini('Diesel economizado ('+nome+', '+C.ec.b.rotulo+')',fmt.brl(econ),econ>=0?'ok-t':'bad-t')}</div></div>`;
+}
+/* ---------- Adoção do app e da premiação (item 2) ---------- */
+function adocaoBlock(C){
+  let h=[];try{h=msgHist(C)}catch(e){}
+  let melhor=0,tot=0;for(const d of h){if(!d.first)continue;const mes=dIso(d.first.t).slice(0,7);const [y,m]=mes.split('-').map(Number);const prox=new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);
+    const pr=(C.fleet.prem||[]).filter(p=>nkey(p.motorista)===nkey(d.name));const n1=(pr.find(p=>p.mes===mes)||{}).nota,n2=(pr.find(p=>p.mes===prox)||{}).nota;if(n1!=null&&n2!=null){tot++;if(n2>n1)melhor++}}
+  const mini=(t,v,s)=>`<div class="card" style="padding:12px 14px;box-shadow:none;background:var(--soft)"><div class="xs muted">${t}</div><b class="num" style="font-size:22px">${v}</b><div class="xs">${s}</div></div>`;
+  return`<div class="card rise sec">${cardH('Adoção do app e da premiação','O que existe hoje e o que não existe')}<div class="grid g3" style="gap:12px">
+  ${mini('Motoristas com app ativo','<span class="muted">sem dado</span>','A API Gobrax usada hoje não informa uso do app.')}
+  ${mini('Abriram as mensagens','<span class="muted">sem dado</span>','As mensagens vão à mão pelo WhatsApp; não há confirmação de leitura.')}
+  ${mini('Nota maior depois do contato',tot?`${melhor} de ${tot}`:'<span class="muted">sem dado</span>',tot?'condutores com nota maior no mês seguinte ao primeiro contato (premiação)':'precisa da premiação do mês do contato e do seguinte')}</div></div>`;
+}
+
 /* =====================================================================
    TELA · Regras e integração
    ===================================================================== */
@@ -2889,7 +2968,7 @@ function setRules(C){
   return`<div class="grid g3 sec"><div class="card rise stack">${cardH('Índice de saúde do cliente','Pesos de cada sinal e faixas de risco')}${kv('Uso da frota',R.wUso)}${kv('Engajamento',R.wEng)}${kv('Nota Gobrax',R.wNota)}${kv('Resultado de consumo',R.wCons)}${kv('Motoristas críticos',R.wCrit)}${kv('Cobertura do investimento',R.wRoi)}${kv('Faixa média a partir de',R.bandMedio)}${kv('Faixa alta a partir de',R.bandAlto)}<div class="xs muted">Sinal sem dado sai do cálculo e os pesos se redistribuem. Projeto que não se paga fica no mínimo em risco médio.</div></div>
   <div class="card rise stack">${cardH('Qualidade do dado','Registros fora destes limites ficam fora das médias')}${kv('Consumo mínimo plausível',fmt.n(R.minKmpl,1)+' km/l')}${kv('Consumo máximo plausível',fmt.n(R.maxKmpl,1)+' km/l')}${kv('Máximo de km por dia',fmt.n(R.maxKmDay,0)+' km')}${kv('Comparação mínima',R.minCmpPct+'% dos dias')}<div class="xs muted">Dia sem litros ou sem km fica de fora do consumo. Indicador que a API não trouxe (nota, faixa verde, motor ocioso) fica fora da média daquele indicador, não vira zero.</div></div>
   <div class="card brand rise stack"><div class="swoosh"></div>${cardH('Premissas','Usadas no estudo, nos ganhos e nas oportunidades')}${kv('Preço do diesel',fmt.brl(R.diesel,2)+'/L')}${kv('Valor por unidade',fmt.brl(R.defUnit,2)+'/mês')}${kv('Nota mínima para bônus (estimativa)',R.bonusMin)}<div class="xs muted">Diesel economizado = litros que a frota gastaria no consumo da linha de base do projeto (primeiras 4 semanas) nos mesmos km − litros gastos, × diesel. Diesel: Petrobras (média Brasil ou estado do cliente), via combustivelapi.com.br.</div></div>
-  <div class="card rise stack">${cardH('Limites dos avisos','Só sinalizam; não mudam nenhum número')}${kv('Concentração da perda num só veículo',R.concPerda+'%')}${kv('Sem transmitir para o alerta de cobrança',R.diasCobranca+' dias')}${kv('Diferença de consumo pequena',' abaixo de '+R.difPequena+'%')}${kv('Mudança de km por dia',R.kmDiaMuda+'%')}${kv('Km de veículos presentes na base e agora','mínimo '+R.mixMin+'%')}${kv('Mudança no número de veículos',R.veicMuda+'%')}<div class="xs muted">Nota Gobrax: Bom a partir de 70, Atenção de 40 a 69 e Crítico abaixo de 40.</div></div></div>`;
+  <div class="card rise stack">${cardH('Limites dos avisos','Só sinalizam; não mudam nenhum número')}${kv('Concentração da perda num só veículo',R.concPerda+'%')}${kv('Sem transmitir para o alerta de cobrança',R.diasCobranca+' dias')}${kv('Diferença de consumo pequena',' abaixo de '+R.difPequena+'%')}${kv('Mudança de km por dia',R.kmDiaMuda+'%')}${kv('Km de veículos presentes na base e agora','mínimo '+R.mixMin+'%')}${kv('Mudança no número de veículos',R.veicMuda+'%')}${kv('Diesel por hora de motor ligado parado',R.idleLph+' L')}${kv('Meta de motor ligado parado',R.idleMeta+'%')}<div class="xs muted">Nota Gobrax: Bom a partir de 70, Atenção de 40 a 69 e Crítico abaixo de 40.</div></div></div>`;
 }
 function setIntegration(C){
   const map=[['totalMileage','km','Quilometragem do dia'],['totalConsumption','l','Litros consumidos'],['totalBreaking','br','Freadas'],['totalBreakingOnHighSpeed','brh','Freadas em alta velocidade'],['averageSpeed','sp','Velocidade média'],['indicators.greenRange.percentage','gr','Faixa verde (%)'],['indicators.idle.percentage','id','Motor ocioso (%)'],['score','sc','Nota Gobrax']];
@@ -2975,7 +3054,9 @@ function eqSit(C){
   const semSinalAgora=C.fleet.vehicles.filter(v=>vehStat(C,v)==='off').map(v=>v.id);
   const semBase=Object.keys(C.cur.byVeh).filter(id=>!(C.prev.byVeh[id]&&C.prev.byVeh[id].kmpl)&&C.fleet.byId[id]);
   const semMotorista=Object.keys(C.cur.byVeh).filter(id=>C.fleet.byId[id]&&C.fleet.byId[id].noDriver);
-  return{semTransmitir,longos,semSinalAgora,semBase,semMotorista,valorUnit:ct.unitAuto?null:ct.unit,cobrado:ct.unitAuto?null:longos.length*ct.unit};
+  /* desde quando: início da sequência mais recente de dias rodados sem motorista (só com os registros do servidor) */
+  const desde={};if(REAL.on)for(const id of semMotorista){const rs=C.fleet.recs.filter(r=>r.veh===id&&r.km>0).sort((a,b)=>b.t-a.t);let t=null;for(const r of rs){if(r.drv)break;t=r.t}desde[id]=t}
+  return{semTransmitir,longos,semSinalAgora,semBase,semMotorista,desde,valorUnit:ct.unitAuto?null:ct.unit,cobrado:ct.unitAuto?null:longos.length*ct.unit};
 }
 function eqInfo(){return infoDot('Critérios da situação dos equipamentos',`<ul><li><b>Sem transmitir</b>: nenhum dia de dado nos últimos 3 dias (dia a dia da API).</li><li><b>Sem sinal agora</b>: a posição ao vivo não veio nesta consulta; pode ser só momentâneo.</li><li><b>Sem base de comparação</b>: rodou no período, mas não no período de comparação.</li><li><b>Sem motorista identificado</b>: rodou sem vínculo de motorista na API.</li></ul><p>As mesmas contagens aparecem na Visão geral, na Frota, no mapa e nos avisos.</p>`,{left:true})}
 function eqLine(C){const e=C.eq;return[['bad',e.semTransmitir.length,'sem transmitir'],['warn',e.semSinalAgora==null?null:e.semSinalAgora.length,'sem sinal agora'],['n',e.semBase.length,'sem base de comparação'],['n',e.semMotorista.length,'sem motorista identificado']].map(([c,n,l])=>`<span class="badge ${n?c:'n'}">${n==null?'sem dado':n} ${l}</span>`).join('')}
@@ -3138,6 +3219,7 @@ const ACT={
   print:()=>window.print(),
   csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'ov-metric':el=>{S.u.ovMetric=el.dataset.v;go()},
+  'trend-win':el=>{S.u.trendWin=el.dataset.v;go()},
   'ret-tab':el=>{S.u.retTab=el.dataset.v;go(true)},
   'client-open':el=>{setClient(el.dataset.id);S.u.retTab='cliente';render({skeleton:true})},
   'fleet-tab':el=>{S.u.fleetTab=el.dataset.v;if(el.dataset.v==='mapa'&&LASTC)loadExtras(LASTC.cid);go(true)},

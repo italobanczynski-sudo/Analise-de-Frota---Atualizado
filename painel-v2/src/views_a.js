@@ -26,11 +26,12 @@ function metricDef(k){return{
   kmpl:{label:'Consumo',get:a=>a.kmpl,fmt:v=>fmt.n(v,2),unit:' km/l',up:true},
   kmday:{label:'Km por dia',get:a=>a.kmDay,fmt:v=>fmt.n(v,0),unit:' km',up:true},
   br100:{label:'Freadas',get:a=>a.br100,fmt:v=>fmt.n(v,1),unit:' /100 km',up:false},
-  score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true}}[k]}
+  score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true},
+  idle:{label:'Motor ligado parado',get:a=>a.idle,fmt:v=>fmt.n(v,1),unit:'%',up:false}}[k]}
 function vOverview(C){
   const {cur,prev,P,hl,price}=C;const u=S.u;
   /* km por dia já está nas barras logo abaixo: o gráfico de cima mostra consumo, freadas ou nota */
-  if(!['kmpl','br100','score'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
+  if(!['kmpl','br100','score','idle'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
   const ds=dailySeries(C.cid,ST,P.from,P.to);const wk=weeklySeries(C.cid,ST,P.from,P.to);
   const sc=statusCounts(C);const gl=C.gl;const ec=C.ec;
   const k=(label,val,delta,note,icon,cls='')=>`<div class="card kpi kp2 lift rise ${cls}"><span class="kico k-${icon}" aria-hidden="true">${ico(icon,26)}</span><div class="tag">${label}</div><div class="v">${val}</div><div>${delta} <span class="dl-n">${note||''}</span></div></div>`;
@@ -41,7 +42,8 @@ function vOverview(C){
     k('Frota ativa',count(cur.active,0)+`<small>de ${cur.total}</small>`,`<span class="dl ${C.eq.semTransmitir.length?'bad':'good'}">${C.eq.semTransmitir.length} sem transmitir</span>`,'nenhum dado nos últimos 3 dias','truck')
   ].join('');
   const dsv=ds.map(d=>d.a?md.get(d.a):null);const pv=md.get(prev);
-  const chart=lineChart({labels:ds.map(d=>fmt.dm(d.date)),series:[{vals:dsv,color:'var(--laranja)',area:true,dots:ds.length<=31}],base:pv!=null?{v:pv,label:'média do período de comparação '+md.fmt(pv)}:null,yfmt:v=>md.fmt(v),
+  const ivd=intervencoes(C,null);const mko=ds.map((d,i)=>ivd[d.t]?{i,n:ivd[d.t]}:null).filter(Boolean);
+  const chart=lineChart({labels:ds.map(d=>fmt.dm(d.date)),marks:mko.length?mko:null,series:[{vals:dsv,color:'var(--laranja)',area:true,dots:ds.length<=31}],base:pv!=null?{v:pv,label:'média do período de comparação '+md.fmt(pv)}:null,yfmt:v=>md.fmt(v),
     tip:i=>ds[i].a?`<b>${fmt.dm(ds[i].date)}</b><br>${md.label}: ${md.fmt(dsv[i])}${md.unit}<br>${fmt.n(ds[i].a.km,0)} km · ${ds[i].a.n} veículos`:`<b>${fmt.dm(ds[i].date)}</b><br>Sem rodagem`,aria:'Evolução diária de '+md.label})+`<div class="tag" style="margin:18px 0 2px">Km rodados por dia</div>`+dailyBars(ds.map(d=>d.a?d.a.km:null),ds.map(d=>fmt.dm(d.date)),{avg:cur.km/Math.max(1,cur.dataDays),u:' km',h:200,aria:'Km rodados por dia'});
   const maxAbs=Math.max(1,...gl.map(g=>Math.abs(g.money)));
   const top=[...gl.slice(0,4),...gl.slice(-4).filter(g=>g.money<0)].filter((g,i,a)=>a.findIndex(x=>x.id===g.id)===i);
@@ -54,7 +56,7 @@ function vOverview(C){
     ${kpis}
   </div>
   <div class="sec">
-    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
+    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota'],['idle','Parado ligado']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
   </div>
   <div class="grid g-main sec">
     <div class="card rise">${cardH('Quem puxa e quem derruba o resultado',`Contribuição de cada veículo para o diesel economizado, ${esc(ec.b.rotulo)}, a ${fmt.brl(price,2)}/L`,`<a class="b sm" href="#/motoristas">Abrir motoristas</a>`)}<div class="bars">${bars}</div><div class="row sm" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--soft);gap:22px"><span><b style="color:var(--ok-t)">+${fmt.brl(sumG)}</b> ganhos</span><span><b style="color:var(--bad-t)">−${fmt.brl(Math.abs(sumL))}</b> perdas</span><span><b>${fmt.brl(sumG+sumL)}</b> saldo (= diesel economizado)</span></div>${concBlock(C)}</div>
@@ -87,7 +89,7 @@ async function vRetention(C){
   <div class="grid g2 sec top">
     <div class="card brand rise"><div class="swoosh"></div>${cardH('O projeto se paga?',`Desde ${fmt.dm(dIso(st.ps))} · ${esc(C.ec.b.rotulo)}`)}${st.noBase?'<div class="empty"><b>Sem dado</b>Sem linha de base: o início do acompanhamento não tem consumo válido.</div>':`<div class="stack"><div><div class="muted sm">Economia de diesel acumulada</div><b class="num" style="font-size:30px;color:${st.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(st.econ)}</b></div><div><div class="muted sm">Investido na Gobrax</div><b class="num" style="font-size:30px">${fmt.brl(st.inv)}</b></div><div class="btrack" style="height:12px;background:var(--a200)"><div class="bfill" style="left:0;width:${clamp(ratio/3*100,0,100)}%;background:${st.pays?'var(--ok)':'var(--bad)'}"></div><div style="position:absolute;top:-4px;bottom:-4px;left:33.3%;width:3px;background:var(--text)"></div></div><div class="sm" style="color:var(--n600)">${st.pays?`A economia cobre a mensalidade ${fmt.n(st.roi,1)} vez(es).`:`Faltam ${fmt.brl(st.miss)} para a economia cobrir o investimento.`}</div><a class="b sm" href="#/estudo">Abrir estudo do projeto</a></div>`}</div>
     <div class="card rise">${cardH('Sinais de atenção','O que merece olhar agora neste cliente')}<div class="stack" style="gap:2px">${alh}</div></div>
-  </div>`;
+  </div>${adocaoBlock(C)}`;
 }
 async function vPortfolio(C){
   await Promise.all(CLIENT_DEFS.map(c=>DB.load(c.id)));const P=C.P;const rows=CLIENT_DEFS.map(def=>{

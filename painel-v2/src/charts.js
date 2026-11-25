@@ -10,7 +10,11 @@ const IND=[
   {k:'brh100',l:'Freadas em alta velocidade',s:'Freadas em alta velocidade a cada 100 km',g:'Indicadores de condução',get:a=>a.brh100,d:2,u:' /100 km',up:false},
   {k:'speed',l:'Velocidade média',s:'Média ponderada pelos km rodados',g:'Indicadores de condução',get:a=>a.speed,d:1,u:' km/h',up:null},
   {k:'green',l:'Faixa verde',s:'Tempo dirigindo na faixa econômica do motor',g:'Indicadores de condução',get:a=>a.green,d:1,u:'%',up:true},
-  {k:'idle',l:'Motor ocioso',s:'Motor ligado com o veículo parado',g:'Indicadores de condução',get:a=>a.idle,d:1,u:'%',up:false},
+  {k:'idle',l:'Motor ligado parado',s:'Motor ligado com o veículo parado',g:'Indicadores de condução',get:a=>a.idle,d:1,u:'%',up:false},
+  {k:'emb',l:'Aproveitamento de embalo',s:'Tempo rodando no embalo, sem acelerar',g:'Indicadores de condução',get:a=>a.emb,d:1,u:'%',up:true},
+  {k:'fm',l:'Freio motor',s:'Uso do freio motor nas reduções',g:'Indicadores de condução',get:a=>a.fm,d:1,u:'%',up:true},
+  {k:'pa',l:'Piloto automático',s:'Tempo rodando com piloto automático',g:'Indicadores de condução',get:a=>a.pa,d:1,u:'%',up:true},
+  {k:'exv',l:'Excesso de velocidade',s:'Tempo acima do limite de velocidade',g:'Indicadores de condução',get:a=>a.exv,d:1,u:'%',up:false},
   {k:'score',l:'Nota Gobrax',s:'Nota ponderada pelos km rodados',g:'Indicadores de condução',get:a=>a.score,d:0,u:' pts',up:true},
   {k:'kmpl',l:'Média de consumo',s:'Quilômetros por litro',g:'Consumo e eficiência',get:a=>a.kmpl,d:2,u:' km/l',up:true},
   {k:'lph100',l:'Litros a cada 100 km',s:'Consumo relativo à distância',g:'Consumo e eficiência',get:a=>a.lph100,d:1,u:' L',up:false},
@@ -78,7 +82,7 @@ function radar(axes){
   return`<svg class="chart radar" viewBox="${-30} 0 ${Sz+60} ${Sz}" role="img" aria-label="Perfil de condução">${g}${body}</svg><div class="leg" style="justify-content:center;margin-top:6px"><span><i style="background:var(--amarelo)"></i>Agora</span>${hasPrev?'<span><i style="background:var(--info)"></i>Antes</span>':''}<span><i style="background:var(--n400)"></i>Média da frota</span></div>`;
 }
 function radarAxes(cur,prev,fleet){
-  const ks=['kmpl','br100','green','idle','score','kmDay'],lab={kmpl:'Consumo',br100:'Freadas',green:'Faixa verde',idle:'Ociosidade',score:'Nota',kmDay:'Km/dia'};
+  const ks=['kmpl','br100','green','idle','emb','fm','pa','exv','score','kmDay'],lab={kmpl:'Consumo',br100:'Freadas',green:'Faixa verde',idle:'Parado ligado',emb:'Embalo',fm:'Freio motor',pa:'Piloto aut.',exv:'Excesso vel.',score:'Nota',kmDay:'Km/dia'};
   return ks.map(k=>{const i=INDK[k];return{l:lab[k],cur:cur?i.get(cur):null,prev:prev?i.get(prev):null,fleet:fleet?i.get(fleet):null,up:i.up,fc:v=>fInd(i,v)}});
 }
 

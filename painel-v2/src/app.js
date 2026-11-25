@@ -43,7 +43,9 @@ function eqSit(C){
   const semSinalAgora=C.fleet.vehicles.filter(v=>vehStat(C,v)==='off').map(v=>v.id);
   const semBase=Object.keys(C.cur.byVeh).filter(id=>!(C.prev.byVeh[id]&&C.prev.byVeh[id].kmpl)&&C.fleet.byId[id]);
   const semMotorista=Object.keys(C.cur.byVeh).filter(id=>C.fleet.byId[id]&&C.fleet.byId[id].noDriver);
-  return{semTransmitir,longos,semSinalAgora,semBase,semMotorista,valorUnit:ct.unitAuto?null:ct.unit,cobrado:ct.unitAuto?null:longos.length*ct.unit};
+  /* desde quando: início da sequência mais recente de dias rodados sem motorista (só com os registros do servidor) */
+  const desde={};if(REAL.on)for(const id of semMotorista){const rs=C.fleet.recs.filter(r=>r.veh===id&&r.km>0).sort((a,b)=>b.t-a.t);let t=null;for(const r of rs){if(r.drv)break;t=r.t}desde[id]=t}
+  return{semTransmitir,longos,semSinalAgora,semBase,semMotorista,desde,valorUnit:ct.unitAuto?null:ct.unit,cobrado:ct.unitAuto?null:longos.length*ct.unit};
 }
 function eqInfo(){return infoDot('Critérios da situação dos equipamentos',`<ul><li><b>Sem transmitir</b>: nenhum dia de dado nos últimos 3 dias (dia a dia da API).</li><li><b>Sem sinal agora</b>: a posição ao vivo não veio nesta consulta; pode ser só momentâneo.</li><li><b>Sem base de comparação</b>: rodou no período, mas não no período de comparação.</li><li><b>Sem motorista identificado</b>: rodou sem vínculo de motorista na API.</li></ul><p>As mesmas contagens aparecem na Visão geral, na Frota, no mapa e nos avisos.</p>`,{left:true})}
 function eqLine(C){const e=C.eq;return[['bad',e.semTransmitir.length,'sem transmitir'],['warn',e.semSinalAgora==null?null:e.semSinalAgora.length,'sem sinal agora'],['n',e.semBase.length,'sem base de comparação'],['n',e.semMotorista.length,'sem motorista identificado']].map(([c,n,l])=>`<span class="badge ${n?c:'n'}">${n==null?'sem dado':n} ${l}</span>`).join('')}
@@ -206,6 +208,7 @@ const ACT={
   print:()=>window.print(),
   csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'ov-metric':el=>{S.u.ovMetric=el.dataset.v;go()},
+  'trend-win':el=>{S.u.trendWin=el.dataset.v;go()},
   'ret-tab':el=>{S.u.retTab=el.dataset.v;go(true)},
   'client-open':el=>{setClient(el.dataset.id);S.u.retTab='cliente';render({skeleton:true})},
   'fleet-tab':el=>{S.u.fleetTab=el.dataset.v;if(el.dataset.v==='mapa'&&LASTC)loadExtras(LASTC.cid);go(true)},

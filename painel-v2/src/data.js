@@ -34,7 +34,7 @@ const FIRST=['Adalberto','Benedito','Caio','Davi','Edgar','Fabrício','Geraldo',
 const LAST=['Almeida','Barros','Cardoso','Duarte','Esteves','Furtado','Guedes','Holanda','Jardim','Klein','Lacerda','Medeiros','Nogueira','Ornelas','Pacheco','Queiroz','Rezende','Siqueira','Teles','Uchoa','Vasques','Xavier','Zanetti','Amaral','Bastos','Caldas','Dantas','Fontes','Godoy','Lima'];
 const FILIAIS=['Matriz','Filial Sul','Filial Norte'];
 
-const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:24,wEng:19,wNota:19,wCons:14,wCrit:9,wRoi:15,bandAlto:60,bandMedio:35,concPerda:50,diasCobranca:30,difPequena:3,kmDiaMuda:15,mixMin:85,veicMuda:10,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
+const DEFAULT_RULES={minKmpl:1.0,maxKmpl:7.0,maxKmDay:1200,minKmEval:30,wUso:24,wEng:19,wNota:19,wCons:14,wCrit:9,wRoi:15,bandAlto:60,bandMedio:35,concPerda:50,idleLph:5,idleMeta:10,diasCobranca:30,difPequena:3,kmDiaMuda:15,mixMin:85,veicMuda:10,minCmpPct:50,bonusMin:70,bonusRate:0.02,diesel:7.26,defUnit:159.9};
 
 function moodFn(mood,start){
   const peak=T0-9;
@@ -70,7 +70,7 @@ function genClient(def){
       const kmpl=clamp(v.base+v.slope*((t-tStart)/7)+mood(t)+(rnd()-0.5)*0.12,1.0,2.7);
       const br=v.br*(0.8+rnd()*0.4);const gr=clamp(v.gr*(0.92+rnd()*0.16)+mood(t)*40,20,92);const idl=clamp(v.idl*(0.8+rnd()*0.4)-mood(t)*20,1,25);
       const sc=clamp(Math.round(28+gr*0.55-idl*1.4-br*0.55+(kmpl-1.5)*30+(rnd()-0.5)*8),4,95);
-      recs.push({t,date:dIso(t),veh:v.id,km,l:+(km/kmpl).toFixed(1),br:Math.round(km*br/100),brh:Math.round(km*(rnd()<0.3?rnd()*1.2:0)/100),sp:+(v.sp*(0.9+rnd()*0.2)).toFixed(1),gr:+gr.toFixed(1),id:+idl.toFixed(1),sc});
+      recs.push({t,date:dIso(t),veh:v.id,km,l:+(km/kmpl).toFixed(1),br:Math.round(km*br/100),brh:Math.round(km*(rnd()<0.3?rnd()*1.2:0)/100),sp:+(v.sp*(0.9+rnd()*0.2)).toFixed(1),gr:+gr.toFixed(1),id:+idl.toFixed(1),sc,emb:+clamp(22+gr/5+(rnd()-0.5)*8,5,60).toFixed(1),fm:+clamp(8+(rnd()-0.5)*6,1,30).toFixed(1),pa:+clamp(18+(rnd()-0.5)*14,0,60).toFixed(1),exv:+clamp(2+(rnd()-0.5)*3,0,12).toFixed(1),hm:+(km/48+1+rnd()).toFixed(1)});
     }
   }
   const recent=recs.filter(r=>r.t>T0-30&&r.km>120);
@@ -114,7 +114,7 @@ function fleetFromServer(c){
     if(!r.rodou||km<=0||l<=0)continue;
     let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
     const nota=scd!=null?scd:r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd});
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd,emb:nv(r.embalo),fm:nv(r.freio_motor),pa:nv(r.piloto_automatico),exv:nv(r.tempo_excesso_velocidade),hm:nv(r.horas_motor),drv:r.motorista||''});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -229,13 +229,14 @@ function validRecs(cid,store){
 function suspRecs(cid,store){return DB.fleets[cid].recs.filter(r=>{if(!isSusp(r,store.rules))return false;const fl=store.flags[flagId(cid,r)];if(fl==='confirmed'||fl==='ignored')return false;if(fl&&fl.l&&!isSusp({...r,l:fl.l},store.rules))return false;return true})}
 /* médias ponderadas pelos km; campo sem dado (null) fica fora da média daquele indicador */
 function aggregate(rs){
-  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0]};
-  for(const r of rs){o.km+=r.km;o.l+=r.l;
+  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0],emb:[0,0],fm:[0,0],pa:[0,0],exv:[0,0]};o.hm=0;o.idleH=0;
+  /* motor ligado parado em horas: horas de ignição (API) × % parado ligado (API); dia sem um dos dois fica fora */
+  for(const r of rs){o.km+=r.km;o.l+=r.l;if(r.hm!=null&&r.id!=null&&r.hm>0){o.hm+=r.hm;o.idleH+=r.hm*r.id/100}
     for(const f in w){const v=r[f];if(v!=null&&isFinite(v)){w[f][0]+=(f==='br'||f==='brh')?v:v*r.km;w[f][1]+=r.km}}}
   const k=o.km;const wv=f=>w[f][1]?w[f][0]/w[f][1]:null;
   o.br=w.br[0];o.brh=w.brh[0];
   o.kmpl=o.l?o.km/o.l:null;o.kmDay=o.n?o.km/o.n:null;o.br100=w.br[1]?w.br[0]/w.br[1]*100:null;o.brh100=w.brh[1]?w.brh[0]/w.brh[1]*100:null;
-  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.score=wv('sc');o.scd=wv('scd');
+  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.emb=wv('emb');o.fm=wv('fm');o.pa=wv('pa');o.exv=wv('exv');o.idleHp=o.hm?o.idleH/o.hm*100:null;o.score=wv('sc');o.scd=wv('scd');
   o.lph100=k?o.l/k*100:null;
   return o;
 }

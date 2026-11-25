@@ -106,9 +106,9 @@ function dadosServidor() {
         const r = { cliente_id: id, dia: dia(n) + 'T00:00:00Z', placa: p, motorista: v === 1 ? '' : 'Motorista ' + p, rodou, km: rodou ? km : 0,
           litros: rnd() < 0.05 ? null : +(km / (1.4 + rnd() * 0.5)).toFixed(1), frenagens: rnd() < 0.1 ? null : Math.round(km * 0.2),
           frenagens_alta: Math.round(rnd() * 3), velocidade_media: 40 + rnd() * 10, odometro: 100000 + n, horas: 8,
-          nota: null /* como no servidor real: a performance diária não traz nota */, faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10 };
+          nota: null /* como no servidor real: a performance diária não traz nota */, faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10, embalo: 20 + rnd() * 20, freio_motor: rnd() < 0.1 ? null : 5 + rnd() * 10, piloto_automatico: 10 + rnd() * 20, tempo_excesso_velocidade: rnd() * 4, horas_motor: rodou ? 6 + rnd() * 4 : null };
         r.inicio_faixa_verde = v === 2 ? null : 40 + rnd() * 55;
-        if (semPerf) { r.motorista = ''; r.faixa_verde = null; r.motor_ocioso = null; r.inicio_faixa_verde = null; }
+        if (semPerf) { r.motorista = ''; r.faixa_verde = null; r.motor_ocioso = null; r.inicio_faixa_verde = null; r.embalo = null; r.freio_motor = null; r.piloto_automatico = null; r.tempo_excesso_velocidade = null; r.horas_motor = null; }
         registros.push(r);
         if (r.motorista) motoristas.push(r);
       }
@@ -181,7 +181,7 @@ async function fotos(dir) {
   for (const r of ['geral', 'retencao', 'frota', 'estudo', 'dados?aba=notaconsumo', 'dados?aba=diagnostico', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'plano']) {
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
     const arq = path.join(dir, r.replace(/\W+/g, '-') + '.png');
-    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--host-resolver-rules=MAP combustivelapi.com.br 127.0.0.1', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',
+    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--host-resolver-rules=MAP combustivelapi.com.br 127.0.0.1', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,' + (process.env.ALTURA || 2600),
       '--virtual-time-budget=15000', '--screenshot=' + arq, 'http://127.0.0.1:' + srv.address().port + '/painel#/' + r], { timeout: 120000 }, () => ok()));
     try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (x) {}
     console.log(arq);

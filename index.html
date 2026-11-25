@@ -3572,6 +3572,25 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (E.modoComp === 'anterior' || !E.B) E.B = anterior(E.A);
   }
 
+  // Período de comparação que começa antes do primeiro dia de dados (ex.: outubro com dados só de 27 a 31):
+  // as somas (km, litros, horas, dias trabalhados) desse período não se comparam com um período inteiro (dariam +277%).
+  // As médias (km/l, km/dia, percentuais) continuam valendo.
+  function coberturaPeriodo(p) {
+    const b = E.base;
+    if (!b || !p || !b.inicio) return null;
+    const tot = D.dif(p.ini, p.fim) + 1, ini = b.inicio > p.ini ? b.inicio : p.ini;
+    const cob = ini > p.fim ? 0 : D.dif(ini, p.fim) + 1;
+    return { tot, cob, ini, parcial: cob > 0 && cob < tot * 0.8 };
+  }
+  function semSomasSeParcial(r, p) {
+    const c = coberturaPeriodo(p);
+    if (!c || !c.parcial || !r) return r;
+    const o = Object.assign({}, r);
+    Object.values(IND_MAP).forEach((ind) => { if (ind.tipo === 'soma' || ind.tipo === 'dias') o[ind.key] = null; });
+    return o;
+  }
+  const avisoCobertura = (p, rot) => { const c = coberturaPeriodo(p); return c && c.parcial ? `${rot} tem só ${c.cob} de ${c.tot} dias com dados (desde ${D.br(c.ini)}): km, litros e dias trabalhados não são comparados` : ''; };
+
   // Cálculos do período (memorizados pela combinação de períodos)
   let memo = null;
   function calc() {
@@ -3579,7 +3598,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (memo && memo.chave === chave && memo.base === E.base) return memo;
     const b = E.base;
     const la = X.filtrar(b.linhas, E.A), lb = X.filtrar(b.linhas, E.B);
-    const frotaA = X.resumo(la, b), frotaB = X.resumo(lb, b);
+    const frotaA = X.resumo(la, b), frotaB = semSomasSeParcial(X.resumo(lb, b), E.B);
     const mots = b.motoristas.map((m) => {
       const ma = X.filtrar(m.linhas, E.A), mb = X.filtrar(m.linhas, E.B);
       const a = X.resumo(ma, b), r = X.resumo(mb, b);
@@ -4017,7 +4036,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
           <button type="button" class="dp-campo ${E.cal.aberto ? 'ativo' : ''}" data-acao="cal-alternar" aria-haspopup="dialog" aria-expanded="${!!E.cal.aberto}">${icone('calendario', 16)}<span>${D.periodoBR(E.A)}</span><span class="dp-seta">▾</span></button>
           ${E.cal.aberto && E.cal.onde !== 'topo' ? painelCalendario() : ''}
         </div>
-        <span class="dp-info"><b>${at ? at[1] : 'Personalizado'}</b> · ${semBase ? 'sem dados anteriores para comparar' : 'comparado com ' + D.periodoBR(E.B)}</span>
+        <span class="dp-info"><b>${at ? at[1] : 'Personalizado'}</b> · ${semBase ? 'sem dados anteriores para comparar' : 'comparado com ' + D.periodoBR(E.B)}${!semBase && avisoCobertura(E.B, 'O período anterior') ? `<span style="display:block;color:var(--atencao-tinta)">${esc(avisoCobertura(E.B, 'O período anterior'))}</span>` : ''}</span>
       </div>`;
   }
   // Aviso de período ajustado e o cartão de evolução do "tudo", que ficam abaixo do seletor.
@@ -5568,28 +5587,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       ${pags > 1 ? `<div class="dv-pags"><button type="button" data-acao="dv-pag" data-k="${pag - 1}" ${pag === 1 ? 'disabled' : ''} aria-label="Página anterior">‹</button>${Array.from({ length: pags }, (_, i) => i + 1).filter((i) => pags <= 7 || Math.abs(i - pag) <= 2 || i === 1 || i === pags).map((i) => `<button type="button" class="${i === pag ? 'ativo' : ''}" data-acao="dv-pag" data-k="${i}">${i}</button>`).join('')}<button type="button" data-acao="dv-pag" data-k="${pag + 1}" ${pag === pags ? 'disabled' : ''} aria-label="Próxima página">›</button></div>` : ''}`;
     return vgCard('trofeu', modo === 'veiculo' && bv ? 'Veículos por consumo' : 'Condutores por consumo', corpo, null, tg);
   }
-  function dvQualidade() {
-    const q = infoQualidade();
-    if (!q) return '';
-    const suspK = new Set(q.susp.filter((l) => !tratSusp(l)).map((l) => l.veiculo || l.motorista).filter(Boolean));
-    const parcial = [...q.reportaram].filter((v) => suspK.has(v)).length;
-    const fatias = [['Com dados', q.reportaram.size - parcial, '#1E8E3E'], ['Sem dados', q.faltando.length, '#F9AB00'], ['Parcial', parcial, '#E37400']];
-    const tot = fatias.reduce((t, f) => t + f[1], 0) || 1, R = 52, L = 2 * Math.PI * R;
-    let ac = 0;
-    const arcos = fatias.filter((f) => f[1]).map((f) => { const fr = f[1] / tot, s = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${f[2]}" stroke-width="14" stroke-dasharray="${(fr * L).toFixed(2)} ${L.toFixed(2)}" stroke-dashoffset="${(-ac * L).toFixed(2)}" transform="rotate(-90 70 70)"/>`; ac += fr; return s; }).join('');
-    const ok = !q.velho && q.cobPct >= X.LIMITES.coberturaMin && !suspK.size;
-    const veredito = ok ? ['✓', 'Dados confiáveis para análise', 'vg-bom'] : q.velho ? ['!', `Dados de ${D.br(q.ultimo)}: atualize a coleta`, 'vg-ruim'] : ['!', q.cobPct < X.LIMITES.coberturaMin ? 'Cobertura abaixo do mínimo' : 'Há registros suspeitos para tratar', 'vg-ruim'];
-    return vgCard('escudo', 'Qualidade dos dados', `<div class="dv-qual"><div class="vg-status"><svg viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="Cobertura ${fmt(q.cobPct, 0)}%">
-        <circle cx="70" cy="70" r="${R}" fill="none" style="stroke:var(--apoio)" stroke-width="14"/>${arcos}
-        <text x="70" y="74" text-anchor="middle" font-size="28" font-weight="700" style="fill:var(--tinta)">${fmt(q.cobPct, 0)}%</text>
-        <text x="70" y="94" text-anchor="middle" font-size="12" style="fill:var(--texto-2)">Cobertura</text></svg>
-        <ul class="vg-leg">${fatias.map((f) => `<li><i style="background:${f[2]}"></i><span>${f[0]}</span><b class="num">${fmt(f[1], 0)}</b></li>`).join('')}</ul></div>
-      <a class="dv-veredito" href="#/visao?aba=qualidade"><span class="dv-ver-ic ${veredito[2]}">${veredito[0]}</span><b>${esc(veredito[1])}</b></a></div>`);
-  }
   function abaGraficosFrota(c) {
     return `${dvKpis(c)}
       <div class="dv-grade">${dvBarras(c)}${dvRanking(c)}</div>
-      <div class="dv-grade">${cartaoConducao(c)}${dvQualidade()}</div>
+      ${cartaoConducao(c)}
       ${cartoesVeiculos(true)}`;
   }
 
@@ -5973,9 +5974,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const totalReais = (garg.find((g) => g.ind.key === 'kml') || {}).reais || 0;   // o diesel do motor ocioso já entra no consumo: somar os dois contaria em dobro
     const gargHtml = garg.map((g, i) => `<div class="pd-garg" role="button" tabindex="0" data-acao="ind-detalhe" data-k="${g.ind.key}" data-alvo="" title="Ver o gráfico de ${esc(g.ind.label)}">
       <span class="pd-garg-n">${i + 1}</span>
-      <span class="pd-garg-txt"><b>${esc(g.ind.label)}</b><small>Frota ${esc(fmtInd(g.ind, A[g.ind.key]))} · meta ${esc(fmtInd(g.ind, g.meta))} · ${g.fora} de ${mots.length} condutores piores que a média</small><span class="pd-dica">${icone('grafico', 12)} ${esc(DICAS[g.ind.key] || '')}</span></span>
+      <span class="pd-garg-txt"><b>${esc(g.ind.label)}</b><small>Frota ${esc(fmtInd(g.ind, A[g.ind.key]))} · ${Math.abs(g.meta) < 1e-9 ? 'meta zero (o quarto melhor dos condutores não teve nenhuma)' : 'meta ' + esc(fmtInd(g.ind, g.meta))} ·${g.fora} de ${mots.length} condutores piores que a média</small><span class="pd-dica">${icone('grafico', 12)} ${esc(DICAS[g.ind.key] || '')}</span></span>
       <span class="pd-garg-bar"><i style="width:${Math.max(4, (g.rel / maxRel) * 100)}%"></i></span>
-      <span class="pd-garg-val">${g.reais !== null && g.reais >= 1 ? `<b class="txt-ruim">${fmtReais(g.reais, 0)}</b><small>no período</small>` : (g.ind.var === 'pp' ? `<b>${fmt(g.gap, 1)} p.p.</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>` : `<b>${fmt(g.rel * 100, 0)}%</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>`)}</span></div>`).join('');
+      <span class="pd-garg-val">${g.reais !== null && g.reais >= 1 ? `<b class="txt-ruim">${fmtReais(g.reais, 0)}</b><small>no período</small>` : (g.ind.var === 'pp' ? `<b>${fmt(g.gap, 1)} p.p.</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>` : Math.abs(g.meta) < 1e-9 ? `<b>${esc(fmtInd(g.ind, g.gap))}</b><small>acima de zero</small>` : `<b>${fmt(g.rel * 100, 0)}%</b><small>${g.ind.melhor > 0 ? 'abaixo' : 'acima'} da meta</small>`)}</span></div>`).join('');
 
     // dicas: o que fazer primeiro (gargalos com dinheiro e o que mais piorou)
     const dicas = [];
@@ -6455,16 +6456,23 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     consumo: ['Resultado de consumo', 'gota', 'Média de km/l comparada ao período de comparação.', 'Só a piora conta: cada 1% de piora soma 5 pontos (20% pior = 100).'],
     criticos: ['Motoristas com nota crítica', 'alerta', 'Parte dos motoristas com nota abaixo de 40.', 'Cada 1% dos motoristas nessa faixa soma 2,5 pontos (40% ou mais = 100).']
   };
+  // peso do sinal neste cliente diferente do padrão: algum sinal ficou sem dado e o peso dele foi para os outros
+  function pesoRedistribuido(x) {
+    const tot = Object.keys(CHURN_REGRAS).reduce((t, k) => t + (CHURN_PESOS[k] || 0), 0) || 1;
+    return Math.abs((x.peso || 0) - (CHURN_PESOS[x.k] || 0) / tot) > 0.005;
+  }
   function churnComoCalcula(sel) {
     const ks = Object.keys(CHURN_REGRAS), tot = ks.reduce((t, k) => t + (CHURN_PESOS[k] || 0), 0) || 1;
     const doCli = sel ? new Map(sel.fatores.map((x) => [x.k, x])) : null;
     const linhas = ks.map((k) => {
       const [nome, ic, oque, regra] = CHURN_REGRAS[k], x = doCli && doCli.get(k);
       const cli = !doCli ? '' : x ? `<span class="churn-como-cli">neste cliente: risco <b class="num">${fmt(x.risco, 0)}</b> · peso ${fmt(x.peso * 100, 0)}%</span>` : '<span class="churn-como-cli mudo">neste cliente: sem dado, fica fora da conta</span>';
-      return `<li><span class="churn-como-ic">${icone(ic, 16)}</span><div><span class="churn-como-tit"><b>${nome}</b><span class="badge badge-vazio">peso ${fmt(((CHURN_PESOS[k] || 0) / tot) * 100, 0)}%</span></span>
+      return `<li><span class="churn-como-ic">${icone(ic, 16)}</span><div><span class="churn-como-tit"><b>${nome}</b><span class="badge badge-vazio">peso padrão ${fmt(((CHURN_PESOS[k] || 0) / tot) * 100, 0)}%</span></span>
         <span class="apoio">${oque}</span><span class="churn-como-regra">${regra}</span>${cli}</div></li>`;
     }).join('');
-    const conta = sel ? `<div class="churn-como-conta"><span class="apoio">Conta de ${esc(sel.nome)}</span><b class="num">${sel.fatores.slice().sort((p, q) => q.contrib - p.contrib).map((x) => fmt(x.contrib, 1)).join(' + ')} = ${fmt(sel.score, 0)}</b></div>` : '';
+    const fora = sel ? ks.filter((k) => !doCli.has(k)).map((k) => CHURN_REGRAS[k][0]) : [];
+    const aviso = fora.length ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">Em ${esc(sel.nome)}, ${esc(fora.join(' e '))} ${fora.length > 1 ? 'ficaram' : 'ficou'} sem dado. Os pesos dos outros sinais foram redistribuídos: ${sel.fatores.map((x) => esc(x.nome) + ' ' + fmt(x.peso * 100, 0) + '%').join(' · ')}.</span></div></div>` : '';
+    const conta = sel ? `${aviso}<div class="churn-como-conta"><span class="apoio">Conta de ${esc(sel.nome)}</span><b class="num">${sel.fatores.slice().sort((p, q) => q.contrib - p.contrib).map((x) => fmt(x.contrib, 1)).join(' + ')} = ${fmt(sel.score, 0)}</b></div>` : '';
     return vgCard('lampada', 'Como o índice é calculado', `<div class="churn-como">
       <ol class="churn-como-passos">
         <li><b>Compara dois períodos.</b> O período escolhido contra o de comparação (${esc(D.periodoBR(E.A))} × ${esc(D.periodoBR(E.B))}). Sem dados no de comparação, a 2ª metade do período é comparada com a 1ª.</li>
@@ -6518,9 +6526,10 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       ${kpi('escudo', corFx[sel.faixa], fichaDe(sel.nome) ? 'Índice de uso' : 'Índice de risco', `${fmt(sel.score, 0)}<small>de 100</small>`, `<span class="vg-var"><b class="${sel.faixa === 'Baixo' ? 'vg-bom' : 'vg-ruim'}">risco ${sel.faixa.toLowerCase()}</b></span>`)}
       ${kpi('pessoas', '#1A73E8', 'Motoristas ativos', fmt(sel.motoristas, 0), `<span class="vg-var">${fmt(sel.crit, 0)} com nota crítica</span>`)}
       ${kpi('estrada', '#FCB709', 'Km rodados', fmt(sel.km, 0), vgVar(X.variacao(IND_MAP.km, sel.a.km, sel.b.km), undefined, refTxt))}
-      ${kpi('trofeu', '#1E8E3E', 'Nota Gobrax', sel.nota > 0 ? fmt(sel.nota, 1) : '—', sel.nota > 0 ? vgVar(X.variacao(IND_MAP.nota, sel.a.nota, sel.b.nota), undefined, refTxt) : '<span class="vg-var">sem nota no período</span>')}</div>`;
+      ${(() => { const np = sel.nota > 0 ? null : notaFrotaPremiacao(E.A, sel.nome);   // sem nota nos dados do dia: a da Premiação, como na Visão geral
+        return kpi('trofeu', '#1E8E3E', 'Nota Gobrax', sel.nota > 0 ? fmt(sel.nota, 1) : np ? fmt(np.nota, 1) : '—', sel.nota > 0 ? vgVar(X.variacao(IND_MAP.nota, sel.a.nota, sel.b.nota), undefined, refTxt) : np ? `<span class="vg-var">da Premiação (${esc(np.meses)})</span>` : '<span class="vg-var">sem nota no período</span>'); })()}</div>`;
     const barras = fat.map((x) => { const fx = x.risco >= CHURN_FAIXAS.alto ? 'Alto' : x.risco >= CHURN_FAIXAS.medio ? 'Médio' : 'Baixo'; return `<div class="churn-fat">
-      <div class="churn-fat-cab"><span><b>${esc(x.nome)}</b> <span class="mudo" style="font-size:11.5px">peso ${fmt((x.peso || 0) * 100, 0)}% · soma ${fmt(x.contrib, 1)} pts</span><span class="apoio" style="display:block;font-size:11.5px">${esc(x.det)}</span></span><span class="churn-fat-v"><b class="num">${fmt(x.risco, 0)}</b><span class="badge ${BADGE_RISCO[fx]}">${fx}</span></span></div>
+      <div class="churn-fat-cab"><span><b>${esc(x.nome)}</b> <span class="mudo" style="font-size:11.5px">peso ${fmt((x.peso || 0) * 100, 0)}%${pesoRedistribuido(x) ? ' (redistribuído)' : ''} · soma ${fmt(x.contrib, 1)} pts</span><span class="apoio" style="display:block;font-size:11.5px">${esc(x.det)}</span></span><span class="churn-fat-v"><b class="num">${fmt(x.risco, 0)}</b><span class="badge ${BADGE_RISCO[fx]}">${fx}</span></span></div>
       <span class="churn-trilho"><i style="width:${Math.max(3, x.risco)}%;background:${COR_RISCO[fx]}"></i></span></div>`; }).join('');
     const alertas = fat.filter((x) => x.risco >= 50);
     const passos = fat.filter((x) => x.risco >= 25 && CHURN_ACAO[x.k]).slice(0, 4);
@@ -7252,7 +7261,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const semRuido = ruidoInfo.ruido === null, semRS = bloq || noRuido || semRuido;
     const selo = bloq ? '<span class="badge badge-critico">R$ bloqueado</span>' : semRuido ? '<span class="badge badge-neutro">Ruído não calculável</span>' : noRuido ? '<span class="badge badge-neutro">Sem mudança clara</span>' : paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
     const avisoRuido = noRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A mudança de consumo (${dKml >= 0 ? '+' : '−'}${fmt(Math.abs(dKml), 2)} km/l) está dentro do ruído da linha de base (±${fmt(ruidoInfo.ruido, 2)} km/l): sem mudança clara, a economia não é contada como resultado.</span></div></div>` : '';
-    const receita = `<details class="receita"><summary>Como este valor foi calculado</summary><ul>
+    const receita = `<details class="receita" open><summary>Como este valor foi calculado</summary><ul>
       <li><b>Linha de base (travada):</b> ${esc(S.rotIni)}, ${D.periodoBR(S.pIni)}, consumo de ${fmtInd(IND_MAP.kml, base)} (km totais ÷ litros totais).</li>
       <li><b>Agora:</b> ${esc(S.rotAgora)}, ${D.periodoBR(S.pAgora)}, consumo de ${S.agora ? fmtInd(IND_MAP.kml, S.agora.kml) : '—'}, mesmo número de dias.</li>
       <li><b>Ruído da linha de base:</b> ${ruidoInfo.ruido !== null ? '±' + fmt(ruidoInfo.ruido, 2) + ' km/l (2 × erro-padrão de ' + ruidoInfo.n + ' dias)' : 'não calculável (menos de ' + X.LIMITES.faseDiasMin + ' dias válidos)'}. Mudança dentro dele não vira R$.</li>
@@ -7311,6 +7320,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const S = dadosEstudo(), b = E.base;
     const cab = `${cabecalho(`Estudo do projeto${E.cliente ? ' · ' + esc(E.cliente) : ''}`, `Toda a evolução no projeto Gobrax, de ${D.br(b.inicio)} a ${D.br(b.fim)} (${S.ws.length} semanas, ${S.ms.length} ${S.ms.length === 1 ? 'mês' : 'meses'}). Início = ${S.rotIni} (${D.periodoCurto(S.pIni)}); agora = ${S.rotAgora} (${D.periodoCurto(S.pAgora)}).`)}`;
     if (S.ws.length < 2) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ainda pouco tempo de projeto</span><span class="apoio">O estudo precisa de pelo menos duas semanas de dados.</span></div></div></section>';
+    // só mostra os números com tudo carregado: antes, o diesel economizado e os motoristas que evoluíram mudavam na frente da pessoa
+    if (E.planCarregando || !['premissas', 'diesel_hist', 'notas_mes'].every(colPronta)) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando o estudo…</span><span class="apoio">Os números aparecem quando todos os dados chegarem.</span></div></div></section>';
     const I = S.ini || {}, A = S.agora || {};
     const dv = (k) => { const v = X.variacao(IND_MAP[k], A[k], I[k]); return v.semBase ? '<span class="exec-neutro">sem base</span>' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto}</span>`; };
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
@@ -7401,8 +7412,8 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   // Tela inicial: comparação com o mês anterior inteiro (o mês antes do fim do período escolhido)
   function mesAnterior() {
     const ini = D.somarMeses(E.A.fim, -1), p = { ini, fim: D.fimMes(ini) };
-    const ls = X.filtrar(E.base.linhas, p);
-    return { p, ls, r: ls.length ? X.resumo(ls, E.base) : {}, rot: MESES_CURTOS[Number(ini.slice(5, 7)) - 1] + '/' + ini.slice(0, 4) };
+    const ls = X.filtrar(E.base.linhas, p), rot = MESES_CURTOS[Number(ini.slice(5, 7)) - 1] + '/' + ini.slice(0, 4);
+    return { p, ls, r: ls.length ? semSomasSeParcial(X.resumo(ls, E.base), p) : {}, rot, aviso: avisoCobertura(p, rot) };
   }
   function vgKpi(ic, cor, rot, valor, un, varHtml, spark) {
     return `<div class="vg-kpi"><span class="vg-kpi-ic" style="--c:${VG_COR[cor]}">${icone(ic, 22)}</span>
@@ -7517,7 +7528,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const chips = [['7', '7 dias'], ['30', '30 dias'], ['90', '90 dias']].map(([k, r]) => `<button type="button" class="${E.presetA === k ? 'ativo' : ''}" data-acao="periodo-rapido" data-k="${k}">${r}</button>`).join('');
     const pers = !['7', '30', '90'].includes(E.presetA);
     const cab = `<div class="vg-cab"><div><h1 class="vg-titulo">Visão Geral da Frota</h1>
-        <span class="vg-sub">${esc(cliente)} · ${D.periodoBR(E.A)}${M.ls.length ? ' · comparado ao mês de ' + esc(M.rot) + ' inteiro' : ' · ' + semM}</span></div>
+        <span class="vg-sub">${esc(cliente)} · ${D.periodoBR(E.A)}${M.ls.length ? ' · comparado ao mês de ' + esc(M.rot) + (M.aviso ? '' : ' inteiro') : ' · ' + semM}</span>${M.aviso ? `<span class="vg-sub" style="color:var(--atencao-tinta)">${icone('alerta', 13)} ${esc(M.aviso)}</span>` : ''}</div>
       <div class="vg-cab-acoes"><div class="vg-chips">${chips}<span class="dp-ancora"><button type="button" class="${pers ? 'ativo' : ''}" data-acao="cal-alternar" aria-haspopup="dialog" aria-expanded="${!!E.cal.aberto}">${pers ? esc(D.periodoBR(E.A)) : 'Personalizado'}</button>${E.cal.aberto && E.cal.onde !== 'topo' ? painelCalendario() : ''}</span></div>
         <button type="button" class="btn" data-acao="relatorio-pdf">${icone('baixar', 14)}PDF</button></div></div>`;
 
@@ -7551,14 +7562,14 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const cond = vgCard('pessoas', 'Principais Indicadores por Condutor', vgCondutores(c), ['#/motoristas', 'Ver ranking']);
     const insights = vgCard('lampada', 'Insights', vgInsights(c, M), ['#/visao?aba=indicadores', 'Ver detalhes']);
     const alertas = vgCard('sino', 'Alertas da Frota', `<div id="vg-alertas">${vgAlertas()}</div>`, ['#/visao?aba=qualidade', 'Ver todos']);
-    const status = vgCard('caminhao', 'Status dos Veículos', `<div id="vg-status">${vgStatus(c)}</div>`, ['#/individual/veiculo', 'Ver frota']);
+    // "Status dos Veículos" saiu: repetia o "sem sinal" que já está no cartão Frota ativa e no mapa
 
     return `${cab}
       ${avisosPeriodo()}
       ${semDadosNoPeriodo(c.la.length)}
       ${kpis}
       <div class="vg-grade-2">${mapa}${desemp}</div>
-      <div class="vg-grade-3">${cond}<div class="vg-pilha">${insights}${alertas}</div>${status}</div>
+      <div class="vg-grade-2">${cond}<div class="vg-pilha">${insights}${alertas}</div></div>
       ${blocoMesSemanal()}
       ${blocoGruposGeral()}
 `;
@@ -7567,7 +7578,9 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   // ---------- Tela: sem dados ----------
   function telaSemDados() {
     if (E.planCarregando) return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="vazio-titulo">Carregando os dados compartilhados…</span><span class="apoio">Os dados que a equipe buscou aparecem aqui em instantes.</span></div></div></section>`;
-    return '';   // sem dados: tela em branco
+    // sem dados: antes a tela ficava em branco e parecia erro
+    const cli = E.cliente ? ' de ' + esc(E.cliente) : '';
+    return `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Ainda não há dados${cli}</span><span class="apoio">A busca da API traz os dados sozinha a cada hora. Se o cliente acabou de ser cadastrado, a primeira busca pode levar alguns minutos.</span></div></div></section>`;
   }
 
   // ---------- Coleções compartilhadas novas (foto do risco, coaching, ocorrências, acessos): banco quando houver, senão este navegador ----------
@@ -7736,9 +7749,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const b = E.base;
     if (!b || !E.A) return null;
     const idade = Math.max(0, D.dif(b.fim, D.hoje()));
-    const chave = (l) => l.veiculo || l.motorista;
-    const conhecidos = new Set(X.filtrar(b.linhas, { ini: D.somar(E.A.fim, -89), fim: E.A.fim }).map(chave).filter(Boolean));
-    const reportaram = new Set(X.filtrar(b.linhas, E.A).filter(X.rodouLinha).map(chave).filter(Boolean));
+    // frota = planilha de veículos quando existe (os parados também contam); a de motoristas só tem quem rodou e dava
+    // outro total ("30 de 33" aqui, "30 de 42" no Veículo individual)
+    const bv = baseVeic(), fonte = bv && bv.linhas && bv.linhas.length ? bv.linhas : b.linhas;
+    const chave = (l) => placaPos(l.veiculo || l.motorista || '');
+    const conhecidos = new Set(X.filtrar(fonte, { ini: D.somar(E.A.fim, -89), fim: E.A.fim }).map(chave).filter(Boolean));
+    const reportaram = new Set(X.filtrar(fonte, E.A).filter(X.rodouLinha).map(chave).filter(Boolean));
     const susp = (b.suspeitos || []).filter((l) => l.data >= E.A.ini && l.data <= E.A.fim);
     const cobPct = conhecidos.size ? (reportaram.size / conhecidos.size) * 100 : 100;
     const nivel = idade > X.LIMITES.idadeBloqueio ? 'vermelho' : idade > X.LIMITES.idadeMax ? 'ambar' : 'verde';
@@ -9114,7 +9130,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (db) {
       dbCompart = db;
       ligarColecao(db, 'risco_foto');
-      ligarColecao(db, 'diesel_hist');
+      ligarColecao(db, 'diesel_hist', () => render());   // o Estudo espera o histórico do diesel para mostrar o R$
       ligarColecao(db, 'liberacoes', () => render());
       ['fichas', 'combinados', 'marcos', 'passos', 'dias_excluidos', 'premissas', 'notas_mes'].forEach((n) => ligarColecao(db, n, () => render()));
       ligarColecao(db, 'suspeitos_trat', () => aplicarConfirmados());
@@ -9723,7 +9739,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   function telaPremiacao() {
     // vem da base compartilhada: só mês no formato 'AAAA-MM' entra no HTML
     const docs = docsApi('premiacao', E.cliente).filter((d) => /^\d{4}-\d{2}$/.test(String(d.data))).sort((a, b) => (a.data < b.data ? -1 : 1));
-    const cab = `${cabecalho(`Premiação`, `Nota, km e bonificação de cada motorista por mês, da API Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}.`)}`;
+    const cab = `${cabecalho(`Premiação`, `Nota, km e bonificação de cada motorista por mês, da API de premiação Gobrax${E.cliente ? ' · ' + esc(E.cliente) : ''}. Aqui entram só os motoristas identificados no app e os km deles; as outras telas usam a telemetria de todos os veículos, por isso o número de motoristas e os km podem ser diferentes.`)}`;
     if (!docs.length) return cab + `<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Nenhuma premiação buscada ainda</span>
       <span class="apoio">No perfil do cliente, salve o token da API e busque "Scores e premiação".</span><a class="btn btn-primario" href="${hrefDados()}" style="text-decoration:none;margin-top:4px">Abrir o perfil do cliente</a></div></div></section>`;
     const meses = docs.map((d) => d.data);

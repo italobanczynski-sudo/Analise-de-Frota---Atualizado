@@ -22,7 +22,7 @@ if (!chrome) { console.error('Chrome não encontrado: defina CHROME com o caminh
 
 const ROTAS = ['geral', 'retencao', 'retencao?aba=carteira', 'plano', 'estudo', 'frota', 'frota?aba=indicadores', 'frota?aba=qualidade', 'frota?aba=mapa',
   'motoristas', 'motoristas?aba=comportamento', 'motoristas?aba=comparativo', 'motoristas?aba=semanal', 'motoristas?aba=lista', 'motoristas?aba=mensagens',
-  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao'];
+  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao', 'dados?aba=diagnostico'];
 
 /* roda dentro da página: percorre rotas, abas, segmentos e o painel do condutor; grava o relatório no DOM */
 function varredura(rotas) {
@@ -169,7 +169,7 @@ async function fotos(dir) {
   fs.mkdirSync(dir, { recursive: true });
   const srv = servidor(fs.readFileSync(HTML, 'utf8'));
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  for (const r of ['geral', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
+  for (const r of ['geral', 'dados?aba=diagnostico', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
     const arq = path.join(dir, r.replace(/\W+/g, '-') + '.png');
     await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',

@@ -122,7 +122,8 @@ function fleetFromServer(c){
   const drvPlate={},cnt={};
   for(const r of c.motoristas||[]){if(!r.motorista||!r.placa)continue;const k=r.motorista;(cnt[k]=cnt[k]||{})[r.placa]=(cnt[k][r.placa]||0)+1}
   for(const k in cnt)drvPlate[nkey(k)]=Object.entries(cnt[k]).sort((a,b)=>b[1]-a[1])[0][0];
-  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:'Sem motorista vinculado';v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
+  /* sem motorista vinculado na API: a placa ocupa o lugar do nome (como no painel clássico) */
+  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
   return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
@@ -216,9 +217,11 @@ function aggregate(rs){
 }
 function premFleet(prem,from,to){
   if(!REAL.on||!prem||!prem.length)return null;const ini=dIso(from).slice(0,7),fim=dIso(to).slice(0,7);
-  const calc=(a,b)=>{let s=0,w=0,n=0;const meses=new Set();
-    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const km=nv(p.km),nota=nv(p.nota);if(!(km>0)||nota==null)continue;s+=nota*km;w+=km;n++;meses.add(p.mes)}
-    return w?{nota:s/w,motoristas:n,meses:[...meses].sort()}:null};
+  /* média simples das notas dos motoristas, como a "Performance média" da tela de Premiação da plataforma Gobrax
+     (cada motorista conta uma vez por mês, rodando muito ou pouco) */
+  const calc=(a,b)=>{let s=0,n=0;const meses=new Set(),mots=new Set();
+    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const nota=nv(p.nota);if(nota==null||nota<0||nota>100)continue;s+=nota;n++;meses.add(p.mes);mots.add(nkey(p.motorista))}
+    return n?{nota:s/n,motoristas:mots.size,meses:[...meses].sort()}:null};
   const r=calc(ini,fim);if(r)return r;
   /* mês ainda sem premiação (o atual costuma sair depois): vale o último mês com premiação, até 2 meses antes */
   const ant=prem.map(p=>p.mes).filter(m=>m&&m<ini&&m>=prevMonth(prevMonth(ini))).sort().pop();
@@ -328,7 +331,8 @@ function study(cid,store,price){
   for(const r of recs){const ym=r.date.slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.km+=r.km;m.l+=r.l;if(r.sc!=null){m.sc+=r.sc*r.km;m.sk+=r.km}m.days.add(r.t)}
   for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1}
   for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=mens*m.cal/30;
-    const [y,mo]=ym.split('-');months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,dIdx(ym+'-01')))),econ,inv,kmpl:m.l?m.km/m.l:null,score:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
+    const [y,mo]=ym.split('-');const mi=dIdx(ym+'-01'),pfm=REAL.on?premFleet(DB.fleets[cid].prem,mi,mi):null;
+    months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,mi))),econ,inv,kmpl:m.l?m.km/m.l:null,score:pfm&&!pfm.stale?pfm.nota:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
   const wk=weeklySeries(cid,store,ps,T0);
   for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);

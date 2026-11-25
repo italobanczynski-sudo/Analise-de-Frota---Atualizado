@@ -11,7 +11,7 @@ const ROUTES={
   dados:{t:'Regras e integração',i:'sliders',f:vSettings,g:'Sistema'}
 };
 const LEGACY={churn:'retencao',visao:'frota','individual/veiculo':'frota','individual/motorista':'motoristas',premiacao:'motoristas?aba=premiacao',mensagens:'motoristas?aba=mensagens',api:'dados?aba=integracao',config:'dados',individual:'motoristas'};
-const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1}]};
+const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1}]};
 let LASTC=null,RTOK=0,CUR_ROUTE='geral';
 
 function parseHash(){
@@ -98,7 +98,7 @@ function shell(){
 function acctPop(){
   const eu=REAL.eu;const papel={admin:'Administrador',colaborador:'CS',leitor:'Leitura'};
   if(!eu)return`<div class="who"><b>Modo demonstração</b><span class="xs muted">Abra pelo servidor (/painel) para ver os dados reais.</span></div>`;
-  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
+  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="#/dados?aba=diagnostico" data-act="pop-close">${ico('alert',16)} Diagnóstico do dado</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
 }
 function renderTop(){
   const C=LASTC;
@@ -155,7 +155,7 @@ function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.dr
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
 function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
   const good=[...Array(w.to-w.from+1).keys()].filter(k=>{const r=aggFor(C,w.from+k,w.from+k,id);return r.n&&r.kmpl>=w.a.kmpl}).length;
-  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w);const url=waUrl(v.phone,txt);
+  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w,v);const url=waUrl(v.phone,txt);
   if(open&&url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}else copyText(txt).then(ok=>toast(ok?(open?'Sem telefone cadastrado. Mensagem copiada':'Mensagem copiada'):'Não foi possível copiar'))}
 
 /* ---------- ações (data-act) ---------- */

@@ -1347,7 +1347,8 @@ function fleetFromServer(c){
   const drvPlate={},cnt={};
   for(const r of c.motoristas||[]){if(!r.motorista||!r.placa)continue;const k=r.motorista;(cnt[k]=cnt[k]||{})[r.placa]=(cnt[k][r.placa]||0)+1}
   for(const k in cnt)drvPlate[nkey(k)]=Object.entries(cnt[k]).sort((a,b)=>b[1]-a[1])[0][0];
-  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:'Sem motorista vinculado';v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
+  /* sem motorista vinculado na API: a placa ocupa o lugar do nome (como no painel clássico) */
+  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
   return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
@@ -1441,9 +1442,11 @@ function aggregate(rs){
 }
 function premFleet(prem,from,to){
   if(!REAL.on||!prem||!prem.length)return null;const ini=dIso(from).slice(0,7),fim=dIso(to).slice(0,7);
-  const calc=(a,b)=>{let s=0,w=0,n=0;const meses=new Set();
-    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const km=nv(p.km),nota=nv(p.nota);if(!(km>0)||nota==null)continue;s+=nota*km;w+=km;n++;meses.add(p.mes)}
-    return w?{nota:s/w,motoristas:n,meses:[...meses].sort()}:null};
+  /* média simples das notas dos motoristas, como a "Performance média" da tela de Premiação da plataforma Gobrax
+     (cada motorista conta uma vez por mês, rodando muito ou pouco) */
+  const calc=(a,b)=>{let s=0,n=0;const meses=new Set(),mots=new Set();
+    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const nota=nv(p.nota);if(nota==null||nota<0||nota>100)continue;s+=nota;n++;meses.add(p.mes);mots.add(nkey(p.motorista))}
+    return n?{nota:s/n,motoristas:mots.size,meses:[...meses].sort()}:null};
   const r=calc(ini,fim);if(r)return r;
   /* mês ainda sem premiação (o atual costuma sair depois): vale o último mês com premiação, até 2 meses antes */
   const ant=prem.map(p=>p.mes).filter(m=>m&&m<ini&&m>=prevMonth(prevMonth(ini))).sort().pop();
@@ -1553,7 +1556,8 @@ function study(cid,store,price){
   for(const r of recs){const ym=r.date.slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.km+=r.km;m.l+=r.l;if(r.sc!=null){m.sc+=r.sc*r.km;m.sk+=r.km}m.days.add(r.t)}
   for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1}
   for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=mens*m.cal/30;
-    const [y,mo]=ym.split('-');months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,dIdx(ym+'-01')))),econ,inv,kmpl:m.l?m.km/m.l:null,score:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
+    const [y,mo]=ym.split('-');const mi=dIdx(ym+'-01'),pfm=REAL.on?premFleet(DB.fleets[cid].prem,mi,mi):null;
+    months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,mi))),econ,inv,kmpl:m.l?m.km/m.l:null,score:pfm&&!pfm.stale?pfm.nota:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
   const wk=weeklySeries(cid,store,ps,T0);
   for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);
@@ -2444,7 +2448,7 @@ function drvCompare2(C){
 }
 
 /* ---------- MOTORISTAS · Resultado semanal (cards) ---------- */
-function weekMsg(name,r,w){return`Olá${/^Sem motorista/.test(name)?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
+function weekMsg(name,r,w,v){return`Olá${v&&v.noDriver?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
 function drvWeekly2(C){
   const wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);if(!wk.length)return'<div class="card empty"><b>Sem semanas no período</b></div>';
   if(S.u.weekSel==null||S.u.weekSel>wk.length)S.u.weekSel=wk.length;const w=wk[S.u.weekSel-1],pw=wk[S.u.weekSel-2];
@@ -2633,10 +2637,42 @@ function msgEvolution(C,hist){
    TELA · Regras e integração
    ===================================================================== */
 function vSettings(C){
-  const u=S.u;if(!['regras','integracao'].includes(u.dataTab))u.dataTab='regras';
-  const tabs=tabsHtml([['regras','Como calculamos'],['integracao','Integração']],u.dataTab,'data-tab');
+  const u=S.u;if(!['regras','integracao','diagnostico'].includes(u.dataTab))u.dataTab='regras';
+  const tabs=tabsHtml([['regras','Como calculamos'],['integracao','Integração'],['diagnostico','Diagnóstico do dado']],u.dataTab,'data-tab');
   const head=pageH('Regras e integração','Como a plataforma calcula cada número e de onde vem cada dado');
-  return head+tabs+({regras:setRules,integracao:setIntegration}[u.dataTab]||setRules)(C);
+  return head+tabs+({regras:setRules,integracao:setIntegration,diagnostico:setDiag}[u.dataTab]||setRules)(C);
+}
+/* Diagnóstico: quanto de cada campo a API entregou para cada cliente (últimos 90 dias). Só contagens, sem nomes:
+   mostra de uma vez se um campo vazio no painel é falta de dado na origem ou falha de tela. */
+function diagCliente(c){
+  const desde=dIso(T0-89);const rs=(c.registros||[]).filter(r=>String(r.dia).slice(0,10)>=desde);const rod=rs.filter(r=>r.rodou&&(+r.km||0)>0);
+  const pct=f=>rod.length?Math.round(rod.filter(f).length/rod.length*100):null;const tem=k=>r=>r[k]!=null&&r[k]!=='';
+  const meses=[...new Set((c.premiacoes||[]).filter(p=>p.nota!=null).map(p=>p.mes))].sort();
+  return{nome:c.nome,dias:new Set(rs.map(r=>String(r.dia).slice(0,10))).size,veic:new Set(rs.map(r=>r.placa)).size,rod:rod.length,
+    litros:pct(r=>(+r.litros||0)>0),freadas:pct(tem('frenagens')),vel:pct(tem('velocidade_media')),verde:pct(tem('faixa_verde')),ifv:pct(tem('inicio_faixa_verde')),ocioso:pct(tem('motor_ocioso')),
+    motorista:pct(r=>!!r.motorista),nota:pct(tem('nota')),vinculos:(c.motoristas||[]).filter(r=>String(r.dia).slice(0,10)>=desde).length,
+    premMeses:meses,premMot:new Set((c.premiacoes||[]).filter(p=>p.nota!=null).map(p=>p.motorista)).size,odo:(c.odometros||[]).length,
+    ultimo:rs.length?rs.map(r=>String(r.dia).slice(0,10)).sort().pop():null};
+}
+function setDiag(C){
+  if(!REAL.on)return`<div class="card sec rise"><div class="empty"><b>Disponível só na plataforma</b>O diagnóstico lê os dados reais do servidor. Abra pelo /painel com login.</div></div>`;
+  const ds=(REAL.raw||[]).map(diagCliente);
+  const cel=v=>v==null?'<td class="r muted">—</td>':`<td class="r num" style="font-weight:700;color:${v>=80?'var(--ok-t)':v>=30?'var(--warn-t)':'var(--bad-t)'}">${v}%</td>`;
+  const rows=ds.map(d=>`<tr><td><b>${esc(d.nome)}</b><div class="xs muted">${d.veic} veículos · ${d.dias} dias · último ${d.ultimo?fmt.dm(d.ultimo):'—'}</div></td><td class="r num">${d.rod}</td>${cel(d.litros)}${cel(d.freadas)}${cel(d.vel)}${cel(d.verde)}${cel(d.ifv)}${cel(d.ocioso)}${cel(d.motorista)}<td class="r num muted">${d.nota==null?'—':d.nota+'%'}</td><td class="r num">${d.vinculos}</td><td class="r">${d.premMeses.length?`<b class="num">${d.premMot}</b> <span class="xs muted">${d.premMeses.map(m=>MESES[+m.slice(5)-1]).join(', ')}</span>`:'<span class="badge bad">nenhuma</span>'}</td><td class="r num">${d.odo}</td></tr>`).join('');
+  const cid=C.cid,lv=REAL.live[cid],pos=lv&&lv.veiculos?Object.values(lv.veiculos).filter(v=>v.lat!=null).length:null,ras=lv&&lv.rastro?Object.keys(lv.rastro).length:null;
+  const env=REAL.msgs[cid],tel=C.fleet.vehicles.filter(v=>v.phone).length,pm=premissasDe(C.def);
+  const kv=(l,v,ok)=>`<div class="kv"><span>${l}</span><b class="num" style="color:${ok?'var(--ok-t)':'var(--bad-t)'}">${v}</b></div>`;
+  return`<div class="card sec rise">${cardH('O que a API Gobrax entregou para cada cliente','Últimos 90 dias. Porcentagem dos dias rodados (km > 0) em que o campo veio preenchido. Verde 80%+, amarelo 30% a 79%, vermelho abaixo de 30%. Só contagens: nenhum nome aparece aqui.',`<button class="btn ghost sm" data-act="print">${ico('download',14)} PDF</button>`)}
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Cliente</th><th class="r">Dias rodados</th><th class="r">Litros</th><th class="r">Freadas</th><th class="r">Velocidade</th><th class="r">Faixa verde</th><th class="r">Início f. verde</th><th class="r">Motor ocioso</th><th class="r">Motorista</th><th class="r">Nota do dia</th><th class="r">Vínculos motorista</th><th class="r">Premiação (motoristas · meses)</th><th class="r">Odômetros</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="xs muted" style="margin-top:10px">Faixa verde, motor ocioso e motorista vêm da performance (v1/vehicle-performance); vazios aqui indicam que a busca de performance desse cliente não trouxe dado. "Nota do dia" vazia é esperado: a API não manda nota diária, a Nota Gobrax vem da premiação.</div></div>
+  <div class="grid g2 sec"><div class="card rise stack">${cardH('Cliente aberto: '+esc(C.def.name),'O que o painel carregou além do dia a dia')}
+    ${kv('Posição agora (veículos com GPS)',pos==null?(REAL.busy['live'+cid]?'carregando…':REAL.liveErr&&REAL.liveErr[cid]?'erro: '+REAL.liveErr[cid]:'não carregado'):pos+' de '+C.fleet.vehicles.length,pos>0)}
+    ${kv('Rastro de hoje (veículos)',ras==null?'—':ras,ras>0)}
+    ${kv('Mensagens marcadas como enviadas (motoristas)',env?env.length:'—',env&&env.length)}
+    ${kv('Telefones de condutores',tel,tel>0)}
+    ${kv('Contrato cadastrado (valor por unidade)',pm.valorEquip>0?fmt.brl(pm.valorEquip,2):'não (usa R$ 159,90)',pm.valorEquip>0)}
+    ${kv('Diesel do cliente',pm.preco>0?fmt.brl(pm.preco,2)+'/L':'não (usa o padrão)',pm.preco>0)}</div>
+  <div class="card brand rise stack"><div class="swoosh"></div>${cardH('Como usar','')}<p class="sm" style="margin:0">Se uma tela tem campo vazio, olhe a coluna dele aqui. Vermelho: a API não está mandando esse dado para o cliente (token sem acesso, veículo sem a unidade eletrônica ou falha na busca do servidor). Verde e a tela vazia: falha do painel, mande o print desta tabela e da tela.</p></div></div>`;
 }
 function setRules(C){
   const R=ST.rules;const kv=(l,v)=>`<div class="kv"><span>${l}</span><b class="num">${v}</b></div>`;
@@ -2665,7 +2701,7 @@ const ROUTES={
   dados:{t:'Regras e integração',i:'sliders',f:vSettings,g:'Sistema'}
 };
 const LEGACY={churn:'retencao',visao:'frota','individual/veiculo':'frota','individual/motorista':'motoristas',premiacao:'motoristas?aba=premiacao',mensagens:'motoristas?aba=mensagens',api:'dados?aba=integracao',config:'dados',individual:'motoristas'};
-const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1}]};
+const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1}]};
 let LASTC=null,RTOK=0,CUR_ROUTE='geral';
 
 function parseHash(){
@@ -2752,7 +2788,7 @@ function shell(){
 function acctPop(){
   const eu=REAL.eu;const papel={admin:'Administrador',colaborador:'CS',leitor:'Leitura'};
   if(!eu)return`<div class="who"><b>Modo demonstração</b><span class="xs muted">Abra pelo servidor (/painel) para ver os dados reais.</span></div>`;
-  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
+  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="#/dados?aba=diagnostico" data-act="pop-close">${ico('alert',16)} Diagnóstico do dado</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
 }
 function renderTop(){
   const C=LASTC;
@@ -2809,7 +2845,7 @@ function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.dr
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
 function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
   const good=[...Array(w.to-w.from+1).keys()].filter(k=>{const r=aggFor(C,w.from+k,w.from+k,id);return r.n&&r.kmpl>=w.a.kmpl}).length;
-  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w);const url=waUrl(v.phone,txt);
+  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w,v);const url=waUrl(v.phone,txt);
   if(open&&url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}else copyText(txt).then(ok=>toast(ok?(open?'Sem telefone cadastrado. Mensagem copiada':'Mensagem copiada'):'Não foi possível copiar'))}
 
 /* ---------- ações (data-act) ---------- */

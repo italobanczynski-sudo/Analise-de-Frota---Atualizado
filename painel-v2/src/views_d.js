@@ -73,7 +73,7 @@ function drvCompare2(C){
 }
 
 /* ---------- MOTORISTAS · Resultado semanal (cards) ---------- */
-function weekMsg(name,r,w){return`Olá${/^Sem motorista/.test(name)?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
+function weekMsg(name,r,w,v){return`Olá${v&&v.noDriver?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
 function drvWeekly2(C){
   const wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);if(!wk.length)return'<div class="card empty"><b>Sem semanas no período</b></div>';
   if(S.u.weekSel==null||S.u.weekSel>wk.length)S.u.weekSel=wk.length;const w=wk[S.u.weekSel-1],pw=wk[S.u.weekSel-2];

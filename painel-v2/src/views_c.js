@@ -1,0 +1,22 @@
+/* =====================================================================
+   TELA · Regras e integração
+   ===================================================================== */
+function vSettings(C){
+  const u=S.u;if(!['regras','integracao'].includes(u.dataTab))u.dataTab='regras';
+  const tabs=tabsHtml([['regras','Como calculamos'],['integracao','Integração']],u.dataTab,'data-tab');
+  const head=pageH('Regras e integração','Como a plataforma calcula cada número e de onde vem cada dado');
+  return head+tabs+({regras:setRules,integracao:setIntegration}[u.dataTab]||setRules)(C);
+}
+function setRules(C){
+  const R=ST.rules;const kv=(l,v)=>`<div class="kv"><span>${l}</span><b class="num">${v}</b></div>`;
+  return`<div class="grid g3 sec"><div class="card rise stack">${cardH('Índice de saúde do cliente','Pesos de cada sinal e faixas de risco')}${kv('Uso da frota',R.wUso)}${kv('Engajamento',R.wEng)}${kv('Nota Gobrax',R.wNota)}${kv('Resultado de consumo',R.wCons)}${kv('Motoristas críticos',R.wCrit)}${kv('Faixa média a partir de',R.bandMedio)}${kv('Faixa alta a partir de',R.bandAlto)}<div class="xs muted">Sinal sem dado sai do cálculo e os pesos se redistribuem.</div></div>
+  <div class="card rise stack">${cardH('Qualidade do dado','Registros fora destes limites ficam fora das médias')}${kv('Consumo mínimo plausível',fmt.n(R.minKmpl,1)+' km/l')}${kv('Consumo máximo plausível',fmt.n(R.maxKmpl,1)+' km/l')}${kv('Máximo de km por dia',fmt.n(R.maxKmDay,0)+' km')}${kv('Comparação mínima',R.minCmpPct+'% dos dias')}<div class="xs muted">Dia sem litros ou sem km fica de fora do consumo. Indicador que a API não trouxe (nota, faixa verde, motor ocioso) fica fora da média daquele indicador, não vira zero.</div></div>
+  <div class="card brand rise stack"><div class="swoosh"></div>${cardH('Premissas','Usadas no estudo, nos ganhos e nas oportunidades')}${kv('Preço do diesel',fmt.brl(R.diesel,2)+'/L')}${kv('Valor por unidade',fmt.brl(R.defUnit,2)+'/mês')}${kv('Nota mínima para bônus (estimativa)',R.bonusMin)}<div class="xs muted">Nota Gobrax: Bom a partir de 70, Atenção de 40 a 69 e Crítico abaixo de 40.</div></div></div>`;
+}
+function setIntegration(C){
+  const map=[['totalMileage','km','Quilometragem do dia'],['totalConsumption','l','Litros consumidos'],['totalBreaking','br','Freadas'],['totalBreakingOnHighSpeed','brh','Freadas em alta velocidade'],['averageSpeed','sp','Velocidade média'],['indicators.greenRange.percentage','gr','Faixa verde (%)'],['indicators.idle.percentage','id','Motor ocioso (%)'],['score','sc','Nota Gobrax']];
+  const fontes=[['/api/v1/painel/dados','Dia a dia de cada veículo (último ano), motoristas vinculados, odômetro e premiação'],['/api/v1/clientes/:id/ao-vivo','Onde cada veículo está agora e o rastro de hoje (mapa e trajeto)'],['/api/v1/clientes/:id/mensagens/enviadas','Mensagens marcadas como enviadas e a nota em cada envio'],['/api/v1/clientes/:id/condutores','Telefone de cada condutor (botão WhatsApp)'],['/mapa/:z/:x/:y','Mapa-base do OpenStreetMap, servido pelo próprio servidor']];
+  const status=REAL.on?`<div class="banner info" style="margin:0 0 14px"><span>${ico('check',16)} Ligado à plataforma: os números vêm da API Gobrax, buscados pelo servidor de hora em hora.</span><a class="b" href="/plataforma">Clientes e coleta</a></div>`:`<div class="banner" style="margin:0 0 14px"><span>${ico('alert',16)} Modo demonstração: esta cópia não está atrás do login da plataforma, então mostra dados simulados.</span></div>`;
+  return`${status}<div class="grid g-main sec"><div class="card rise">${cardH('De onde vem cada dado','Todas as telas leem de um único adaptador (Gobrax.api em src/data.js).')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Rota do servidor</th><th>O que alimenta</th></tr></thead><tbody>${fontes.map(f=>`<tr><td><code>${f[0]}</code></td><td class="muted">${f[1]}</td></tr>`).join('')}</tbody></table></div><p class="sm muted">Cada registro é um dia de um veículo. Todo o resto (médias, risco, estudo, ganhos e perdas) é calculado no navegador a partir desses registros, com as mesmas regras em todas as telas.</p></div>
+  <div class="card rise">${cardH('Campos da API → registro','')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Campo da API</th><th>Registro</th><th>Significado</th></tr></thead><tbody>${map.map(m=>`<tr><td><code>${m[0]}</code></td><td><code>${m[1]}</code></td><td class="muted">${m[2]}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+}

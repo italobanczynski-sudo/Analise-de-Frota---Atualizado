@@ -137,4 +137,3 @@ func limparRastro() {
 		logrus.Infof("background: %d ponto(s) de rastro antigo(s) apagado(s)", n)
 	}
 }
-e i

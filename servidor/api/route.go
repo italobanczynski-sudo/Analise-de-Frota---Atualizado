@@ -34,6 +34,8 @@ func GetRoutes(r *gin.Engine) {
 	r.GET("/favicon.ico", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/estatico/icone.svg") })
 	// painel completo (index.html): só com login; sem sessão volta para a tela de entrada
 	r.GET("/painel", paginaLogada(), web.Painel())
+	// painel anterior (importação de planilhas, fichas, combinados), enquanto as pessoas se acostumam com o novo
+	r.GET("/painel/classico", paginaLogada(), web.PainelClassico())
 	r.GET("/painel/xlsx.full.min.js", web.PainelXLSX())
 	// fundo do mapa do painel, buscado pelo servidor no OpenStreetMap (só logado)
 	r.GET("/mapa/:z/:x/:y", autenticar(), ctmapa.Imagem)

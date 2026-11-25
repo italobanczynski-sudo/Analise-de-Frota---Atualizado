@@ -21,6 +21,12 @@ jobs:
           node-version: 20
       - name: Varredura das telas
         run: node testes/painel/rodar.js
+      - name: Painel novo montado a partir de src/ (rode python painel-v2/build.py e envie o dist/)
+        run: |
+          python3 painel-v2/build.py
+          git diff --exit-code -- painel-v2/dist
+      - name: Painel novo (demonstração e dados no formato do servidor)
+        run: node testes/painel-v2/rodar.js
 
   servidor:
     runs-on: ubuntu-latest

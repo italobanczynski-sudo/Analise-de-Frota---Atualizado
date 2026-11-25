@@ -56,8 +56,8 @@ function drvBehavior(C){
       tip:x=>cv[x]!=null?`<b>${fmt.dm(ds[x].date)}</b><br>${esc(i.l)}: ${fInd(i,cv[x])}${pv[x]!=null?'<br>Comparação: '+fInd(i,pv[x]):''}`:'',aria:i.l});
     return`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-start"><div><div class="tag">${esc(i.l)}</div><div class="num" style="font-size:26px;font-weight:800">${fInd(i,i.get(C.cur))}</div></div><span class="badge ${r.cls}">${r.label}</span></div><div class="xs muted" style="margin-bottom:4px">${r.ch!=null?dl(r.ch,i.up===true,1)+' contra a comparação':'sem base de comparação'}</div>${ch}</div>`}).join('');
   const ax=radar(radarAxes(C.cur,C.prev,C.cur));
-  const cal=dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km · '+d.a.n+' veículos'}:null});
-  return`<div class="grid g3">${cards}</div><div class="grid g2 sec"><div class="card rise">${cardH('Perfil de condução da frota','Amarelo: agora. Azul: antes. Cinza: média. Quanto mais longe do centro, melhor.')}${ax}</div><div class="card rise">${cardH('Calendário de desempenho','Cada ponto é um dia, colorido pela nota da frota. Passe o mouse para ver o valor.')}${cal}</div></div>`;
+  const cal=calBlock(C,null);
+  return`<div class="grid g3">${cards}</div><div class="grid g2 sec"><div class="card rise">${cardH('Perfil de condução da frota','Amarelo: agora. Azul: antes. Cinza: média. Quanto mais longe do centro, melhor.')}${ax}</div><div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>`;
 }
 
 /* ---------- MOTORISTAS · Comparativo ---------- */
@@ -119,7 +119,7 @@ function drvDash(C,id){
   const rd=`<div class="grid ga sec"><div class="card rise">${cardH('Perfil de condução','Amarelo: este condutor agora. Azul: como estava. Cinza: média da frota. Quanto mais longe do centro, melhor.')}${radar(radarAxes(c,p,C.cur))}</div><div class="card rise">${cardH('Antes, agora e frota','Barra: agora; verde se melhor que a frota, vermelha se pior. Marca azul: antes. Linha tracejada: média da frota.')}<div class="stack" style="gap:14px">${bars}</div></div></div>`;
   /* calendário */
   const ds=dailySeries(C.cid,ST,C.P.from,C.P.to,x=>x===id);
-  const cal=`<div class="card rise sec">${cardH('Calendário de desempenho','Cada ponto é um dia do período, colorido pela nota. Passe o mouse para ver o valor.')}${dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km · '+fmt.n(d.a.kmpl,2)+' km/l'}:null})}</div>`;
+  const cb=calBlock(C,id);const cal=`<div class="card rise sec">${cardH('Calendário de desempenho',cb.sub)}${cb.html}</div>`;
   /* evolução dia a dia + km por dia */
   const mk=u.dayMetric||'br100',ind=INDK[mk];const pds=dailySeries(C.cid,ST,C.P.cf,C.P.ct,x=>x===id);
   const cv=ds.map(d=>d.a?ind.get(d.a):null),pv=ds.map((d,k)=>pds[k]&&pds[k].a?ind.get(pds[k].a):null);
@@ -172,11 +172,11 @@ function vPlan(C){
 /* ---------- Visão geral · blocos extras (nota, perfil, calendário, evolução) ---------- */
 function ovExtra(C){
   const ds=dailySeries(C.cid,ST,C.P.from,C.P.to);
-  const cal=dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km'}:null});
+  const cal=calBlock(C,null);
   const rs=indRes(INDK.score,C.cur,C.prev);const sb=scoreBand(C.cur.score);
-  return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Nota Gobrax da frota',C.P.label)}${gaugeNota(C.cur.score,'NOTA GOBRAX',true)}<div style="margin-top:6px">${rs.ch!=null?dl(rs.ch,true,1)+' <span class="xs muted">contra '+esc(C.P.cmpLabel)+'</span>':'<span class="xs muted">sem comparação</span>'}</div><div class="row" style="justify-content:center;margin-top:10px"><span class="badge onyel">${sb.label}</span></div></div>
+  return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Nota Gobrax da frota',(()=>{const pf=C.cur.prem;if(!REAL.on)return C.P.label;if(!pf)return'Sem premiação da API para o período';const ms=pf.meses.map(m=>MESES[+m.slice(5)-1]+(m===TODAY.slice(0,7)?' (parcial)':'')).join(', ');return(pf.stale?'Último mês com premiação: ':'Premiação de ')+ms+' · '+pf.motoristas+' motoristas'})())}${gaugeNota(C.cur.score,'NOTA GOBRAX',true)}<div style="margin-top:6px">${rs.ch!=null?dl(rs.ch,true,1)+' <span class="xs muted">contra '+esc(C.P.cmpLabel)+'</span>':'<span class="xs muted">sem comparação</span>'}</div><div class="row" style="justify-content:center;margin-top:10px"><span class="badge onyel">${sb.label}</span></div></div>
   <div class="card rise">${cardH('Perfil de condução','Agora contra o período anterior')}${radar(radarAxes(C.cur,C.prev,C.cur))}</div>
-  <div class="card rise">${cardH('Calendário de desempenho','Nota da frota em cada dia')}${cal}</div></div>${evoBlock(C,null)}`;
+  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${evoBlock(C,null)}`;
 }
 
 /* ---------- MOTORISTAS · Mensagens (evolução da nota depois do aviso) ---------- */

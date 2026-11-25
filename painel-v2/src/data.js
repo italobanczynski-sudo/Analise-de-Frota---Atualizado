@@ -112,8 +112,9 @@ function fleetFromServer(c){
     const km=nv(r.km)||0,l=nv(r.litros)||0;
     if(km>0)seen(p,t);
     if(!r.rodou||km<=0||l<=0)continue;
-    let nota=nv(r.nota);if(nota==null||nota<0||nota>100)nota=r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),id:nv(r.motor_ocioso),sc:nota});
+    let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
+    const nota=scd!=null?scd:r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -203,15 +204,25 @@ function validRecs(cid,store){
 function suspRecs(cid,store){return DB.fleets[cid].recs.filter(r=>{if(!isSusp(r,store.rules))return false;const fl=store.flags[flagId(cid,r)];if(fl==='confirmed'||fl==='ignored')return false;if(fl&&fl.l&&!isSusp({...r,l:fl.l},store.rules))return false;return true})}
 /* médias ponderadas pelos km; campo sem dado (null) fica fora da média daquele indicador */
 function aggregate(rs){
-  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],id:[0,0],sc:[0,0],br:[0,0],brh:[0,0]};
+  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0]};
   for(const r of rs){o.km+=r.km;o.l+=r.l;
     for(const f in w){const v=r[f];if(v!=null&&isFinite(v)){w[f][0]+=(f==='br'||f==='brh')?v:v*r.km;w[f][1]+=r.km}}}
   const k=o.km;const wv=f=>w[f][1]?w[f][0]/w[f][1]:null;
   o.br=w.br[0];o.brh=w.brh[0];
   o.kmpl=o.l?o.km/o.l:null;o.kmDay=o.n?o.km/o.n:null;o.br100=w.br[1]?w.br[0]/w.br[1]*100:null;o.brh100=w.brh[1]?w.brh[0]/w.brh[1]*100:null;
-  o.speed=wv('sp');o.green=wv('gr');o.idle=wv('id');o.score=wv('sc');
+  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.score=wv('sc');o.scd=wv('scd');
   o.lph100=k?o.l/k*100:null;
   return o;
+}
+function premFleet(prem,from,to){
+  if(!REAL.on||!prem||!prem.length)return null;const ini=dIso(from).slice(0,7),fim=dIso(to).slice(0,7);
+  const calc=(a,b)=>{let s=0,w=0,n=0;const meses=new Set();
+    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const km=nv(p.km),nota=nv(p.nota);if(!(km>0)||nota==null)continue;s+=nota*km;w+=km;n++;meses.add(p.mes)}
+    return w?{nota:s/w,motoristas:n,meses:[...meses].sort()}:null};
+  const r=calc(ini,fim);if(r)return r;
+  /* mês ainda sem premiação (o atual costuma sair depois): vale o último mês com premiação, até 2 meses antes */
+  const ant=prem.map(p=>p.mes).filter(m=>m&&m<ini&&m>=prevMonth(prevMonth(ini))).sort().pop();
+  const x=ant?calc(ant,ant):null;return x?{...x,stale:true}:null;
 }
 function metrics(cid,store,from,to,vehFilter){
   const key=['m',cid,from,to,vehFilter||'',DB.ver].join('|');if(DB.cache.has(key))return DB.cache.get(key);
@@ -223,6 +234,9 @@ function metrics(cid,store,from,to,vehFilter){
   m.active=Object.keys(by).length;
   const days=new Set(rs.map(r=>r.t));m.dataDays=days.size;
   const f=DB.fleets[cid];m.total=f.vehicles.length;
+  /* Nota Gobrax da frota = a mesma conta da tela Premiação: média das notas dos motoristas no(s) mês(es) do período,
+     ponderada pelos km (quem não rodou fica fora). Vale mesmo quando a API não diz quem dirigia cada veículo. */
+  const pf=premFleet(f.prem,from,to);m.prem=pf;if(pf)m.score=pf.nota;
   let last=f.lastComm;if(!last){last={};for(const r of f.recs)last[r.veh]=r.t}
   m.noSignal=Object.keys(last).filter(v=>last[v]<T0-3).map(v=>({id:v,days:T0-last[v]})).sort((a,b)=>b.days-a.days);
   DB.cache.set(key,m);return m;

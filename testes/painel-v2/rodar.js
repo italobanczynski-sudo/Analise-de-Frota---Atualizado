@@ -84,7 +84,9 @@ function dadosServidor() {
   const hoje = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()) + 'T12:00:00Z');
   const dia = (n) => new Date(hoje.getTime() - n * 864e5).toISOString().slice(0, 10);
   let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  const cli = (id, nome, nVeic, semNota) => {
+  // semPerf: como um cliente real em que a performance não veio: sem motorista, faixa verde e motor ocioso nos registros,
+  // mas com a premiação do mês (a Nota Gobrax tem de aparecer mesmo assim)
+  const cli = (id, nome, nVeic, semNota, semPerf) => {
     const registros = [], motoristas = [], placas = [];
     for (let v = 0; v < nVeic; v++) placas.push('TST' + v + 'A' + (10 + v));
     placas.forEach((p, v) => {
@@ -96,6 +98,8 @@ function dadosServidor() {
           litros: rnd() < 0.05 ? null : +(km / (1.4 + rnd() * 0.5)).toFixed(1), frenagens: rnd() < 0.1 ? null : Math.round(km * 0.2),
           frenagens_alta: Math.round(rnd() * 3), velocidade_media: 40 + rnd() * 10, odometro: 100000 + n, horas: 8,
           nota: null /* como no servidor real: a performance diária não traz nota */, faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10 };
+        r.inicio_faixa_verde = v === 2 ? null : 40 + rnd() * 55;
+        if (semPerf) { r.motorista = ''; r.faixa_verde = null; r.motor_ocioso = null; r.inicio_faixa_verde = null; }
         registros.push(r);
         if (r.motorista) motoristas.push(r);
       }
@@ -106,7 +110,7 @@ function dadosServidor() {
       premiacoes: semNota ? [] : [0, 31, 62, 93].flatMap((n) => placas.filter((p, i) => i !== 1).map((p) => ({ mes: dia(n).slice(0, 7), motorista: 'Motorista ' + p,
         nota: 35 + Math.round(rnd() * 60), km: 5000, premio: rnd() < 0.5 ? 150 : null }))) };
   };
-  return [cli(1, 'Cliente Teste', 8, false), cli(2, 'Cliente Sem Nota', 4, true), { id: 3, nome: 'Cliente Novo', registros: [], motoristas: [], odometros: [], premiacoes: [] }];
+  return [cli(1, 'Cliente Teste', 8, false), cli(4, 'Cliente Sem Performance', 5, false, true), cli(2, 'Cliente Sem Nota', 4, true), { id: 3, nome: 'Cliente Novo', registros: [], motoristas: [], odometros: [], premiacoes: [] }];
 }
 function servidor(html) {
   const dados = dadosServidor();
@@ -149,7 +153,8 @@ function relatorio(cenario, dom) {
   const m = dom.match(/<pre id="relatorio">([\s\S]*?)<\/pre>/);
   if (!m) { console.log(`XX  ${cenario}: a varredura não terminou`); return 1; }
   const rel = JSON.parse(decod(m[1]));
-  const semNota = (x) => x.r === 'geral' && x.nota !== null && !/\d/.test(x.nota);
+  // Visão geral do primeiro cliente e do segundo (sem performance): a Nota Gobrax da frota tem de ter número
+  const semNota = (x) => (x.r === 'geral' || x.r === 'outro cliente · geral') && x.nota !== null && !/\d/.test(x.nota);
   const ruins = rel.filter((x) => x.erros.length || x.sus || x.attr.length || x.falhou || x.len < 20 || semNota(x));
   console.log(`${ruins.length ? 'XX' : 'ok'}  ${cenario}: ${rel.length} telas, abas e botões`);
   ruins.forEach((x) => console.log('      ' + x.r + ' ' + JSON.stringify({ erros: x.erros, texto: x.ctx, atributos: x.attr, falhou: x.falhou, tamanho: x.len, nota: x.nota })));
@@ -167,7 +172,7 @@ async function fotos(dir) {
   for (const r of ['geral', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
     const arq = path.join(dir, r.replace(/\W+/g, '-') + '.png');
-    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,1900',
+    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',
       '--virtual-time-budget=15000', '--screenshot=' + arq, 'http://127.0.0.1:' + srv.address().port + '/painel#/' + r], { timeout: 120000 }, () => ok()));
     try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (x) {}
     console.log(arq);

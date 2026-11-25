@@ -312,6 +312,7 @@ textarea.inp{resize:vertical;font:inherit}
 .dotcal .dl-l{font-size:11px;color:var(--muted);align-self:center}
 .dotcal .d{width:20px;height:20px;border-radius:99px;align-self:center;justify-self:center;transition:transform .25s var(--spring);animation:popIn .4s var(--spring) both;animation-delay:calc(var(--i,0)*16ms + .1s)}
 .dotcal .d:hover{transform:scale(1.35)}
+.dotcal.sm{gap:3px}.dotcal.sm .d{width:13px;height:13px}.dotcal.sm .dl-l{font-size:10px}
 .dotcal .g{background:var(--ok)}.dotcal .y{background:var(--warn)}.dotcal .r{background:var(--bad)}.dotcal .e{background:var(--soft)}
 
 /* comparativo */

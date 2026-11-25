@@ -329,16 +329,21 @@ function study(cid,store,price){
   const recs=validRecs(cid,store).filter(r=>r.t>=ps);
   const monthsMap={};
   for(const r of recs){const ym=r.date.slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.km+=r.km;m.l+=r.l;if(r.sc!=null){m.sc+=r.sc*r.km;m.sk+=r.km}m.days.add(r.t)}
-  for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1}
-  for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=mens*m.cal/30;
+  /* investimento por dia = mensalidade ÷ dias daquele mês (como no clássico): a soma dos dias dá o mês */
+  const dim=t=>{const d=new Date(t*DAY);return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()};const invDia=t=>mens/dim(t);
+  for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1;m.invc=(m.invc||0)+invDia(t)}
+  for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=m.invc||0;
     const [y,mo]=ym.split('-');const mi=dIdx(ym+'-01'),pfm=REAL.on?premFleet(DB.fleets[cid].prem,mi,mi):null;
     months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,mi))),econ,inv,kmpl:m.l?m.km/m.l:null,score:pfm&&!pfm.stale?pfm.nota:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
   const wk=weeklySeries(cid,store,ps,T0);
-  for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
+  for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;let iv=0;for(let t=w.from;t<=w.to;t++)iv+=invDia(t);cum+=e;cumI+=iv;
+    weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),from:w.from,to:w.to,econ:e,inv:iv,cum,cumI,km:a.km,kmpl:a.kmpl,score:a.score,cal:w.to-w.from+1})}
+  /* dia a dia: economia do dia contra a mesma linha de base, e o investimento rateado do dia */
+  const days=dailySeries(cid,store,ps,T0).map(d=>{const a=d.a;return{t:d.t,date:d.date,econ:a?(a.km/base-a.l)*price:0,inv:invDia(d.t),km:a?a.km:0,kmpl:a?a.kmpl:null,score:a?a.score:null,n:a?a.n:0}});
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);
   const second=metrics(cid,store,pAgora[0],pAgora[1]);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
   const all=metrics(cid,store,ps,T0);
-  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,pIni,pAgora,rotIni,rotAgora,evolved:null};
+  return{ct,mens,base,first,second,months,weeks,days,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,pIni,pAgora,rotIni,rotAgora,evolved:null};
 }
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 

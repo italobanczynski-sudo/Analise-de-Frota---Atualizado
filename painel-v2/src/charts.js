@@ -159,16 +159,16 @@ function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
   const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
   const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
   const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
-  const y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);const n=rows.length,gw=(W-pl-pr)/n,bw=Math.min(54,gw*.3);
+  const y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);const n=rows.length,gw=(W-pl-pr)/n,bw=Math.min(54,gw*(n>16?.42:.3)),muitas=n>16,passo=Math.max(1,Math.ceil(n/12));
   const k=v=>Math.abs(v)>=1000?fmt.n(v/1000,1)+' mil':fmt.n(v,0);
   let g='';for(let v=lo;v<=hi+1e-9;v+=stp)g+=`<line class="grid-l" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${v?'R$ '+k(v):'0'}</text>`;
   if(lo<0)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--n500)" stroke-width="1.5"/>`;
   const bar=(x,v,cls,fill,i,tip)=>{if(v==null||!isFinite(v))return'';const y0=y(0),yv=y(v),top=Math.min(y0,yv),h=Math.max(1,Math.abs(y0-yv));
-    return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" data-tt="${esc(tip)}"/><text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`};
+    return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${muitas?1.5:4}" fill="${fill}" data-tt="${esc(tip)}"/>${muitas?'':`<text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`}`};
   rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}`;
-    g+=bar(cx-bw-3,r.inv,'inv','var(--n600)',i*2,tip)+bar(cx+3,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',i*2+1,tip);
-    g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
-    if(o.sub&&r.sub)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(r.sub)}</text>`});
+    const gap=muitas?1:3;g+=bar(cx-bw-gap,r.inv,'inv','var(--n600)',Math.min(i*2,60),tip)+bar(cx+gap,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',Math.min(i*2+1,60),tip);
+    if(i%passo===0)g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    if(o.sub&&r.sub&&!muitas)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(r.sub)}</text>`});
   return`<svg class="chart${o._quiet?' noanim':''}" data-cr="${chartReg(q=>monthBars(rows,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Investimento e economia por mês')}">${g}</svg>`;
 }
 

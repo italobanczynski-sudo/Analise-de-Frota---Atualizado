@@ -2,9 +2,11 @@
 *
 !servidor/
 !index.html
+!painel-v2/dist/analise-de-frota.html
 !bibliotecas/xlsx.full.min.js
 servidor/.env
 servidor/testes/
 servidor/**/*.md
 servidor/api/web/painel/index.html
+servidor/api/web/painel/novo.html
 servidor/api/web/painel/xlsx.full.min.js

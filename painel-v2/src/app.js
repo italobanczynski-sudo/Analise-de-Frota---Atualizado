@@ -203,6 +203,7 @@ const ACT={
   'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
   'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
+  'est-gran':el=>{S.u.estGran=el.dataset.v;go()},
   'contrato-salvar':async el=>{
     const ler=id=>{const s=String(($('#'+id)||{}).value||'').trim().replace(/\s|R\$/g,'');if(!s)return null;return Number(s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s)};
     const unit=ler('ct-valor'),units=ler('ct-qtd');

@@ -25,7 +25,8 @@ function nav(route){const t='#/'+route;if(location.hash===t)render();else locati
 async function buildCtx(){
   const cid=S.client;const fleet=await DB.load(cid);const P=resolvePeriod(S);
   const cur=metrics(cid,ST,P.from,P.to),prev=metrics(cid,ST,P.cf,P.ct);
-  const C={cid,def:CLIENT_DEFS.find(c=>c.id===cid),fleet,P,cur,prev,price:ST.rules.diesel};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);
+  const C={cid,def,fleet,P,cur,prev,price:dieselDe(def)};
   C.hl=health(cur,prev,ST.rules);LASTC=C;loadExtras(cid);return C;
 }
 const skeleton=()=>`<div class="page-h"><div><h1 style="opacity:.25">Carregando</h1></div></div><div class="grid g4">${'<div class="skel"></div>'.repeat(4)}</div><div class="grid g-main sec"><div class="skel" style="min-height:300px"></div><div class="skel" style="min-height:300px"></div></div>`;
@@ -102,7 +103,7 @@ function acctPop(){
 function renderTop(){
   const C=LASTC;
   $('#clientSel').innerHTML=CLIENT_DEFS.map(c=>`<option value="${esc(c.id)}" ${c.id===S.client?'selected':''}>${esc(c.name)}</option>`).join('');
-  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(ST.rules.diesel,2)}/L`;
+  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(C?C.price:ST.rules.diesel,2)}/L`;
   $('#themeBtn').innerHTML=ico(S.theme==='dark'?'sun':'moon',18);
   if(!C)return;
   $('#periodBtn').innerHTML=`${ico('refresh',16)} ${C.P.label}`;
@@ -202,6 +203,14 @@ const ACT={
   'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
   'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
+  'contrato-salvar':async el=>{
+    const ler=id=>{const s=String(($('#'+id)||{}).value||'').trim().replace(/\s|R\$/g,'');if(!s)return null;return Number(s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s)};
+    const unit=ler('ct-valor'),units=ler('ct-qtd');
+    if((unit!==null&&!(unit>0))||(units!==null&&!(units>0&&Number.isInteger(units)))){toast('Confira os números: valor maior que zero e unidades inteiras.');return}
+    el.disabled=true;
+    try{const r=await salvarContrato(LASTC.def,unit,units);DB.bump();toast(r===false?'Nada mudou.':'Contrato salvo: vale em todas as telas.');go()}
+    catch(e){el.disabled=false;toast(/403|permiss/i.test(e.message)?'Só CS e administrador mudam o contrato.':'Não foi possível salvar: '+e.message)}
+  },
 };
 function setClient(id){S.client=id;S.u.drvSel=null;S.u.fleetFilial='';S.u.msgDay='';S.u.msgDrv=null;S.u.weekSel=null;S.u.premMonth='';savePrefs()}
 
@@ -255,7 +264,7 @@ async function boot(){
   await detectServer();
   let list=[];
   try{list=await Gobrax.api.getClients()}catch(e){$('#root').innerHTML=`<div class="view"><div class="card" style="margin-top:40px"><h2>Não foi possível carregar os dados</h2><p class="muted">${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Tentar de novo</button></div></div>`;return}
-  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c))}
+  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c));try{REAL.prem=await Gobrax.api.getPremissas()}catch(e){REAL.prem=[]}}
   else for(const c of list){const d=CLIENT_DEFS.find(x=>x.id===c.id);if(d)Object.assign(d,c)}
   if(!CLIENT_DEFS.some(c=>c.id===S.client))S.client=CLIENT_DEFS[0]?CLIENT_DEFS[0].id:'';
   $('#root').innerHTML=shell();

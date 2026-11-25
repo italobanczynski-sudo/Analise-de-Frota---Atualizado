@@ -1304,9 +1304,11 @@ function genClient(def){
 }
 
 /* ---------- Servidor (plataforma com login) ---------- */
-const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{}};
-async function srv(caminho,metodo='GET'){
-  const r=await fetch(caminho,{method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}});
+const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{},prem:[]};
+async function srv(caminho,metodo='GET',corpo){
+  const op={method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}};
+  if(corpo!==undefined){op.headers['Content-Type']='application/json';op.body=JSON.stringify(corpo)}
+  const r=await fetch(caminho,op);
   if(r.status===401){location.replace('/');throw new Error('sessão encerrada')}
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||!j.ok)throw new Error((j&&j.erro)||('O servidor respondeu '+r.status));
@@ -1377,8 +1379,35 @@ const Gobrax={api:{
   /* mensagens enviadas a cada motorista e a nota em cada envio (servidor) */
   async getSent(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/mensagens/enviadas')},
   /* telefones dos condutores (servidor; só CS e administrador) */
-  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')}
+  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')},
+  /* premissas de cada cliente (valor por unidade, unidades, diesel): a mesma coleção do painel clássico */
+  async getPremissas(){if(!REAL.on)return[];const l=await srv('/api/v1/base/premissas');return(l||[]).map(d=>({id:d.id,...(d.dados||{})}))},
+  async savePremissas(id,dados){return srv('/api/v1/base/premissas/'+encodeURIComponent(id),'PUT',dados)}
 }};
+
+/* ---------- Premissas do cliente (contrato e diesel) ---------- */
+/* mesmas regras do painel clássico: documento "pr-<nome>" na coleção premissas; nome comparado sem acento/pontuação/LTDA */
+const ckeyCli=v=>nkey(v).replace(/[.,/\-]/g,' ').replace(/\b(ltda|eireli|epp|me|s a|sa)\b/g,' ').replace(/\s+/g,' ').trim();
+const idDocCli=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').slice(0,140);
+function premissasDe(def){
+  if(!def)return{};
+  if(!REAL.on){const c=ST.contracts[def.id]||{};return{valorEquip:c.unit,qtd:c.units}}
+  return REAL.prem.find(d=>ckeyCli(d.cliente)===ckeyCli(def.name))||{};
+}
+/* contrato que vale nas contas: o digitado; sem ele, R$ 159,90 por veículo com dado */
+function contratoDe(def){const pm=premissasDe(def);const unit=pm.valorEquip>0?+pm.valorEquip:DEFAULT_RULES.defUnit,units=pm.qtd>0?+pm.qtd:(def.vehicles||def.units||1);return{unit,units,unitAuto:!(pm.valorEquip>0),unitsAuto:!(pm.qtd>0)}}
+const dieselDe=def=>{const pm=premissasDe(def);return pm.preco>0?+pm.preco:ST.rules.diesel};
+async function salvarContrato(def,unit,units){
+  if(!REAL.on){ST.contracts[def.id]={unit:unit||undefined,units:units||undefined};persist();return}
+  const at=premissasDe(def);const mud=[];const R=v=>v?fmt.brl(v,2):'—';
+  if((at.valorEquip||null)!==(unit||null))mud.push('valor por equipamento '+R(at.valorEquip)+' → '+R(unit));
+  if((at.qtd||null)!==(units||null))mud.push('equipamentos '+(at.qtd||'—')+' → '+(units||'—'));
+  if(!mud.length)return false;
+  const nova={...at,cliente:at.cliente||def.name,valorEquip:unit||null,qtd:units||null};delete nova.id;
+  nova.historico=[{em:new Date().toISOString(),por:(REAL.eu&&REAL.eu.nome)||'',mudou:mud.join('; ')+' (pelo painel novo)'}].concat(at.historico||[]).slice(0,100);
+  const id=at.id||'pr-'+idDocCli(def.name);await Gobrax.api.savePremissas(id,nova);
+  const i=REAL.prem.findIndex(d=>d.id===id);const doc={id,...nova};if(i>=0)REAL.prem[i]=doc;else REAL.prem.push(doc);return true;
+}
 
 /* ---------- Banco em memória ---------- */
 const DB={fleets:{},cache:new Map(),ver:0,
@@ -1494,9 +1523,14 @@ function vehStatus(cur,prev,id){
 
 /* ---------- Estudo do projeto ---------- */
 function study(cid,store,price){
-  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=store.contracts[cid]||{unit:def.unit,units:def.units};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=contratoDe(def);
   const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
-  const first=metrics(cid,store,ps,half);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
+  /* linha de base igual à do painel clássico: com 8 semanas ou mais, início = primeiras 4 semanas e agora = últimas 4;
+     com menos, a primeira e a segunda metade do período */
+  const nWk=weeklySeries(cid,store,ps,T0).length,curto=nWk<8;
+  const pIni=curto?[ps,half]:[ps,ps+27],pAgora=curto?[half+1,T0]:[T0-27,T0];
+  const rotIni=curto?'primeira metade do período':'primeiras 4 semanas',rotAgora=curto?'segunda metade':'últimas 4 semanas';
+  const first=metrics(cid,store,pIni[0],pIni[1]);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
   const mens=ct.unit*ct.units;const months=[];
   let cum=0,cumI=0;const weeks=[];
   const recs=validRecs(cid,store).filter(r=>r.t>=ps);
@@ -1508,9 +1542,9 @@ function study(cid,store,price){
   const wk=weeklySeries(cid,store,ps,T0);
   for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);
-  const second=metrics(cid,store,half+1,T0);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
+  const second=metrics(cid,store,pAgora[0],pAgora[1]);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
   const all=metrics(cid,store,ps,T0);
-  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,evolved:null};
+  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,pIni,pAgora,rotIni,rotAgora,evolved:null};
 }
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -1831,6 +1865,26 @@ function dailyBars(vals,labels,o={}){
   return`<svg class="chart dbars${o._quiet?' noanim':''}" data-cr="${chartReg((q)=>dailyBars(vals,labels,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Barras por dia')}">${g}${bars}${avg}</svg>`;
 }
 
+/* ---------- Barras por mês: investimento ao lado da economia ---------- */
+function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
+  if(!rows.length)return`<div class="empty"><b>Sem meses no período</b></div>`;
+  const W=o.w||720,H=o.h||300,pl=62,pr=12,pt=26,pb=o.sub?46:30;
+  const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
+  const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
+  const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
+  const y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);const n=rows.length,gw=(W-pl-pr)/n,bw=Math.min(54,gw*.3);
+  const k=v=>Math.abs(v)>=1000?fmt.n(v/1000,1)+' mil':fmt.n(v,0);
+  let g='';for(let v=lo;v<=hi+1e-9;v+=stp)g+=`<line class="grid-l" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${v?'R$ '+k(v):'0'}</text>`;
+  if(lo<0)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--n500)" stroke-width="1.5"/>`;
+  const bar=(x,v,cls,fill,i,tip)=>{if(v==null||!isFinite(v))return'';const y0=y(0),yv=y(v),top=Math.min(y0,yv),h=Math.max(1,Math.abs(y0-yv));
+    return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" data-tt="${esc(tip)}"/><text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`};
+  rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}`;
+    g+=bar(cx-bw-3,r.inv,'inv','var(--n600)',i*2,tip)+bar(cx+3,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',i*2+1,tip);
+    g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    if(o.sub&&r.sub)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(r.sub)}</text>`});
+  return`<svg class="chart${o._quiet?' noanim':''}" data-cr="${chartReg(q=>monthBars(rows,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Investimento e economia por mês')}">${g}</svg>`;
+}
+
 /* ---------- Comparativo: barra com marca "antes" e linha da média ---------- */
 function compRows(rows,o){ // rows:[{id,name,sub,val,prev,ch}]
   if(!rows.length)return`<div class="empty"><b>Sem condutores com esse indicador no período</b></div>`;
@@ -2133,25 +2187,35 @@ async function vPortfolio(C){
 }
 
 /* ---------- ESTUDO ---------- */
+const podeEditarContrato=()=>!REAL.on||(REAL.eu&&REAL.eu.papel!=='leitor');
+function contratoForm(C,ct,mens){
+  const ed=podeEditarContrato(),dis=ed?'':' disabled';const pm=premissasDe(C.def);
+  const campo=(id,rot,val,ph,suf)=>`<div class="field" style="flex:1 1 150px"><label for="${id}">${rot}</label><div class="row" style="flex-wrap:nowrap;gap:6px"><input class="inp num" id="${id}" inputmode="decimal" value="${val>0?esc(fmt.n(val,id==='ct-valor'?2:0)):''}" placeholder="${esc(ph)}"${dis}><span class="xs muted" style="white-space:nowrap">${suf}</span></div></div>`;
+  const nota=[ct.unitAuto?'valor padrão de '+fmt.brl(ct.unit,2)+' por unidade':'',ct.unitsAuto?'unidades = '+ct.units+' veículos com dado na API':''].filter(Boolean).join(' · ');
+  return`<div class="card rise stack">${cardH('Contrato do cliente',ed?'Edite e salve: vale aqui, no painel clássico e em todas as contas.':'Só CS e administrador mudam o contrato.')}
+    <div class="row" style="align-items:flex-end;gap:12px">${campo('ct-valor','Valor por unidade',pm.valorEquip,fmt.n(ct.unit,2),'R$/mês')}${campo('ct-qtd','Unidades contratadas',pm.qtd,String(ct.units),'un.')}</div>
+    <div style="background:var(--soft);border-radius:12px;padding:14px 16px" class="row"><span class="muted">Mensalidade</span><b class="num" style="font-size:24px;margin-left:auto">${fmt.brl(mens,2)}</b></div>
+    ${nota?`<div class="xs muted">${esc(nota)}: informe o contrato para a conta ficar certa.</div>`:''}
+    ${ed?`<button class="btn primary" data-act="contrato-salvar">${ico('check',16)} Salvar contrato</button>`:''}</div>`;
+}
 function vStudy(C){
   const cid=C.cid,st=study(cid,ST,C.price);const ct=st.ct;
-  const lo=Math.min(0,...st.weeks.map(w=>w.cum)),hi=Math.max(...st.weeks.map(w=>Math.max(w.cum,w.cumI)),1);
-  const chart=lineChart({labels:st.weeks.map(w=>w.label),series:[{vals:st.weeks.map(w=>w.cum),color:st.econ>=0?'var(--ok)':'var(--bad)',area:true,dots:true},{vals:st.weeks.map(w=>w.cumI),color:'var(--text)',dash:'6 5',w:2.5}],ymin:lo*1.1,ymax:hi*1.15,yfmt:v=>fmt.n(v/1000,0)+' mil',tip:i=>`<b>Até ${st.weeks[i].label}</b><br>Economia: ${fmt.brl(st.weeks[i].cum)}<br>Investimento: ${fmt.brl(st.weeks[i].cumI)}`,aria:'Economia acumulada contra investimento acumulado, por semana'});
-  const rows=st.months.map(m=>`<tr><td><b>${m.label}</b></td><td class="r num">${fmt.brl(m.inv)}</td><td class="r num b" style="color:${m.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(m.econ)}</td><td class="r num">${fmt.kmpl(m.kmpl)} km/l</td><td class="r num">${fmt.n(m.score,0)}</td><td class="r num">${fmt.n(m.km,0)}</td></tr>`).join('');
-  const chg=pc(st.second.kmpl,st.base);
+  const bars=monthBars(st.months.map(m=>({label:m.label.replace(/ \d{4}$/,'')+'/'+m.ym.slice(2,4),inv:m.inv,econ:m.econ,sub:m.cal<28?m.cal+' dias':''})),{sub:true,h:300,aria:'Investimento e economia por mês'});
+  const rows=st.months.map(m=>{const sal=m.econ-m.inv;return`<tr><td><b>${m.label}</b>${m.cal<28?` <span class="xs muted">${m.cal} dias</span>`:''}</td><td class="r num">${fmt.brl(m.inv)}</td><td class="r num b" style="color:${m.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(m.econ)}</td><td class="r num b" style="color:${sal>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(sal)}</td><td class="r num">${m.inv?(m.econ<0?'negativa':fmt.n(m.econ/m.inv*100,0)+'%'):'—'}</td><td class="r num">${fmt.kmpl(m.kmpl)} km/l</td><td class="r num">${fmt.n(m.score,0)}</td><td class="r num">${fmt.n(m.km,0)}</td></tr>`}).join('');
+  const chg=pc(st.second.kmpl,st.base);const per=p=>fmt.dm(dIso(p[0]))+' a '+fmt.dm(dIso(p[1]));
   const verdict=st.pays?`Sobram <span class="num" style="color:var(--amarelo)">${fmt.brl(st.econ-st.inv)}</span> depois de pagar o investimento`:`Faltam <span class="num" style="color:var(--amarelo)">${fmt.brl(st.miss)}</span> para a economia cobrir o investimento`;
   return`${pageH('Estudo do projeto',`${esc(C.def.name)} · ${fmt.dm(dIso(st.ps))} a ${fmt.dm(TODAY)} · ${st.len} dias · diesel a ${fmt.brl(C.price,2)}/L`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}
   <div class="grid g-main">
     <div class="card dark rise stack" style="padding:28px;position:relative;overflow:hidden"><div class="swoosh" style="border-color:rgba(254,219,0,.12)"></div><div class="row"><span class="badge ${st.pays?'ok':'bad'}">${st.pays?'O PROJETO SE PAGA':'AINDA NÃO SE PAGA'}</span></div><div><div style="color:#e1e1dd;font-size:16px">O projeto se paga?</div><div style="font-size:34px;font-weight:900;letter-spacing:-.01em;line-height:1.15">${verdict}</div></div>
       <div class="row" style="gap:32px"><div><div class="muted">Investido no período</div><b class="num" style="font-size:26px">${count(st.inv,0,'R$ ')}</b></div><div><div class="muted">${st.econ>=0?'Diesel economizado':'Diesel gasto a mais'}</div><b class="num" style="font-size:26px;color:${st.econ>=0?'#7be0ac':'#ff9d92'}">${fmt.brl(st.econ)}</b></div><div><div class="muted">Ritmo atual por mês</div><b class="num" style="font-size:26px;color:${st.pace>=0?'#7be0ac':'#ff9d92'}">${fmt.brl(st.pace)}</b></div><div><div class="muted">Retorno sobre o investimento</div><b class="num" style="font-size:26px">${st.roi!=null?fmt.n(st.roi,1)+'×':'—'}</b></div></div>
-      <div class="muted sm">Economia calculada contra o consumo do início do acompanhamento (${fmt.n(st.base,2)} km/l, primeira metade do período), nos mesmos km rodados.${REAL.on?' O servidor guarda o último ano de dados: o início é o primeiro dia com registro dentro dessa janela.':''}</div></div>
-    <div class="card rise stack">${cardH('Contrato do cliente','')}<div class="kv"><span>Valor por unidade</span><b class="num">${fmt.brl(ct.unit,2)}/mês</b></div><div class="kv"><span>Unidades consideradas</span><b class="num">${ct.units}</b></div><div style="background:var(--soft);border-radius:12px;padding:14px 16px" class="row"><span class="muted">Mensalidade</span><b class="num" style="font-size:24px;margin-left:auto">${fmt.brl(st.mens,2)}</b></div>${REAL.on?'<div class="xs muted">Unidades = veículos com dado na API. Valor por unidade é a premissa de Regras e integração.</div>':''}${ct.units!==C.fleet.vehicles.length?`<div class="banner" style="margin:0">Os dados trazem ${C.fleet.vehicles.length} veículos e o contrato diz ${ct.units}.</div>`:''}</div>
+      <div class="muted sm">Linha de base: ${st.rotIni} (${per(st.pIni)}), ${fmt.n(st.base,2)} km/l. Agora: ${st.rotAgora} (${per(st.pAgora)}), ${fmt.n(st.second.kmpl,2)} km/l ${dl(chg,true)}. Mesma regra do painel clássico.</div></div>
+    ${contratoForm(C,ct,st.mens)}
   </div>
   <div class="sec">
-    <div class="card rise">${cardH('Economia acumulada contra investimento acumulado','Em reais, semana a semana desde o início do acompanhamento')}${chart}<div class="leg" style="margin-top:10px"><span><i style="background:${st.econ>=0?'var(--ok)':'var(--bad)'}"></i>Economia acumulada</span><span><i style="background:var(--text)"></i>Investimento acumulado</span></div></div>
+    <div class="card rise">${cardH('Investimento e economia por mês','Mensalidade da Gobrax ao lado do diesel economizado em cada mês. Passe o mouse para ver o saldo.')}${bars}<div class="leg" style="margin-top:10px"><span><i style="background:var(--n600)"></i>Investimento</span><span><i style="background:var(--ok)"></i>Economia</span><span><i style="background:var(--bad)"></i>Economia negativa</span></div></div>
   </div>
-  <div class="card sec rise">${cardH('Mês a mês','Investimento, economia, consumo, nota e km')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Mês</th><th class="r">Investimento</th><th class="r">Economia</th><th class="r">Consumo</th><th class="r">Nota</th><th class="r">Km</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td class="r num b">${fmt.brl(st.inv)}</td><td class="r num b">${fmt.brl(st.econ)}</td><td class="r num">${fmt.kmpl(st.all.kmpl)} km/l</td><td class="r num">${fmt.n(st.all.score,0)}</td><td class="r num">${fmt.n(st.all.km,0)}</td></tr></tbody></table></div>
-    <div class="row sm muted" style="margin-top:14px;justify-content:space-between"><span><b>Como calculamos:</b> litros que o consumo do início gastaria nos mesmos km, menos os litros realmente gastos, vezes o preço do diesel. O investimento é a mensalidade proporcional aos dias de cada mês.</span><span>Consumo do início → agora: <b>${fmt.n(st.base,2)} → ${fmt.n(st.second.kmpl,2)} km/l</b> ${dl(chg,true)} · detalhes na <a href="#/geral">Visão geral</a></span></div></div>`;
+  <div class="card sec rise">${cardH('Mês a mês','Investimento, economia, saldo, cobertura, consumo, nota e km')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Mês</th><th class="r">Investimento</th><th class="r">Economia</th><th class="r">Saldo</th><th class="r">Cobertura</th><th class="r">Consumo</th><th class="r">Nota</th><th class="r">Km</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td class="r num b">${fmt.brl(st.inv)}</td><td class="r num b">${fmt.brl(st.econ)}</td><td class="r num b" style="color:${st.econ-st.inv>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(st.econ-st.inv)}</td><td class="r num">${st.inv?fmt.n(st.econ/st.inv*100,0)+'%':'—'}</td><td class="r num">${fmt.kmpl(st.all.kmpl)} km/l</td><td class="r num">${fmt.n(st.all.score,0)}</td><td class="r num">${fmt.n(st.all.km,0)}</td></tr></tbody></table></div>
+    <div class="sm muted" style="margin-top:14px"><b>Como calculamos:</b> litros que o consumo da linha de base gastaria nos mesmos km, menos os litros realmente gastos, vezes o preço do diesel. O investimento é a mensalidade (valor por unidade × unidades) proporcional aos dias de cada mês.</div></div>`;
 }
 
 /* =====================================================================
@@ -2580,7 +2644,8 @@ function nav(route){const t='#/'+route;if(location.hash===t)render();else locati
 async function buildCtx(){
   const cid=S.client;const fleet=await DB.load(cid);const P=resolvePeriod(S);
   const cur=metrics(cid,ST,P.from,P.to),prev=metrics(cid,ST,P.cf,P.ct);
-  const C={cid,def:CLIENT_DEFS.find(c=>c.id===cid),fleet,P,cur,prev,price:ST.rules.diesel};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);
+  const C={cid,def,fleet,P,cur,prev,price:dieselDe(def)};
   C.hl=health(cur,prev,ST.rules);LASTC=C;loadExtras(cid);return C;
 }
 const skeleton=()=>`<div class="page-h"><div><h1 style="opacity:.25">Carregando</h1></div></div><div class="grid g4">${'<div class="skel"></div>'.repeat(4)}</div><div class="grid g-main sec"><div class="skel" style="min-height:300px"></div><div class="skel" style="min-height:300px"></div></div>`;
@@ -2657,7 +2722,7 @@ function acctPop(){
 function renderTop(){
   const C=LASTC;
   $('#clientSel').innerHTML=CLIENT_DEFS.map(c=>`<option value="${esc(c.id)}" ${c.id===S.client?'selected':''}>${esc(c.name)}</option>`).join('');
-  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(ST.rules.diesel,2)}/L`;
+  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(C?C.price:ST.rules.diesel,2)}/L`;
   $('#themeBtn').innerHTML=ico(S.theme==='dark'?'sun':'moon',18);
   if(!C)return;
   $('#periodBtn').innerHTML=`${ico('refresh',16)} ${C.P.label}`;
@@ -2757,6 +2822,14 @@ const ACT={
   'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
   'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
+  'contrato-salvar':async el=>{
+    const ler=id=>{const s=String(($('#'+id)||{}).value||'').trim().replace(/\s|R\$/g,'');if(!s)return null;return Number(s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s)};
+    const unit=ler('ct-valor'),units=ler('ct-qtd');
+    if((unit!==null&&!(unit>0))||(units!==null&&!(units>0&&Number.isInteger(units)))){toast('Confira os números: valor maior que zero e unidades inteiras.');return}
+    el.disabled=true;
+    try{const r=await salvarContrato(LASTC.def,unit,units);DB.bump();toast(r===false?'Nada mudou.':'Contrato salvo: vale em todas as telas.');go()}
+    catch(e){el.disabled=false;toast(/403|permiss/i.test(e.message)?'Só CS e administrador mudam o contrato.':'Não foi possível salvar: '+e.message)}
+  },
 };
 function setClient(id){S.client=id;S.u.drvSel=null;S.u.fleetFilial='';S.u.msgDay='';S.u.msgDrv=null;S.u.weekSel=null;S.u.premMonth='';savePrefs()}
 
@@ -2810,7 +2883,7 @@ async function boot(){
   await detectServer();
   let list=[];
   try{list=await Gobrax.api.getClients()}catch(e){$('#root').innerHTML=`<div class="view"><div class="card" style="margin-top:40px"><h2>Não foi possível carregar os dados</h2><p class="muted">${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Tentar de novo</button></div></div>`;return}
-  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c))}
+  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c));try{REAL.prem=await Gobrax.api.getPremissas()}catch(e){REAL.prem=[]}}
   else for(const c of list){const d=CLIENT_DEFS.find(x=>x.id===c.id);if(d)Object.assign(d,c)}
   if(!CLIENT_DEFS.some(c=>c.id===S.client))S.client=CLIENT_DEFS[0]?CLIENT_DEFS[0].id:'';
   $('#root').innerHTML=shell();

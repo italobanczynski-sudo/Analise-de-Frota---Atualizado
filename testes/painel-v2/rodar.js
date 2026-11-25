@@ -57,6 +57,14 @@ function varredura(rotas) {
       fila.unshift.apply(fila, novos);
     });
   });
+  // contrato editável no Estudo: grava 200 por unidade × 10 unidades e confere a mensalidade de R$ 2.000,00
+  fila.push(function () { location.hash = '#/estudo'; }, function () {
+    var v = document.getElementById('ct-valor'), q = document.getElementById('ct-qtd'), b = document.querySelector('[data-act=contrato-salvar]');
+    if (v && q && b) { v.value = '200'; q.value = '10'; b.click(); }
+  }, function () {}, function () {
+    var t = (document.getElementById('view') || {}).innerText || '';
+    rel.push({ r: 'estudo · salvar contrato', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/2\.000,00/.test(t) });
+  });
   // gaveta de veículo e troca de cliente
   fila.push(function () { location.hash = '#/geral'; }, function () { location.hash = '#/frota?aba=visao'; }, function () { var t = document.querySelector('#view tr.click'); if (t) t.click(); }, function () {
     var d = document.querySelector('.drawer'); rel.push({ r: 'gaveta do veículo', len: d ? d.innerText.length : 0, erros: erros.splice(0), sus: d && /NaN|undefined/.test(d.innerText) ? 1 : 0, ctx: [], attr: [], falhou: !d });
@@ -102,12 +110,17 @@ function dadosServidor() {
 }
 function servidor(html) {
   const dados = dadosServidor();
+  // premissas gravadas pelo painel clássico (mesmo formato): o Cliente Teste já tem diesel próprio
+  const premissas = new Map([['pr-cliente-teste', { cliente: 'Cliente Teste', preco: 6.5, valorEquip: null, qtd: null, historico: [] }]]);
   const ok = (res, d) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, dados: d })); };
   return http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname === '/painel') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html); }
     if (u.pathname === '/api/v1/auth/eu') return ok(res, { id: 1, nome: 'Pessoa Teste', papel: 'admin' });
     if (u.pathname === '/api/v1/painel/dados') return ok(res, dados);
+    if (u.pathname === '/api/v1/base/premissas') return ok(res, [...premissas.entries()].map(([id, d]) => ({ id, dados: d })));
+    const mp = u.pathname.match(/^\/api\/v1\/base\/premissas\/(.+)$/);
+    if (mp && req.method === 'PUT') { let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => { premissas.set(decodeURIComponent(mp[1]), JSON.parse(b)); ok(res, null); }); return; }
     let m = u.pathname.match(/^\/api\/v1\/clientes\/(\d+)\/(ao-vivo|mensagens\/enviadas|condutores)$/);
     if (m) {
       const c = dados.find((x) => String(x.id) === m[1]);

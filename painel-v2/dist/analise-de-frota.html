@@ -984,6 +984,7 @@ textarea.inp{resize:vertical;font:inherit}
 .dotcal .dl-l{font-size:11px;color:var(--muted);align-self:center}
 .dotcal .d{width:20px;height:20px;border-radius:99px;align-self:center;justify-self:center;transition:transform .25s var(--spring);animation:popIn .4s var(--spring) both;animation-delay:calc(var(--i,0)*16ms + .1s)}
 .dotcal .d:hover{transform:scale(1.35)}
+.dotcal.sm{gap:3px}.dotcal.sm .d{width:13px;height:13px}.dotcal.sm .dl-l{font-size:10px}
 .dotcal .g{background:var(--ok)}.dotcal .y{background:var(--warn)}.dotcal .r{background:var(--bad)}.dotcal .e{background:var(--soft)}
 
 /* comparativo */
@@ -1304,9 +1305,11 @@ function genClient(def){
 }
 
 /* ---------- Servidor (plataforma com login) ---------- */
-const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{}};
-async function srv(caminho,metodo='GET'){
-  const r=await fetch(caminho,{method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}});
+const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{},prem:[]};
+async function srv(caminho,metodo='GET',corpo){
+  const op={method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}};
+  if(corpo!==undefined){op.headers['Content-Type']='application/json';op.body=JSON.stringify(corpo)}
+  const r=await fetch(caminho,op);
   if(r.status===401){location.replace('/');throw new Error('sessão encerrada')}
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||!j.ok)throw new Error((j&&j.erro)||('O servidor respondeu '+r.status));
@@ -1334,8 +1337,9 @@ function fleetFromServer(c){
     const km=nv(r.km)||0,l=nv(r.litros)||0;
     if(km>0)seen(p,t);
     if(!r.rodou||km<=0||l<=0)continue;
-    let nota=nv(r.nota);if(nota==null||nota<0||nota>100)nota=r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),id:nv(r.motor_ocioso),sc:nota});
+    let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
+    const nota=scd!=null?scd:r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -1343,7 +1347,8 @@ function fleetFromServer(c){
   const drvPlate={},cnt={};
   for(const r of c.motoristas||[]){if(!r.motorista||!r.placa)continue;const k=r.motorista;(cnt[k]=cnt[k]||{})[r.placa]=(cnt[k][r.placa]||0)+1}
   for(const k in cnt)drvPlate[nkey(k)]=Object.entries(cnt[k]).sort((a,b)=>b[1]-a[1])[0][0];
-  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:'Sem motorista vinculado';v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
+  /* sem motorista vinculado na API: a placa ocupa o lugar do nome (como no painel clássico) */
+  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
   return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
@@ -1377,8 +1382,35 @@ const Gobrax={api:{
   /* mensagens enviadas a cada motorista e a nota em cada envio (servidor) */
   async getSent(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/mensagens/enviadas')},
   /* telefones dos condutores (servidor; só CS e administrador) */
-  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')}
+  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')},
+  /* premissas de cada cliente (valor por unidade, unidades, diesel): a mesma coleção do painel clássico */
+  async getPremissas(){if(!REAL.on)return[];const l=await srv('/api/v1/base/premissas');return(l||[]).map(d=>({id:d.id,...(d.dados||{})}))},
+  async savePremissas(id,dados){return srv('/api/v1/base/premissas/'+encodeURIComponent(id),'PUT',dados)}
 }};
+
+/* ---------- Premissas do cliente (contrato e diesel) ---------- */
+/* mesmas regras do painel clássico: documento "pr-<nome>" na coleção premissas; nome comparado sem acento/pontuação/LTDA */
+const ckeyCli=v=>nkey(v).replace(/[.,/\-]/g,' ').replace(/\b(ltda|eireli|epp|me|s a|sa)\b/g,' ').replace(/\s+/g,' ').trim();
+const idDocCli=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').slice(0,140);
+function premissasDe(def){
+  if(!def)return{};
+  if(!REAL.on){const c=ST.contracts[def.id]||{};return{valorEquip:c.unit,qtd:c.units}}
+  return REAL.prem.find(d=>ckeyCli(d.cliente)===ckeyCli(def.name))||{};
+}
+/* contrato que vale nas contas: o digitado; sem ele, R$ 159,90 por veículo com dado */
+function contratoDe(def){const pm=premissasDe(def);const unit=pm.valorEquip>0?+pm.valorEquip:DEFAULT_RULES.defUnit,units=pm.qtd>0?+pm.qtd:(def.vehicles||def.units||1);return{unit,units,unitAuto:!(pm.valorEquip>0),unitsAuto:!(pm.qtd>0)}}
+const dieselDe=def=>{const pm=premissasDe(def);return pm.preco>0?+pm.preco:ST.rules.diesel};
+async function salvarContrato(def,unit,units){
+  if(!REAL.on){ST.contracts[def.id]={unit:unit||undefined,units:units||undefined};persist();return}
+  const at=premissasDe(def);const mud=[];const R=v=>v?fmt.brl(v,2):'—';
+  if((at.valorEquip||null)!==(unit||null))mud.push('valor por equipamento '+R(at.valorEquip)+' → '+R(unit));
+  if((at.qtd||null)!==(units||null))mud.push('equipamentos '+(at.qtd||'—')+' → '+(units||'—'));
+  if(!mud.length)return false;
+  const nova={...at,cliente:at.cliente||def.name,valorEquip:unit||null,qtd:units||null};delete nova.id;
+  nova.historico=[{em:new Date().toISOString(),por:(REAL.eu&&REAL.eu.nome)||'',mudou:mud.join('; ')+' (pelo painel novo)'}].concat(at.historico||[]).slice(0,100);
+  const id=at.id||'pr-'+idDocCli(def.name);await Gobrax.api.savePremissas(id,nova);
+  const i=REAL.prem.findIndex(d=>d.id===id);const doc={id,...nova};if(i>=0)REAL.prem[i]=doc;else REAL.prem.push(doc);return true;
+}
 
 /* ---------- Banco em memória ---------- */
 const DB={fleets:{},cache:new Map(),ver:0,
@@ -1398,15 +1430,27 @@ function validRecs(cid,store){
 function suspRecs(cid,store){return DB.fleets[cid].recs.filter(r=>{if(!isSusp(r,store.rules))return false;const fl=store.flags[flagId(cid,r)];if(fl==='confirmed'||fl==='ignored')return false;if(fl&&fl.l&&!isSusp({...r,l:fl.l},store.rules))return false;return true})}
 /* médias ponderadas pelos km; campo sem dado (null) fica fora da média daquele indicador */
 function aggregate(rs){
-  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],id:[0,0],sc:[0,0],br:[0,0],brh:[0,0]};
+  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0]};
   for(const r of rs){o.km+=r.km;o.l+=r.l;
     for(const f in w){const v=r[f];if(v!=null&&isFinite(v)){w[f][0]+=(f==='br'||f==='brh')?v:v*r.km;w[f][1]+=r.km}}}
   const k=o.km;const wv=f=>w[f][1]?w[f][0]/w[f][1]:null;
   o.br=w.br[0];o.brh=w.brh[0];
   o.kmpl=o.l?o.km/o.l:null;o.kmDay=o.n?o.km/o.n:null;o.br100=w.br[1]?w.br[0]/w.br[1]*100:null;o.brh100=w.brh[1]?w.brh[0]/w.brh[1]*100:null;
-  o.speed=wv('sp');o.green=wv('gr');o.idle=wv('id');o.score=wv('sc');
+  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.score=wv('sc');o.scd=wv('scd');
   o.lph100=k?o.l/k*100:null;
   return o;
+}
+function premFleet(prem,from,to){
+  if(!REAL.on||!prem||!prem.length)return null;const ini=dIso(from).slice(0,7),fim=dIso(to).slice(0,7);
+  /* média simples das notas dos motoristas, como a "Performance média" da tela de Premiação da plataforma Gobrax
+     (cada motorista conta uma vez por mês, rodando muito ou pouco) */
+  const calc=(a,b)=>{let s=0,n=0;const meses=new Set(),mots=new Set();
+    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const nota=nv(p.nota);if(nota==null||nota<0||nota>100)continue;s+=nota;n++;meses.add(p.mes);mots.add(nkey(p.motorista))}
+    return n?{nota:s/n,motoristas:mots.size,meses:[...meses].sort()}:null};
+  const r=calc(ini,fim);if(r)return r;
+  /* mês ainda sem premiação (o atual costuma sair depois): vale o último mês com premiação, até 2 meses antes */
+  const ant=prem.map(p=>p.mes).filter(m=>m&&m<ini&&m>=prevMonth(prevMonth(ini))).sort().pop();
+  const x=ant?calc(ant,ant):null;return x?{...x,stale:true}:null;
 }
 function metrics(cid,store,from,to,vehFilter){
   const key=['m',cid,from,to,vehFilter||'',DB.ver].join('|');if(DB.cache.has(key))return DB.cache.get(key);
@@ -1418,6 +1462,9 @@ function metrics(cid,store,from,to,vehFilter){
   m.active=Object.keys(by).length;
   const days=new Set(rs.map(r=>r.t));m.dataDays=days.size;
   const f=DB.fleets[cid];m.total=f.vehicles.length;
+  /* Nota Gobrax da frota = a mesma conta da tela Premiação: média das notas dos motoristas no(s) mês(es) do período,
+     ponderada pelos km (quem não rodou fica fora). Vale mesmo quando a API não diz quem dirigia cada veículo. */
+  const pf=premFleet(f.prem,from,to);m.prem=pf;if(pf)m.score=pf.nota;
   let last=f.lastComm;if(!last){last={};for(const r of f.recs)last[r.veh]=r.t}
   m.noSignal=Object.keys(last).filter(v=>last[v]<T0-3).map(v=>({id:v,days:T0-last[v]})).sort((a,b)=>b.days-a.days);
   DB.cache.set(key,m);return m;
@@ -1494,9 +1541,14 @@ function vehStatus(cur,prev,id){
 
 /* ---------- Estudo do projeto ---------- */
 function study(cid,store,price){
-  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=store.contracts[cid]||{unit:def.unit,units:def.units};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=contratoDe(def);
   const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
-  const first=metrics(cid,store,ps,half);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
+  /* linha de base igual à do painel clássico: com 8 semanas ou mais, início = primeiras 4 semanas e agora = últimas 4;
+     com menos, a primeira e a segunda metade do período */
+  const nWk=weeklySeries(cid,store,ps,T0).length,curto=nWk<8;
+  const pIni=curto?[ps,half]:[ps,ps+27],pAgora=curto?[half+1,T0]:[T0-27,T0];
+  const rotIni=curto?'primeira metade do período':'primeiras 4 semanas',rotAgora=curto?'segunda metade':'últimas 4 semanas';
+  const first=metrics(cid,store,pIni[0],pIni[1]);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
   const mens=ct.unit*ct.units;const months=[];
   let cum=0,cumI=0;const weeks=[];
   const recs=validRecs(cid,store).filter(r=>r.t>=ps);
@@ -1504,13 +1556,14 @@ function study(cid,store,price){
   for(const r of recs){const ym=r.date.slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.km+=r.km;m.l+=r.l;if(r.sc!=null){m.sc+=r.sc*r.km;m.sk+=r.km}m.days.add(r.t)}
   for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1}
   for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=mens*m.cal/30;
-    const [y,mo]=ym.split('-');months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,dIdx(ym+'-01')))),econ,inv,kmpl:m.l?m.km/m.l:null,score:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
+    const [y,mo]=ym.split('-');const mi=dIdx(ym+'-01'),pfm=REAL.on?premFleet(DB.fleets[cid].prem,mi,mi):null;
+    months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,mi))),econ,inv,kmpl:m.l?m.km/m.l:null,score:pfm&&!pfm.stale?pfm.nota:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
   const wk=weeklySeries(cid,store,ps,T0);
   for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);
-  const second=metrics(cid,store,half+1,T0);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
+  const second=metrics(cid,store,pAgora[0],pAgora[1]);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
   const all=metrics(cid,store,ps,T0);
-  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,evolved:null};
+  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,pIni,pAgora,rotIni,rotAgora,evolved:null};
 }
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
@@ -1809,13 +1862,33 @@ function diverging(items,o={}){
 }
 
 /* ---------- Calendário de desempenho (pontos) ---------- */
-function dotCal(from,to,get){
+/* get(t) → {val, extra} ou null; m = {name, d, u, f:[bom, atenção], leg:[3 rótulos]} */
+function dotCal(from,to,get,m){
+  m=m||{name:'Nota',d:0,u:'',f:[70,40],leg:['Bom (70+)','Atenção (40 a 69)','Crítico (abaixo de 40)']};
   const mon=from-((wdOf(from)+6)%7);const wk=Math.floor((to-mon)/7)+1;const L=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  let h=L.map((l,i)=>`<span class="dl-l" style="grid-row:${i+1};grid-column:1">${l}</span>`).join('');
-  for(let t=from;t<=to;t++){const col=Math.floor((t-mon)/7)+2,row=(wdOf(t)+6)%7+1;const r=get(t);const sc=r?r.score:null;
-    const cl=sc==null?'e':sc>=70?'g':sc>=40?'y':'r';const tip=r?`<b>${fmt.dmy(dIso(t))}</b><br>Nota ${fmt.n(sc,0)}${r.extra?'<br>'+r.extra:''}`:`${fmt.dmy(dIso(t))} · sem registro`;
-    h+=`<i class="d ${cl}" style="grid-row:${row};grid-column:${col};--i:${t-from}" data-tt="${esc(tip)}"></i>`}
-  return`<div class="dotcal" style="grid-template-columns:34px repeat(${wk},24px)">${h}</div><div class="leg" style="margin-top:14px"><span><i style="background:var(--ok);border-radius:99px"></i>Bom (70+)</span><span><i style="background:var(--warn);border-radius:99px"></i>Atenção (40 a 69)</span><span><i style="background:var(--bad);border-radius:99px"></i>Crítico (abaixo de 40)</span><span><i style="background:var(--soft);border-radius:99px"></i>Sem registro ou sem nota</span></div>`;
+  let h=L.map((l,i)=>`<span class="dl-l" style="grid-row:${i+2};grid-column:1">${l}</span>`).join('');let mesAnt='';
+  for(let t=from;t<=to;t++){const col=Math.floor((t-mon)/7)+2,row=(wdOf(t)+6)%7+2;const r=get(t);const v=r?r.val:null;
+    const mes=dIso(t).slice(0,7);if(mes!==mesAnt){mesAnt=mes;const fimMes=Math.min(to,Math.round(Date.UTC(+mes.slice(0,4),+mes.slice(5),1)/DAY)-1);
+      /* mês com menos de 2 semanas no início do calendário: sem nome, senão encosta no nome do mês seguinte */
+      if(!(t===from&&fimMes-t<13))h+=`<span class="dl-l" style="grid-row:1;grid-column:${col}/span 4;font-weight:600;color:var(--text)">${MESES[+mes.slice(5)-1]}</span>`}
+    const cl=v==null?'e':v>=m.f[0]?'g':v>=m.f[1]?'y':'r';const tip=r?`<b>${fmt.dmy(dIso(t))}</b><br>${esc(m.name)}: ${v==null?'sem dado':fmt.n(v,m.d)+m.u}${r.extra?'<br>'+r.extra:''}`:`${fmt.dmy(dIso(t))} · sem rodagem`;
+    h+=`<i class="d ${cl}" style="grid-row:${row};grid-column:${col};--i:${Math.min(t-from,60)}" data-tt="${esc(tip)}"></i>`}
+  const z=wk>9?15:24;/* muitas semanas: pontos menores para o calendário caber no cartão */
+  return`<div class="dotcal${wk>9?' sm':''}" style="grid-template-columns:30px repeat(${wk},${z}px);grid-template-rows:18px repeat(7,${z}px)">${h}</div><div class="leg" style="margin-top:14px"><span><i style="background:var(--ok);border-radius:99px"></i>${m.leg[0]}</span><span><i style="background:var(--warn);border-radius:99px"></i>${m.leg[1]}</span><span><i style="background:var(--bad);border-radius:99px"></i>${m.leg[2]}</span><span><i style="background:var(--soft);border-radius:99px"></i>Sem rodagem ou sem dado</span></div>`;
+}
+/* calendário dos últimos 3 meses (frota ou um veículo). Cor do dia como no painel clássico: nota do dia quando a API
+   manda; senão início da faixa verde; senão faixa verde; sem nenhum dos três, consumo contra a média dos 3 meses. */
+function calBlock(C,id){
+  const to=C.P.to,from=Math.max(dIdx(C.def.start),to-90);
+  const ds=dailySeries(C.cid,ST,from,to,id?x=>x===id:null);const has=k=>ds.some(d=>d.a&&d.a[k]!=null);
+  let m;
+  if(has('scd'))m={k:'scd',name:'Nota do dia',d:0,u:'',f:[70,40],leg:['Bom (70+)','Atenção (40 a 69)','Crítico (abaixo de 40)']};
+  else if(has('ifv'))m={k:'ifv',name:'Início da faixa verde',d:0,u:'%',f:[85,55],leg:['Ideal (85%+)','Aceitável (55% a 84%)','Abaixo de 55%']};
+  else if(has('green'))m={k:'green',name:'Faixa verde',d:0,u:'%',f:[85,55],leg:['85%+','55% a 84%','Abaixo de 55%']};
+  else{const a=aggregate(validRecs(C.cid,ST).filter(r=>r.t>=from&&r.t<=to&&(!id||r.veh===id))).kmpl||0;
+    m={k:'kmpl',name:'Consumo',d:2,u:' km/l',f:[a*1.02,a*.98],leg:['Acima da média ('+fmt.n(a,2)+' km/l)','Na média','Abaixo da média']}}
+  const html=dotCal(from,to,t=>{const d=ds[t-from];return d&&d.a?{val:d.a[m.k],extra:fmt.n(d.a.km,0)+' km · '+fmt.kmpl(d.a.kmpl)+' km/l'}:null},m);
+  return{html,sub:`Últimos 3 meses (${fmt.dm(dIso(from))} a ${fmt.dm(dIso(to))}). Cada dia colorido pel${m.k==='kmpl'||m.k==='ifv'?'o':'a'} ${m.name.toLowerCase()}. Passe o mouse para ver o valor.`};
 }
 
 /* ---------- Barras diárias (hachuradas, destaque no hover) ---------- */
@@ -1829,6 +1902,26 @@ function dailyBars(vals,labels,o={}){
   const bars=vals.map((x,i)=>x==null?'':`<rect class="dbar" style="--i:${i}" x="${(pl+bw*i+bw*.15).toFixed(1)}" y="${y(x).toFixed(1)}" width="${(bw*.7).toFixed(1)}" height="${(H-pb-y(x)).toFixed(1)}" rx="3" fill="url(#${id})" data-tt="<b>${esc(labels[i])}</b><br>${fmt.n(x,o.d||0)}${o.u||''}"/>`).join('');
   const avg=o.avg!=null&&isFinite(o.avg)?`<line x1="${pl}" x2="${W-pr}" y1="${y(o.avg)}" y2="${y(o.avg)}" stroke="var(--n500)" stroke-dasharray="5 4" stroke-width="1.5"/>`:'';
   return`<svg class="chart dbars${o._quiet?' noanim':''}" data-cr="${chartReg((q)=>dailyBars(vals,labels,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Barras por dia')}">${g}${bars}${avg}</svg>`;
+}
+
+/* ---------- Barras por mês: investimento ao lado da economia ---------- */
+function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
+  if(!rows.length)return`<div class="empty"><b>Sem meses no período</b></div>`;
+  const W=o.w||720,H=o.h||300,pl=62,pr=12,pt=26,pb=o.sub?46:30;
+  const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
+  const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
+  const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
+  const y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);const n=rows.length,gw=(W-pl-pr)/n,bw=Math.min(54,gw*.3);
+  const k=v=>Math.abs(v)>=1000?fmt.n(v/1000,1)+' mil':fmt.n(v,0);
+  let g='';for(let v=lo;v<=hi+1e-9;v+=stp)g+=`<line class="grid-l" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${v?'R$ '+k(v):'0'}</text>`;
+  if(lo<0)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--n500)" stroke-width="1.5"/>`;
+  const bar=(x,v,cls,fill,i,tip)=>{if(v==null||!isFinite(v))return'';const y0=y(0),yv=y(v),top=Math.min(y0,yv),h=Math.max(1,Math.abs(y0-yv));
+    return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" data-tt="${esc(tip)}"/><text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`};
+  rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}`;
+    g+=bar(cx-bw-3,r.inv,'inv','var(--n600)',i*2,tip)+bar(cx+3,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',i*2+1,tip);
+    g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    if(o.sub&&r.sub)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(r.sub)}</text>`});
+  return`<svg class="chart${o._quiet?' noanim':''}" data-cr="${chartReg(q=>monthBars(rows,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Investimento e economia por mês')}">${g}</svg>`;
 }
 
 /* ---------- Comparativo: barra com marca "antes" e linha da média ---------- */
@@ -2133,25 +2226,35 @@ async function vPortfolio(C){
 }
 
 /* ---------- ESTUDO ---------- */
+const podeEditarContrato=()=>!REAL.on||(REAL.eu&&REAL.eu.papel!=='leitor');
+function contratoForm(C,ct,mens){
+  const ed=podeEditarContrato(),dis=ed?'':' disabled';const pm=premissasDe(C.def);
+  const campo=(id,rot,val,ph,suf)=>`<div class="field" style="flex:1 1 150px"><label for="${id}">${rot}</label><div class="row" style="flex-wrap:nowrap;gap:6px"><input class="inp num" id="${id}" inputmode="decimal" value="${val>0?esc(fmt.n(val,id==='ct-valor'?2:0)):''}" placeholder="${esc(ph)}"${dis}><span class="xs muted" style="white-space:nowrap">${suf}</span></div></div>`;
+  const nota=[ct.unitAuto?'valor padrão de '+fmt.brl(ct.unit,2)+' por unidade':'',ct.unitsAuto?'unidades = '+ct.units+' veículos com dado na API':''].filter(Boolean).join(' · ');
+  return`<div class="card rise stack">${cardH('Contrato do cliente',ed?'Edite e salve: vale aqui, no painel clássico e em todas as contas.':'Só CS e administrador mudam o contrato.')}
+    <div class="row" style="align-items:flex-end;gap:12px">${campo('ct-valor','Valor por unidade',pm.valorEquip,fmt.n(ct.unit,2),'R$/mês')}${campo('ct-qtd','Unidades contratadas',pm.qtd,String(ct.units),'un.')}</div>
+    <div style="background:var(--soft);border-radius:12px;padding:14px 16px" class="row"><span class="muted">Mensalidade</span><b class="num" style="font-size:24px;margin-left:auto">${fmt.brl(mens,2)}</b></div>
+    ${nota?`<div class="xs muted">${esc(nota)}: informe o contrato para a conta ficar certa.</div>`:''}
+    ${ed?`<button class="btn primary" data-act="contrato-salvar">${ico('check',16)} Salvar contrato</button>`:''}</div>`;
+}
 function vStudy(C){
   const cid=C.cid,st=study(cid,ST,C.price);const ct=st.ct;
-  const lo=Math.min(0,...st.weeks.map(w=>w.cum)),hi=Math.max(...st.weeks.map(w=>Math.max(w.cum,w.cumI)),1);
-  const chart=lineChart({labels:st.weeks.map(w=>w.label),series:[{vals:st.weeks.map(w=>w.cum),color:st.econ>=0?'var(--ok)':'var(--bad)',area:true,dots:true},{vals:st.weeks.map(w=>w.cumI),color:'var(--text)',dash:'6 5',w:2.5}],ymin:lo*1.1,ymax:hi*1.15,yfmt:v=>fmt.n(v/1000,0)+' mil',tip:i=>`<b>Até ${st.weeks[i].label}</b><br>Economia: ${fmt.brl(st.weeks[i].cum)}<br>Investimento: ${fmt.brl(st.weeks[i].cumI)}`,aria:'Economia acumulada contra investimento acumulado, por semana'});
-  const rows=st.months.map(m=>`<tr><td><b>${m.label}</b></td><td class="r num">${fmt.brl(m.inv)}</td><td class="r num b" style="color:${m.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(m.econ)}</td><td class="r num">${fmt.kmpl(m.kmpl)} km/l</td><td class="r num">${fmt.n(m.score,0)}</td><td class="r num">${fmt.n(m.km,0)}</td></tr>`).join('');
-  const chg=pc(st.second.kmpl,st.base);
+  const bars=monthBars(st.months.map(m=>({label:m.label.replace(/ \d{4}$/,'')+'/'+m.ym.slice(2,4),inv:m.inv,econ:m.econ,sub:m.cal<28?m.cal+' dias':''})),{sub:true,h:300,aria:'Investimento e economia por mês'});
+  const rows=st.months.map(m=>{const sal=m.econ-m.inv;return`<tr><td><b>${m.label}</b>${m.cal<28?` <span class="xs muted">${m.cal} dias</span>`:''}</td><td class="r num">${fmt.brl(m.inv)}</td><td class="r num b" style="color:${m.econ>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(m.econ)}</td><td class="r num b" style="color:${sal>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(sal)}</td><td class="r num">${m.inv?(m.econ<0?'negativa':fmt.n(m.econ/m.inv*100,0)+'%'):'—'}</td><td class="r num">${fmt.kmpl(m.kmpl)} km/l</td><td class="r num">${fmt.n(m.score,0)}</td><td class="r num">${fmt.n(m.km,0)}</td></tr>`}).join('');
+  const chg=pc(st.second.kmpl,st.base);const per=p=>fmt.dm(dIso(p[0]))+' a '+fmt.dm(dIso(p[1]));
   const verdict=st.pays?`Sobram <span class="num" style="color:var(--amarelo)">${fmt.brl(st.econ-st.inv)}</span> depois de pagar o investimento`:`Faltam <span class="num" style="color:var(--amarelo)">${fmt.brl(st.miss)}</span> para a economia cobrir o investimento`;
   return`${pageH('Estudo do projeto',`${esc(C.def.name)} · ${fmt.dm(dIso(st.ps))} a ${fmt.dm(TODAY)} · ${st.len} dias · diesel a ${fmt.brl(C.price,2)}/L`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}
   <div class="grid g-main">
     <div class="card dark rise stack" style="padding:28px;position:relative;overflow:hidden"><div class="swoosh" style="border-color:rgba(254,219,0,.12)"></div><div class="row"><span class="badge ${st.pays?'ok':'bad'}">${st.pays?'O PROJETO SE PAGA':'AINDA NÃO SE PAGA'}</span></div><div><div style="color:#e1e1dd;font-size:16px">O projeto se paga?</div><div style="font-size:34px;font-weight:900;letter-spacing:-.01em;line-height:1.15">${verdict}</div></div>
       <div class="row" style="gap:32px"><div><div class="muted">Investido no período</div><b class="num" style="font-size:26px">${count(st.inv,0,'R$ ')}</b></div><div><div class="muted">${st.econ>=0?'Diesel economizado':'Diesel gasto a mais'}</div><b class="num" style="font-size:26px;color:${st.econ>=0?'#7be0ac':'#ff9d92'}">${fmt.brl(st.econ)}</b></div><div><div class="muted">Ritmo atual por mês</div><b class="num" style="font-size:26px;color:${st.pace>=0?'#7be0ac':'#ff9d92'}">${fmt.brl(st.pace)}</b></div><div><div class="muted">Retorno sobre o investimento</div><b class="num" style="font-size:26px">${st.roi!=null?fmt.n(st.roi,1)+'×':'—'}</b></div></div>
-      <div class="muted sm">Economia calculada contra o consumo do início do acompanhamento (${fmt.n(st.base,2)} km/l, primeira metade do período), nos mesmos km rodados.${REAL.on?' O servidor guarda o último ano de dados: o início é o primeiro dia com registro dentro dessa janela.':''}</div></div>
-    <div class="card rise stack">${cardH('Contrato do cliente','')}<div class="kv"><span>Valor por unidade</span><b class="num">${fmt.brl(ct.unit,2)}/mês</b></div><div class="kv"><span>Unidades consideradas</span><b class="num">${ct.units}</b></div><div style="background:var(--soft);border-radius:12px;padding:14px 16px" class="row"><span class="muted">Mensalidade</span><b class="num" style="font-size:24px;margin-left:auto">${fmt.brl(st.mens,2)}</b></div>${REAL.on?'<div class="xs muted">Unidades = veículos com dado na API. Valor por unidade é a premissa de Regras e integração.</div>':''}${ct.units!==C.fleet.vehicles.length?`<div class="banner" style="margin:0">Os dados trazem ${C.fleet.vehicles.length} veículos e o contrato diz ${ct.units}.</div>`:''}</div>
+      <div class="muted sm">Linha de base: ${st.rotIni} (${per(st.pIni)}), ${fmt.n(st.base,2)} km/l. Agora: ${st.rotAgora} (${per(st.pAgora)}), ${fmt.n(st.second.kmpl,2)} km/l ${dl(chg,true)}. Mesma regra do painel clássico.</div></div>
+    ${contratoForm(C,ct,st.mens)}
   </div>
   <div class="sec">
-    <div class="card rise">${cardH('Economia acumulada contra investimento acumulado','Em reais, semana a semana desde o início do acompanhamento')}${chart}<div class="leg" style="margin-top:10px"><span><i style="background:${st.econ>=0?'var(--ok)':'var(--bad)'}"></i>Economia acumulada</span><span><i style="background:var(--text)"></i>Investimento acumulado</span></div></div>
+    <div class="card rise">${cardH('Investimento e economia por mês','Mensalidade da Gobrax ao lado do diesel economizado em cada mês. Passe o mouse para ver o saldo.')}${bars}<div class="leg" style="margin-top:10px"><span><i style="background:var(--n600)"></i>Investimento</span><span><i style="background:var(--ok)"></i>Economia</span><span><i style="background:var(--bad)"></i>Economia negativa</span></div></div>
   </div>
-  <div class="card sec rise">${cardH('Mês a mês','Investimento, economia, consumo, nota e km')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Mês</th><th class="r">Investimento</th><th class="r">Economia</th><th class="r">Consumo</th><th class="r">Nota</th><th class="r">Km</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td class="r num b">${fmt.brl(st.inv)}</td><td class="r num b">${fmt.brl(st.econ)}</td><td class="r num">${fmt.kmpl(st.all.kmpl)} km/l</td><td class="r num">${fmt.n(st.all.score,0)}</td><td class="r num">${fmt.n(st.all.km,0)}</td></tr></tbody></table></div>
-    <div class="row sm muted" style="margin-top:14px;justify-content:space-between"><span><b>Como calculamos:</b> litros que o consumo do início gastaria nos mesmos km, menos os litros realmente gastos, vezes o preço do diesel. O investimento é a mensalidade proporcional aos dias de cada mês.</span><span>Consumo do início → agora: <b>${fmt.n(st.base,2)} → ${fmt.n(st.second.kmpl,2)} km/l</b> ${dl(chg,true)} · detalhes na <a href="#/geral">Visão geral</a></span></div></div>`;
+  <div class="card sec rise">${cardH('Mês a mês','Investimento, economia, saldo, cobertura, consumo, nota e km')}<div class="scroll-x"><table class="tbl"><thead><tr><th>Mês</th><th class="r">Investimento</th><th class="r">Economia</th><th class="r">Saldo</th><th class="r">Cobertura</th><th class="r">Consumo</th><th class="r">Nota</th><th class="r">Km</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td class="r num b">${fmt.brl(st.inv)}</td><td class="r num b">${fmt.brl(st.econ)}</td><td class="r num b" style="color:${st.econ-st.inv>=0?'var(--ok-t)':'var(--bad-t)'}">${fmt.brl(st.econ-st.inv)}</td><td class="r num">${st.inv?fmt.n(st.econ/st.inv*100,0)+'%':'—'}</td><td class="r num">${fmt.kmpl(st.all.kmpl)} km/l</td><td class="r num">${fmt.n(st.all.score,0)}</td><td class="r num">${fmt.n(st.all.km,0)}</td></tr></tbody></table></div>
+    <div class="sm muted" style="margin-top:14px"><b>Como calculamos:</b> litros que o consumo da linha de base gastaria nos mesmos km, menos os litros realmente gastos, vezes o preço do diesel. O investimento é a mensalidade (valor por unidade × unidades) proporcional aos dias de cada mês.</div></div>`;
 }
 
 /* =====================================================================
@@ -2328,8 +2431,8 @@ function drvBehavior(C){
       tip:x=>cv[x]!=null?`<b>${fmt.dm(ds[x].date)}</b><br>${esc(i.l)}: ${fInd(i,cv[x])}${pv[x]!=null?'<br>Comparação: '+fInd(i,pv[x]):''}`:'',aria:i.l});
     return`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-start"><div><div class="tag">${esc(i.l)}</div><div class="num" style="font-size:26px;font-weight:800">${fInd(i,i.get(C.cur))}</div></div><span class="badge ${r.cls}">${r.label}</span></div><div class="xs muted" style="margin-bottom:4px">${r.ch!=null?dl(r.ch,i.up===true,1)+' contra a comparação':'sem base de comparação'}</div>${ch}</div>`}).join('');
   const ax=radar(radarAxes(C.cur,C.prev,C.cur));
-  const cal=dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km · '+d.a.n+' veículos'}:null});
-  return`<div class="grid g3">${cards}</div><div class="grid g2 sec"><div class="card rise">${cardH('Perfil de condução da frota','Amarelo: agora. Azul: antes. Cinza: média. Quanto mais longe do centro, melhor.')}${ax}</div><div class="card rise">${cardH('Calendário de desempenho','Cada ponto é um dia, colorido pela nota da frota. Passe o mouse para ver o valor.')}${cal}</div></div>`;
+  const cal=calBlock(C,null);
+  return`<div class="grid g3">${cards}</div><div class="grid g2 sec"><div class="card rise">${cardH('Perfil de condução da frota','Amarelo: agora. Azul: antes. Cinza: média. Quanto mais longe do centro, melhor.')}${ax}</div><div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>`;
 }
 
 /* ---------- MOTORISTAS · Comparativo ---------- */
@@ -2345,7 +2448,7 @@ function drvCompare2(C){
 }
 
 /* ---------- MOTORISTAS · Resultado semanal (cards) ---------- */
-function weekMsg(name,r,w){return`Olá${/^Sem motorista/.test(name)?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
+function weekMsg(name,r,w,v){return`Olá${v&&v.noDriver?'':', '+name.split(' ')[0]}! Seu resultado da semana ${w.n}: média de ${fmt.kmpl(r.a.kmpl)} km/l${r.ch!=null?` (${fmt.sp(r.ch)} contra a semana anterior)`:''}, ${fmt.n(r.a.km,0)} km rodados e ${r.good} dia(s) bom(ns). Qualquer dúvida, é só chamar.`}
 function drvWeekly2(C){
   const wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);if(!wk.length)return'<div class="card empty"><b>Sem semanas no período</b></div>';
   if(S.u.weekSel==null||S.u.weekSel>wk.length)S.u.weekSel=wk.length;const w=wk[S.u.weekSel-1],pw=wk[S.u.weekSel-2];
@@ -2391,7 +2494,7 @@ function drvDash(C,id){
   const rd=`<div class="grid ga sec"><div class="card rise">${cardH('Perfil de condução','Amarelo: este condutor agora. Azul: como estava. Cinza: média da frota. Quanto mais longe do centro, melhor.')}${radar(radarAxes(c,p,C.cur))}</div><div class="card rise">${cardH('Antes, agora e frota','Barra: agora; verde se melhor que a frota, vermelha se pior. Marca azul: antes. Linha tracejada: média da frota.')}<div class="stack" style="gap:14px">${bars}</div></div></div>`;
   /* calendário */
   const ds=dailySeries(C.cid,ST,C.P.from,C.P.to,x=>x===id);
-  const cal=`<div class="card rise sec">${cardH('Calendário de desempenho','Cada ponto é um dia do período, colorido pela nota. Passe o mouse para ver o valor.')}${dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km · '+fmt.n(d.a.kmpl,2)+' km/l'}:null})}</div>`;
+  const cb=calBlock(C,id);const cal=`<div class="card rise sec">${cardH('Calendário de desempenho',cb.sub)}${cb.html}</div>`;
   /* evolução dia a dia + km por dia */
   const mk=u.dayMetric||'br100',ind=INDK[mk];const pds=dailySeries(C.cid,ST,C.P.cf,C.P.ct,x=>x===id);
   const cv=ds.map(d=>d.a?ind.get(d.a):null),pv=ds.map((d,k)=>pds[k]&&pds[k].a?ind.get(pds[k].a):null);
@@ -2444,11 +2547,11 @@ function vPlan(C){
 /* ---------- Visão geral · blocos extras (nota, perfil, calendário, evolução) ---------- */
 function ovExtra(C){
   const ds=dailySeries(C.cid,ST,C.P.from,C.P.to);
-  const cal=dotCal(C.P.from,C.P.to,t=>{const d=ds[t-C.P.from];return d&&d.a?{score:d.a.score,extra:fmt.n(d.a.km,0)+' km'}:null});
+  const cal=calBlock(C,null);
   const rs=indRes(INDK.score,C.cur,C.prev);const sb=scoreBand(C.cur.score);
-  return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Nota Gobrax da frota',C.P.label)}${gaugeNota(C.cur.score,'NOTA GOBRAX',true)}<div style="margin-top:6px">${rs.ch!=null?dl(rs.ch,true,1)+' <span class="xs muted">contra '+esc(C.P.cmpLabel)+'</span>':'<span class="xs muted">sem comparação</span>'}</div><div class="row" style="justify-content:center;margin-top:10px"><span class="badge onyel">${sb.label}</span></div></div>
+  return`<div class="grid g3 sec"><div class="card yel rise" style="text-align:center"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Nota Gobrax da frota',(()=>{const pf=C.cur.prem;if(!REAL.on)return C.P.label;if(!pf)return'Sem premiação da API para o período';const ms=pf.meses.map(m=>MESES[+m.slice(5)-1]+(m===TODAY.slice(0,7)?' (parcial)':'')).join(', ');return(pf.stale?'Último mês com premiação: ':'Premiação de ')+ms+' · '+pf.motoristas+' motoristas'})())}${gaugeNota(C.cur.score,'NOTA GOBRAX',true)}<div style="margin-top:6px">${rs.ch!=null?dl(rs.ch,true,1)+' <span class="xs muted">contra '+esc(C.P.cmpLabel)+'</span>':'<span class="xs muted">sem comparação</span>'}</div><div class="row" style="justify-content:center;margin-top:10px"><span class="badge onyel">${sb.label}</span></div></div>
   <div class="card rise">${cardH('Perfil de condução','Agora contra o período anterior')}${radar(radarAxes(C.cur,C.prev,C.cur))}</div>
-  <div class="card rise">${cardH('Calendário de desempenho','Nota da frota em cada dia')}${cal}</div></div>${evoBlock(C,null)}`;
+  <div class="card rise">${cardH('Calendário de desempenho',cal.sub)}${cal.html}</div></div>${evoBlock(C,null)}`;
 }
 
 /* ---------- MOTORISTAS · Mensagens (evolução da nota depois do aviso) ---------- */
@@ -2534,10 +2637,42 @@ function msgEvolution(C,hist){
    TELA · Regras e integração
    ===================================================================== */
 function vSettings(C){
-  const u=S.u;if(!['regras','integracao'].includes(u.dataTab))u.dataTab='regras';
-  const tabs=tabsHtml([['regras','Como calculamos'],['integracao','Integração']],u.dataTab,'data-tab');
+  const u=S.u;if(!['regras','integracao','diagnostico'].includes(u.dataTab))u.dataTab='regras';
+  const tabs=tabsHtml([['regras','Como calculamos'],['integracao','Integração'],['diagnostico','Diagnóstico do dado']],u.dataTab,'data-tab');
   const head=pageH('Regras e integração','Como a plataforma calcula cada número e de onde vem cada dado');
-  return head+tabs+({regras:setRules,integracao:setIntegration}[u.dataTab]||setRules)(C);
+  return head+tabs+({regras:setRules,integracao:setIntegration,diagnostico:setDiag}[u.dataTab]||setRules)(C);
+}
+/* Diagnóstico: quanto de cada campo a API entregou para cada cliente (últimos 90 dias). Só contagens, sem nomes:
+   mostra de uma vez se um campo vazio no painel é falta de dado na origem ou falha de tela. */
+function diagCliente(c){
+  const desde=dIso(T0-89);const rs=(c.registros||[]).filter(r=>String(r.dia).slice(0,10)>=desde);const rod=rs.filter(r=>r.rodou&&(+r.km||0)>0);
+  const pct=f=>rod.length?Math.round(rod.filter(f).length/rod.length*100):null;const tem=k=>r=>r[k]!=null&&r[k]!=='';
+  const meses=[...new Set((c.premiacoes||[]).filter(p=>p.nota!=null).map(p=>p.mes))].sort();
+  return{nome:c.nome,dias:new Set(rs.map(r=>String(r.dia).slice(0,10))).size,veic:new Set(rs.map(r=>r.placa)).size,rod:rod.length,
+    litros:pct(r=>(+r.litros||0)>0),freadas:pct(tem('frenagens')),vel:pct(tem('velocidade_media')),verde:pct(tem('faixa_verde')),ifv:pct(tem('inicio_faixa_verde')),ocioso:pct(tem('motor_ocioso')),
+    motorista:pct(r=>!!r.motorista),nota:pct(tem('nota')),vinculos:(c.motoristas||[]).filter(r=>String(r.dia).slice(0,10)>=desde).length,
+    premMeses:meses,premMot:new Set((c.premiacoes||[]).filter(p=>p.nota!=null).map(p=>p.motorista)).size,odo:(c.odometros||[]).length,
+    ultimo:rs.length?rs.map(r=>String(r.dia).slice(0,10)).sort().pop():null};
+}
+function setDiag(C){
+  if(!REAL.on)return`<div class="card sec rise"><div class="empty"><b>Disponível só na plataforma</b>O diagnóstico lê os dados reais do servidor. Abra pelo /painel com login.</div></div>`;
+  const ds=(REAL.raw||[]).map(diagCliente);
+  const cel=v=>v==null?'<td class="r muted">—</td>':`<td class="r num" style="font-weight:700;color:${v>=80?'var(--ok-t)':v>=30?'var(--warn-t)':'var(--bad-t)'}">${v}%</td>`;
+  const rows=ds.map(d=>`<tr><td><b>${esc(d.nome)}</b><div class="xs muted">${d.veic} veículos · ${d.dias} dias · último ${d.ultimo?fmt.dm(d.ultimo):'—'}</div></td><td class="r num">${d.rod}</td>${cel(d.litros)}${cel(d.freadas)}${cel(d.vel)}${cel(d.verde)}${cel(d.ifv)}${cel(d.ocioso)}${cel(d.motorista)}<td class="r num muted">${d.nota==null?'—':d.nota+'%'}</td><td class="r num">${d.vinculos}</td><td class="r">${d.premMeses.length?`<b class="num">${d.premMot}</b> <span class="xs muted">${d.premMeses.map(m=>MESES[+m.slice(5)-1]).join(', ')}</span>`:'<span class="badge bad">nenhuma</span>'}</td><td class="r num">${d.odo}</td></tr>`).join('');
+  const cid=C.cid,lv=REAL.live[cid],pos=lv&&lv.veiculos?Object.values(lv.veiculos).filter(v=>v.lat!=null).length:null,ras=lv&&lv.rastro?Object.keys(lv.rastro).length:null;
+  const env=REAL.msgs[cid],tel=C.fleet.vehicles.filter(v=>v.phone).length,pm=premissasDe(C.def);
+  const kv=(l,v,ok)=>`<div class="kv"><span>${l}</span><b class="num" style="color:${ok?'var(--ok-t)':'var(--bad-t)'}">${v}</b></div>`;
+  return`<div class="card sec rise">${cardH('O que a API Gobrax entregou para cada cliente','Últimos 90 dias. Porcentagem dos dias rodados (km > 0) em que o campo veio preenchido. Verde 80%+, amarelo 30% a 79%, vermelho abaixo de 30%. Só contagens: nenhum nome aparece aqui.',`<button class="btn ghost sm" data-act="print">${ico('download',14)} PDF</button>`)}
+  <div class="scroll-x"><table class="tbl"><thead><tr><th>Cliente</th><th class="r">Dias rodados</th><th class="r">Litros</th><th class="r">Freadas</th><th class="r">Velocidade</th><th class="r">Faixa verde</th><th class="r">Início f. verde</th><th class="r">Motor ocioso</th><th class="r">Motorista</th><th class="r">Nota do dia</th><th class="r">Vínculos motorista</th><th class="r">Premiação (motoristas · meses)</th><th class="r">Odômetros</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="xs muted" style="margin-top:10px">Faixa verde, motor ocioso e motorista vêm da performance (v1/vehicle-performance); vazios aqui indicam que a busca de performance desse cliente não trouxe dado. "Nota do dia" vazia é esperado: a API não manda nota diária, a Nota Gobrax vem da premiação.</div></div>
+  <div class="grid g2 sec"><div class="card rise stack">${cardH('Cliente aberto: '+esc(C.def.name),'O que o painel carregou além do dia a dia')}
+    ${kv('Posição agora (veículos com GPS)',pos==null?(REAL.busy['live'+cid]?'carregando…':REAL.liveErr&&REAL.liveErr[cid]?'erro: '+REAL.liveErr[cid]:'não carregado'):pos+' de '+C.fleet.vehicles.length,pos>0)}
+    ${kv('Rastro de hoje (veículos)',ras==null?'—':ras,ras>0)}
+    ${kv('Mensagens marcadas como enviadas (motoristas)',env?env.length:'—',env&&env.length)}
+    ${kv('Telefones de condutores',tel,tel>0)}
+    ${kv('Contrato cadastrado (valor por unidade)',pm.valorEquip>0?fmt.brl(pm.valorEquip,2):'não (usa R$ 159,90)',pm.valorEquip>0)}
+    ${kv('Diesel do cliente',pm.preco>0?fmt.brl(pm.preco,2)+'/L':'não (usa o padrão)',pm.preco>0)}</div>
+  <div class="card brand rise stack"><div class="swoosh"></div>${cardH('Como usar','')}<p class="sm" style="margin:0">Se uma tela tem campo vazio, olhe a coluna dele aqui. Vermelho: a API não está mandando esse dado para o cliente (token sem acesso, veículo sem a unidade eletrônica ou falha na busca do servidor). Verde e a tela vazia: falha do painel, mande o print desta tabela e da tela.</p></div></div>`;
 }
 function setRules(C){
   const R=ST.rules;const kv=(l,v)=>`<div class="kv"><span>${l}</span><b class="num">${v}</b></div>`;
@@ -2566,7 +2701,7 @@ const ROUTES={
   dados:{t:'Regras e integração',i:'sliders',f:vSettings,g:'Sistema'}
 };
 const LEGACY={churn:'retencao',visao:'frota','individual/veiculo':'frota','individual/motorista':'motoristas',premiacao:'motoristas?aba=premiacao',mensagens:'motoristas?aba=mensagens',api:'dados?aba=integracao',config:'dados',individual:'motoristas'};
-const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1}]};
+const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1}]};
 let LASTC=null,RTOK=0,CUR_ROUTE='geral';
 
 function parseHash(){
@@ -2580,7 +2715,8 @@ function nav(route){const t='#/'+route;if(location.hash===t)render();else locati
 async function buildCtx(){
   const cid=S.client;const fleet=await DB.load(cid);const P=resolvePeriod(S);
   const cur=metrics(cid,ST,P.from,P.to),prev=metrics(cid,ST,P.cf,P.ct);
-  const C={cid,def:CLIENT_DEFS.find(c=>c.id===cid),fleet,P,cur,prev,price:ST.rules.diesel};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);
+  const C={cid,def,fleet,P,cur,prev,price:dieselDe(def)};
   C.hl=health(cur,prev,ST.rules);LASTC=C;loadExtras(cid);return C;
 }
 const skeleton=()=>`<div class="page-h"><div><h1 style="opacity:.25">Carregando</h1></div></div><div class="grid g4">${'<div class="skel"></div>'.repeat(4)}</div><div class="grid g-main sec"><div class="skel" style="min-height:300px"></div><div class="skel" style="min-height:300px"></div></div>`;
@@ -2652,12 +2788,12 @@ function shell(){
 function acctPop(){
   const eu=REAL.eu;const papel={admin:'Administrador',colaborador:'CS',leitor:'Leitura'};
   if(!eu)return`<div class="who"><b>Modo demonstração</b><span class="xs muted">Abra pelo servidor (/painel) para ver os dados reais.</span></div>`;
-  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
+  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="#/dados?aba=diagnostico" data-act="pop-close">${ico('alert',16)} Diagnóstico do dado</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
 }
 function renderTop(){
   const C=LASTC;
   $('#clientSel').innerHTML=CLIENT_DEFS.map(c=>`<option value="${esc(c.id)}" ${c.id===S.client?'selected':''}>${esc(c.name)}</option>`).join('');
-  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(ST.rules.diesel,2)}/L`;
+  $('#dieselBtn').innerHTML=`${ico('coin',16)} Diesel ${fmt.brl(C?C.price:ST.rules.diesel,2)}/L`;
   $('#themeBtn').innerHTML=ico(S.theme==='dark'?'sun':'moon',18);
   if(!C)return;
   $('#periodBtn').innerHTML=`${ico('refresh',16)} ${C.P.label}`;
@@ -2709,7 +2845,7 @@ function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.dr
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
 function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
   const good=[...Array(w.to-w.from+1).keys()].filter(k=>{const r=aggFor(C,w.from+k,w.from+k,id);return r.n&&r.kmpl>=w.a.kmpl}).length;
-  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w);const url=waUrl(v.phone,txt);
+  const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w,v);const url=waUrl(v.phone,txt);
   if(open&&url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}else copyText(txt).then(ok=>toast(ok?(open?'Sem telefone cadastrado. Mensagem copiada':'Mensagem copiada'):'Não foi possível copiar'))}
 
 /* ---------- ações (data-act) ---------- */
@@ -2757,6 +2893,14 @@ const ACT={
   'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
   'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
+  'contrato-salvar':async el=>{
+    const ler=id=>{const s=String(($('#'+id)||{}).value||'').trim().replace(/\s|R\$/g,'');if(!s)return null;return Number(s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s)};
+    const unit=ler('ct-valor'),units=ler('ct-qtd');
+    if((unit!==null&&!(unit>0))||(units!==null&&!(units>0&&Number.isInteger(units)))){toast('Confira os números: valor maior que zero e unidades inteiras.');return}
+    el.disabled=true;
+    try{const r=await salvarContrato(LASTC.def,unit,units);DB.bump();toast(r===false?'Nada mudou.':'Contrato salvo: vale em todas as telas.');go()}
+    catch(e){el.disabled=false;toast(/403|permiss/i.test(e.message)?'Só CS e administrador mudam o contrato.':'Não foi possível salvar: '+e.message)}
+  },
 };
 function setClient(id){S.client=id;S.u.drvSel=null;S.u.fleetFilial='';S.u.msgDay='';S.u.msgDrv=null;S.u.weekSel=null;S.u.premMonth='';savePrefs()}
 
@@ -2810,7 +2954,7 @@ async function boot(){
   await detectServer();
   let list=[];
   try{list=await Gobrax.api.getClients()}catch(e){$('#root').innerHTML=`<div class="view"><div class="card" style="margin-top:40px"><h2>Não foi possível carregar os dados</h2><p class="muted">${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Tentar de novo</button></div></div>`;return}
-  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c))}
+  if(REAL.on){CLIENT_DEFS.length=0;list.forEach(c=>CLIENT_DEFS.push(c));try{REAL.prem=await Gobrax.api.getPremissas()}catch(e){REAL.prem=[]}}
   else for(const c of list){const d=CLIENT_DEFS.find(x=>x.id===c.id);if(d)Object.assign(d,c)}
   if(!CLIENT_DEFS.some(c=>c.id===S.client))S.client=CLIENT_DEFS[0]?CLIENT_DEFS[0].id:'';
   $('#root').innerHTML=shell();

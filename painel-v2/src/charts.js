@@ -110,13 +110,33 @@ function diverging(items,o={}){
 }
 
 /* ---------- Calendário de desempenho (pontos) ---------- */
-function dotCal(from,to,get){
+/* get(t) → {val, extra} ou null; m = {name, d, u, f:[bom, atenção], leg:[3 rótulos]} */
+function dotCal(from,to,get,m){
+  m=m||{name:'Nota',d:0,u:'',f:[70,40],leg:['Bom (70+)','Atenção (40 a 69)','Crítico (abaixo de 40)']};
   const mon=from-((wdOf(from)+6)%7);const wk=Math.floor((to-mon)/7)+1;const L=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  let h=L.map((l,i)=>`<span class="dl-l" style="grid-row:${i+1};grid-column:1">${l}</span>`).join('');
-  for(let t=from;t<=to;t++){const col=Math.floor((t-mon)/7)+2,row=(wdOf(t)+6)%7+1;const r=get(t);const sc=r?r.score:null;
-    const cl=sc==null?'e':sc>=70?'g':sc>=40?'y':'r';const tip=r?`<b>${fmt.dmy(dIso(t))}</b><br>Nota ${fmt.n(sc,0)}${r.extra?'<br>'+r.extra:''}`:`${fmt.dmy(dIso(t))} · sem registro`;
-    h+=`<i class="d ${cl}" style="grid-row:${row};grid-column:${col};--i:${t-from}" data-tt="${esc(tip)}"></i>`}
-  return`<div class="dotcal" style="grid-template-columns:34px repeat(${wk},24px)">${h}</div><div class="leg" style="margin-top:14px"><span><i style="background:var(--ok);border-radius:99px"></i>Bom (70+)</span><span><i style="background:var(--warn);border-radius:99px"></i>Atenção (40 a 69)</span><span><i style="background:var(--bad);border-radius:99px"></i>Crítico (abaixo de 40)</span><span><i style="background:var(--soft);border-radius:99px"></i>Sem registro ou sem nota</span></div>`;
+  let h=L.map((l,i)=>`<span class="dl-l" style="grid-row:${i+2};grid-column:1">${l}</span>`).join('');let mesAnt='';
+  for(let t=from;t<=to;t++){const col=Math.floor((t-mon)/7)+2,row=(wdOf(t)+6)%7+2;const r=get(t);const v=r?r.val:null;
+    const mes=dIso(t).slice(0,7);if(mes!==mesAnt){mesAnt=mes;const fimMes=Math.min(to,Math.round(Date.UTC(+mes.slice(0,4),+mes.slice(5),1)/DAY)-1);
+      /* mês com menos de 2 semanas no início do calendário: sem nome, senão encosta no nome do mês seguinte */
+      if(!(t===from&&fimMes-t<13))h+=`<span class="dl-l" style="grid-row:1;grid-column:${col}/span 4;font-weight:600;color:var(--text)">${MESES[+mes.slice(5)-1]}</span>`}
+    const cl=v==null?'e':v>=m.f[0]?'g':v>=m.f[1]?'y':'r';const tip=r?`<b>${fmt.dmy(dIso(t))}</b><br>${esc(m.name)}: ${v==null?'sem dado':fmt.n(v,m.d)+m.u}${r.extra?'<br>'+r.extra:''}`:`${fmt.dmy(dIso(t))} · sem rodagem`;
+    h+=`<i class="d ${cl}" style="grid-row:${row};grid-column:${col};--i:${Math.min(t-from,60)}" data-tt="${esc(tip)}"></i>`}
+  const z=wk>9?15:24;/* muitas semanas: pontos menores para o calendário caber no cartão */
+  return`<div class="dotcal${wk>9?' sm':''}" style="grid-template-columns:30px repeat(${wk},${z}px);grid-template-rows:18px repeat(7,${z}px)">${h}</div><div class="leg" style="margin-top:14px"><span><i style="background:var(--ok);border-radius:99px"></i>${m.leg[0]}</span><span><i style="background:var(--warn);border-radius:99px"></i>${m.leg[1]}</span><span><i style="background:var(--bad);border-radius:99px"></i>${m.leg[2]}</span><span><i style="background:var(--soft);border-radius:99px"></i>Sem rodagem ou sem dado</span></div>`;
+}
+/* calendário dos últimos 3 meses (frota ou um veículo). Cor do dia como no painel clássico: nota do dia quando a API
+   manda; senão início da faixa verde; senão faixa verde; sem nenhum dos três, consumo contra a média dos 3 meses. */
+function calBlock(C,id){
+  const to=C.P.to,from=Math.max(dIdx(C.def.start),to-90);
+  const ds=dailySeries(C.cid,ST,from,to,id?x=>x===id:null);const has=k=>ds.some(d=>d.a&&d.a[k]!=null);
+  let m;
+  if(has('scd'))m={k:'scd',name:'Nota do dia',d:0,u:'',f:[70,40],leg:['Bom (70+)','Atenção (40 a 69)','Crítico (abaixo de 40)']};
+  else if(has('ifv'))m={k:'ifv',name:'Início da faixa verde',d:0,u:'%',f:[85,55],leg:['Ideal (85%+)','Aceitável (55% a 84%)','Abaixo de 55%']};
+  else if(has('green'))m={k:'green',name:'Faixa verde',d:0,u:'%',f:[85,55],leg:['85%+','55% a 84%','Abaixo de 55%']};
+  else{const a=aggregate(validRecs(C.cid,ST).filter(r=>r.t>=from&&r.t<=to&&(!id||r.veh===id))).kmpl||0;
+    m={k:'kmpl',name:'Consumo',d:2,u:' km/l',f:[a*1.02,a*.98],leg:['Acima da média ('+fmt.n(a,2)+' km/l)','Na média','Abaixo da média']}}
+  const html=dotCal(from,to,t=>{const d=ds[t-from];return d&&d.a?{val:d.a[m.k],extra:fmt.n(d.a.km,0)+' km · '+fmt.kmpl(d.a.kmpl)+' km/l'}:null},m);
+  return{html,sub:`Últimos 3 meses (${fmt.dm(dIso(from))} a ${fmt.dm(dIso(to))}). Cada dia colorido pel${m.k==='kmpl'||m.k==='ifv'?'o':'a'} ${m.name.toLowerCase()}. Passe o mouse para ver o valor.`};
 }
 
 /* ---------- Barras diárias (hachuradas, destaque no hover) ---------- */
@@ -130,6 +150,26 @@ function dailyBars(vals,labels,o={}){
   const bars=vals.map((x,i)=>x==null?'':`<rect class="dbar" style="--i:${i}" x="${(pl+bw*i+bw*.15).toFixed(1)}" y="${y(x).toFixed(1)}" width="${(bw*.7).toFixed(1)}" height="${(H-pb-y(x)).toFixed(1)}" rx="3" fill="url(#${id})" data-tt="<b>${esc(labels[i])}</b><br>${fmt.n(x,o.d||0)}${o.u||''}"/>`).join('');
   const avg=o.avg!=null&&isFinite(o.avg)?`<line x1="${pl}" x2="${W-pr}" y1="${y(o.avg)}" y2="${y(o.avg)}" stroke="var(--n500)" stroke-dasharray="5 4" stroke-width="1.5"/>`:'';
   return`<svg class="chart dbars${o._quiet?' noanim':''}" data-cr="${chartReg((q)=>dailyBars(vals,labels,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Barras por dia')}">${g}${bars}${avg}</svg>`;
+}
+
+/* ---------- Barras por mês: investimento ao lado da economia ---------- */
+function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
+  if(!rows.length)return`<div class="empty"><b>Sem meses no período</b></div>`;
+  const W=o.w||720,H=o.h||300,pl=62,pr=12,pt=26,pb=o.sub?46:30;
+  const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
+  const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
+  const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
+  const y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);const n=rows.length,gw=(W-pl-pr)/n,bw=Math.min(54,gw*.3);
+  const k=v=>Math.abs(v)>=1000?fmt.n(v/1000,1)+' mil':fmt.n(v,0);
+  let g='';for(let v=lo;v<=hi+1e-9;v+=stp)g+=`<line class="grid-l" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-8}" y="${y(v)+4}" text-anchor="end">${v?'R$ '+k(v):'0'}</text>`;
+  if(lo<0)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--n500)" stroke-width="1.5"/>`;
+  const bar=(x,v,cls,fill,i,tip)=>{if(v==null||!isFinite(v))return'';const y0=y(0),yv=y(v),top=Math.min(y0,yv),h=Math.max(1,Math.abs(y0-yv));
+    return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" data-tt="${esc(tip)}"/><text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`};
+  rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}`;
+    g+=bar(cx-bw-3,r.inv,'inv','var(--n600)',i*2,tip)+bar(cx+3,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',i*2+1,tip);
+    g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    if(o.sub&&r.sub)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(r.sub)}</text>`});
+  return`<svg class="chart${o._quiet?' noanim':''}" data-cr="${chartReg(q=>monthBars(rows,q),o)}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Investimento e economia por mês')}">${g}</svg>`;
 }
 
 /* ---------- Comparativo: barra com marca "antes" e linha da média ---------- */

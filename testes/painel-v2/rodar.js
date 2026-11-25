@@ -22,7 +22,7 @@ if (!chrome) { console.error('Chrome não encontrado: defina CHROME com o caminh
 
 const ROTAS = ['geral', 'retencao', 'retencao?aba=carteira', 'plano', 'estudo', 'frota', 'frota?aba=indicadores', 'frota?aba=qualidade', 'frota?aba=mapa',
   'motoristas', 'motoristas?aba=comportamento', 'motoristas?aba=comparativo', 'motoristas?aba=semanal', 'motoristas?aba=lista', 'motoristas?aba=mensagens',
-  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao'];
+  'motoristas?aba=premiacao', 'dados', 'dados?aba=integracao', 'dados?aba=diagnostico'];
 
 /* roda dentro da página: percorre rotas, abas, segmentos e o painel do condutor; grava o relatório no DOM */
 function varredura(rotas) {
@@ -57,6 +57,14 @@ function varredura(rotas) {
       fila.unshift.apply(fila, novos);
     });
   });
+  // contrato editável no Estudo: grava 200 por unidade × 10 unidades e confere a mensalidade de R$ 2.000,00
+  fila.push(function () { location.hash = '#/estudo'; }, function () {
+    var v = document.getElementById('ct-valor'), q = document.getElementById('ct-qtd'), b = document.querySelector('[data-act=contrato-salvar]');
+    if (v && q && b) { v.value = '200'; q.value = '10'; b.click(); }
+  }, function () {}, function () {
+    var t = (document.getElementById('view') || {}).innerText || '';
+    rel.push({ r: 'estudo · salvar contrato', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/2\.000,00/.test(t) });
+  });
   // gaveta de veículo e troca de cliente
   fila.push(function () { location.hash = '#/geral'; }, function () { location.hash = '#/frota?aba=visao'; }, function () { var t = document.querySelector('#view tr.click'); if (t) t.click(); }, function () {
     var d = document.querySelector('.drawer'); rel.push({ r: 'gaveta do veículo', len: d ? d.innerText.length : 0, erros: erros.splice(0), sus: d && /NaN|undefined/.test(d.innerText) ? 1 : 0, ctx: [], attr: [], falhou: !d });
@@ -76,7 +84,9 @@ function dadosServidor() {
   const hoje = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()) + 'T12:00:00Z');
   const dia = (n) => new Date(hoje.getTime() - n * 864e5).toISOString().slice(0, 10);
   let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  const cli = (id, nome, nVeic, semNota) => {
+  // semPerf: como um cliente real em que a performance não veio: sem motorista, faixa verde e motor ocioso nos registros,
+  // mas com a premiação do mês (a Nota Gobrax tem de aparecer mesmo assim)
+  const cli = (id, nome, nVeic, semNota, semPerf) => {
     const registros = [], motoristas = [], placas = [];
     for (let v = 0; v < nVeic; v++) placas.push('TST' + v + 'A' + (10 + v));
     placas.forEach((p, v) => {
@@ -88,6 +98,8 @@ function dadosServidor() {
           litros: rnd() < 0.05 ? null : +(km / (1.4 + rnd() * 0.5)).toFixed(1), frenagens: rnd() < 0.1 ? null : Math.round(km * 0.2),
           frenagens_alta: Math.round(rnd() * 3), velocidade_media: 40 + rnd() * 10, odometro: 100000 + n, horas: 8,
           nota: null /* como no servidor real: a performance diária não traz nota */, faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10 };
+        r.inicio_faixa_verde = v === 2 ? null : 40 + rnd() * 55;
+        if (semPerf) { r.motorista = ''; r.faixa_verde = null; r.motor_ocioso = null; r.inicio_faixa_verde = null; }
         registros.push(r);
         if (r.motorista) motoristas.push(r);
       }
@@ -98,16 +110,21 @@ function dadosServidor() {
       premiacoes: semNota ? [] : [0, 31, 62, 93].flatMap((n) => placas.filter((p, i) => i !== 1).map((p) => ({ mes: dia(n).slice(0, 7), motorista: 'Motorista ' + p,
         nota: 35 + Math.round(rnd() * 60), km: 5000, premio: rnd() < 0.5 ? 150 : null }))) };
   };
-  return [cli(1, 'Cliente Teste', 8, false), cli(2, 'Cliente Sem Nota', 4, true), { id: 3, nome: 'Cliente Novo', registros: [], motoristas: [], odometros: [], premiacoes: [] }];
+  return [cli(1, 'Cliente Teste', 8, false), cli(4, 'Cliente Sem Performance', 5, false, true), cli(2, 'Cliente Sem Nota', 4, true), { id: 3, nome: 'Cliente Novo', registros: [], motoristas: [], odometros: [], premiacoes: [] }];
 }
 function servidor(html) {
   const dados = dadosServidor();
+  // premissas gravadas pelo painel clássico (mesmo formato): o Cliente Teste já tem diesel próprio
+  const premissas = new Map([['pr-cliente-teste', { cliente: 'Cliente Teste', preco: 6.5, valorEquip: null, qtd: null, historico: [] }]]);
   const ok = (res, d) => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, dados: d })); };
   return http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
     if (u.pathname === '/painel') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html); }
     if (u.pathname === '/api/v1/auth/eu') return ok(res, { id: 1, nome: 'Pessoa Teste', papel: 'admin' });
     if (u.pathname === '/api/v1/painel/dados') return ok(res, dados);
+    if (u.pathname === '/api/v1/base/premissas') return ok(res, [...premissas.entries()].map(([id, d]) => ({ id, dados: d })));
+    const mp = u.pathname.match(/^\/api\/v1\/base\/premissas\/(.+)$/);
+    if (mp && req.method === 'PUT') { let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => { premissas.set(decodeURIComponent(mp[1]), JSON.parse(b)); ok(res, null); }); return; }
     let m = u.pathname.match(/^\/api\/v1\/clientes\/(\d+)\/(ao-vivo|mensagens\/enviadas|condutores)$/);
     if (m) {
       const c = dados.find((x) => String(x.id) === m[1]);
@@ -136,7 +153,8 @@ function relatorio(cenario, dom) {
   const m = dom.match(/<pre id="relatorio">([\s\S]*?)<\/pre>/);
   if (!m) { console.log(`XX  ${cenario}: a varredura não terminou`); return 1; }
   const rel = JSON.parse(decod(m[1]));
-  const semNota = (x) => x.r === 'geral' && x.nota !== null && !/\d/.test(x.nota);
+  // Visão geral do primeiro cliente e do segundo (sem performance): a Nota Gobrax da frota tem de ter número
+  const semNota = (x) => (x.r === 'geral' || x.r === 'outro cliente · geral') && x.nota !== null && !/\d/.test(x.nota);
   const ruins = rel.filter((x) => x.erros.length || x.sus || x.attr.length || x.falhou || x.len < 20 || semNota(x));
   console.log(`${ruins.length ? 'XX' : 'ok'}  ${cenario}: ${rel.length} telas, abas e botões`);
   ruins.forEach((x) => console.log('      ' + x.r + ' ' + JSON.stringify({ erros: x.erros, texto: x.ctx, atributos: x.attr, falhou: x.falhou, tamanho: x.len, nota: x.nota })));
@@ -151,10 +169,10 @@ async function fotos(dir) {
   fs.mkdirSync(dir, { recursive: true });
   const srv = servidor(fs.readFileSync(HTML, 'utf8'));
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  for (const r of ['geral', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
+  for (const r of ['geral', 'dados?aba=diagnostico', 'frota?aba=mapa', 'motoristas', 'motoristas?aba=lista', 'motoristas?aba=mensagens', 'motoristas?aba=premiacao', 'estudo', 'plano']) {
     const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-'));
     const arq = path.join(dir, r.replace(/\W+/g, '-') + '.png');
-    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,1900',
+    await new Promise((ok) => execFile(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars', '--user-data-dir=' + perfil, '--window-size=1440,2600',
       '--virtual-time-budget=15000', '--screenshot=' + arq, 'http://127.0.0.1:' + srv.address().port + '/painel#/' + r], { timeout: 120000 }, () => ok()));
     try { fs.rmSync(perfil, { recursive: true, force: true }); } catch (x) {}
     console.log(arq);

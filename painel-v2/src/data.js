@@ -80,9 +80,11 @@ function genClient(def){
 }
 
 /* ---------- Servidor (plataforma com login) ---------- */
-const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{}};
-async function srv(caminho,metodo='GET'){
-  const r=await fetch(caminho,{method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}});
+const REAL={on:false,eu:null,raw:null,live:{},liveAt:{},msgs:{},phones:{},busy:{},prem:[]};
+async function srv(caminho,metodo='GET',corpo){
+  const op={method:metodo,credentials:'same-origin',headers:{'X-Requisicao':'plataforma'}};
+  if(corpo!==undefined){op.headers['Content-Type']='application/json';op.body=JSON.stringify(corpo)}
+  const r=await fetch(caminho,op);
   if(r.status===401){location.replace('/');throw new Error('sessão encerrada')}
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||!j.ok)throw new Error((j&&j.erro)||('O servidor respondeu '+r.status));
@@ -110,8 +112,9 @@ function fleetFromServer(c){
     const km=nv(r.km)||0,l=nv(r.litros)||0;
     if(km>0)seen(p,t);
     if(!r.rodou||km<=0||l<=0)continue;
-    let nota=nv(r.nota);if(nota==null||nota<0||nota>100)nota=r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),id:nv(r.motor_ocioso),sc:nota});
+    let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
+    const nota=scd!=null?scd:r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -119,7 +122,8 @@ function fleetFromServer(c){
   const drvPlate={},cnt={};
   for(const r of c.motoristas||[]){if(!r.motorista||!r.placa)continue;const k=r.motorista;(cnt[k]=cnt[k]||{})[r.placa]=(cnt[k][r.placa]||0)+1}
   for(const k in cnt)drvPlate[nkey(k)]=Object.entries(cnt[k]).sort((a,b)=>b[1]-a[1])[0][0];
-  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:'Sem motorista vinculado';v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
+  /* sem motorista vinculado na API: a placa ocupa o lugar do nome (como no painel clássico) */
+  vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
   return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
@@ -153,8 +157,35 @@ const Gobrax={api:{
   /* mensagens enviadas a cada motorista e a nota em cada envio (servidor) */
   async getSent(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/mensagens/enviadas')},
   /* telefones dos condutores (servidor; só CS e administrador) */
-  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')}
+  async getPhones(clientId){const def=CLIENT_DEFS.find(c=>c.id===clientId);if(!REAL.on||!def)return null;return srv('/api/v1/clientes/'+def.srvId+'/condutores')},
+  /* premissas de cada cliente (valor por unidade, unidades, diesel): a mesma coleção do painel clássico */
+  async getPremissas(){if(!REAL.on)return[];const l=await srv('/api/v1/base/premissas');return(l||[]).map(d=>({id:d.id,...(d.dados||{})}))},
+  async savePremissas(id,dados){return srv('/api/v1/base/premissas/'+encodeURIComponent(id),'PUT',dados)}
 }};
+
+/* ---------- Premissas do cliente (contrato e diesel) ---------- */
+/* mesmas regras do painel clássico: documento "pr-<nome>" na coleção premissas; nome comparado sem acento/pontuação/LTDA */
+const ckeyCli=v=>nkey(v).replace(/[.,/\-]/g,' ').replace(/\b(ltda|eireli|epp|me|s a|sa)\b/g,' ').replace(/\s+/g,' ').trim();
+const idDocCli=t=>String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').slice(0,140);
+function premissasDe(def){
+  if(!def)return{};
+  if(!REAL.on){const c=ST.contracts[def.id]||{};return{valorEquip:c.unit,qtd:c.units}}
+  return REAL.prem.find(d=>ckeyCli(d.cliente)===ckeyCli(def.name))||{};
+}
+/* contrato que vale nas contas: o digitado; sem ele, R$ 159,90 por veículo com dado */
+function contratoDe(def){const pm=premissasDe(def);const unit=pm.valorEquip>0?+pm.valorEquip:DEFAULT_RULES.defUnit,units=pm.qtd>0?+pm.qtd:(def.vehicles||def.units||1);return{unit,units,unitAuto:!(pm.valorEquip>0),unitsAuto:!(pm.qtd>0)}}
+const dieselDe=def=>{const pm=premissasDe(def);return pm.preco>0?+pm.preco:ST.rules.diesel};
+async function salvarContrato(def,unit,units){
+  if(!REAL.on){ST.contracts[def.id]={unit:unit||undefined,units:units||undefined};persist();return}
+  const at=premissasDe(def);const mud=[];const R=v=>v?fmt.brl(v,2):'—';
+  if((at.valorEquip||null)!==(unit||null))mud.push('valor por equipamento '+R(at.valorEquip)+' → '+R(unit));
+  if((at.qtd||null)!==(units||null))mud.push('equipamentos '+(at.qtd||'—')+' → '+(units||'—'));
+  if(!mud.length)return false;
+  const nova={...at,cliente:at.cliente||def.name,valorEquip:unit||null,qtd:units||null};delete nova.id;
+  nova.historico=[{em:new Date().toISOString(),por:(REAL.eu&&REAL.eu.nome)||'',mudou:mud.join('; ')+' (pelo painel novo)'}].concat(at.historico||[]).slice(0,100);
+  const id=at.id||'pr-'+idDocCli(def.name);await Gobrax.api.savePremissas(id,nova);
+  const i=REAL.prem.findIndex(d=>d.id===id);const doc={id,...nova};if(i>=0)REAL.prem[i]=doc;else REAL.prem.push(doc);return true;
+}
 
 /* ---------- Banco em memória ---------- */
 const DB={fleets:{},cache:new Map(),ver:0,
@@ -174,15 +205,27 @@ function validRecs(cid,store){
 function suspRecs(cid,store){return DB.fleets[cid].recs.filter(r=>{if(!isSusp(r,store.rules))return false;const fl=store.flags[flagId(cid,r)];if(fl==='confirmed'||fl==='ignored')return false;if(fl&&fl.l&&!isSusp({...r,l:fl.l},store.rules))return false;return true})}
 /* médias ponderadas pelos km; campo sem dado (null) fica fora da média daquele indicador */
 function aggregate(rs){
-  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],id:[0,0],sc:[0,0],br:[0,0],brh:[0,0]};
+  const o={km:0,l:0,br:0,brh:0,n:rs.length};const w={sp:[0,0],gr:[0,0],ifv:[0,0],id:[0,0],sc:[0,0],scd:[0,0],br:[0,0],brh:[0,0]};
   for(const r of rs){o.km+=r.km;o.l+=r.l;
     for(const f in w){const v=r[f];if(v!=null&&isFinite(v)){w[f][0]+=(f==='br'||f==='brh')?v:v*r.km;w[f][1]+=r.km}}}
   const k=o.km;const wv=f=>w[f][1]?w[f][0]/w[f][1]:null;
   o.br=w.br[0];o.brh=w.brh[0];
   o.kmpl=o.l?o.km/o.l:null;o.kmDay=o.n?o.km/o.n:null;o.br100=w.br[1]?w.br[0]/w.br[1]*100:null;o.brh100=w.brh[1]?w.brh[0]/w.brh[1]*100:null;
-  o.speed=wv('sp');o.green=wv('gr');o.idle=wv('id');o.score=wv('sc');
+  o.speed=wv('sp');o.green=wv('gr');o.ifv=wv('ifv');o.idle=wv('id');o.score=wv('sc');o.scd=wv('scd');
   o.lph100=k?o.l/k*100:null;
   return o;
+}
+function premFleet(prem,from,to){
+  if(!REAL.on||!prem||!prem.length)return null;const ini=dIso(from).slice(0,7),fim=dIso(to).slice(0,7);
+  /* média simples das notas dos motoristas, como a "Performance média" da tela de Premiação da plataforma Gobrax
+     (cada motorista conta uma vez por mês, rodando muito ou pouco) */
+  const calc=(a,b)=>{let s=0,n=0;const meses=new Set(),mots=new Set();
+    for(const p of prem){if(!p.mes||p.mes<a||p.mes>b)continue;const nota=nv(p.nota);if(nota==null||nota<0||nota>100)continue;s+=nota;n++;meses.add(p.mes);mots.add(nkey(p.motorista))}
+    return n?{nota:s/n,motoristas:mots.size,meses:[...meses].sort()}:null};
+  const r=calc(ini,fim);if(r)return r;
+  /* mês ainda sem premiação (o atual costuma sair depois): vale o último mês com premiação, até 2 meses antes */
+  const ant=prem.map(p=>p.mes).filter(m=>m&&m<ini&&m>=prevMonth(prevMonth(ini))).sort().pop();
+  const x=ant?calc(ant,ant):null;return x?{...x,stale:true}:null;
 }
 function metrics(cid,store,from,to,vehFilter){
   const key=['m',cid,from,to,vehFilter||'',DB.ver].join('|');if(DB.cache.has(key))return DB.cache.get(key);
@@ -194,6 +237,9 @@ function metrics(cid,store,from,to,vehFilter){
   m.active=Object.keys(by).length;
   const days=new Set(rs.map(r=>r.t));m.dataDays=days.size;
   const f=DB.fleets[cid];m.total=f.vehicles.length;
+  /* Nota Gobrax da frota = a mesma conta da tela Premiação: média das notas dos motoristas no(s) mês(es) do período,
+     ponderada pelos km (quem não rodou fica fora). Vale mesmo quando a API não diz quem dirigia cada veículo. */
+  const pf=premFleet(f.prem,from,to);m.prem=pf;if(pf)m.score=pf.nota;
   let last=f.lastComm;if(!last){last={};for(const r of f.recs)last[r.veh]=r.t}
   m.noSignal=Object.keys(last).filter(v=>last[v]<T0-3).map(v=>({id:v,days:T0-last[v]})).sort((a,b)=>b.days-a.days);
   DB.cache.set(key,m);return m;
@@ -270,9 +316,14 @@ function vehStatus(cur,prev,id){
 
 /* ---------- Estudo do projeto ---------- */
 function study(cid,store,price){
-  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=store.contracts[cid]||{unit:def.unit,units:def.units};
+  const def=CLIENT_DEFS.find(c=>c.id===cid);const ct=contratoDe(def);
   const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
-  const first=metrics(cid,store,ps,half);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
+  /* linha de base igual à do painel clássico: com 8 semanas ou mais, início = primeiras 4 semanas e agora = últimas 4;
+     com menos, a primeira e a segunda metade do período */
+  const nWk=weeklySeries(cid,store,ps,T0).length,curto=nWk<8;
+  const pIni=curto?[ps,half]:[ps,ps+27],pAgora=curto?[half+1,T0]:[T0-27,T0];
+  const rotIni=curto?'primeira metade do período':'primeiras 4 semanas',rotAgora=curto?'segunda metade':'últimas 4 semanas';
+  const first=metrics(cid,store,pIni[0],pIni[1]);const base=first.kmpl||metrics(cid,store,ps,T0).kmpl||1;
   const mens=ct.unit*ct.units;const months=[];
   let cum=0,cumI=0;const weeks=[];
   const recs=validRecs(cid,store).filter(r=>r.t>=ps);
@@ -280,13 +331,14 @@ function study(cid,store,price){
   for(const r of recs){const ym=r.date.slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.km+=r.km;m.l+=r.l;if(r.sc!=null){m.sc+=r.sc*r.km;m.sk+=r.km}m.days.add(r.t)}
   for(let t=ps;t<=T0;t++){const ym=dIso(t).slice(0,7);const m=monthsMap[ym]=monthsMap[ym]||{ym,km:0,l:0,sc:0,sk:0,days:new Set()};m.cal=(m.cal||0)+1}
   for(const ym of Object.keys(monthsMap).sort()){const m=monthsMap[ym];const econ=(m.km/base-m.l)*price;const inv=mens*m.cal/30;
-    const [y,mo]=ym.split('-');months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,dIdx(ym+'-01')))),econ,inv,kmpl:m.l?m.km/m.l:null,score:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
+    const [y,mo]=ym.split('-');const mi=dIdx(ym+'-01'),pfm=REAL.on?premFleet(DB.fleets[cid].prem,mi,mi):null;
+    months.push({ym,label:MESES[+mo-1]+' '+y,from:fmt.dm(dIso(Math.max(ps,mi))),econ,inv,kmpl:m.l?m.km/m.l:null,score:pfm&&!pfm.stale?pfm.nota:m.sk?m.sc/m.sk:null,km:m.km,cal:m.cal})}
   const wk=weeklySeries(cid,store,ps,T0);
   for(const w of wk){const a=w.a;const e=a.km?(a.km/base-a.l)*price:0;cum+=e;cumI+=mens*(w.to-w.from+1)/30;weeks.push({n:w.n,label:fmt.dm(dIso(w.to)),cum,cumI})}
   const econ=months.reduce((a,m)=>a+m.econ,0),inv=months.reduce((a,m)=>a+m.inv,0);
-  const second=metrics(cid,store,half+1,T0);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
+  const second=metrics(cid,store,pAgora[0],pAgora[1]);const pace=second.km?((second.km/base-second.l)*price)/(second.len)*30:0;
   const all=metrics(cid,store,ps,T0);
-  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,evolved:null};
+  return{ct,mens,base,first,second,months,weeks,econ,inv,miss:Math.max(0,inv-econ),roi:inv?econ/inv:null,pays:econ>=inv,pace,ps,half,len,all,pIni,pAgora,rotIni,rotAgora,evolved:null};
 }
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 

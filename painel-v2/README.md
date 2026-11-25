@@ -51,6 +51,7 @@ O `dist/` vai para o Git: o Dockerfile copia esse arquivo para dentro do servido
 ## Regras de cálculo que valem para todas as telas
 
 - Cada linha de Motoristas é um veículo, com o motorista que mais o dirigiu no período.
+- Nota Gobrax: a performance diária da API não traz nota (o servidor grava vazio). O painel usa a nota do mês de cada motorista na premiação Gobrax (v2/driversOverview) em cada dia em que ele dirigiu o veículo. Por isso a nota muda de mês em mês, não de dia em dia.
 - Dia sem litros ou sem km fica fora do consumo. Indicador que a API não trouxe (nota, faixa verde, motor ocioso) fica fora da média daquele indicador; não vira zero.
 - Registro com consumo fora de 1 a 7 km/l ou mais de 1.200 km no dia fica fora das médias (aba Frota › Qualidade do dado).
 - Nota e premiação: quando a API traz a premiação oficial do mês (v2/driversOverview), a tela mostra ela; nos outros meses, uma estimativa pela regra da tela Regras e integração.

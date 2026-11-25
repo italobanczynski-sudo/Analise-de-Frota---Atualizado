@@ -40,7 +40,10 @@ function varredura(rotas) {
       }
     });
     var falhou = /Algo deu errado/.test(t);
-    rel.push({ r: rotulo, len: t.length, erros: erros.splice(0), sus: ctx.length, ctx: ctx, attr: attr, falhou: falhou });
+    // campos sem valor ("—") e a Nota Gobrax da Visão geral, que precisa aparecer quando a API traz a premiação
+    var vazios = (t.match(/—/g) || []).length;
+    var nota = document.querySelector('#view .card.yel .gnota .gv');
+    rel.push({ r: rotulo, len: t.length, erros: erros.splice(0), sus: ctx.length, ctx: ctx, attr: attr, falhou: falhou, vazios: vazios, nota: nota ? nota.innerText.trim() : null });
   }
   var SEL = '#view [role=tab],#view .seg button', fila = [];
   rotas.forEach(function (r) {
@@ -84,14 +87,16 @@ function dadosServidor() {
         const r = { cliente_id: id, dia: dia(n) + 'T00:00:00Z', placa: p, motorista: v === 1 ? '' : 'Motorista ' + p, rodou, km: rodou ? km : 0,
           litros: rnd() < 0.05 ? null : +(km / (1.4 + rnd() * 0.5)).toFixed(1), frenagens: rnd() < 0.1 ? null : Math.round(km * 0.2),
           frenagens_alta: Math.round(rnd() * 3), velocidade_media: 40 + rnd() * 10, odometro: 100000 + n, horas: 8,
-          nota: semNota || rnd() < 0.1 ? null : Math.round(40 + rnd() * 50), faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10 };
+          nota: null /* como no servidor real: a performance diária não traz nota */, faixa_verde: v === 2 ? null : 50 + rnd() * 30, motor_ocioso: 5 + rnd() * 10 };
         registros.push(r);
         if (r.motorista) motoristas.push(r);
       }
     });
     return { id, nome, registros, motoristas,
       odometros: placas.map((p) => ({ placa: p, odometro: 123456, coletado: dia(0) + ' 08:00:00', buscado_em: hoje.toISOString() })),
-      premiacoes: semNota ? [] : placas.filter((p, i) => i !== 1).map((p) => ({ mes: dia(0).slice(0, 7), motorista: 'Motorista ' + p, nota: 70 + Math.round(rnd() * 20), km: 5000, premio: 150 })) };
+      // a Nota Gobrax real chega só aqui: por motorista e mês (v2/driversOverview)
+      premiacoes: semNota ? [] : [0, 31, 62, 93].flatMap((n) => placas.filter((p, i) => i !== 1).map((p) => ({ mes: dia(n).slice(0, 7), motorista: 'Motorista ' + p,
+        nota: 35 + Math.round(rnd() * 60), km: 5000, premio: rnd() < 0.5 ? 150 : null }))) };
   };
   return [cli(1, 'Cliente Teste', 8, false), cli(2, 'Cliente Sem Nota', 4, true), { id: 3, nome: 'Cliente Novo', registros: [], motoristas: [], odometros: [], premiacoes: [] }];
 }
@@ -131,9 +136,13 @@ function relatorio(cenario, dom) {
   const m = dom.match(/<pre id="relatorio">([\s\S]*?)<\/pre>/);
   if (!m) { console.log(`XX  ${cenario}: a varredura não terminou`); return 1; }
   const rel = JSON.parse(decod(m[1]));
-  const ruins = rel.filter((x) => x.erros.length || x.sus || x.attr.length || x.falhou || x.len < 20);
+  const semNota = (x) => x.r === 'geral' && x.nota !== null && !/\d/.test(x.nota);
+  const ruins = rel.filter((x) => x.erros.length || x.sus || x.attr.length || x.falhou || x.len < 20 || semNota(x));
   console.log(`${ruins.length ? 'XX' : 'ok'}  ${cenario}: ${rel.length} telas, abas e botões`);
-  ruins.forEach((x) => console.log('      ' + x.r + ' ' + JSON.stringify({ erros: x.erros, texto: x.ctx, atributos: x.attr, falhou: x.falhou, tamanho: x.len })));
+  ruins.forEach((x) => console.log('      ' + x.r + ' ' + JSON.stringify({ erros: x.erros, texto: x.ctx, atributos: x.attr, falhou: x.falhou, tamanho: x.len, nota: x.nota })));
+  // onde há mais campos sem valor: para revisar se é falta de dado da API ou falha do painel
+  const vaz = rel.filter((x) => !x.r.includes('::') && x.vazios > 0).sort((a, b) => b.vazios - a.vazios).slice(0, 6);
+  if (vaz.length) console.log('      campos "—" por tela: ' + vaz.map((x) => x.r + '=' + x.vazios).join(', '));
   return ruins.length;
 }
 

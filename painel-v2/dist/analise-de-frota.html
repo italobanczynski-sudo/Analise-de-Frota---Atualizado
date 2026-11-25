@@ -2609,40 +2609,56 @@ function msgHist(C){
   out.sort((a,b)=>b.msgs.length-a.msgs.length||a.name.localeCompare(b.name));
   DB.cache.set(key,out);return out;
 }
+/* série da frota toda para a tela de Mensagens */
+function frotaHist(C,hist){
+  const mon={};
+  if(REAL.on){const ms=[...new Set((C.fleet.prem||[]).map(p=>p.mes).filter(Boolean))];ms.forEach(m=>{const t=dIdx(m+'-01');const pf=premFleet(C.fleet.prem,t,t);if(pf&&!pf.stale)mon[m]=pf.nota})}
+  else{const st=dIdx(C.def.start);for(let t=st;t<=T0;){const m=dIso(t).slice(0,7);const fim=Math.min(T0,Math.round(Date.UTC(+m.slice(0,4),+m.slice(5),1)/DAY)-1);const a=metrics(C.cid,ST,t,fim);if(a.score!=null)mon[m]=a.score;t=fim+1}}
+  const by={};let total=0,ok=0,tot=0;
+  hist.forEach(x=>x.msgs.forEach(m=>{const d=by[m.t]=by[m.t]||{t:m.t,n:0,ok:0,tot:0};d.n++;total++;if(m.imp!=null){d.tot++;tot++;if(m.imp){d.ok++;ok++}}}));
+  const msgs=Object.values(by).sort((a,b)=>a.t-b.t).map(d=>({...d,score:mon[dIso(d.t).slice(0,7)]??null}));
+  return{id:'__frota',name:'Frota toda',msgs,first:msgs[0],last:msgs[msgs.length-1],mon,total,ok,tot};
+}
 function msgEvolution(C,hist){
-  const u=S.u;const gran=u.msgGran||'dia';
-  if(!hist.some(h=>h.id===u.msgDrv))u.msgDrv=hist[0].id;
-  const h=hist.find(x=>x.id===u.msgDrv);
-  const imps=h.msgs.filter(m=>m.imp!=null);const okn=imps.filter(m=>m.imp).length;
+  const u=S.u;
+  /* a nota da frota muda de mês em mês (premiação): para a frota, abre em "Por mês" */
+  const gran=u.msgGran||(u.msgDrv&&u.msgDrv!=='__frota'?'dia':'mes');
+  /* "Frota toda": a nota geral da frota (Performance média da tela de Premiação: média simples dos motoristas no mês)
+     em cada dia em que alguém recebeu mensagem, e mês a mês */
+  const F=frotaHist(C,hist);
+  if(u.msgDrv!=='__frota'&&!hist.some(h=>h.id===u.msgDrv))u.msgDrv='__frota';
+  const fr=u.msgDrv==='__frota';const h=fr?F:hist.find(x=>x.id===u.msgDrv);
+  const imps=fr?[]:h.msgs.filter(m=>m.imp!=null);const okn=fr?F.ok:imps.filter(m=>m.imp).length,totImp=fr?F.tot:imps.length;
+  const rng=vs=>{const v=vs.filter(x=>x!=null&&isFinite(x));if(!v.length)return{};return{ymin:Math.max(0,Math.floor(Math.min(...v)/5)*5-5),ymax:Math.min(100,Math.ceil(Math.max(...v)/5)*5+5)}};
   const d=h.last.score!=null&&h.first.score!=null?h.last.score-h.first.score:null;
   const kpi=(c,t,v,s)=>`<div class="card kpi lift rise" style="border-top:3px solid ${c}"><div><div class="xs muted">${t}</div><div class="v">${v}</div><div class="xs muted" style="margin-top:4px">${s}</div></div></div>`;
   const kp=`<div class="grid g4">
-    ${kpi('var(--info)','Mensagens recebidas',count(h.msgs.length,0),`de ${fmt.dmy(dIso(h.first.t))} a ${fmt.dmy(dIso(h.last.t))}`)}
-    ${kpi('var(--n400)','Nota no 1º envio',fmt.n(h.first.score,1),'nota do mês naquele dia')}
-    ${kpi('var(--amarelo)','Nota no último envio',fmt.n(h.last.score,1),`${dl(d,true,0,' pts')} vs 1º envio`)}
-    ${kpi('var(--ok)','Melhorou no ponto apontado',imps.length?`${okn} <small>de ${imps.length}</small>`:'—','nos 7 dias depois de cada aviso')}</div>`;
+    ${kpi('var(--info)',fr?'Mensagens enviadas':'Mensagens recebidas',count(fr?F.total:h.msgs.length,0),fr?`para ${hist.length} motoristas, de ${fmt.dmy(dIso(h.first.t))} a ${fmt.dmy(dIso(h.last.t))}`:`de ${fmt.dmy(dIso(h.first.t))} a ${fmt.dmy(dIso(h.last.t))}`)}
+    ${kpi('var(--n400)',fr?'Nota da frota no 1º envio':'Nota no 1º envio',fmt.n(h.first.score,1),fr?'Performance média do mês do 1º envio':'nota do mês naquele dia')}
+    ${kpi('var(--amarelo)',fr?'Nota da frota no último envio':'Nota no último envio',fmt.n(h.last.score,1),`${dl(d,true,0,' pts')} vs 1º envio`)}
+    ${kpi('var(--ok)','Melhorou no ponto apontado',totImp?`${okn} <small>de ${totImp}</small>`:'—',fr?'avisos em que o ponto apontado melhorou nos 7 dias seguintes':'nos 7 dias depois de cada aviso')}</div>`;
   let chart,head,sub;
   if(gran==='dia'){
     const ls=h.msgs.map(m=>fmt.dm(dIso(m.t)));
-    chart=lineChart({labels:ls,series:[{vals:h.msgs.map(m=>m.score),color:'var(--laranja)',area:true,dots:true}],w:520,h:290,pl:34,pr:26,vline:0,sub:h.msgs.map((m,i)=>i===0?'1º envio':''),vlabels:v=>fmt.n(v,1),yfmt:v=>fmt.n(v,0),
-      tip:i=>{const m=h.msgs[i];return`<b>${fmt.dmy(dIso(m.t))}</b><br>Nota do mês neste dia: ${fmt.n(m.score,1)}<br>Ponto apontado: ${esc(m.point||'—')}<br>7 dias depois: ${m.imp==null?'sem dados':m.imp?'melhorou':'não melhorou'}`},aria:'Evolução da nota por dia'});
-    sub='Nota do condutor em cada dia em que ele recebeu a análise (a nota do mês da Gobrax naquele dia). Os dias sem mensagem não aparecem. Passe o mouse num ponto para ver o dia e o ponto apontado.';
+    chart=lineChart({labels:ls,series:[{vals:h.msgs.map(m=>m.score),color:'var(--laranja)',area:true,dots:true}],...rng(h.msgs.map(m=>m.score)),w:520,h:290,pl:34,pr:26,vline:0,sub:h.msgs.map((m,i)=>i===0?'1º envio':''),vlabels:v=>fmt.n(v,1),yfmt:v=>fmt.n(v,0),
+      tip:i=>{const m=h.msgs[i];if(fr)return`<b>${fmt.dmy(dIso(m.t))}</b><br>Nota da frota no mês: ${fmt.n(m.score,1)}<br>${m.n} mensagem(ns) enviada(s)${m.tot?'<br>Melhoraram no ponto apontado: '+m.ok+' de '+m.tot:''}`;return`<b>${fmt.dmy(dIso(m.t))}</b><br>Nota do mês neste dia: ${fmt.n(m.score,1)}<br>Ponto apontado: ${esc(m.point||'—')}<br>7 dias depois: ${m.imp==null?'sem dados':m.imp?'melhorou':'não melhorou'}`},aria:'Evolução da nota por dia'});
+    sub=fr?'Nota geral da frota (Performance média da tela de Premiação: média simples das notas dos motoristas no mês) em cada dia em que alguém recebeu mensagem. Passe o mouse para ver quantas mensagens saíram e quantos melhoraram.':'Nota do condutor em cada dia em que ele recebeu a análise (a nota do mês da Gobrax naquele dia). Os dias sem mensagem não aparecem. Passe o mouse num ponto para ver o dia e o ponto apontado.';
     head=`${fmt.dm(dIso(h.first.t))} ${fmt.n(h.first.score,1)} → <b class="big">${fmt.n(h.last.score,1)}</b> ${dl(d,true,1,' pts')} <span class="muted">em ${fmt.dmy(dIso(h.last.t))}</span>`;
   }else{
     const ms=Object.keys(h.mon).sort();const fm=dIso(h.first.t).slice(0,7);const cur=TODAY.slice(0,7);
     const lab=ms.map(m=>MESES[+m.slice(5)-1].replace(/^./,c=>c.toUpperCase())+'/'+m.slice(2,4));
-    chart=lineChart({labels:lab,series:[{vals:ms.map(m=>h.mon[m]),color:'var(--laranja)',area:true,dots:true}],w:520,h:290,pl:34,pr:26,vline:ms.indexOf(fm),sub:ms.map(m=>m===fm?'1º envio':m===cur?'(parcial)':''),vlabels:v=>fmt.n(v,1),yfmt:v=>fmt.n(v,0),
+    chart=lineChart({labels:lab,series:[{vals:ms.map(m=>h.mon[m]),color:'var(--laranja)',area:true,dots:true}],...rng(ms.map(m=>h.mon[m])),w:520,h:290,pl:34,pr:26,vline:ms.indexOf(fm),sub:ms.map(m=>m===fm?'1º envio':m===cur?'(parcial)':''),vlabels:v=>fmt.n(v,1),yfmt:v=>fmt.n(v,0),
       tip:i=>`<b>${lab[i]}</b><br>Nota do mês: ${fmt.n(h.mon[ms[i]],1)}${ms[i]===fm?'<br>1º envio neste mês':''}${ms[i]===cur?'<br>mês em andamento':''}`,aria:'Evolução da nota por mês'});
     const bi=Math.max(0,ms.indexOf(fm)-1);const bv=h.mon[ms[bi]],nv2=h.mon[cur]??h.last.score,dd=bv!=null&&nv2!=null?nv2-bv:null;
-    sub='Nota do mês. Antes = mês anterior ao 1º envio (quando existe); agora = mês atual. A linha tracejada marca o mês da 1ª mensagem.';
+    sub=fr?'Performance média da frota em cada mês (média simples das notas dos motoristas na premiação). A linha tracejada marca o mês da 1ª mensagem.':'Nota do mês. Antes = mês anterior ao 1º envio (quando existe); agora = mês atual. A linha tracejada marca o mês da 1ª mensagem.';
     head=ms.length?`${lab[bi]} ${fmt.n(bv,1)} → <b class="big">${fmt.n(nv2,1)}</b> ${dl(dd,true,1,' pts')} <span class="muted">neste mês (parcial)</span>`:'';
   }
-  const opts=hist.map(x=>`<option value="${esc(x.id)}" ${x.id===h.id?'selected':''}>${esc(x.name)}</option>`).join('');
+  const opts=`<option value="__frota" ${fr?'selected':''}>Frota toda (${hist.length} motoristas)</option>`+hist.map(x=>`<option value="${esc(x.id)}" ${!fr&&x.id===h.id?'selected':''}>${esc(x.name)}</option>`).join('');
   const rows=hist.map(x=>{const dd=x.last.score!=null&&x.first.score!=null?x.last.score-x.first.score:null;const hue=hs(x.id)%360;
-    return`<tr class="click msgrow ${x.id===h.id?'sel':''}" data-act="msg-drv" data-id="${esc(x.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px"><span class="ava" style="flex-basis:26px;width:26px;height:26px;font-size:10px;background:hsl(${hue} 70% 88%);color:#2b2b2b">${esc(initials(x.name))}</span><b class="nw">${esc(x.name)}</b></div></td><td class="r num">${x.msgs.length}</td><td class="r num">${fmt.n(x.first.score,1)}</td><td class="r num b">${fmt.n(x.last.score,1)}</td><td class="r">${dl(dd,true,1,' pts')}</td></tr>`}).join('');
+    return`<tr class="click msgrow ${!fr&&x.id===h.id?'sel':''}" data-act="msg-drv" data-id="${esc(x.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px"><span class="ava" style="flex-basis:26px;width:26px;height:26px;font-size:10px;background:hsl(${hue} 70% 88%);color:#2b2b2b">${esc(initials(x.name))}</span><b class="nw">${esc(x.name)}</b></div></td><td class="r num">${x.msgs.length}</td><td class="r num">${fmt.n(x.first.score,1)}</td><td class="r num b">${fmt.n(x.last.score,1)}</td><td class="r">${dl(dd,true,1,' pts')}</td></tr>`}).join('');
   return kp+`<div class="grid sec" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))">
-    <div class="card rise">${cardH('Evolução da nota de '+esc(h.name),'',`<select class="inp" data-chg="msg-drv" style="width:auto;max-width:260px" aria-label="Condutor">${opts}</select>${segHtml([['dia','Por dia'],['mes','Por mês']],gran,'msg-gran')}`)}<div class="xs muted" style="margin:-4px 0 10px">${sub}</div><div class="msghead">${head}</div>${chart}</div>
-    <div class="card rise">${cardH('Condutores com mensagem','Nota do mês no 1º e no último envio. Clique em um condutor para ver a evolução dele.')}<div class="msgscroll"><table class="tbl msgtbl"><thead><tr><th>Condutor</th><th class="r">Mensagens</th><th class="r">Nota no 1º envio</th><th class="r">Nota no último</th><th class="r">Evolução</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+    <div class="card rise">${cardH(fr?'Evolução da nota da frota':'Evolução da nota de '+esc(h.name),'',`<select class="inp" data-chg="msg-drv" style="width:auto;max-width:260px" aria-label="Condutor">${opts}</select>${segHtml([['dia','Por dia'],['mes','Por mês']],gran,'msg-gran')}`)}<div class="xs muted" style="margin:-4px 0 10px">${sub}</div><div class="msghead">${head}</div>${chart}</div>
+    <div class="card rise">${cardH('Condutores com mensagem','Nota do mês no 1º e no último envio. Clique em um condutor para ver a evolução dele.',fr?'':'<button class="btn ghost sm" data-act="msg-drv" data-id="__frota">Ver a frota toda</button>')}<div class="msgscroll"><table class="tbl msgtbl"><thead><tr><th>Condutor</th><th class="r">Mensagens</th><th class="r">Nota no 1º envio</th><th class="r">Nota no último</th><th class="r">Evolução</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 
 /* =====================================================================

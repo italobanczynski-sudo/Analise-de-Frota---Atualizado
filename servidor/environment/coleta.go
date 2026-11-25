@@ -6,6 +6,10 @@ type ColetaConfig_t struct {
 	IntervaloMin int `envconfig:"COLETA_INTERVALO_MIN" default:"60"`
 	// Quantos dias para trás na primeira busca de um cliente
 	Dias int `envconfig:"COLETA_DIAS" default:"30"`
+	// Até quantos dias para trás a busca vai completando o passado que falta no banco, poucos dias por vez
+	HistoricoDias int `envconfig:"COLETA_HISTORICO_DIAS" default:"365"`
+	// Quantos dias antigos entram em cada busca completa (de hora em hora)
+	HistoricoPorBusca int `envconfig:"COLETA_HISTORICO_POR_BUSCA" default:"4"`
 	// Entre uma busca completa e outra, de quanto em quanto tempo refaz só o dia de hoje (0 = desligado)
 	HojeMin int `envconfig:"COLETA_HOJE_MIN" default:"15"`
 }

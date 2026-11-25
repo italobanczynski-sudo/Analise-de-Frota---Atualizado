@@ -42,6 +42,10 @@ type Deps_t struct {
 	Premiacao premiacao.Service_I
 	Agora     func() time.Time
 	Dias      int
+	// Historico: até quantos dias para trás a busca completa o passado que falta no banco (0 = não completa);
+	// PorBusca: quantos desses dias antigos entram em cada busca (a performance da API tem limite de uso apertado)
+	Historico int
+	PorBusca  int
 	// Agendar roda f depois de d (nova tentativa quando a API libera); nil = não agenda (testes)
 	Agendar func(d time.Duration, f func())
 }
@@ -53,6 +57,7 @@ func NewColeta() Service_I {
 		Repo: coleta_repo.NewRepository(), API: gobraxapi.NewClient(), Clientes: cliente.NewCliente(),
 		Diario: diario.NewDiario(), Odometro: odometro.NewOdometro(), Premiacao: premiacao.NewPremiacao(),
 		Agora: time.Now, Dias: environment.Cfg.Coleta.Dias,
+		Historico: environment.Cfg.Coleta.HistoricoDias, PorBusca: environment.Cfg.Coleta.HistoricoPorBusca,
 		Agendar: func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 	}}
 }
@@ -83,7 +88,11 @@ func (c *coleta_t) Executar(ctx context.Context, clienteID int64) (Resultado_t, 
 		return Resultado_t{}, err
 	}
 
-	res, ultimoDia, err := c.buscar(ctx, clienteID, ini, hoje, agora, true)
+	historico, err := c.diasDoHistorico(ctx, clienteID, ini, hoje, agora)
+	if err != nil {
+		return Resultado_t{}, err
+	}
+	res, ultimoDia, err := c.buscar(ctx, clienteID, ini, hoje, agora, true, historico)
 	fim := c.d.Agora()
 	if err != nil {
 		_ = c.d.Repo.MarcarFim(ctx, clienteID, SituacaoErro, err.Error(), res.Avisos, nil, fim)
@@ -116,9 +125,43 @@ func (c *coleta_t) agendarNovaTentativa(clienteID int64, ate time.Time) {
 	logrus.Infof("coleta: cliente %d: a API pediu pausa; nova tentativa em %s", clienteID, espera.Round(time.Second))
 }
 
+// diasDoHistorico escolhe alguns dias antigos (antes de ini, até Historico dias atrás) que ainda não têm a performance gravada.
+// A primeira busca de um cliente só traz Dias dias; assim o passado vai sendo completado aos poucos, a cada busca.
+// Começa pelos mais recentes e gira a escolha a cada hora, para um dia sem rodagem (que nunca fica "completo") não travar a fila.
+func (c *coleta_t) diasDoHistorico(ctx context.Context, clienteID int64, ini, hoje string, agora time.Time) ([]string, error) {
+	if c.d.Historico <= c.d.Dias || c.d.PorBusca <= 0 {
+		return nil, nil
+	}
+	hIni, hFim := utils.SomarDias(hoje, -(c.d.Historico - 1)), utils.SomarDias(ini, -1)
+	if hFim < hIni {
+		return nil, nil
+	}
+	completos, err := c.d.Diario.DiasComIndicadores(ctx, clienteID, hIni, hFim)
+	if err != nil {
+		return nil, err
+	}
+	faltam := []string{}
+	todos := utils.DiasEntre(hIni, hFim)
+	for j := len(todos) - 1; j >= 0; j-- {
+		if !completos[todos[j]] {
+			faltam = append(faltam, todos[j])
+		}
+	}
+	if len(faltam) <= c.d.PorBusca {
+		return faltam, nil
+	}
+	ini0 := (int(agora.Unix()/3600) * c.d.PorBusca) % len(faltam)
+	escolha := make([]string, 0, c.d.PorBusca)
+	for k := 0; k < c.d.PorBusca; k++ {
+		escolha = append(escolha, faltam[(ini0+k)%len(faltam)])
+	}
+	return escolha, nil
+}
+
 // buscar devolve o resultado e até que dia a busca ficou completa
 // extras = também odômetro e premiação (a atualização rápida de hoje não busca)
-func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string, agora time.Time, extras bool) (Resultado_t, string, error) {
+// historico = dias antigos para completar o passado: vão por último e, se faltarem, não mexem no "último dia completo"
+func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string, agora time.Time, extras bool, historico []string) (Resultado_t, string, error) {
 	res := Resultado_t{Performance: true, Avisos: []string{}}
 	token, err := c.d.Clientes.Token(ctx, clienteID)
 	if err != nil {
@@ -147,6 +190,7 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 		}
 	}
 	dias = append(dias, hoje)
+	dias = append(dias, historico...)
 	for i, dia := range dias {
 		jIni, jFim, _ := utils.JanelaDiaBR(dia)
 		var estat []gobraxapi.EstatisticaRec_t
@@ -239,7 +283,18 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 
 	// premiação: do mês anterior ao início até o mês atual (a API recusa início e fim no mesmo mês;
 	// e o mês anterior serve para comparar a nota)
-	if prem, err := c.d.API.Premiacao(ctx, token, utils.MesAPI(utils.SomarDias(ini, -31)), utils.MesAPI(hoje)); err == nil {
+	premIni := utils.SomarDias(ini, -31)
+	if c.d.Historico > c.d.Dias {
+		premIni = utils.SomarDias(hoje, -(c.d.Historico - 1))
+	}
+	prem, err := c.d.API.Premiacao(ctx, token, utils.MesAPI(premIni), utils.MesAPI(hoje))
+	if err != nil && errors.Is(err, gobraxapi.ErrTokenInvalido) {
+		return res, "", err
+	}
+	if err != nil && premIni != utils.SomarDias(ini, -31) {
+		prem, err = c.d.API.Premiacao(ctx, token, utils.MesAPI(utils.SomarDias(ini, -31)), utils.MesAPI(hoje))
+	}
+	if err == nil {
 		if res.MesesPremio, err = c.d.Premiacao.Salvar(ctx, clienteID, prem); err != nil {
 			return res, "", err
 		}
@@ -249,7 +304,16 @@ func (c *coleta_t) buscar(ctx context.Context, clienteID int64, ini, hoje string
 
 	// dias perdidos voltam na próxima busca: o "último dia completo" fica antes do primeiro perdido
 	ultimo := hoje
-	perdidos := append(append([]string{}, fe.perdidos...), fp.perdidos...)
+	antigo := map[string]bool{}
+	for _, d := range historico {
+		antigo[d] = true
+	}
+	perdidos := []string{}
+	for _, d := range append(append([]string{}, fe.perdidos...), fp.perdidos...) {
+		if !antigo[d] {
+			perdidos = append(perdidos, d)
+		}
+	}
 	if len(perdidos) > 0 {
 		sort.Strings(perdidos)
 		ultimo = utils.SomarDias(perdidos[0], -1)
@@ -311,7 +375,7 @@ func (c *coleta_t) AtualizarHoje(ctx context.Context) map[string]error {
 		}
 		agora := c.d.Agora()
 		hoje := utils.DiaBR(agora)
-		res, _, err := c.buscar(ctx, cl.ID, hoje, hoje, agora, false)
+		res, _, err := c.buscar(ctx, cl.ID, hoje, hoje, agora, false, nil)
 		liberar(cl.ID)
 		out[cl.Nome] = err
 		switch {

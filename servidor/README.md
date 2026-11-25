@@ -65,7 +65,7 @@ Parar: `docker compose down` (os dados ficam no volume `dados`; `docker compose 
 | `PROXIES_CONFIAVEIS` | não | IP/CIDR dos proxies na frente do servidor. O Compose já confia na rede interna do Docker. Vazio = IP direto da conexão |
 | `SMTP_HOST`, `SMTP_PORTA`, `SMTP_USUARIO`, `SMTP_SENHA`, `SMTP_REMETENTE` | não | Envio dos códigos de acesso. Sem `SMTP_HOST`, nenhum e-mail sai e o código aparece só no log (use só no computador) |
 | `SESSAO_HORAS` (12), `CONVITE_HORAS` (72) | não | Duração do login e do link de convite |
-| `COLETA_AUTOMATICA` (true), `COLETA_INTERVALO_MIN` (60), `COLETA_DIAS` (30), `COLETA_HOJE_MIN` (15) | não | Busca automática e atualização rápida do dia de hoje (0 desliga) |
+| `COLETA_AUTOMATICA` (true), `COLETA_INTERVALO_MIN` (60), `COLETA_DIAS` (30, máx. 366), `COLETA_HOJE_MIN` (15) | não | Busca automática e atualização rápida do dia de hoje (0 desliga). `COLETA_DIAS` vale para cliente sem busca concluída: para buscar o histórico de um cliente, aumente-o e limpe o `ultimo_dia` dele na tabela `coletas` |
 | `RASTRO_INTERVALO_MIN` (5; 0 desliga), `RASTRO_DIAS` (7) | não | Rastro da frota ao vivo: de quanto em quanto tempo grava a posição de todos os veículos e por quantos dias guarda |
 | `GOBRAX_API_BASE`, `GOBRAX_INTERVALO_MS` (120) | não | API Gobrax e pausa entre chamadas |
 | `PORTA` (8080), `PORTA_LOCAL` (8080, só Compose), `NGINX_SITE` (só Compose) | não | Portas e site do nginx |

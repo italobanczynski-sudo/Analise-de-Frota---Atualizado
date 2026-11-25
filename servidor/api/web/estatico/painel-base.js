@@ -56,9 +56,12 @@
       // servidor como o diaParaCSV do painel). Dia gravado antes dessas linhas existirem: a linha do veículo com o motorista
       // que mais o dirigiu, como era antes.
       const motPorDia = agrupar(c.motoristas);
+      // cliente sem nenhum motorista identificado (a API não traz vínculo nem performance): cada veículo que rodou entra
+      // com a placa no lugar do nome; sem isso o painel não tem planilha de motoristas e as telas ficam em branco
+      const semMotoristas = !(c.motoristas || []).length && !(c.registros || []).some((r) => r.motorista);
       porDia.forEach((rs, dia) => {
         const veic = rs.map((r) => linhaCSV(r, c.nome));
-        const mot = (motPorDia.get(dia) || rs.filter((r) => r.rodou && r.motorista)).map((r) => linhaCSV(r, c.nome));
+        const mot = (motPorDia.get(dia) || rs.filter((r) => r.rodou && (r.motorista || semMotoristas))).map((r) => linhaCSV(r, c.nome));
         out.set(idPlan('veiculos', c.nome, dia, 1), { alvo: 'veiculos', cliente: c.nome, data: dia, colunas: COLS, texto: [cab].concat(veic).join('\n'), parte: 1, partes: 1, arquivo: 'API Gobrax · estatísticas', em });
         if (mot.length) out.set(idPlan('motoristas', c.nome, dia, 1), { alvo: 'motoristas', cliente: c.nome, data: dia, colunas: COLS, texto: [cab].concat(mot).join('\n'), parte: 1, partes: 1, arquivo: 'API Gobrax · motoristas', em });
       });

@@ -49,7 +49,7 @@ function vOverview(C){
   const pts=wk.map(w=>`<div class="wkc"><div class="xs muted">Sem ${w.n}${w.partial?'*':''} · ${fmt.dm(dIso(w.from))}–${fmt.dm(dIso(w.to))}</div><b class="num" style="font-size:18px">${fmt.kmpl(w.a.kmpl)}</b></div>`).join('');
   return`${pageH('Visão geral',`${esc(C.def.name)} · ${P.label} · comparado ao ${P.cmpLabel}`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}
   <div class="grid g-kpi">
-    <div class="card brand kpi lift rise" style="overflow:hidden"><div class="swoosh"></div><div class="tag" style="color:var(--n600)">Saúde do cliente</div><div class="row" style="flex-wrap:nowrap;gap:14px;align-items:flex-end">${gauge(hl.idx,hl.band)}</div><div>${bandBadge(hl.band)}</div><div class="sm" style="color:var(--n600)">${hl.top?`Pesa mais: ${hl.top.label}.`:''}</div><a class="b sm" href="#/retencao">Abrir saúde do cliente</a></div>
+    <div class="card brand kpi lift rise" style="overflow:hidden;text-align:center"><div class="swoosh"></div><div class="tag" style="color:var(--n600)">Nota Gobrax · Premiação</div>${gaugeNota(cur.score,'PERFORMANCE MÉDIA')}<div class="xs" style="color:var(--n600)">${(()=>{const pf=cur.prem;if(!REAL.on)return'Média do período';if(!pf)return'Sem premiação da API no período';return(pf.stale?'Último mês: ':'')+pf.meses.map(m=>MESES[+m.slice(5)-1]+(m===TODAY.slice(0,7)?' (parcial)':'')).join(', ')+' · '+pf.motoristas+' motoristas'})()}</div><a class="b sm" href="#/retencao">Saúde do cliente: ${count(hl.idx,0)} · risco ${String(hl.band).toLowerCase()}</a></div>
     ${kpis}
   </div>
   <div class="sec">

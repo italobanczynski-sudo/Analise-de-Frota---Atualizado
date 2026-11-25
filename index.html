@@ -2278,6 +2278,10 @@ html[data-tema="escuro"] .dq-erro { color: #F28B82; }
 @media (max-width: 760px) { .vivo-duo, .vivo-feed-grade { grid-template-columns: 1fr; } .vivo-mapa-wrap { min-height: 320px; margin: 0 12px; } .vivo-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vivo-kpi-v { font-size: 28px; } }
 .traj-ctl { display: flex; align-items: center; gap: 12px; }
 .traj-ctl input[type=range] { flex: 1; accent-color: #FCB709; }
+.secnav { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 6px; margin: 0 0 16px; }
+.secnav-i { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2); font-size: 13px; font-weight: 500; text-decoration: none; }
+.secnav-i:hover { border-color: var(--borda-hover); color: var(--tinta); }
+.secnav-i.ativo { background: var(--tinta); border-color: var(--tinta); color: var(--superficie); font-weight: 600; }
 .jornada { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
 .jornada-et { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 5px; border-radius: 999px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2); font-size: 12.5px; text-decoration: none; }
 .jornada-et:hover { border-color: var(--borda-hover); }
@@ -3354,9 +3358,13 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   const { esc, avatar, badgeNota, badgeStatus, STATUS, variacao, icone, abas } = X.ui;
   const vazioUI = X.ui.vazio;   // 'vazio' já é nome de variável local em várias telas
   // Abas da página Motoristas (a mesma lista na página e no Motorista individual, para nunca divergirem)
-  const ABAS_MOT = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['semanal', 'Resultado semanal'], ['enviadas', 'Mensagens enviadas'], ['lista', 'Lista de motoristas']];
+  const ABAS_MOT = [['resumo', 'Resumo'], ['comportamento', 'Comportamento'], ['comparativo', 'Comparativo'], ['lista', 'Lista de motoristas']];
+  // cliente sem motorista identificado (a API só traz a placa): cada "condutor" é um veículo e o Motorista individual
+  // repetiria o Veículo individual
+  const semCondutor = () => !!(E.base && E.base.linhas.length && E.base.linhas.every((l) => !l.motorista || (l.veiculo && placaPos(l.motorista) === placaPos(l.veiculo))));
   const abasMot = (c, tem) => ABAS_MOT.filter(([k]) => tem(k)).map(([k, rot]) => [k, rot, k === 'lista' ? c.mots.length : undefined])
-    .concat([['individual', 'Motorista individual', undefined, '#/individual/motorista']]);
+    .concat(semCondutor() ? [] : [['individual', 'Motorista individual', undefined, '#/individual/motorista']]);
+  const avisoSemCondutor = () => (semCondutor() ? `<div class="alerta alerta-info" style="margin:0 0 14px"><span class="alerta-icone">i</span><div class="alerta-corpo"><span class="alerta-texto">${esc(E.cliente || 'Este cliente')} não tem motorista identificado nos dados da API: os condutores aparecem pela placa. Cada veículo em detalhe fica em <a class="btn-link" href="#/individual/veiculo">Frota › Veículo individual</a>.</span></div></div>` : '');
 
   const CHAVE_CSV = 'gbx-frota-csv';
   const CHAVE_CLIENTE_SEL = 'gbx-frota-cliente-sel';
@@ -3686,22 +3694,30 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
 
   // ---------- Shell ----------
+  // Menu com 6 itens; as telas de cada grupo ficam numa faixa de sub-páginas no topo (GRUPOS_NAV)
   const NAV = [
-    { sec: 'Carteira' },
     { tela: 'geral', href: '#/geral', icone: 'crescimento', rot: 'Visão geral' },
-    { sec: 'Cliente' },
-    { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Saúde do cliente' },
-    { tela: 'plano', href: '#/plano', icone: 'plano', rot: 'Plano de ação' },
-    { sec: 'Detalhe da operação' },
-    { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Desenvolvimento da frota' },
-    { tela: 'individual', tipo: 'veiculo', href: '#/individual/veiculo', icone: 'veiculo-ind', rot: 'Veículo individual' },
-    { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe'], altInd: 'motorista' },
-    { tela: 'premiacao', href: '#/premiacao', icone: 'escrita', rot: 'Premiação' },
-    { tela: 'mensagens', href: '#/mensagens', icone: 'motorista-ind', rot: 'Mensagem aos condutores', srv: true },
-    { rodape: true, tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
-    { rodape: true, tela: 'api', href: '#/api', icone: 'documento', rot: 'API Gobrax' },
-    { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Configurações', alt: ['importar', 'clientes', 'cliente', 'carteira'] }
+    { tela: 'churn', href: '#/churn', icone: 'churn', rot: 'Retenção', alt: ['plano', 'combinados', 'resumo', 'jornada'] },
+    { tela: 'estudo', href: '#/estudo', icone: 'dados-1', rot: 'Estudo do projeto' },
+    { tela: 'visao', href: '#/visao', icone: 'veiculos', rot: 'Frota', altInd: 'veiculo' },
+    { tela: 'motoristas', href: '#/motoristas', icone: 'pessoa-2', rot: 'Motoristas', alt: ['detalhe', 'premiacao', 'mensagens'], altInd: 'motorista' },
+    { rodape: true, tela: 'config', href: '#/config', icone: 'configuracoes', rot: 'Dados e configurações', alt: ['importar', 'clientes', 'cliente', 'carteira', 'api'] }
   ];
+  // sub-páginas de cada item do menu: [chave da rota, rótulo, link, só no painel com login]
+  const GRUPOS_NAV = [
+    [['churn', 'Saúde do cliente', '#/churn'], ['plano', 'Plano de ação', '#/plano'], ['combinados', 'Combinados', '#/combinados'], ['resumo', 'Resumo da reunião', '#/resumo'], ['jornada', 'Linha de base', '#/jornada']],
+    [['visao', 'Desenvolvimento', '#/visao'], ['individual:veiculo', 'Veículo individual', '#/individual/veiculo']],
+    [['motoristas', 'Condutores', '#/motoristas'], ['premiacao', 'Premiação', '#/premiacao'], ['mensagens', 'Mensagens', '#/mensagens']],
+    [['config', 'Clientes e premissas', '#/config'], ['api', 'API Gobrax', '#/api']]
+  ];
+  function subNav() {
+    const r = E.rota, k = r.tela === 'individual' ? 'individual:' + r.tipo : r.tela === 'detalhe' ? 'motoristas' : ['importar', 'clientes', 'cliente', 'carteira'].includes(r.tela) ? 'config' : r.tela;
+    const chaveMot = k === 'individual:motorista' ? 'motoristas' : k;
+    const g = GRUPOS_NAV.find((itens) => itens.some(([c]) => c === chaveMot));
+    if (!g) return '';
+    const itens = g.filter((x) => !x[3] || window.GBX_CONTA);
+    return `<nav class="secnav" aria-label="Páginas desta seção">${itens.map(([c, rot, href]) => `<a class="secnav-i ${c === chaveMot ? 'ativo' : ''}" href="${href}"${c === chaveMot ? ' aria-current="page"' : ''}>${rot}</a>`).join('')}</nav>`;
+  }
   const navAtivo = (n) => ((n.tela === E.rota.tela || (n.alt || []).includes(E.rota.tela)) && (!n.tipo || n.tipo === E.rota.tipo)) || (!!n.altInd && E.rota.tela === 'individual' && E.rota.tipo === n.altInd);
   const navItem = (n) => { const at = navAtivo(n); return `<a class="nav-item ${at ? 'ativo' : ''}" href="${n.href}" aria-label="${n.rot}" ${at ? 'aria-current="page"' : ''}><img src="${ASSET('i:' + n.icone + '.svg')}" alt=""><span class="nome">${n.rot}</span><span class="dica">${n.rot}</span></a>`; };
   // Preço do diesel por estado (Petrobras, via combustivelapi.com.br). No GitHub Pages o painel busca direto;
@@ -4444,7 +4460,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const aplicados = (E.lista.busca ? 1 : 0) + (E.lista.status !== 'todos' ? 1 : 0);
     return `
       ${cabecalho(`Motoristas`, `${E.motAba === 'enviadas' ? 'Quantas mensagens cada condutor recebeu, no que foi orientado a melhorar e a nota em cada dia' : E.motAba === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp' : `Evolução ou regressão de cada condutor · ${D.periodoBR(E.A)} comparado a ${D.periodoBR(E.B)}`}`)}
-      ${E.motAba === 'semanal' || E.motAba === 'enviadas' ? '' : barraPeriodo() + semDadosNoPeriodo(c.la.length)}
+      ${avisoSemCondutor()}${barraPeriodo() + semDadosNoPeriodo(c.la.length)}
       ${(() => {
         const P = Object.assign(painelCondutores(c), { semanal: E.motAba === 'semanal' ? painelSemanal() : !!E.base.motoristas.length, enviadas: contaSrv() ? (E.motAba === 'enviadas' ? painelEnviadas(c) : true) : '' });
         const lista = abasMot(c, (k) => k === 'lista' || P[k]);
@@ -5132,7 +5148,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // Envio em sequência: imagem + texto de um condutor por vez; ao abrir o WhatsApp, marca como enviado e passa ao próximo
   function painelEnvioSemanal() {
-    if (!E.semEnvio || E.rota.tela !== 'motoristas' || E.motAba !== 'semanal') return '';
+    if (!E.semEnvio || E.rota.tela !== 'mensagens' || abaMsg() !== 'semanal') return '';
     const s = dadosSemana(), n = s.mots.length;
     if (!n) return '';
     const env = semEnviados(), i = Math.max(0, Math.min(E.semEnvio.i, n - 1)), x = s.mots[i], id = esc(x.m.id);
@@ -5800,15 +5816,13 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     // ---- Faixa executiva ----
     const num = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const dv = (k, ap) => { const v = dif(k); return v.semBase ? '' : `<span class="exec-${v.sentido === 'melhor' ? 'bom' : v.sentido === 'pior' ? 'ruim' : 'neutro'}">${v.texto} ${ap || ''}</span>`; };
-    const resultado = e ? num(e.reais >= 0 ? 'Economia no período' : 'Custo adicional no período', fmtReais(Math.abs(e.reais), 0), `<span class="exec-${e.reais >= 0 ? 'bom' : 'ruim'}">${e.reais >= 0 ? '▼' : '▲'} ${fmt(Math.abs(e.litros), 0)} L de diesel</span>`, 'vs. consumo do período anterior')
-      : num('Economia no período', '—', '<span class="exec-neutro">sem período anterior</span>', 'precisa de dias anteriores');
+    // economia do período e km/dia saíram daqui (estão na Visão geral); o Plano mostra só o que é dele: o potencial
     const potencial = P.ref ? num('Potencial de economia', fmtReais(P.reaisPot, 0), `<span class="exec-bom">≈ ${fmtReais(P.mensal, 0)} por mês</span>`, `${fmt(P.litrosPot, 0)} L se todos chegassem a ${fmt(P.ref, 2)} km/l`)
       : num('Potencial de economia', '—', '<span class="exec-neutro">poucos motoristas</span>', 'precisa de 4+ motoristas com consumo');
     const faixa = `<section class="exec">
-      <div class="exec-cab"><span class="exec-tit">Resultado da operação</span><span class="exec-sub">${D.periodoBR(E.A)}${semAnterior ? '' : ' · comparado a ' + D.periodoBR(E.B)}</span></div>
+      <div class="exec-cab"><span class="exec-tit">Onde há ganho</span><span class="exec-sub">${D.periodoBR(E.A)} · economia e km/dia do período estão na <a class="btn-link" href="#/geral">Visão geral</a></span></div>
       <div class="exec-grade">
-        ${resultado}${potencial}
-        ${num('Km por dia trabalhado', fmtInd(IND_MAP.km_dia, A.km_dia), dv('km_dia'), fmt(A.dias, 0) + ' dias trabalhados')}
+        ${potencial}
       </div>
       <div class="exec-nota">Potencial = diesel a mais que os motoristas abaixo da referência gastaram no período, a ${fmtReais(E.preco, 2)}/L (o preço muda na pílula do diesel, no topo). A referência é o km/l que separa o quarto mais econômico da própria operação. É uma estimativa para priorizar, não uma meta garantida.</div>
     </section>`;
@@ -6550,10 +6564,25 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const pesa = vgCard('barras', 'O que pesa no risco', `<span class="apoio" style="display:block;margin-bottom:4px">Cada sinal com o risco dele (0 a 100), o peso e quantos pontos soma no índice.</span>${barras}`);
     return `${topo}
       ${kpis}
+      ${blocoCombinadosNumeros(sel.nome)}
       <div class="dv-grade">${saude}${plano}</div>
       <div class="dv-grade">${pesa}${churnComoCalcula(sel)}</div>
       ${cartaoFicha(sel.nome)}
       ${relatorioMotivos()}`;
+  }
+  // combinados do cliente ao lado dos números: linha de base, valor dos últimos 7 dias, meta, prazo e veredito
+  function blocoCombinadosNumeros(nome) {
+    const cs = combinadosDe(nome).filter((c) => !c.cancelado);
+    if (!cs.length) return vgCard('tabela', 'Combinados e números', `<div class="vazio"><span class="apoio">Nenhum combinado com ${esc(nome)} ainda. Cada combinado liga um problema a um número, uma meta e um prazo.</span><a class="btn btn-primario" href="#/combinados" style="text-decoration:none;margin-top:6px">Registrar combinado</a></div>`);
+    const linhas = cs.map((c) => {
+      const s = estadoCombinado(c), agora = Number.isFinite(s.valor) ? s.valor : s.parcial, [rot, cls] = BADGE_COMB[s.estado] || [s.estado, 'badge-vazio'];
+      const base = c.base && Number.isFinite(c.base.valor) ? c.base.valor : null, md = melhorDe(c.alvo);
+      const dir = Number.isFinite(agora) && base !== null && agora !== base ? ((agora - base) * md > 0 ? ['▲', 'txt-bom'] : ['▼', 'txt-ruim']) : null;
+      return `<tr><td><b style="font-weight:600">${esc(rotAlvo(c.alvo))}</b><span class="linha2">${esc(c.combinado || c.problema || '')}</span></td>
+        <td class="dir num">${esc(fmtAlvo(c.alvo, base))}</td><td class="dir num"><b>${esc(fmtAlvo(c.alvo, agora))}</b>${dir ? ` <span class="${dir[1]}">${dir[0]}</span>` : ''}</td><td class="dir num">${esc(fmtAlvo(c.alvo, c.meta))}</td>
+        <td style="white-space:nowrap">${esc(D.br(c.fim))}</td><td><span class="badge ${cls}">${esc(rot)}</span><span class="linha2">${esc(s.texto || '')}</span></td></tr>`;
+    }).join('');
+    return vgCard('tabela', 'Combinados e números', `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Combinado</th><th class="dir">Linha de base</th><th class="dir">Últimos 7 dias</th><th class="dir">Meta</th><th>Prazo</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div>`, ['#/combinados', 'Ver combinados']);
   }
 
 
@@ -7456,12 +7485,11 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   function vgInsights(c, M) {
     const A = c.frotaA, B = M.r, out = [];
     const add = (bom, txt) => out.push(`<li class="${bom ? 'vg-in-bom' : 'vg-in-atencao'}"><span class="vg-in-ic">${bom ? '▲' : '!'}</span><span>${txt}</span></li>`);
-    if (temInd('kml')) {
-      const v = X.variacao(IND_MAP.kml, A.kml, B.kml);
-      if (!v.semBase && !v.estavel) add(v.sentido === 'melhor', `Seu consumo está <b>${esc(v.texto.replace(/^[▲▼] /, ''))} ${v.sentido === 'melhor' ? 'melhor' : 'pior'}</b> que em ${esc(M.rot)}.`);
+    // consumo e diesel economizado não entram aqui: já estão nos cartões do topo da Visão geral
+    if (temInd('motor_ocioso')) {
+      const v = X.variacao(IND_MAP.motor_ocioso, A.motor_ocioso, B.motor_ocioso);
+      if (!v.semBase && !v.estavel) add(v.sentido === 'melhor', `Motor ligado parado <b>${esc(v.texto.replace(/^[▲▼] /, ''))} ${v.sentido === 'melhor' ? 'menor' : 'maior'}</b> que em ${esc(M.rot)}.`);
     }
-    const e = M.ls.length ? economia(A, B) : null;
-    if (e && !rsBloqueado() && Math.abs(e.reais) >= 1) add(e.reais >= 0, `${e.reais >= 0 ? 'Economia' : 'Custo adicional'} de <b>${esc(fmtReais(Math.abs(e.reais), 0))}</b> em diesel (${fmt(Math.abs(e.litros), 0)} L) com o consumo de ${esc(M.rot)} nos mesmos km.`);
     const metas = metasCliente();
     ['motor_ocioso', 'faixa_verde', 'kml', 'nota'].filter((k) => temInd(k) && Number.isFinite(metas[k]) && Number.isFinite(A[k])).slice(0, 2).forEach((k) => {
       const ind = IND_MAP[k], bateu = ind.melhor < 0 ? A[k] <= metas[k] : A[k] >= metas[k];
@@ -9765,7 +9793,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
             <td>${badgeNota(m.nota)}</td><td class="dir">${b ? variacao(X.variacao(indN, m.nota, b.nota)) : '<span class="mudo">—</span>'}</td>
             <td class="dir num">${fmt(m.km, 0)} km</td><td class="dir num">${fmtReais(m.premio || 0, 2)}</td></tr>`; }).join('')}</tbody></table></div></div>
       </section>
-      ${docs.length > 1 ? evolucaoPremiacao(docs) : ''}`;
+      ${docs.length > 1 ? `<details class="receita"><summary>Evolução mês a mês de cada motorista (${docs.length} meses)</summary>${evolucaoPremiacao(docs)}</details>` : ''}`;
   }
   // Evolução mês a mês (Overview da API): cada motorista com nota, km e bonificação de todos os meses buscados
   function evolucaoPremiacao(docs) {
@@ -10260,14 +10288,24 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       <div class="tabela-wrap"><table class="vg-tab"><thead><tr><th>Dia da análise</th><th class="dir">Nota do mês</th><th>vs envio anterior</th><th>Ponto apontado</th><th>Resultado</th><th>Evolução no dia</th></tr></thead><tbody>${linhas}</tbody></table></div>`);
     return `${kpis}<div class="evc-grade">${grafico}${resumo}</div>${tabela}`;
   }
+  // Mensagens num lugar só: do dia, evolução, enviadas por condutor (antes em Motoristas) e Resultado semanal (antes em Motoristas)
+  const abaMsg = () => (['evolucao', 'enviadas', 'semanal'].includes(E.rota.aba) && (E.rota.aba === 'semanal' || contaSrv()) ? E.rota.aba : contaSrv() ? 'dia' : 'semanal');
+  const abasMsg = (aba) => abas((contaSrv() ? [['dia', 'Mensagens do dia', null, '#/mensagens'], ['evolucao', 'Evolução por condutor', null, '#/mensagens?aba=evolucao'], ['enviadas', 'Enviadas por condutor', null, '#/mensagens?aba=enviadas']] : [])
+    .concat([['semanal', 'Resultado semanal', null, '#/mensagens?aba=semanal']]), aba, '', 'Seções de Mensagens');
   function telaMensagens() {
+    const abaM = abaMsg();
+    if (abaM === 'semanal' || abaM === 'enviadas') {
+      const cab2 = cabecalho(abaM === 'semanal' ? 'Resultado semanal' : 'Mensagens enviadas', abaM === 'semanal' ? 'Resultado de cada condutor na semana, pronto para enviar ao cliente pelo WhatsApp.' : 'Quantas mensagens cada condutor recebeu, no que foi orientado a melhorar e a nota em cada dia.');
+      if (!E.base) return cab2 + abasMsg(abaM) + telaSemDados();
+      return cab2 + abasMsg(abaM) + (abaM === 'semanal' ? painelSemanal() : painelEnviadas(calc()));
+    }
     const cab = `${cabecalho(`Mensagens do dia`, `A análise de cada motorista no dia escolhido: como foi o dia nos indicadores da plataforma Gobrax, a evolução contra o dia anterior em que ele rodou, a nota do mês e o que melhorar. Com o telefone do motorista cadastrado, use "Enviar em fila": o painel abre cada conversa no WhatsApp Web e copia o texto, você cola com Ctrl+V, aperta Enter e passa para o próximo. O acompanhamento aparece no Motorista individual.`)}`;
     if (!contaSrv()) return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="vazio-titulo">Disponível no painel com login</span><span class="apoio">As mensagens são montadas pelo servidor com os dados da API Gobrax.</span></div></div></section>';
     const M = msg();
     if (!M.clientes) { setTimeout(msgClientes, 0); return cab + '<section class="card"><div class="card-corpo"><div class="vazio"><span class="spinner"></span><span class="apoio">Carregando…</span></div></div></section>'; }
     if (!M.cli) M.cli = cliSrv(E.cliente) || (M.clientes[0] ? String(M.clientes[0].id) : '');
     const aba = E.rota.aba === 'evolucao' ? 'evolucao' : 'dia';
-    const tabs = abas([['dia', 'Mensagens do dia', null, '#/mensagens'], ['evolucao', 'Evolução por condutor', null, '#/mensagens?aba=evolucao']], aba, '', 'Seções de Mensagem aos condutores');
+    const tabs = abasMsg(aba);
     if (aba === 'evolucao') {
       const filtroCli = `<div class="dv-filtros"><label class="dv-filtro"><span class="dv-filtro-ic">${icone('camadas', 20)}</span><span class="dv-filtro-txt"><small>Cliente</small><select class="dv-sel" data-campo="msg-cli" aria-label="Cliente">${M.clientes.map((c) => `<option value="${esc(String(c.id))}" ${String(c.id) === M.cli ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></span></label></div>`;
       return `${cabecalho('Evolução por condutor', 'A nota de cada condutor em cada dia em que ele recebeu a análise pelo WhatsApp, do primeiro envio ao último, e se melhorou no ponto apontado.')}${tabs}${filtroCli}${abaEvolucaoCondutores(M)}`;
@@ -10363,7 +10401,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     M.enviadas[cli] = { carregando: true };
     try { M.enviadas[cli] = { lista: await cs.chamar('GET', '/api/v1/clientes/' + encodeURIComponent(cli) + '/mensagens/enviadas') }; }
     catch (e) { M.enviadas[cli] = { erro: e.message, em: Date.now() }; }
-    if ((E.rota.tela === 'motoristas' && E.motAba === 'enviadas') || E.rota.tela === 'mensagens') render();
+    if (E.rota.tela === 'mensagens') render();
   }
   // Nota geral da frota (Gobrax) por mês, em linha (premiação da API; a API não manda a nota por dia),
   // com a nota de antes (mês anterior ao 1º envio) e a de agora (último mês, parcial no mês corrente). Média ponderada pelos km.
@@ -10813,7 +10851,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const telas = { carteira: telaCarteira, estudo: telaEstudo, visao: telaVisao, motoristas: telaMotoristas, detalhe: telaDetalhe, importar: telaClientes, cliente: telaCliente, clientes: telaClientes, plano: telaPlano, churn: telaChurn, individual: telaIndividual, geral: telaGeral, config: telaClientes, premiacao: telaPremiacao, api: telaApi, mensagens: telaMensagens, combinados: telaCombinados, resumo: telaResumo, jornada: telaJornada };
     const livre = ['importar', 'config', 'clientes', 'cliente', 'individual', 'carteira', 'premiacao', 'api', 'mensagens'].includes(E.rota.tela);
     const tela = (!E.base && !livre) ? telaSemDados : (telas[E.rota.tela] || telaGeral);
-    const html = shell(comContexto(() => (TELAS_JORNADA.includes(E.rota.tela) && E.base ? faixaJornada(E.cliente) : '') + tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
+    const html = shell(comContexto(() => subNav() + (TELAS_JORNADA.includes(E.rota.tela) && E.base ? faixaJornada(E.cliente) : '') + tela())) + (E.base ? comContexto(() => painelIndicador() + painelEnvioSemanal()) + painelExportacao() : '');
     // o token digitado nunca vai para o HTML: é guardado aqui e devolvido ao campo depois de redesenhar
     const tokDigitados = [...document.querySelectorAll('#api-token, input[data-token]')].filter((i) => i.value).map((i) => [i.id, i.value]);
     document.getElementById('app').innerHTML = html;

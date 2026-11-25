@@ -5664,6 +5664,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
   }
   // movimento contínuo: halo pulsando no último ponto de cada série e tracejados (meta, investimento) que correm
   function vidaGrafico(svg) {
+    if (svg.classList.contains('sem-vida')) return;   // gráfico que já marca os pontos com cor: sem halo pulsando nem tracejado correndo
     const temLinha = [...svg.querySelectorAll('path')].some((p) => { const f = p.getAttribute('fill'); return (!f || f === 'none') && !p.getAttribute('stroke-dasharray'); });
     if (temLinha) {
       const ultimos = new Map();
@@ -6898,18 +6899,24 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     const tem = (v) => v !== null && v !== undefined && Number.isFinite(v);
     const todos = vals.filter(tem).concat(tem(ref) ? [ref] : []);
     if (!vals.some(tem)) return '<div class="vazio"><span class="apoio">Sem dados deste indicador no período.</span></div>';
-    const W = 760, H = 260, m = { l: 48, r: 24, t: 34, b: 44 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = S.ws.length;
-    let lo = Math.min(...todos), hi = Math.max(...todos);
-    const folga = (hi - lo) * 0.18 || Math.abs(hi) * 0.1 || 1;
-    lo = soma ? 0 : Math.max(lo - folga, Math.min(...todos) >= 0 ? 0 : -Infinity); hi += folga;
+    // desenhado na largura real do cartão: o texto fica no tamanho certo (esticar o SVG aumentava as letras)
+    const W = Math.max(480, larguraGrafico(1, 520) - 36), H = 250, m = { l: 56, r: 28, t: 30, b: 46 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = S.ws.length;
+    // escala com números redondos (1, 2, 2,5 ou 5 × 10ⁿ), com folga em cima para o valor do ponto
+    const mn = Math.min(...todos), mx = Math.max(...todos);
+    const bruto = ((mx - (soma ? 0 : mn)) || Math.abs(mx) || 1) / 4, pot = Math.pow(10, Math.floor(Math.log10(bruto)));
+    const passo = [1, 2, 2.5, 5, 10].map((f) => f * pot).find((p) => p >= bruto);
+    let lo = soma ? 0 : Math.floor(mn / passo) * passo;
+    if (!soma && mn - lo < passo * 0.3) lo -= passo;   // folga embaixo para o ponto mais baixo não colar no eixo
+    if (mn >= 0 && lo < 0) lo = 0;
+    let hi = Math.ceil(mx / passo) * passo;
+    if (hi - mx < passo * 0.35) hi += passo;
     const x = (i) => (n === 1 ? m.l + iw / 2 : m.l + (i / (n - 1)) * iw), y = (v) => m.t + ih - ((v - lo) / ((hi - lo) || 1)) * ih;
     const gid = 'gd' + (++idGrafDestaque);
     let g = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCB709" stop-opacity=".38"/><stop offset="1" stop-color="#FCB709" stop-opacity=".02"/></linearGradient></defs>`;
-    for (let t = 0; t <= 4; t++) {
-      const v = lo + ((hi - lo) * t) / 4;
-      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke-dasharray="2 5" style="stroke:var(--hairline)"/><text x="${m.l - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${esc(fmtInd(ind, v, false))}</text>`;
+    for (let v = lo; v <= hi + passo / 2; v += passo) {
+      g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke-dasharray="2 5" style="stroke:var(--hairline)"/><text x="${m.l - 10}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${esc(fmtInd(ind, v, false))}</text>`;
     }
-    if (tem(ref)) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke-dasharray="6 5" stroke-width="1.5" style="stroke:var(--texto-2)" opacity=".8"/><text x="${W - m.r}" y="${(y(ref) - 6).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" style="fill:var(--texto-2)">Comparação ${esc(fmtInd(ind, ref))}</text>`;
+    if (tem(ref)) g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(ref).toFixed(1)}" y2="${y(ref).toFixed(1)}" stroke-dasharray="6 5" stroke-width="1.5" style="stroke:var(--texto-2)" opacity=".8"/><text x="${m.l + 6}" y="${(y(ref) - 6).toFixed(1)}" text-anchor="start" font-size="11" font-weight="600" paint-order="stroke" stroke-width="3" style="stroke:var(--superficie);fill:var(--texto-2)">Comparação ${esc(fmtInd(ind, ref))}</text>`;
     const pts = vals.map((v, i) => (tem(v) ? [x(i), y(v), i] : null)).filter(Boolean);
     if (pts.length > 1) {
       const d = curvaSuave(pts);
@@ -6932,7 +6939,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
         if (S.g !== 'dia' && n <= 8) g += `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="${anc}" font-size="11" style="fill:var(--texto-2)">${esc(D.periodoCurto(w))}</text>`;
       }
     });
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(ind.label)} ${esc((GRAN_GERAL.find((q) => q[0] === S.g) || [])[2] || '')}" style="display:block">${g}</svg>`;
+    return `<svg class="sem-vida" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(ind.label)} ${esc((GRAN_GERAL.find((q) => q[0] === S.g) || [])[2] || '')}" style="display:block;max-width:100%;height:auto">${g}</svg>`;
   }
   // mapa de calor: cada indicador (linha) em cada fatia (coluna), verde = melhorou e vermelho = piorou contra a fatia anterior;
   // a última coluna é o período todo contra a comparação. Clique numa linha para levá-la ao gráfico em destaque.

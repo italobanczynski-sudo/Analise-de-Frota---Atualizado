@@ -10,8 +10,6 @@ servidor/.banco-render
 servidor/backup-*.dump
 
 # Robô do WhatsApp: senha do usuário do robô, sessão do WhatsApp e logs ficam só no computador dele
-robo-whatsapp/.env
-robo-whatsapp/.sessao-whatsapp/
-robo-whatsapp/.wwebjs_cache/
-robo-whatsapp/logs/
-robo-whatsapp/node_modules/
+Whatsapp/.env
+Whatsapp/logs/
+Whatsapp/node_modules/

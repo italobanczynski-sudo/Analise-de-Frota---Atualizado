@@ -1,11 +1,11 @@
 // Robô do WhatsApp: todo dia de manhã manda as Mensagens do dia (análise de ontem) a cada motorista com telefone
-// cadastrado e marca como enviada na plataforma. Roda NESTE computador, com o WhatsApp Web aberto por baixo.
+// cadastrado e marca como enviada na plataforma. Conecta ao WhatsApp como um aparelho a mais (Baileys, sem navegador).
 //
 //   node robo.mjs parear      → mostra o QR Code: no celular, WhatsApp › Dispositivos conectados › Conectar
 //   node robo.mjs teste       → mostra o que seria enviado hoje, sem enviar nem marcar nada
-//   node robo.mjs             → envia (é o que o agendador do Windows roda às 08:00)
+//   node robo.mjs             → envia (é o que o agendador roda às 08:00)
 //
-// ATENÇÃO: automatizar o WhatsApp Web é contra os Termos do WhatsApp e o número pode ser bloqueado.
+// ATENÇÃO: automatizar o WhatsApp é contra os Termos do WhatsApp e o número pode ser bloqueado.
 // Use um número só para isso. As pausas aleatórias entre mensagens diminuem o risco, não o eliminam.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +31,6 @@ const CFG = {
   servidor: (ENV.SERVIDOR_URL || 'https://analise-de-frota.onrender.com').replace(/\/$/, ''),
   email: ENV.ROBO_EMAIL || '',
   senha: ENV.ROBO_SENHA || '',
-  chrome: ENV.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   pausaMin: Number(ENV.PAUSA_MIN_SEG || 25),
   pausaMax: Number(ENV.PAUSA_MAX_SEG || 60),
   limiteHora: Number(ENV.LIMITE_HORA || 12),       // até que hora espera os dados de ontem chegarem
@@ -82,54 +81,70 @@ async function entrar() {
   if (eu && eu.papel === 'leitor') throw new Error('O usuário do robô é leitor: ele precisa ser colaborador para ver os telefones e marcar as mensagens.');
 }
 
-// ---------- WhatsApp Web ----------
-// O Chrome é aberto por aqui (e não pelo whatsapp-web.js) para liberar o armazenamento persistente: sem ele o
-// WhatsApp Web nega o "storage bucket", desconecta (post_logout) e recarrega sem parar. A sessão fica no perfil
-// do Chrome numa pasta SEM espaços no caminho (com espaços, como a do projeto, o WhatsApp Web também falha).
-const PERFIL = ENV.PERFIL_CHROME || path.join(process.env.LOCALAPPDATA || AQUI, 'robo-whatsapp-gobrax', 'perfil');
+// ---------- WhatsApp (Baileys: fala direto com o WhatsApp, sem Chrome) ----------
+// A sessão (as chaves do aparelho conectado) fica numa pasta fora do projeto: no Windows em %LOCALAPPDATA%,
+// no Linux (máquina virtual) em ~/.local/share. Quem tiver essa pasta manda mensagem pelo número do robô.
+const PASTA_DADOS = process.platform === 'win32'
+  ? (process.env.LOCALAPPDATA || AQUI)
+  : (process.env.XDG_DATA_HOME || path.join(process.env.HOME || AQUI, '.local', 'share'));
+const SESSAO = ENV.PASTA_SESSAO || path.join(PASTA_DADOS, 'robo-whatsapp-gobrax', 'sessao');
 async function abrirWhatsApp() {
-  const { default: puppeteer } = await import('puppeteer');
-  const { default: wweb } = await import('whatsapp-web.js');
-  if (/\s/.test(PERFIL)) throw new Error('O caminho do perfil do Chrome não pode ter espaços: ' + PERFIL + ' (ajuste PERFIL_CHROME no .env).');
-  const navegador = await puppeteer.launch({ executablePath: CFG.chrome, headless: MODO !== 'parear', defaultViewport: null, userDataDir: PERFIL });
-  await navegador.defaultBrowserContext().overridePermissions('https://web.whatsapp.com', ['persistent-storage', 'notifications']);
-  const cliente = new wweb.Client({ puppeteer: { browserWSEndpoint: navegador.wsEndpoint() } });
-  cliente.fechar = async () => { await cliente.destroy().catch(() => {}); await navegador.close().catch(() => {}); };
-  const pronto = new Promise((ok, falha) => {
-    cliente.on('qr', async (qr) => {
-      if (MODO !== 'parear') { falha(new Error('O WhatsApp pediu o QR Code de novo: rode "node robo.mjs parear".')); return; }
-      const { default: qrcode } = await import('qrcode-terminal');
-      console.log('\nNo celular do número do robô: WhatsApp › Dispositivos conectados › Conectar um dispositivo, e leia o código:\n');
-      qrcode.generate(qr, { small: true });
-    });
-    cliente.on('ready', ok);
-    cliente.on('auth_failure', (m) => falha(new Error('Falha no login do WhatsApp: ' + m)));
-    const limite = MODO === 'parear' ? 6 : 3;   // no pareamento, tempo para pegar o celular e ler o código
-    setTimeout(() => falha(new Error(`O WhatsApp Web não conectou em ${limite} minutos.`)), limite * 60000);
+  const baileys = await import('baileys');
+  const { default: pino } = await import('pino');
+  const { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = baileys;
+  fs.mkdirSync(SESSAO, { recursive: true });
+  const { state, saveCreds } = await useMultiFileAuthState(SESSAO);
+  let version;
+  try { ({ version } = await fetchLatestBaileysVersion()); } catch { /* fica a versão embutida */ }
+  const limite = MODO === 'parear' ? 6 : 3;   // no pareamento, tempo para pegar o celular e ler o código
+  return new Promise((ok, falha) => {
+    let fim = false, sock = null, quedas = 0;
+    const encerrar = (erro) => { if (fim) return; fim = true; clearTimeout(relogio); try { sock?.end(undefined); } catch { /* já fechado */ } falha(erro); };
+    const relogio = setTimeout(() => encerrar(new Error(`O WhatsApp não conectou em ${limite} minutos.`)), limite * 60000);
+    const conectar = () => {
+      sock = makeWASocket({
+        auth: state, version, logger: pino({ level: 'silent' }), browser: Browsers.ubuntu('Robo Gobrax'),
+        markOnlineOnConnect: false, syncFullHistory: false
+      });
+      sock.ev.on('creds.update', saveCreds);
+      sock.ev.on('connection.update', async (u) => {
+        if (fim) return;
+        if (u.qr) {
+          if (MODO !== 'parear') { encerrar(new Error('O WhatsApp pediu o QR Code de novo: rode "npm run parear".')); return; }
+          const { default: qrcode } = await import('qrcode-terminal');
+          console.log('\nNo celular do número do robô: WhatsApp › Dispositivos conectados › Conectar um dispositivo, e leia o código:\n');
+          qrcode.generate(u.qr, { small: true });
+          if (process.env.QR_BRUTO) console.log('QR:' + u.qr);   // para o vm/parear-na-tela.mjs mostrar o código no navegador
+        }
+        if (u.connection === 'open') {
+          fim = true; clearTimeout(relogio);
+          const s = sock;
+          ok({
+            // mesmo formato do whatsapp-web.js: { _serialized } ou null se o número não tem WhatsApp
+            getNumberId: async (tel) => {
+              const [r] = (await s.onWhatsApp(String(tel).replace(/\D/g, '') + '@s.whatsapp.net')) || [];
+              return r && r.exists ? { _serialized: r.jid } : null;
+            },
+            sendMessage: (jid, texto) => s.sendMessage(jid, { text: texto }),
+            fechar: async () => { try { s.end(undefined); } catch { /* já fechado */ } }
+          });
+        }
+        if (u.connection === 'close') {
+          const codigo = u.lastDisconnect?.error?.output?.statusCode;
+          if (codigo === DisconnectReason.loggedOut) {
+            encerrar(new Error('O WhatsApp desconectou o robô (aparelho removido no celular): rode "npm run parear".'));
+          } else if (++quedas > 5) {
+            encerrar(new Error('O WhatsApp fechou a conexão várias vezes seguidas (código ' + codigo + ').'));
+          } else {
+            conectar();   // 515 logo depois de ler o QR Code é normal: o WhatsApp pede para reconectar
+          }
+        }
+      });
+    };
+    conectar();
   });
-  pronto.catch(() => {});   // a falha é tratada no await abaixo
-  try {
-    await cliente.initialize();
-    await pronto;
-  } catch (e) {
-    await cliente.fechar();   // fecha o Chrome: senão a próxima tentativa acha o perfil em uso
-    throw e;
-  }
-  return cliente;
 }
-// O WhatsApp Web às vezes recarrega a página enquanto abre ("Execution context was destroyed"): tenta de novo
-async function abrirWhatsAppComRetentativa() {
-  for (let tentativa = 1; ; tentativa++) {
-    try {
-      return await abrirWhatsApp();
-    } catch (e) {
-      const passageiro = /context was destroyed|Target closed|Navigation|detached/i.test(e.message);
-      if (!passageiro || tentativa >= 4) throw e;
-      log(`o WhatsApp Web recarregou ao abrir (${e.message}); tentativa ${tentativa + 1} de 4`);
-      await dormir(5000);
-    }
-  }
-}
+const abrirWhatsAppComRetentativa = abrirWhatsApp;
 
 // ---------- envio ----------
 async function enviarDoCliente(wa, c, dia, conta) {
@@ -227,7 +242,7 @@ async function principal() {
   log(`== robô do WhatsApp · modo ${MODO}`);
   if (MODO === 'parear') {
     const wa = await abrirWhatsAppComRetentativa();
-    log('WhatsApp conectado. A sessão ficou guardada em ' + PERFIL + '.');
+    log('WhatsApp conectado. A sessão ficou guardada em ' + SESSAO + '.');
     await dormir(10000);   // termina de sincronizar antes de fechar
     await wa.fechar();
     return;

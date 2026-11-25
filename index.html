@@ -7228,33 +7228,6 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     if (cruzou) g += `<line x1="${x(pts.indexOf(cruzou)).toFixed(1)}" x2="${x(pts.indexOf(cruzou)).toFixed(1)}" y1="${m.t}" y2="${m.t + ih}" stroke-dasharray="3 4" style="stroke:var(--ok, #1E8E3E)"/>`;
     const grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Economia acumulada contra o investimento acumulado" style="display:block;max-height:${Math.round(H * 1.15)}px">${g}</svg>`;
 
-    // barras mês a mês: investimento ao lado da economia, com saldo e cobertura embaixo
-    const BW = larguraGrafico(1, 560), BH = 320, bm = { l: 70, r: 10, t: 24, b: 96 }, biw = BW - bm.l - bm.r, bih = BH - bm.t - bm.b;
-    const bvals = meses.flatMap((o) => [o.e, o.c]);
-    const blo = Math.min(0, ...bvals), bhi = Math.max(...bvals, 1) * 1.12;
-    const by = (v) => bm.t + bih - ((v - blo) / (bhi - blo)) * bih, bcol = biw / meses.length, bl = Math.min(56, bcol * 0.3);
-    let gb = '';
-    // marcas do eixo sem sobrepor: a que fica a menos de 16 px de outra já desenhada sai
-    const marcasY = [];
-    [0, bhi, (blo + bhi) / 2].concat(blo < 0 ? [blo] : []).forEach((v) => { if (marcasY.every((u) => Math.abs(by(u) - by(v)) >= 16)) marcasY.push(v); });
-    marcasY.forEach((v) => {
-      gb += `<line x1="${bm.l}" x2="${BW - bm.r}" y1="${by(v).toFixed(1)}" y2="${by(v).toFixed(1)}" style="stroke:var(--apoio)" stroke-width="1"/><text x="${bm.l - 6}" y="${(by(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" style="fill:var(--texto-2)">${R0(v)}</text>`;
-    });
-    meses.forEach((o, i) => {
-      const cx = bm.l + i * bcol + bcol / 2, ok = o.e >= o.c, cor = ok ? 'var(--ok, #1E8E3E)' : 'var(--critico, #D93025)';
-      const barra = (x0, v, estilo, rot) => { const a = by(Math.max(v, 0)), z = by(Math.min(v, 0)); return `<rect x="${x0.toFixed(1)}" y="${a.toFixed(1)}" width="${bl.toFixed(1)}" height="${Math.max(z - a, 1).toFixed(1)}" rx="5" style="${estilo}"><title>${esc(D.nomeMes(o.p.mes))} · ${rot}: ${esc(R(v))}</title></rect><text x="${(x0 + bl / 2).toFixed(1)}" y="${(a - 6).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" style="fill:var(--tinta)">${R0(v)}</text>`; };
-      gb += barra(cx - bl - 3, o.c, 'fill:var(--texto-2);opacity:.45', 'investimento');
-      gb += barra(cx + 3, o.e, 'fill:' + cor, 'diesel economizado');
-      const cobre = !o.c ? '' : o.e < 0 ? 'economia negativa no mês' : 'cobre ' + fmt((o.e / o.c) * 100, 0) + '% da mensalidade';
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 76}" text-anchor="middle" font-size="12" font-weight="600" style="fill:var(--tinta)">${esc(D.nomeMes(o.p.mes))}${o.parcial ? ' (parcial)' : ''}</text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 60}" text-anchor="middle" font-size="11" font-weight="600" style="fill:${cor}">saldo ${R0(o.e - o.c)}</text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 45}" text-anchor="middle" font-size="11" style="fill:var(--texto-2)">${cobre}</text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 25}" text-anchor="middle" font-size="11" style="fill:var(--tinta)">Nota Gobrax <tspan font-weight="700">${Number.isFinite(o.nota) ? fmt(o.nota, 1) : '—'}</tspan></text>`;
-      gb += `<text x="${cx.toFixed(1)}" y="${BH - 9}" text-anchor="middle" font-size="11" style="fill:var(--tinta)"><tspan font-weight="700">${Number.isFinite(o.km) ? fmt(o.km, 0) : '—'}</tspan> km rodados</text>`;
-    });
-    const legenda = `<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px" class="apoio"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--texto-2);opacity:.45;margin-right:6px"></i>Investimento Gobrax</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok, #1E8E3E);margin-right:6px"></i>Economia que pagou o mês</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--critico, #D93025);margin-right:6px"></i>Economia abaixo da mensalidade</span></div>`;
-    const graficoMes = `<svg viewBox="0 0 ${BW} ${BH}" width="100%" role="img" aria-label="Investimento e economia mês a mês, com a Nota Gobrax e os km de cada mês" style="display:block;max-height:360px">${gb}</svg>`;
-
     const item = (rot, val, delta, apoio) => `<div class="exec-i"><span class="exec-rot">${rot}</span><span class="exec-val num">${val}</span><span class="exec-var">${delta || ''}</span><span class="exec-apo">${apoio || ''}</span></div>`;
     const itens = [
       item('Investimento Gobrax por mês', R0(inv.mensal), '', fmt(inv.qtd, 0) + ' equipamentos × ' + R(inv.valor)),
@@ -7263,10 +7236,12 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       item(paga ? 'Ganho líquido' : 'Falta para se pagar', R0(Math.abs(saldo)), retorno !== null ? `<span class="exec-${paga ? 'bom' : 'ruim'}">retorno de ${fmt(retorno, 1)}×</span>` : '', paga ? 'economia menos o investimento' : 'investimento menos a economia')
     ];
     if (ecoMes !== null) itens.push(item('Ritmo atual por mês', R0(ecoMes), `<span class="exec-${ecoMes >= inv.mensal ? 'bom' : 'ruim'}">${ecoMes >= inv.mensal ? 'cobre' : 'não cobre'} a mensalidade</span>`, 'economia da ' + S.rotAgora + ' em 30 dias'));
-    const tabela = `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Mês</th><th class="dir">Investimento</th><th class="dir">Diesel economizado</th><th class="dir">Saldo</th><th class="dir">Cobertura</th></tr></thead><tbody>
-      ${meses.map((o) => `<tr><td><b style="font-weight:600">${esc(D.nomeMes(o.p.mes))}</b>${o.p.ini !== o.p.mes || o.p.fim !== D.fimMes(o.p.mes) ? `<span class="linha2">${D.periodoCurto(o.p)}</span>` : ''}</td><td class="dir num">${R(o.c)}</td><td class="dir num">${R(o.e)}</td>
-        <td class="dir num"><span class="exec-${o.e >= o.c ? 'bom' : 'ruim'}" style="font-weight:600">${R(o.e - o.c)}</span></td><td class="dir num">${!o.c ? '—' : o.e < 0 ? 'negativa' : fmt((o.e / o.c) * 100, 0) + '%'}</td></tr>`).join('')}
-      </tbody></table></div>`;
+    // mês a mês numa tabela recolhida (o gráfico de barras com cinco textos por mês saiu: poluía a tela)
+    const tabela = `<details class="receita"><summary>Mês a mês: investimento, economia, Nota Gobrax e km</summary><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Mês</th><th class="dir">Investimento</th><th class="dir">Diesel economizado</th><th class="dir">Saldo</th><th class="dir">Cobertura</th><th class="dir">Nota Gobrax</th><th class="dir">Km rodados</th></tr></thead><tbody>
+      ${meses.map((o) => `<tr><td><b style="font-weight:600">${esc(D.nomeMes(o.p.mes))}</b>${o.parcial ? `<span class="linha2">${D.periodoCurto(o.p)}</span>` : ''}</td><td class="dir num">${R(o.c)}</td><td class="dir num">${R(o.e)}</td>
+        <td class="dir num"><span class="exec-${o.e >= o.c ? 'bom' : 'ruim'}" style="font-weight:600">${R(o.e - o.c)}</span></td><td class="dir num">${!o.c ? '—' : o.e < 0 ? 'negativa' : fmt((o.e / o.c) * 100, 0) + '%'}</td>
+        <td class="dir num">${Number.isFinite(o.nota) ? fmt(o.nota, 1) : '—'}</td><td class="dir num">${Number.isFinite(o.km) ? fmt(o.km, 0) : '—'}</td></tr>`).join('')}
+      </tbody></table></div></details>`;
     const semRuido = ruidoInfo.ruido === null, semRS = bloq || noRuido || semRuido;
     const selo = bloq ? '<span class="badge badge-critico">R$ bloqueado</span>' : semRuido ? '<span class="badge badge-neutro">Ruído não calculável</span>' : noRuido ? '<span class="badge badge-neutro">Sem mudança clara</span>' : paga ? '<span class="badge badge-ok">O projeto se paga</span>' : '<span class="badge badge-critico">Ainda não se paga</span>';
     const avisoRuido = noRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A mudança de consumo (${dKml >= 0 ? '+' : '−'}${fmt(Math.abs(dKml), 2)} km/l) está dentro do ruído da linha de base (±${fmt(ruidoInfo.ruido, 2)} km/l): sem mudança clara, a economia não é contada como resultado.</span></div></div>` : '';
@@ -7280,18 +7255,50 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
       <li><b>Investimento:</b> ${fmt(inv.qtd, 0)} equipamentos × valor do contrato, rateado por dia de cada mês. Uso interno: não vai para o resumo exportado.</li>
       <li><b>Leitura:</b> economia associada ao projeto, não causada por ele.</li></ul></details>`;
     return `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">O projeto Gobrax se paga?</h2>
-        <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado: o que a frota gastaria rodando os mesmos km com o consumo do início (${fmtInd(IND_MAP.kml, base)}, ${D.periodoCurto(S.pIni)}), ao diesel de ${fmtReais(E.preco, 2)}/L.${cruzou ? ' A linha tracejada verde marca a semana em que a economia passou o investimento.' : ''}</span></div>${selo}</div>
+        <span class="h2-sub">Mensalidade da Gobrax contra o diesel economizado (consumo do início ${fmtInd(IND_MAP.kml, base)}, diesel a ${fmtReais(E.preco, 2)}/L).</span></div>${selo}</div>
       <div class="card-corpo" style="gap:16px">
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-          <span class="apoio" style="font-size:13px">${fmt(inv.qtd, 0)} equipamentos × ${R(inv.valor)} = mensalidade de <b>${R(inv.mensal)}</b>${inv.qtdAuto ? ' (quantidade = veículos nos dados: informe a contratada)' : ''} · <a class="btn-link peq" href="#/config?aba=premissas">alterar em Configurações</a></span>
-        </div>
+        ${formContrato(inv)}
         ${bloq ? avisoBloqueios(bloqueios().filter((x) => x.tipo === 'idade'), 'Valor em R$') : semRuido ? `<div class="alerta alerta-atencao" style="margin:0"><span class="alerta-icone">!</span><div class="alerta-corpo"><span class="alerta-texto">A linha de base tem menos de ${X.LIMITES.faseDiasMin} dias válidos: sem o ruído não dá para dizer se a mudança é real, então nenhum valor em R$ é mostrado.</span></div></div>` : avisoRuido}
-        ${semRS ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>`}
-        ${receita}
-        ${semRS ? '' : `<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Investimento × economia mês a mês</span>${graficoMes}${legenda}${blocoMesesNegativos(meses)}</div>
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Economia acumulada × investimento acumulado</span>${grafico}</div>
+        ${semRS ? '' : `<section class="exec" style="margin:0"><div class="exec-grade">${itens.join('')}</div></section>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="hb-bloco-t">Economia acumulada × investimento acumulado${cruzou ? ' <span class="apoio" style="font-weight:400">(tracejado verde: semana em que a economia passou o investimento)</span>' : ''}</span>${grafico}</div>
+        ${blocoMesesNegativos(meses)}
         ${tabela}`}
+        ${receita}
       </div></section>`;
+  }
+  // valor pago por unidade e quantidade de unidades, editáveis no próprio Estudo; gravam nas premissas do cliente
+  // (as mesmas de Configurações), com o histórico de quem mudou
+  function formContrato(inv) {
+    const ed = !!E.cliente && podeEditarPremissas(), dis = ed ? '' : ' disabled', pm = premissasDe(E.cliente);
+    const campo = (id, rot, val, suf, casas) => `<div class="campo-bloco" style="min-width:150px;flex:0 1 190px"><label class="campo-rotulo" for="${id}">${rot}</label><span class="campo campo-sufixo"><input class="campo" id="${id}" inputmode="decimal" value="${val > 0 ? esc(fmt(val, casas)) : ''}" placeholder="${esc(fmt(id === 'est-valor' ? inv.valor : inv.qtd, casas))}"${dis}><span>${suf}</span></span></div>`;
+    return `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        ${campo('est-valor', 'Valor pago por unidade', pm.valorEquip, 'R$/mês', 2)}
+        ${campo('est-qtd', 'Unidades contratadas', pm.qtd, 'un.', 0)}
+        <div class="campo-bloco"><span class="campo-rotulo">Mensalidade</span><b class="num" style="font-size:18px;line-height:38px">${fmtReais(inv.mensal, 2)}</b></div>
+        ${ed ? '<button type="button" class="btn btn-primario" data-acao="estudo-contrato-salvar">Salvar</button>' : ''}
+      </div>${inv.qtdAuto || !(pm.valorEquip > 0) ? `<span class="apoio" style="font-size:12px;margin-top:-8px">${[!(pm.valorEquip > 0) ? 'valor padrão de ' + fmtReais(inv.valor, 2) + ' por unidade' : '', inv.qtdAuto ? 'quantidade = ' + fmt(inv.qtd, 0) + ' veículos nos dados' : ''].filter(Boolean).join(' · ')}: informe o contrato para a conta ficar certa.</span>` : ''}`;
+  }
+  // número digitado em formato brasileiro ("1.234,56") ou com ponto decimal ("159.90")
+  function numDigitado(id) {
+    const el = document.getElementById(id), s = String(el ? el.value : '').trim().replace(/\s|R\$/g, '');
+    if (!s) return null;
+    const norm = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s;
+    return Number(norm);
+  }
+  async function salvarContratoEstudo() {
+    const nome = E.cliente;
+    if (!nome) { toast('Escolha um cliente no topo.', 'erro'); return; }
+    if (!podeEditarPremissas()) { toast('Só CS e administrador mudam o valor do contrato.', 'erro'); return; }
+    const at = premissasDe(nome), valor = numDigitado('est-valor'), qtd = numDigitado('est-qtd');
+    if ((valor !== null && !(valor > 0)) || (qtd !== null && !(qtd > 0 && Number.isInteger(qtd)))) { toast('Confira os números: valor maior que zero e unidades inteiras.', 'erro'); return; }
+    const mud = [];
+    if ((at.valorEquip || null) !== (valor || null)) mud.push('valor por equipamento ' + (at.valorEquip ? fmtReais(at.valorEquip, 2) : '—') + ' → ' + (valor ? fmtReais(valor, 2) : '—'));
+    if ((at.qtd || null) !== (qtd || null)) mud.push('equipamentos ' + (at.qtd || '—') + ' → ' + (qtd || '—'));
+    if (!mud.length) { toast('Nada mudou.'); return; }
+    const nova = { cliente: nome, preco: at.preco || null, uf: at.uf || '', valorEquip: valor || null, qtd: qtd || null, lh: Number.isFinite(at.lh) ? at.lh : 5 };
+    nova.historico = [{ em: new Date().toISOString(), por: quemSou(), mudou: mud.join('; ') + ' (pelo Estudo do projeto)' }].concat(at.historico || []).slice(0, 100);
+    await gravarDoc('premissas', 'pr-' + idDoc(nome), nova);
+    toast('Contrato salvo: vale em todas as telas.'); render();
   }
   function telaEstudo() {
     const S = dadosEstudo(), b = E.base;
@@ -7356,21 +7363,19 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
 
     // ---- Indicadores ----
     const chaves = ['kml', 'km_dia', 'inicio_faixa_verde', 'faixa_verde', 'embalo', 'motor_ocioso', 'excesso_rotacao', 'tempo_excesso_velocidade', 'piloto_automatico', 'pressao_acelerador', 'excesso_velocidade', 'frenagens'].filter((k) => k !== S.chave && IND_MAP[k] && temInd(k));
-    const cards = chaves.map((k) => {
+    // uma linha por indicador (antes, um cartão com gráfico grande para cada um: a tela ficava poluída)
+    const linhasInd = chaves.map((k) => {
       const ind = IND_MAP[k], v = X.variacao(ind, A[k], I[k]);
       const mens = S.ms.map((p, i) => ({ p, v: S.frM[i] ? S.frM[i][k] : null })).filter((o) => Number.isFinite(o.v));
-      const melhor = mens.length ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor > 0 ? o : a)) : null;
-      const pior = mens.length ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor < 0 ? o : a)) : null;
-      const sel = v.semBase ? ['Sem base', 'vazio'] : v.estavel ? ['Estável', 'neutro'] : v.sentido === 'melhor' ? ['Melhorou', 'ok'] : v.sentido === 'pior' ? ['Piorou', 'critico'] : ['Mudou', 'neutro'];
-      return `<section class="card" style="gap:0"><div class="card-cab"><div class="card-cab-texto" style="flex-direction:row;justify-content:space-between;align-items:center;width:100%"><h2 class="h2" style="font-size:15px">${esc(ind.label)}</h2><span class="badge badge-${sel[1]}">${sel[0]}</span></div></div>
-        <div class="card-corpo" style="gap:10px">
-          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline"><span><span class="apoio">Início</span> <b class="num">${fmtInd(ind, I[k])}</b></span><span><span class="apoio">Agora</span> <b class="num" style="font-size:18px">${fmtInd(ind, A[k])}</b></span>${variacao(v)}</div>
-          ${linhaEstudo(S.frW.map((r) => (r ? r[k] : null)), S.ws, ind, 150)}
-          ${melhor && mens.length > 1 ? `<span class="apoio" style="font-size:12px">Melhor mês: <b>${esc(D.nomeMes(melhor.p.mes))}</b> (${fmtInd(ind, melhor.v)}) · pior mês: <b>${esc(D.nomeMes(pior.p.mes))}</b> (${fmtInd(ind, pior.v)})</span>` : ''}
-        </div></section>`;
+      const melhor = mens.length > 1 ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor > 0 ? o : a)) : null;
+      const pior = mens.length > 1 ? mens.reduce((a, o) => ((o.v - a.v) * ind.melhor < 0 ? o : a)) : null;
+      const sel = v.semBase ? ['Sem base', 'vazio', '#9AA0A6'] : v.estavel ? ['Estável', 'neutro', '#9AA0A6'] : v.sentido === 'melhor' ? ['Melhorou', 'ok', '#1E8E3E'] : v.sentido === 'pior' ? ['Piorou', 'critico', '#D93025'] : ['Mudou', 'neutro', '#9AA0A6'];
+      const mesV = (o) => (o ? `${esc(mesCurto(o.p.mes))} <span class="mudo">${fmtInd(ind, o.v)}</span>` : '<span class="mudo">—</span>');
+      return `<tr><td><b style="font-weight:600">${esc(ind.label)}</b></td><td class="dir num">${fmtInd(ind, I[k])}</td><td class="dir num"><b>${fmtInd(ind, A[k])}</b></td><td class="dir">${variacao(v)}</td>
+        <td title="${esc(ind.label)} semana a semana">${X.ui.sparkline(S.frW.map((r) => (r && Number.isFinite(r[k]) ? r[k] : null)), sel[2])}</td><td>${mesV(melhor)}</td><td>${mesV(pior)}</td><td><span class="badge badge-${sel[1]}">${sel[0]}</span></td></tr>`;
     }).join('');
-    const indicadores = chaves.length ? `<div class="pag-cab" style="margin-top:8px"><div class="pag-cab-texto"><h2 class="h2">Indicadores</h2><span class="sub">Cada indicador semana a semana desde o início do projeto, com o início contra agora e o melhor e o pior mês.</span></div></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px">${cards}</div>` : '';
+    const indicadores = chaves.length ? `<section class="card"><div class="card-cab"><div class="card-cab-texto"><h2 class="h2">Indicadores</h2><span class="h2-sub">Início do projeto contra agora, a tendência semana a semana e o melhor e o pior mês.</span></div></div>
+      <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Indicador</th><th class="dir">Início</th><th class="dir">Agora</th><th class="dir">Variação</th><th>Semanas</th><th>Melhor mês</th><th>Pior mês</th><th>Resultado</th></tr></thead><tbody>${linhasInd}</tbody></table></div></section>` : '';
 
     return `${cab}<div style="display:flex;flex-direction:column;gap:16px">${faixa}${blocoInvestimento(S)}${nota}${mots}${indicadores}</div>`;
   }
@@ -11583,6 +11588,7 @@ html .app.shell-v4 .pagina { padding-left: 24px; padding-right: 24px; }
     'vivo-sel': (el) => { E.vivoSel = el.dataset.placa; pintarVivo(); },
     'vivo-centralizar': () => enquadrarFrota(),
     'premissas-salvar': () => salvarPremissas(),
+    'estudo-contrato-salvar': () => salvarContratoEstudo(),
     'nota-mes-salvar': (el) => salvarNotaMes(el.dataset.mes),
     'nota-mes-editar': (el) => { E.notaMesEdit = el.dataset.mes; render(); },
     'resumo-exportar': () => {   // deck/PDF: só o resumo (sem nomes de motoristas, contatos nem valor de contrato)

@@ -26,7 +26,9 @@ function metricDef(k){return{
   br100:{label:'Freadas',get:a=>a.br100,fmt:v=>fmt.n(v,1),unit:' /100 km',up:false},
   score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true}}[k]}
 function vOverview(C){
-  const {cur,prev,P,hl,price}=C;const u=S.u;const md=metricDef(u.ovMetric);
+  const {cur,prev,P,hl,price}=C;const u=S.u;
+  /* km por dia já está nas barras logo abaixo: o gráfico de cima mostra consumo, freadas ou nota */
+  if(!['kmpl','br100','score'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
   const extraL=prev.kmpl&&cur.km?cur.l-cur.km/prev.kmpl:null;const extraR=extraL!=null?extraL*price:null;
   const ds=dailySeries(C.cid,ST,P.from,P.to);const wk=weeklySeries(C.cid,ST,P.from,P.to);
   const sc=statusCounts(C);const gl=gainsLosses(cur,prev,price);
@@ -51,7 +53,7 @@ function vOverview(C){
     ${kpis}
   </div>
   <div class="sec">
-    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['kmday','Km por dia'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
+    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
   </div>
   <div class="grid g-main sec">
     <div class="card rise">${cardH('Quem puxa e quem derruba o resultado',`Diesel economizado ou gasto a mais nos mesmos km, a ${fmt.brl(price,2)}/L`,`<a class="b sm" href="#/motoristas">Abrir motoristas</a>`)}<div class="bars">${bars}</div><div class="row sm" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--soft);gap:22px"><span><b style="color:var(--ok-t)">+${fmt.brl(sumG)}</b> ganhos</span><span><b style="color:var(--bad-t)">−${fmt.brl(Math.abs(sumL))}</b> perdas</span><span><b>${fmt.brl(sumG+sumL)}</b> saldo</span></div></div>

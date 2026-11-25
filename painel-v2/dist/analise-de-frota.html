@@ -1323,6 +1323,9 @@ const nkey=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(
 /* um cliente de /api/v1/painel/dados → {vehicles, recs, ...} no formato das telas */
 function fleetFromServer(c){
   const vmap=new Map(),drv={},recs=[],lastComm={};
+  /* a performance diária da API não traz nota (o servidor grava nota vazia): a Nota Gobrax real é a do mês de cada
+     motorista, na premiação (v2/driversOverview). Dia sem nota usa a nota do mês do motorista que dirigia o veículo. */
+  const premNota={};for(const p of c.premiacoes||[]){const n=nv(p.nota);if(n!=null&&n>=0&&n<=100&&p.mes&&p.motorista)premNota[nkey(p.motorista)+'|'+p.mes]=n}
   const seen=(p,t)=>{if(lastComm[p]==null||t>lastComm[p])lastComm[p]=t};
   for(const r of c.registros||[]){
     const p=String(r.placa||'').trim();if(!p)continue;const dia=String(r.dia).slice(0,10);const t=dIdx(dia);
@@ -1331,8 +1334,8 @@ function fleetFromServer(c){
     const km=nv(r.km)||0,l=nv(r.litros)||0;
     if(km>0)seen(p,t);
     if(!r.rodou||km<=0||l<=0)continue;
-    const nota=nv(r.nota);
-    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),id:nv(r.motor_ocioso),sc:nota!=null&&nota>=0&&nota<=100?nota:null});
+    let nota=nv(r.nota);if(nota==null||nota<0||nota>100)nota=r.motorista?premNota[nkey(r.motorista)+'|'+dia.slice(0,7)]??null:null;
+    recs.push({t,date:dia,veh:p,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),id:nv(r.motor_ocioso),sc:nota});
   }
   /* odômetro: a última comunicação da unidade eletrônica conta como sinal */
   for(const o of c.odometros||[]){const p=String(o.placa||'').trim();const d=String(o.coletado||'').slice(0,10);if(p&&/^\d{4}-\d\d-\d\d$/.test(d)){if(!vmap.has(p))vmap.set(p,{id:p,driver:'',filial:'Frota',phone:''});seen(p,dIdx(d))}}
@@ -2060,7 +2063,9 @@ function metricDef(k){return{
   br100:{label:'Freadas',get:a=>a.br100,fmt:v=>fmt.n(v,1),unit:' /100 km',up:false},
   score:{label:'Nota Gobrax',get:a=>a.score,fmt:v=>fmt.n(v,0),unit:' pts',up:true}}[k]}
 function vOverview(C){
-  const {cur,prev,P,hl,price}=C;const u=S.u;const md=metricDef(u.ovMetric);
+  const {cur,prev,P,hl,price}=C;const u=S.u;
+  /* km por dia já está nas barras logo abaixo: o gráfico de cima mostra consumo, freadas ou nota */
+  if(!['kmpl','br100','score'].includes(u.ovMetric))u.ovMetric='kmpl';const md=metricDef(u.ovMetric);
   const extraL=prev.kmpl&&cur.km?cur.l-cur.km/prev.kmpl:null;const extraR=extraL!=null?extraL*price:null;
   const ds=dailySeries(C.cid,ST,P.from,P.to);const wk=weeklySeries(C.cid,ST,P.from,P.to);
   const sc=statusCounts(C);const gl=gainsLosses(cur,prev,price);
@@ -2085,7 +2090,7 @@ function vOverview(C){
     ${kpis}
   </div>
   <div class="sec">
-    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['kmday','Km por dia'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
+    <div class="card dark hero rise"><span class="wm" aria-hidden="true">gobrax</span>${cardH('Evolução dia a dia',`${md.label} contra a média do período de comparação`,segHtml([['kmpl','Consumo'],['br100','Freadas'],['score','Nota']],u.ovMetric,'ov-metric'))}${chart}<div class="row" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${pts}</div></div>
   </div>
   <div class="grid g-main sec">
     <div class="card rise">${cardH('Quem puxa e quem derruba o resultado',`Diesel economizado ou gasto a mais nos mesmos km, a ${fmt.brl(price,2)}/L`,`<a class="b sm" href="#/motoristas">Abrir motoristas</a>`)}<div class="bars">${bars}</div><div class="row sm" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--soft);gap:22px"><span><b style="color:var(--ok-t)">+${fmt.brl(sumG)}</b> ganhos</span><span><b style="color:var(--bad-t)">−${fmt.brl(Math.abs(sumL))}</b> perdas</span><span><b>${fmt.brl(sumG+sumL)}</b> saldo</span></div></div>

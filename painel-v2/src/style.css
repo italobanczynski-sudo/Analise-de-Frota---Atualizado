@@ -259,7 +259,16 @@ textarea.inp{height:auto;padding:10px 14px;resize:vertical;min-height:70px}
 .app.collapsed .sidebar{flex-basis:76px;width:76px}
 .app.collapsed .sidebar .lb,.app.collapsed .nav-g,.app.collapsed .nav a .cnt{display:none}
 .app.collapsed .logo .l{display:none}.app.collapsed .logo{padding-left:10px}
-.app.collapsed .nav a{justify-content:center;padding:0}
+.app.collapsed .nav a{justify-content:center;padding:0;height:46px}
+/* ícones maiores no menu */
+.nav a svg{width:24px;height:24px;flex:0 0 24px}
+/* menu recolhido: clicar abre por cima da tela; tirar o mouse recolhe de volta */
+.app.collapsed .sidebar{cursor:pointer;transition:width .3s var(--ease),flex-basis .3s var(--ease),margin-right .3s var(--ease),box-shadow .3s}
+.app.collapsed .sidebar.peek{flex-basis:248px;width:248px;margin-right:-172px;box-shadow:var(--sh3);cursor:default}
+.app.collapsed .sidebar.peek .lb,.app.collapsed .sidebar.peek .nav-g,.app.collapsed .sidebar.peek .logo .l{display:inline-block}
+.app.collapsed .sidebar.peek .nav-g{display:block}
+.app.collapsed .sidebar.peek .nav a{justify-content:flex-start;padding:0 14px}
+.app.collapsed .sidebar.peek .logo{padding-left:12px}
 .side-foot{position:relative;z-index:1;padding:10px 6px 0}
 pre.code{background:var(--preto);color:#f6f6f2;border-radius:var(--r3);padding:16px 18px;overflow:auto;font:500 12.5px/1.6 ui-monospace,Menlo,Consolas,monospace;margin:0 0 14px}
 code{font:500 12.5px ui-monospace,Menlo,Consolas,monospace;background:var(--soft);border-radius:6px;padding:1px 6px}
@@ -509,10 +518,11 @@ textarea.inp{resize:vertical;font:inherit}
 @media (max-width:1200px){.topbar{padding:12px 20px}.topbar .demo{display:none}.search{min-width:0}.search .inp{min-width:0}}
 @media (max-width:1320px){.kpi.kp2 .v{font-size:22px}}
 /* KPIs centralizados, padrão único */
-.g-kpi .card.kpi{align-items:center;justify-content:center;text-align:center;gap:6px;min-height:236px;container-type:inline-size;padding:20px 14px}
+/* ícone sempre na mesma altura (topo), número que cabe no cartão mesmo com "R$" na frente */
+.g-kpi .card.kpi{align-items:center;justify-content:flex-start;text-align:center;gap:6px;min-height:236px;container-type:inline-size;padding:20px 14px}
 .kpi.kp2 .tag{padding-right:0;min-height:0;order:2;margin-top:2px}
-.kpi.kp2 .v{order:3;justify-content:center;font-size:clamp(26px,17cqw,58px);line-height:1.05;margin:2px 0}
-.kpi.kp2 .v small{font-size:clamp(13px,6.5cqw,20px)}
+.kpi.kp2 .v{order:3;justify-content:center;font-size:clamp(20px,12.5cqw,46px);line-height:1.05;margin:2px 0;max-width:100%}
+.kpi.kp2 .v small{font-size:clamp(12px,5.5cqw,18px)}
 .kpi.kp2>div:last-child{order:4;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px}
 .kpi.kp2 .dl-n{display:block}
 .kico{position:relative;right:auto;top:auto;order:1;width:68px;height:68px;border-radius:22px 22px 22px 0;margin-bottom:6px}
@@ -523,7 +533,7 @@ textarea.inp{resize:vertical;font:inherit}
 @keyframes kbob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-6deg)}}
 @keyframes kslide{0%,100%{transform:translateX(-5px) scale(1)}50%{transform:translateX(5px) scale(1.1)}}
 @keyframes kdrive{0%,100%{transform:translateX(-4px)}50%{transform:translateX(5px)}}
-.g-kpi .card.brand.kpi{gap:8px}.g-kpi .card.brand.kpi .gauge{margin:0 auto}
+.g-kpi .card.brand.kpi{gap:8px;justify-content:center}.g-kpi .card.brand.kpi .gauge{margin:0 auto}
 @media (max-width:900px){.g-kpi .card.kpi{min-height:0}}
 .grid>*{min-width:0}
 .card>.swoosh{position:absolute!important;right:-60px!important;top:-60px!important;left:auto!important;z-index:0!important}

@@ -200,7 +200,7 @@ const ACT={
   logout:async()=>{try{await srv('/api/v1/auth/sair','POST')}catch(e){}location.replace('/')},
   theme:()=>{S.theme=S.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=S.theme;savePrefs();renderTop();mapsTheme()},
   menu:()=>$('#sidebar').classList.toggle('open'),
-  collapse:()=>{S.collapsed=!S.collapsed;$('#appRoot').classList.toggle('collapsed',S.collapsed);savePrefs();setTimeout(placeNav,420)},
+  collapse:()=>{S.collapsed=!S.collapsed;$('#sidebar').classList.remove('peek');$('#appRoot').classList.toggle('collapsed',S.collapsed);savePrefs();setTimeout(placeNav,420)},
   period:el=>{S.period.preset=el.dataset.v;if(el.dataset.v==='custom'&&!S.period.from){S.period.from=dIso(T0-29);S.period.to=TODAY}render({anim:false,keepScroll:true})},
   compare:el=>{S.compare=el.dataset.v;render({anim:false,keepScroll:true})},
   'go-prem':()=>{S.u.dataTab='regras';nav('dados')},
@@ -306,6 +306,11 @@ async function boot(){
   if(!CLIENT_DEFS.some(c=>c.id===S.client))S.client=CLIENT_DEFS[0]?CLIENT_DEFS[0].id:'';
   $('#root').innerHTML=shell();
   if(S.collapsed)$('#appRoot').classList.add('collapsed');
+  /* menu recolhido: clicar abre por cima; tirar o mouse recolhe de volta */
+  {const sb=$('#sidebar');const peek=on=>{if(sb.classList.contains('peek')===on)return;sb.classList.toggle('peek',on);setTimeout(placeNav,320)};
+    sb.addEventListener('click',e=>{if(!S.collapsed||innerWidth<=900||e.target.closest('[data-act="collapse"]'))return;peek(true)});
+    sb.addEventListener('mouseleave',()=>peek(false));
+    sb.addEventListener('focusout',e=>{if(!sb.contains(e.relatedTarget))peek(false)});}
   bind();
   const {path,q}=parseHash();const t=TABKEY[path];if(t&&q.aba&&t[1][q.aba])S.u[t[0]]=t[1][q.aba]===1?q.aba:t[1][q.aba];
   await render({skeleton:true});

@@ -314,6 +314,7 @@ async function boot(){
   bind();
   const {path,q}=parseHash();const t=TABKEY[path];if(t&&q.aba&&t[1][q.aba])S.u[t[0]]=t[1][q.aba]===1?q.aba:t[1][q.aba];
   await render({skeleton:true});
+  setTimeout(()=>document.documentElement.classList.add('kico-visto'),2500);
   buscarDiesel().then(ok=>{if(ok){DB.bump();go()}});setInterval(()=>buscarDiesel().then(ok=>{if(ok){DB.bump();go()}}),6*3600000);
   document.fonts&&document.fonts.ready.then(()=>{placeNav();placeTabs()});
 }

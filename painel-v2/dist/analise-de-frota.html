@@ -1181,10 +1181,10 @@ textarea.inp{resize:vertical;font:inherit}
 .kpi.kp2 .v{font-size:clamp(26px,2.15vw,34px);letter-spacing:-.02em;white-space:nowrap}.kpi.kp2 .v small{font-size:15px}
 .kico{position:absolute;right:14px;top:14px;width:46px;height:46px;border-radius:16px 16px 16px 0;background:var(--amarelo);color:var(--preto);display:grid;place-items:center;box-shadow:0 6px 16px rgba(254,219,0,.35)}
 .kico svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transform-origin:50% 50%;will-change:transform}
-.kico.k-fuel svg{animation:kbob 2.4s ease-in-out infinite}
-.kico.k-dollar svg{animation:kpulse 2.6s ease-in-out infinite}
-.kico.k-route svg{animation:kslide 2.2s ease-in-out infinite}
-.kico.k-truck svg{animation:kdrive 1.6s ease-in-out infinite}
+.kico.k-fuel svg{animation:kbob 1.2s ease-in-out 1}
+.kico.k-dollar svg{animation:kpulse 1.2s ease-in-out 1}
+.kico.k-route svg{animation:kslide 1.2s ease-in-out 1}
+.kico.k-truck svg{animation:kdrive 1.2s ease-in-out 1}
 @keyframes kpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 @media (max-width:900px){.kpi.kp2{min-height:0}}
 @media (max-width:1200px){.topbar{padding:12px 20px}.topbar .demo{display:none}.search{min-width:0}.search .inp{min-width:0}}
@@ -1199,9 +1199,13 @@ textarea.inp{resize:vertical;font:inherit}
 .kpi.kp2 .dl-n{display:block}
 .kico{position:relative;right:auto;top:auto;order:1;width:68px;height:68px;border-radius:22px 22px 22px 0;margin-bottom:6px}
 .kico svg{width:36px;height:36px}
-.kico::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid var(--amarelo);animation:kring 2.4s ease-out infinite;pointer-events:none}
+.kico::after{content:"";position:absolute;inset:0;border-radius:inherit;border:2px solid var(--amarelo);animation:kring 1.2s ease-out 1 both;pointer-events:none}
 @keyframes kring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.25);opacity:0}}
 @media (prefers-reduced-motion:reduce){.kico svg,.kico::after{animation:none!important}}
+/* anima só na primeira vez que a pessoa entra na plataforma; depois os ícones ficam parados */
+.kico-visto .kico svg,.kico-visto .kico::after{animation:none!important}
+.kico-visto .kico::after{opacity:0}
+.kico svg{will-change:auto}
 @keyframes kbob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-6deg)}}
 @keyframes kslide{0%,100%{transform:translateX(-5px) scale(1)}50%{transform:translateX(5px) scale(1.1)}}
 @keyframes kdrive{0%,100%{transform:translateX(-4px)}50%{transform:translateX(5px)}}
@@ -3366,6 +3370,7 @@ async function boot(){
   bind();
   const {path,q}=parseHash();const t=TABKEY[path];if(t&&q.aba&&t[1][q.aba])S.u[t[0]]=t[1][q.aba]===1?q.aba:t[1][q.aba];
   await render({skeleton:true});
+  setTimeout(()=>document.documentElement.classList.add('kico-visto'),2500);
   buscarDiesel().then(ok=>{if(ok){DB.bump();go()}});setInterval(()=>buscarDiesel().then(ok=>{if(ok){DB.bump();go()}}),6*3600000);
   document.fonts&&document.fonts.ready.then(()=>{placeNav();placeTabs()});
 }

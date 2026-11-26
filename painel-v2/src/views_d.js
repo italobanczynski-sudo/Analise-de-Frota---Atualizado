@@ -149,7 +149,9 @@ function drvIndTable(C,id){
 
 /* ---------- PLANO DE AÇÃO ---------- */
 function vPlan(C){
-  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);const gl=C.gl;
+  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);
+  /* quem piorou, ganhou e perdeu: por motorista (vínculos da API) quando existem */
+  const D=drvCtx(C);if(D!==C)op.fell=opportunities(D.cur,D.prev,price).fell;const gl=D.gl;
   const losers=gl.filter(g=>g.money<0).slice(-5).reverse();
   /* gargalos: meta x atual */
   const g=[
@@ -169,7 +171,7 @@ function vPlan(C){
   if(op.low[0])pr.push({t:'Pouco rendimento por dia',n:op.low.slice(0,3).map(w=>w.id).join(', '),v:`${op.low.length}`,s:`Menos de 80% de ${fmt.n(op.kdRef,0)} km por dia`,tone:'warn',f:'all'});
   if(op.brW)pr.push({t:'Freadas acima do melhor quartil',n:'',v:`${op.brW}`,s:`veículos acima de ${fmt.n(op.brRef,1)} /100 km`,tone:'warn',f:'all'});
   const prio=pr.map((x,i)=>`<div class="prio ${x.tone}" style="--i:${i}"><span class="pn num">${i+1}</span><div style="flex:1;min-width:0"><b>${x.t}</b><div class="xs muted">${x.s}${x.n?' · '+esc(x.n):''}</div></div><div class="num b" style="font-size:20px;white-space:nowrap">${x.v}</div><button class="btn primary sm" data-act="go-drv" data-f="${x.f||'all'}">Ver condutores</button></div>`).join('')||'<div class="empty"><b>Nada crítico agora</b>Continue acompanhando.</div>';
-  const li=(g,pos)=>`<div class="li" data-act="drv-open" data-id="${esc(g.id)}"><div class="ava">${esc(C.fleet.byId[g.id].driver[0])}</div><div style="flex:1;min-width:0"><b>${esc(C.fleet.byId[g.id].driver)}</b><div class="xs muted">${esc(g.id)} · ${fmt.kmpl(g.from)} → ${fmt.kmpl(g.to)} km/l</div></div><span class="num b" style="color:${pos?'var(--ok-t)':'var(--bad-t)'}">${pos?'+':''}${fmt.brl(g.money)}</span></div>`;
+  const li=(g,pos)=>`<div class="li" data-act="drv-open" data-id="${esc(g.id)}"><div class="ava">${esc(D.fleet.byId[g.id].driver[0])}</div><div style="flex:1;min-width:0"><b>${esc(D.fleet.byId[g.id].driver)}</b><div class="xs muted">${esc(vSub(D.fleet.byId[g.id]))} · ${fmt.kmpl(g.from)} → ${fmt.kmpl(g.to)} km/l</div></div><span class="num b" style="color:${pos?'var(--ok-t)':'var(--bad-t)'}">${pos?'+':''}${fmt.brl(g.money)}</span></div>`;
   const win=gl.filter(g=>g.money>0).slice(0,5).map(g=>li(g,true)).join('')||'<div class="empty"><b>Ninguém com ganho relevante</b></div>';
   const lose=losers.map(g=>li(g,false)).join('')||'<div class="empty"><b>Ninguém com perda relevante</b></div>';
   return`${pageH('Plano de ação',`${esc(C.def.name)} · ${spanCmp(C)}`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}

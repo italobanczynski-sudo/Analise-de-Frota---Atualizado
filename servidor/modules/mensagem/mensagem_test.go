@@ -27,6 +27,11 @@ func (m *DiarioMock_t) Listar(ctx context.Context, clienteID int64, ini, fim str
 	return a.Get(0).([]diario.Registro_t), a.Error(1)
 }
 
+func (m *DiarioMock_t) ListarMotoristas(ctx context.Context, clienteID int64, ini, fim string) ([]diario.Registro_t, error) {
+	a := m.Called(ctx, clienteID, ini, fim)
+	return a.Get(0).([]diario.Registro_t), a.Error(1)
+}
+
 type PremiacaoMock_t struct {
 	mock.Mock
 	premiacao.Service_I
@@ -320,16 +325,21 @@ func (s *MensagemSuite) TestCondutoresJuntaQuemRodouEQuemTemTelefone() {
 	s.diario.On("Listar", s.ctx, int64(1), "2026-07-29", "2026-10-27").Return([]diario.Registro_t{
 		reg("Ana Lima", "2026-10-25", 70, 5), reg("ANA  LIMA", "2026-10-26", 70, 5), reg("ANA LIMA", "2026-10-26", 70, 5), beto,
 		reg("CARLOS", "2026-10-01", 70, 5)}, nil)
+	// vínculos: Ana (já veio como principal) e Edu, que só revezou um veículo e nunca foi o principal
+	s.diario.On("ListarMotoristas", s.ctx, int64(1), "2026-07-29", "2026-10-27").Return([]diario.Registro_t{
+		reg("Ana Lima", "2026-10-26", 70, 5), reg("Edu Reis", "2026-10-24", 70, 5)}, nil)
 	s.tel.On("Linhas", s.ctx, int64(1)).Return([]mensagem_repo.TelefoneRow_t{
 		{Chave: "CARLOS", Motorista: "Carlos", Telefone: "5511900000002"}, {Chave: "DIRCEU", Motorista: "Dirceu", Telefone: "5511900000003"}}, nil)
 
 	c, err := s.svc.Condutores(s.ctx, 1)
 
 	s.Require().NoError(err)
-	s.Require().Len(c, 3)
-	s.Equal(mensagem.Condutor_t{Motorista: "ANA LIMA", UltimoDia: "2026-10-26", Dias: 2}, c[0], "um por nome; o nome do dia mais recente; dias sem repetir")
+	s.Require().Len(c, 4)
+	s.Equal(2, c[0].Dias, "um por nome; dias sem repetir (o vínculo do mesmo dia não conta de novo)")
+	s.Equal("2026-10-26", c[0].UltimoDia)
 	s.Equal(mensagem.Condutor_t{Motorista: "CARLOS", Telefone: "5511900000002", UltimoDia: "2026-10-01", Dias: 1}, c[1])
 	s.Equal(mensagem.Condutor_t{Motorista: "Dirceu", Telefone: "5511900000003"}, c[2], "tem telefone mas não rodou nos 90 dias")
+	s.Equal(mensagem.Condutor_t{Motorista: "Edu Reis", UltimoDia: "2026-10-24", Dias: 1}, c[3], "quem só revezou um veículo também é condutor")
 }
 
 func TestNormalizarTelefone(t *testing.T) {

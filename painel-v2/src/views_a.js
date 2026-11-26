@@ -93,7 +93,7 @@ async function vRetention(C){
 }
 async function vPortfolio(C){
   await Promise.all(CLIENT_DEFS.map(c=>DB.load(c.id)));const P=C.P;const rows=CLIENT_DEFS.map(def=>{
-    const cur=metrics(def.id,ST,P.from,P.to),prev=metrics(def.id,ST,P.cf,P.ct);const sx=study(def.id,ST,dieselDe(def));const h=health(cur,prev,ST.rules,sx.noBase?null:{econ:sx.econ,inv:sx.inv});const short=prev.dataDays<prev.len*ST.rules.minCmpPct/100;
+    const cur=metrics(def.id,ST,P.from,P.to),prev=metrics(def.id,ST,P.cf,P.ct);const sx=study(def.id,ST,dieselDe(def));const h=health(cur,prev,ST.rules,sx.noBase?null:{econ:sx.econ,inv:sx.inv},DB.fleets[def.id+DRV_SUF]?metrics(def.id+DRV_SUF,ST,P.from,P.to):null);const short=prev.dataDays<prev.len*ST.rules.minCmpPct/100;
     return`<tr class="click" data-act="client-open" data-id="${esc(def.id)}"><td><b>${esc(def.name)}</b><div class="xs muted">${def.vehicles} veículos</div></td><td>${bandBadge(h.band)} <b class="num">${h.idx}</b></td><td class="r">${dl(pc(cur.kmpl,prev.kmpl),true)}</td><td class="r">${short?'<span class="xs muted" data-tt="Base de comparação curta">base curta</span>':dl(pc(cur.km/cur.len,prev.km/prev.len),true)}</td><td class="r num">${fmt.n(cur.score,0)}</td><td class="r">${ico('chev',16)}</td></tr>`}).join('');
   return`<div class="card rise">${cardH('Carteira de clientes',`${P.label} contra ${P.cmpLabel}`)}<div class="scroll-x"><table class="tbl"><thead><tr><th>Cliente</th><th>Risco</th><th class="r">Consumo</th><th class="r">Km por dia</th><th class="r">Nota</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }

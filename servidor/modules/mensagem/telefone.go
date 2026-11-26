@@ -79,13 +79,21 @@ type Condutor_t struct {
 	Dias      int    `json:"dias"`       // dias com registro nos últimos DiasCondutores dias
 }
 
-// Condutores lista os motoristas que rodaram nos últimos 90 dias e os que já têm telefone, em ordem alfabética
+// Condutores lista os motoristas que rodaram nos últimos 90 dias e os que já têm telefone, em ordem alfabética.
+// Vale todo vínculo de motorista com veículo (registros_motoristas), não só o motorista principal do veículo no dia:
+// quem revezou ou dirigiu parte do dia também entra.
 func (m *mensagem_t) Condutores(ctx context.Context, clienteID int64) ([]Condutor_t, error) {
 	hoje := utils.DiaBR(m.d.Agora())
-	regs, err := m.d.Diario.Listar(ctx, clienteID, utils.SomarDias(hoje, -DiasCondutores), hoje)
+	ini := utils.SomarDias(hoje, -DiasCondutores)
+	regs, err := m.d.Diario.Listar(ctx, clienteID, ini, hoje)
 	if err != nil {
 		return nil, err
 	}
+	vinculos, err := m.d.Diario.ListarMotoristas(ctx, clienteID, ini, hoje)
+	if err != nil {
+		return nil, err
+	}
+	regs = append(regs, vinculos...)
 	tels, err := m.d.Telefones.Linhas(ctx, clienteID)
 	if err != nil {
 		return nil, err

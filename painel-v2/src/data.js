@@ -321,7 +321,7 @@ function resolvePeriod(st){
 }
 
 /* ---------- Índice de risco (regras da plataforma) ---------- */
-function health(cur,prev,rules,cov){
+function health(cur,prev,rules,cov,dcur){
   const S=[];const pct=(c,p)=>p?(c-p)/p*100:null;
   const cd=cur.km/cur.len,pd=prev.km/prev.len;
   const short=prev.dataDays<prev.len*rules.minCmpPct/100;const shortTxt='Base de comparação curta ('+prev.dataDays+' de '+prev.len+' dias com dado). Sinal fora do índice';
@@ -332,8 +332,9 @@ function health(cur,prev,rules,cov){
   }
   if(cur.score!=null){const lv=clamp((70-cur.score)*2.5,0,100);let r=lv,t='Nota '+fmt.n(cur.score,1);if(prev.score!=null){const dr=Math.max(0,prev.score-cur.score);r=0.6*lv+0.4*clamp(dr*8,0,100);t+=' (antes '+fmt.n(prev.score,1)+')'}S.push({k:'nota',label:'Nota Gobrax',w:rules.wNota,risk:r,txt:t})}else S.push({k:'nota',label:'Nota Gobrax',w:rules.wNota,risk:null,txt:'Sem nota no período'});
   if(prev.kmpl&&cur.kmpl){const worse=Math.max(0,(prev.kmpl-cur.kmpl)/prev.kmpl*100);S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:clamp(worse*5,0,100),txt:'Média '+fmt.n(cur.kmpl,2)+' km/l ('+fmt.sp(pct(cur.kmpl,prev.kmpl))+')'})}else S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:null,txt:'Sem base de comparação'});
-  const vs=Object.values(cur.byVeh).filter(v=>v.score!=null);
-  if(vs.length){const sh=vs.filter(v=>v.score<40).length/vs.length*100;S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:clamp(sh*2.5,0,100),txt:fmt.n(sh,0)+'% dos veículos com nota abaixo de 40'})}else S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:null,txt:'Sem dado'});
+  /* nota crítica: por motorista quando a API traz os vínculos; sem eles, por veículo */
+  const vs=Object.values((dcur||cur).byVeh).filter(v=>v.score!=null);const qm=dcur?'dos motoristas':'dos veículos';
+  if(vs.length){const sh=vs.filter(v=>v.score<40).length/vs.length*100;S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:clamp(sh*2.5,0,100),txt:fmt.n(sh,0)+'% '+qm+' com nota abaixo de 40'})}else S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:null,txt:'Sem dado'});
   /* cobertura do investimento: economia acumulada (vs. linha de base do projeto) ÷ investimento acumulado, desde o início */
   const cob=cov&&cov.inv>0&&cov.econ!=null?cov.econ/cov.inv:null;
   if(cob!=null){const r=cob>=1.2?0:cob>=1?(1.2-cob)/0.2*30:Math.min(100,50+150*(1-cob));

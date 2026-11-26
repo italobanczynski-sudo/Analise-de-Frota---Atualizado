@@ -30,7 +30,8 @@ async function buildCtx(){
   const C={cid,def,fleet,P,cur,prev,price:dsl.preco,dsl};
   /* um só número de economia (vs. linha de base do projeto) e uma só contagem de situação dos equipamentos, para todas as telas */
   C.st=study(cid,ST,C.price);C.ec=econOf(cur,C.price);C.gl=gainsLosses(cur,prev,C.price);C.conc=concOf(C.gl,ST.rules);C.conf=confOf(cid,cur,ST.rules);
-  C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv});C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
+  const dcur=DB.fleets[cid+DRV_SUF]?metrics(cid+DRV_SUF,ST,P.from,P.to):null;
+  C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv},dcur);C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
 }
 /* contexto da tela Motoristas: uma linha por motorista (vínculos da API), não por veículo. Sem vínculos
    (simulação ou cliente sem motorista identificado), fica o contexto por veículo. */
@@ -152,7 +153,7 @@ function renderTop(){
 function buildAlerts(C){
   const a=[];const hl=C.hl;
   /* Onde agir primeiro: ordenado pelo dinheiro em jogo no período */
-  try{const op=opportunities(C.cur,C.prev,C.price);
+  try{const op=opportunities(C.cur,C.prev,C.price);const D=drvCtx(C);if(D!==C)op.fell=opportunities(D.cur,D.prev,C.price).fell;
     if(op.ref)a.push({act:1,ic:'fuel',t:'Consumo acima da referência',v:fmt.brl(op.potential),s:op.worse.length?`${op.worse.length} de ${op.evaluated} veículos abaixo de ${fmt.n(op.ref,2)} km/l. Comece por ${op.worse.slice(0,3).map(w=>w.id).join(', ')} com o instrutor.`:'Nenhum veículo abaixo da referência.',f:'down'});
     a.push({act:1,ic:'trend',t:'Condutores que pioraram',v:String(op.fell.length),s:op.fell.length?`${op.fell[0].id} caiu de ${fmt.n(op.fell[0].from,2)} para ${fmt.n(op.fell[0].to,2)} km/l. Converse para entender rota, veículo ou carga.`:'Ninguém piorou mais que 2%.',f:'down'});
     if(op.kdRef)a.push({act:1,ic:'truck',t:'Pouco rendimento por dia',v:fmt.n(C.cur.kmDay,0)+' km',s:op.low.length?`${op.low.length} veículos rodam menos de 80% da referência (${fmt.n(op.kdRef,0)} km). Revise escala e tempo de espera.`:'Rendimento dentro da referência.',f:'all'})}catch(e){}

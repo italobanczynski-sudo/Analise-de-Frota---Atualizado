@@ -1574,7 +1574,7 @@ function resolvePeriod(st){
 }
 
 /* ---------- Índice de risco (regras da plataforma) ---------- */
-function health(cur,prev,rules,cov){
+function health(cur,prev,rules,cov,dcur){
   const S=[];const pct=(c,p)=>p?(c-p)/p*100:null;
   const cd=cur.km/cur.len,pd=prev.km/prev.len;
   const short=prev.dataDays<prev.len*rules.minCmpPct/100;const shortTxt='Base de comparação curta ('+prev.dataDays+' de '+prev.len+' dias com dado). Sinal fora do índice';
@@ -1585,8 +1585,9 @@ function health(cur,prev,rules,cov){
   }
   if(cur.score!=null){const lv=clamp((70-cur.score)*2.5,0,100);let r=lv,t='Nota '+fmt.n(cur.score,1);if(prev.score!=null){const dr=Math.max(0,prev.score-cur.score);r=0.6*lv+0.4*clamp(dr*8,0,100);t+=' (antes '+fmt.n(prev.score,1)+')'}S.push({k:'nota',label:'Nota Gobrax',w:rules.wNota,risk:r,txt:t})}else S.push({k:'nota',label:'Nota Gobrax',w:rules.wNota,risk:null,txt:'Sem nota no período'});
   if(prev.kmpl&&cur.kmpl){const worse=Math.max(0,(prev.kmpl-cur.kmpl)/prev.kmpl*100);S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:clamp(worse*5,0,100),txt:'Média '+fmt.n(cur.kmpl,2)+' km/l ('+fmt.sp(pct(cur.kmpl,prev.kmpl))+')'})}else S.push({k:'cons',label:'Resultado de consumo',w:rules.wCons,risk:null,txt:'Sem base de comparação'});
-  const vs=Object.values(cur.byVeh).filter(v=>v.score!=null);
-  if(vs.length){const sh=vs.filter(v=>v.score<40).length/vs.length*100;S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:clamp(sh*2.5,0,100),txt:fmt.n(sh,0)+'% dos veículos com nota abaixo de 40'})}else S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:null,txt:'Sem dado'});
+  /* nota crítica: por motorista quando a API traz os vínculos; sem eles, por veículo */
+  const vs=Object.values((dcur||cur).byVeh).filter(v=>v.score!=null);const qm=dcur?'dos motoristas':'dos veículos';
+  if(vs.length){const sh=vs.filter(v=>v.score<40).length/vs.length*100;S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:clamp(sh*2.5,0,100),txt:fmt.n(sh,0)+'% '+qm+' com nota abaixo de 40'})}else S.push({k:'crit',label:'Motoristas com nota crítica',w:rules.wCrit,risk:null,txt:'Sem dado'});
   /* cobertura do investimento: economia acumulada (vs. linha de base do projeto) ÷ investimento acumulado, desde o início */
   const cob=cov&&cov.inv>0&&cov.econ!=null?cov.econ/cov.inv:null;
   if(cob!=null){const r=cob>=1.2?0:cob>=1?(1.2-cob)/0.2*30:Math.min(100,50+150*(1-cob));
@@ -2378,7 +2379,7 @@ async function vRetention(C){
 }
 async function vPortfolio(C){
   await Promise.all(CLIENT_DEFS.map(c=>DB.load(c.id)));const P=C.P;const rows=CLIENT_DEFS.map(def=>{
-    const cur=metrics(def.id,ST,P.from,P.to),prev=metrics(def.id,ST,P.cf,P.ct);const sx=study(def.id,ST,dieselDe(def));const h=health(cur,prev,ST.rules,sx.noBase?null:{econ:sx.econ,inv:sx.inv});const short=prev.dataDays<prev.len*ST.rules.minCmpPct/100;
+    const cur=metrics(def.id,ST,P.from,P.to),prev=metrics(def.id,ST,P.cf,P.ct);const sx=study(def.id,ST,dieselDe(def));const h=health(cur,prev,ST.rules,sx.noBase?null:{econ:sx.econ,inv:sx.inv},DB.fleets[def.id+DRV_SUF]?metrics(def.id+DRV_SUF,ST,P.from,P.to):null);const short=prev.dataDays<prev.len*ST.rules.minCmpPct/100;
     return`<tr class="click" data-act="client-open" data-id="${esc(def.id)}"><td><b>${esc(def.name)}</b><div class="xs muted">${def.vehicles} veículos</div></td><td>${bandBadge(h.band)} <b class="num">${h.idx}</b></td><td class="r">${dl(pc(cur.kmpl,prev.kmpl),true)}</td><td class="r">${short?'<span class="xs muted" data-tt="Base de comparação curta">base curta</span>':dl(pc(cur.km/cur.len,prev.km/prev.len),true)}</td><td class="r num">${fmt.n(cur.score,0)}</td><td class="r">${ico('chev',16)}</td></tr>`}).join('');
   return`<div class="card rise">${cardH('Carteira de clientes',`${P.label} contra ${P.cmpLabel}`)}<div class="scroll-x"><table class="tbl"><thead><tr><th>Cliente</th><th>Risco</th><th class="r">Consumo</th><th class="r">Km por dia</th><th class="r">Nota</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
@@ -2787,7 +2788,9 @@ function drvIndTable(C,id){
 
 /* ---------- PLANO DE AÇÃO ---------- */
 function vPlan(C){
-  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);const gl=C.gl;
+  const {cur,prev,price}=C;const op=opportunities(cur,prev,price);
+  /* quem piorou, ganhou e perdeu: por motorista (vínculos da API) quando existem */
+  const D=drvCtx(C);if(D!==C)op.fell=opportunities(D.cur,D.prev,price).fell;const gl=D.gl;
   const losers=gl.filter(g=>g.money<0).slice(-5).reverse();
   /* gargalos: meta x atual */
   const g=[
@@ -2807,7 +2810,7 @@ function vPlan(C){
   if(op.low[0])pr.push({t:'Pouco rendimento por dia',n:op.low.slice(0,3).map(w=>w.id).join(', '),v:`${op.low.length}`,s:`Menos de 80% de ${fmt.n(op.kdRef,0)} km por dia`,tone:'warn',f:'all'});
   if(op.brW)pr.push({t:'Freadas acima do melhor quartil',n:'',v:`${op.brW}`,s:`veículos acima de ${fmt.n(op.brRef,1)} /100 km`,tone:'warn',f:'all'});
   const prio=pr.map((x,i)=>`<div class="prio ${x.tone}" style="--i:${i}"><span class="pn num">${i+1}</span><div style="flex:1;min-width:0"><b>${x.t}</b><div class="xs muted">${x.s}${x.n?' · '+esc(x.n):''}</div></div><div class="num b" style="font-size:20px;white-space:nowrap">${x.v}</div><button class="btn primary sm" data-act="go-drv" data-f="${x.f||'all'}">Ver condutores</button></div>`).join('')||'<div class="empty"><b>Nada crítico agora</b>Continue acompanhando.</div>';
-  const li=(g,pos)=>`<div class="li" data-act="drv-open" data-id="${esc(g.id)}"><div class="ava">${esc(C.fleet.byId[g.id].driver[0])}</div><div style="flex:1;min-width:0"><b>${esc(C.fleet.byId[g.id].driver)}</b><div class="xs muted">${esc(g.id)} · ${fmt.kmpl(g.from)} → ${fmt.kmpl(g.to)} km/l</div></div><span class="num b" style="color:${pos?'var(--ok-t)':'var(--bad-t)'}">${pos?'+':''}${fmt.brl(g.money)}</span></div>`;
+  const li=(g,pos)=>`<div class="li" data-act="drv-open" data-id="${esc(g.id)}"><div class="ava">${esc(D.fleet.byId[g.id].driver[0])}</div><div style="flex:1;min-width:0"><b>${esc(D.fleet.byId[g.id].driver)}</b><div class="xs muted">${esc(vSub(D.fleet.byId[g.id]))} · ${fmt.kmpl(g.from)} → ${fmt.kmpl(g.to)} km/l</div></div><span class="num b" style="color:${pos?'var(--ok-t)':'var(--bad-t)'}">${pos?'+':''}${fmt.brl(g.money)}</span></div>`;
   const win=gl.filter(g=>g.money>0).slice(0,5).map(g=>li(g,true)).join('')||'<div class="empty"><b>Ninguém com ganho relevante</b></div>';
   const lose=losers.map(g=>li(g,false)).join('')||'<div class="empty"><b>Ninguém com perda relevante</b></div>';
   return`${pageH('Plano de ação',`${esc(C.def.name)} · ${spanCmp(C)}`,`<button class="btn ghost" data-act="print">${ico('download',16)} Exportar PDF</button>`)}
@@ -3113,7 +3116,8 @@ async function buildCtx(){
   const C={cid,def,fleet,P,cur,prev,price:dsl.preco,dsl};
   /* um só número de economia (vs. linha de base do projeto) e uma só contagem de situação dos equipamentos, para todas as telas */
   C.st=study(cid,ST,C.price);C.ec=econOf(cur,C.price);C.gl=gainsLosses(cur,prev,C.price);C.conc=concOf(C.gl,ST.rules);C.conf=confOf(cid,cur,ST.rules);
-  C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv});C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
+  const dcur=DB.fleets[cid+DRV_SUF]?metrics(cid+DRV_SUF,ST,P.from,P.to):null;
+  C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv},dcur);C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
 }
 /* contexto da tela Motoristas: uma linha por motorista (vínculos da API), não por veículo. Sem vínculos
    (simulação ou cliente sem motorista identificado), fica o contexto por veículo. */
@@ -3235,7 +3239,7 @@ function renderTop(){
 function buildAlerts(C){
   const a=[];const hl=C.hl;
   /* Onde agir primeiro: ordenado pelo dinheiro em jogo no período */
-  try{const op=opportunities(C.cur,C.prev,C.price);
+  try{const op=opportunities(C.cur,C.prev,C.price);const D=drvCtx(C);if(D!==C)op.fell=opportunities(D.cur,D.prev,C.price).fell;
     if(op.ref)a.push({act:1,ic:'fuel',t:'Consumo acima da referência',v:fmt.brl(op.potential),s:op.worse.length?`${op.worse.length} de ${op.evaluated} veículos abaixo de ${fmt.n(op.ref,2)} km/l. Comece por ${op.worse.slice(0,3).map(w=>w.id).join(', ')} com o instrutor.`:'Nenhum veículo abaixo da referência.',f:'down'});
     a.push({act:1,ic:'trend',t:'Condutores que pioraram',v:String(op.fell.length),s:op.fell.length?`${op.fell[0].id} caiu de ${fmt.n(op.fell[0].from,2)} para ${fmt.n(op.fell[0].to,2)} km/l. Converse para entender rota, veículo ou carga.`:'Ninguém piorou mais que 2%.',f:'down'});
     if(op.kdRef)a.push({act:1,ic:'truck',t:'Pouco rendimento por dia',v:fmt.n(C.cur.kmDay,0)+' km',s:op.low.length?`${op.low.length} veículos rodam menos de 80% da referência (${fmt.n(op.kdRef,0)} km). Revise escala e tempo de espera.`:'Rendimento dentro da referência.',f:'all'})}catch(e){}

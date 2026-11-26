@@ -160,7 +160,7 @@ function dailyBars(vals,labels,o={}){
 function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
   if(!rows.length)return`<div class="empty"><b>Sem meses no período</b></div>`;
   const kv=rows.map(r=>r.kmpl).filter(v=>v!=null&&isFinite(v)),comK=kv.length>0&&o.base>0;
-  const W=o.w||720,H=o.h||300,pl=62,pr=comK?54:12,pt=26,pb=o.sub?46:30;
+  const W=o.w||720,H=o.h||300,pl=62,pr=comK?54:12,pt=26,pb=(o.sub?46:30)+(o.extra&&rows.length<=16?18:0);
   const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
   const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
   const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
@@ -175,9 +175,14 @@ function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
     return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${muitas?1.5:4}" fill="${fill}" data-tt="${esc(tip)}"/>${muitas?'':`<text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`}`};
   rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.full||r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>${r.lit!=null&&r.km?`Litros economizados: ${fmt.n(r.lit,0)} L<br>`:''}Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}${r.kmpl!=null?`<br>Consumo: ${fmt.n(r.kmpl,2)} km/l${o.base?` (base ${fmt.n(o.base,2)})`:''}`:''}${r.kmDay!=null&&isFinite(r.kmDay)?`<br>Produtividade: ${fmt.n(r.kmDay,0)} km/veículo/dia`:''}${r.score!=null&&isFinite(r.score)?`<br>Nota Gobrax: ${fmt.n(r.score,0)}`:''}`;
     const gap=muitas?1:3;g+=bar(cx-bw-gap,r.inv,'inv','var(--n600)',Math.min(i*2,60),tip)+bar(cx+gap,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',Math.min(i*2+1,60),tip);
-    if(i%passo===0)g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    /* produtividade (km por veículo por dia) e nota da premiação de cada coluna, embaixo do rótulo */
+    const ex=o.extra&&!muitas?18:0;
+    if(ex){const okv=v=>v!=null&&isFinite(v);const corK=okv(r.kmDay)&&okv(o.baseKmDay)?(r.kmDay>=o.baseKmDay*.95?'var(--ok-t)':'var(--bad-t)'):'var(--muted)';
+      const pz=[okv(r.kmDay)?`<tspan style="fill:${corK};font-weight:700">${fmt.n(r.kmDay,0)} km/dia</tspan>`:'',okv(r.score)?`<tspan style="fill:var(--text);font-weight:700">nota ${fmt.n(r.score,0)}</tspan>`:''].filter(Boolean).join('<tspan> · </tspan>');
+      if(pz)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${pz}</text>`}
+    if(i%passo===0)g+=`<text x="${cx}" y="${H-(o.sub?24:8)-ex}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
     const sub=[r.lit!=null&&r.km&&!muitas?fmt.n(r.lit,0)+' L':'',r.sub].filter(Boolean).join(' · ');
-    if(o.sub&&sub&&!muitas)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(sub)}</text>`});
+    if(o.sub&&sub&&!muitas)g+=`<text x="${cx}" y="${H-8-ex}" text-anchor="middle" style="font-size:10.5px">${esc(sub)}</text>`});
   if(comK){
     for(let i=0;i<=3;i++){const v=kLo+(kHi-kLo)*i/3;g+=`<text x="${W-pr+6}" y="${yk(v)+4}" style="font-size:10.5px">${fmt.n(v,2)}</text>`}
     g+=`<text x="${W-4}" y="${pt-10}" text-anchor="end" style="font-size:10.5px">km/l</text>`;

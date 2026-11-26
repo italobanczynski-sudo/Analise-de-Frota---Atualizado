@@ -2051,7 +2051,7 @@ function dailyBars(vals,labels,o={}){
 function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
   if(!rows.length)return`<div class="empty"><b>Sem meses no período</b></div>`;
   const kv=rows.map(r=>r.kmpl).filter(v=>v!=null&&isFinite(v)),comK=kv.length>0&&o.base>0;
-  const W=o.w||720,H=o.h||300,pl=62,pr=comK?54:12,pt=26,pb=o.sub?46:30;
+  const W=o.w||720,H=o.h||300,pl=62,pr=comK?54:12,pt=26,pb=(o.sub?46:30)+(o.extra&&rows.length<=16?18:0);
   const vals=rows.flatMap(r=>[r.inv,r.econ]).filter(v=>v!=null&&isFinite(v));let lo=Math.min(0,...vals),hi=Math.max(1,...vals);
   const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p};
   const stp=nice((hi-lo)/4||1);lo=Math.floor(lo/stp)*stp;hi=Math.ceil(hi*1.12/stp)*stp;
@@ -2066,9 +2066,14 @@ function monthBars(rows,o={}){ // rows:[{label,inv,econ,sub}]
     return`<rect class="dbar" style="--i:${i};transform-origin:${v>=0?'bottom':'top'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${muitas?1.5:4}" fill="${fill}" data-tt="${esc(tip)}"/>${muitas?'':`<text x="${(x+bw/2).toFixed(1)}" y="${(v>=0?top-6:top+h+13).toFixed(1)}" text-anchor="middle" style="font-weight:700;font-size:11px;fill:var(--text)">${k(v)}</text>`}`};
   rows.forEach((r,i)=>{const cx=pl+gw*i+gw/2;const tip=`<b>${esc(r.full||r.label)}</b><br>Investimento: ${fmt.brl(r.inv)}<br>${r.lit!=null&&r.km?`Litros economizados: ${fmt.n(r.lit,0)} L<br>`:''}Economia: ${fmt.brl(r.econ)}<br>Saldo: ${fmt.brl(r.econ-r.inv)}${r.kmpl!=null?`<br>Consumo: ${fmt.n(r.kmpl,2)} km/l${o.base?` (base ${fmt.n(o.base,2)})`:''}`:''}${r.kmDay!=null&&isFinite(r.kmDay)?`<br>Produtividade: ${fmt.n(r.kmDay,0)} km/veículo/dia`:''}${r.score!=null&&isFinite(r.score)?`<br>Nota Gobrax: ${fmt.n(r.score,0)}`:''}`;
     const gap=muitas?1:3;g+=bar(cx-bw-gap,r.inv,'inv','var(--n600)',Math.min(i*2,60),tip)+bar(cx+gap,r.econ,'eco',r.econ>=0?'var(--ok)':'var(--bad)',Math.min(i*2+1,60),tip);
-    if(i%passo===0)g+=`<text x="${cx}" y="${H-(o.sub?24:8)}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
+    /* produtividade (km por veículo por dia) e nota da premiação de cada coluna, embaixo do rótulo */
+    const ex=o.extra&&!muitas?18:0;
+    if(ex){const okv=v=>v!=null&&isFinite(v);const corK=okv(r.kmDay)&&okv(o.baseKmDay)?(r.kmDay>=o.baseKmDay*.95?'var(--ok-t)':'var(--bad-t)'):'var(--muted)';
+      const pz=[okv(r.kmDay)?`<tspan style="fill:${corK};font-weight:700">${fmt.n(r.kmDay,0)} km/dia</tspan>`:'',okv(r.score)?`<tspan style="fill:var(--text);font-weight:700">nota ${fmt.n(r.score,0)}</tspan>`:''].filter(Boolean).join('<tspan> · </tspan>');
+      if(pz)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${pz}</text>`}
+    if(i%passo===0)g+=`<text x="${cx}" y="${H-(o.sub?24:8)-ex}" text-anchor="middle" style="font-weight:600;fill:var(--text)">${esc(r.label)}</text>`;
     const sub=[r.lit!=null&&r.km&&!muitas?fmt.n(r.lit,0)+' L':'',r.sub].filter(Boolean).join(' · ');
-    if(o.sub&&sub&&!muitas)g+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-size:10.5px">${esc(sub)}</text>`});
+    if(o.sub&&sub&&!muitas)g+=`<text x="${cx}" y="${H-8-ex}" text-anchor="middle" style="font-size:10.5px">${esc(sub)}</text>`});
   if(comK){
     for(let i=0;i<=3;i++){const v=kLo+(kHi-kLo)*i/3;g+=`<text x="${W-pr+6}" y="${yk(v)+4}" style="font-size:10.5px">${fmt.n(v,2)}</text>`}
     g+=`<text x="${W-4}" y="${pt-10}" text-anchor="end" style="font-size:10.5px">km/l</text>`;
@@ -2405,7 +2410,7 @@ function vStudy(C){
     :gran==='semana'?st.weeks.map(w=>({label:fmt.dm(dIso(w.from)),full:fmt.dm(dIso(w.from))+' a '+fmt.dm(dIso(w.to)),sub:w.cal<7?w.cal+' dias':'',inv:w.inv,econ:w.econ,lit:w.lit,kmpl:w.kmpl,score:w.score,km:w.km,kmDay:w.kmDay}))
     :st.days.map(d=>({label:fmt.dm(d.date),full:fmt.dmy(d.date)+' · '+DS[wdOf(d.t)],sub:d.n?'':'sem rodagem',inv:d.inv,econ:d.econ,lit:d.lit,kmpl:d.kmpl,score:d.score,km:d.km,kmDay:d.kmDay}));
   const nomeG={mes:'mês',semana:'semana',dia:'dia'}[gran];
-  const bars=monthBars(ser,{sub:gran==='mes',h:gran==='dia'?300:330,base:st.base,aria:'Investimento, economia e consumo por '+nomeG});
+  const bars=monthBars(ser,{sub:gran==='mes',h:gran==='dia'?300:350,base:st.base,extra:true,baseKmDay:st.evo?st.evo.kmDayIni:null,aria:'Investimento, economia e consumo por '+nomeG});
   const ajuda=infoDot('Como calculamos',`<p>A <b>linha de base</b> é o consumo do início do projeto: ${esc(st.rotIni)} (${fmt.dm(dIso(st.pIni[0]))} a ${fmt.dm(dIso(st.pIni[1]))}), <b>${fmt.n(st.base,2)} km/l</b>.</p>
     <p><b>Litros economizados</b> em cada ${nomeG} = km rodados ÷ ${fmt.n(st.base,2)} (o que a frota gastaria no consumo da linha de base) − litros realmente gastos. Consumo acima da linha de base economiza litros; abaixo, gasta a mais.</p>
     <p><b>Economia</b> = litros economizados × diesel a ${fmt.brl(C.price,2)}/L.</p>
@@ -2425,7 +2430,7 @@ function vStudy(C){
   <div class="sec">${confBlock(C)}</div>
   <div class="sec">${evoClienteBlock(C)}</div>
   <div class="sec">
-    <div class="card rise">${cardH('Investimento, economia e consumo por '+nomeG,'Mensalidade da Gobrax, diesel economizado (litros e reais) e o consumo de cada '+nomeG+' contra a linha de base. Passe o mouse para ver o detalhe.',segG+ajuda)}${bars}<div class="leg" style="margin-top:10px"><span><i style="background:var(--n600)"></i>Investimento</span><span><i style="background:var(--ok)"></i>Economia</span><span><i style="background:var(--bad)"></i>Economia negativa</span><span><i style="background:var(--laranja)"></i>Consumo (km/l)</span><span><i style="background:none;border-top:2px dashed var(--n500);height:0;margin-top:5px"></i>Linha de base ${fmt.n(st.base,2)} km/l</span></div></div>
+    <div class="card rise">${cardH('Investimento, economia e consumo por '+nomeG,'Mensalidade da Gobrax, diesel economizado (litros e reais), o consumo contra a linha de base e, embaixo de cada '+nomeG+', a produtividade (km por veículo por dia) e a nota da premiação. Passe o mouse para ver o detalhe.',segG+ajuda)}${bars}<div class="leg" style="margin-top:10px"><span><i style="background:var(--n600)"></i>Investimento</span><span><i style="background:var(--ok)"></i>Economia</span><span><i style="background:var(--bad)"></i>Economia negativa</span><span><i style="background:var(--laranja)"></i>Consumo (km/l)</span><span><i style="background:none;border-top:2px dashed var(--n500);height:0;margin-top:5px"></i>Linha de base ${fmt.n(st.base,2)} km/l</span><span><b style="color:var(--ok-t)">km/dia</b>&nbsp;verde: produtividade mantida ou maior que no início${st.evo&&st.evo.kmDayIni?' ('+fmt.n(st.evo.kmDayIni,0)+' km)':''}; vermelho: caiu mais de 5%</span></div></div>
   </div>
   <div class="card sec rise">${cardH({mes:'Mês a mês',semana:'Semana a semana',dia:'Dia a dia'}[gran],'Investimento, litros e reais economizados, saldo, cobertura, consumo, nota, km e produtividade',segG)}<div class="scroll-x"${gran==='mes'?'':' style="max-height:520px;overflow:auto"'}><table class="tbl"><thead><tr><th>${{mes:'Mês',semana:'Semana',dia:'Dia'}[gran]}</th><th class="r">Investimento</th><th class="r">Litros economizados</th><th class="r">Economia</th><th class="r">Saldo</th><th class="r">Cobertura</th><th class="r">Consumo</th><th class="r">Nota</th><th class="r">Km</th><th class="r" data-tt="Km rodados ÷ dias em que cada veículo rodou">Km/veículo/dia</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="sm muted" style="margin-top:14px"><b>Como calculamos:</b> litros economizados = litros que o consumo da linha de base gastaria nos mesmos km, menos os litros realmente gastos; a economia é esses litros vezes o preço do diesel. O investimento é a mensalidade (valor por unidade × unidades) proporcional aos dias de cada mês.</div></div>`;

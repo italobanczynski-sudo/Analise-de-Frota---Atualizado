@@ -2,7 +2,6 @@
 package web
 
 import (
-	"bytes"
 	"embed"
 	"io/fs"
 	"net/http"
@@ -16,7 +15,7 @@ var paginas embed.FS
 //go:embed estatico
 var estatico embed.FS
 
-// painel: cópia do index.html e do leitor de Excel da raiz do repositório, feita pelo Dockerfile
+// painel: cópia do painel-v2 montado (painel-v2/dist), feita pelo Dockerfile
 //
 //go:embed painel
 var painel embed.FS
@@ -40,33 +39,10 @@ const cspPainel = "default-src 'self'; script-src 'self' 'unsafe-inline' https:/
 	"font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
 	"connect-src 'self' https://combustivelapi.com.br https://gateway-v3.gobrax.com.br:8889; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
-// Painel serve o painel novo (painel-v2, identidade visual Gobrax). Ele mesmo lê os dados do servidor
-// (/api/v1/painel/dados, ao vivo, mensagens enviadas e telefones) e não precisa da ponte painel-base.js.
-// Sem o painel novo na imagem, cai no painel clássico.
+// Painel serve o painel (painel-v2, identidade visual Gobrax). Ele mesmo lê os dados do servidor
+// (/api/v1/painel/dados, ao vivo, mensagens do dia, enviadas e telefones).
 func Painel() gin.HandlerFunc {
-	html, err := painel.ReadFile("painel/novo.html")
-	if err != nil {
-		return PainelClassico()
-	}
-	return func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store")
-		c.Header("Content-Security-Policy", cspPainel)
-		c.Data(http.StatusOK, "text/html; charset=utf-8", html)
-	}
-}
-
-// PainelClassico serve o index.html (o mesmo do GitHub Pages) ligado à base do servidor por /estatico/painel-base.js
-func PainelClassico() gin.HandlerFunc {
-	html, err := painel.ReadFile("painel/index.html")
-	if err == nil {
-		html = bytes.Replace(html, []byte(`src="bibliotecas/xlsx.full.min.js"`), []byte(`src="/painel/xlsx.full.min.js"`), 1)
-		// ícone da Gobrax na aba do navegador (o index.html não declara um)
-		if !bytes.Contains(html, []byte(`rel="icon"`)) {
-			html = bytes.Replace(html, []byte("</head>"), []byte(`<link rel="icon" href="/estatico/icone.svg" type="image/svg+xml">`+"\n</head>"), 1)
-		}
-		// a ponte vem antes de qualquer script do painel: ele encontra a base em window.claude, como no Artifact
-		html = bytes.Replace(html, []byte("<script"), []byte(`<script src="/estatico/painel-base.js"></script>`+"\n<script"), 1)
-	}
+	html, _ := painel.ReadFile("painel/novo.html")
 	return func(c *gin.Context) {
 		if len(html) == 0 {
 			c.String(http.StatusServiceUnavailable, "Painel não incluído nesta versão do servidor (construa a imagem com o Dockerfile).")
@@ -75,19 +51,6 @@ func PainelClassico() gin.HandlerFunc {
 		c.Header("Cache-Control", "no-store")
 		c.Header("Content-Security-Policy", cspPainel)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", html)
-	}
-}
-
-// PainelXLSX serve o leitor de Excel usado pelo painel para importar planilhas
-func PainelXLSX() gin.HandlerFunc {
-	js, _ := painel.ReadFile("painel/xlsx.full.min.js")
-	return func(c *gin.Context) {
-		if len(js) == 0 {
-			c.Status(http.StatusNotFound)
-			return
-		}
-		c.Header("Cache-Control", "public, max-age=86400")
-		c.Data(http.StatusOK, "text/javascript; charset=utf-8", js)
 	}
 }
 

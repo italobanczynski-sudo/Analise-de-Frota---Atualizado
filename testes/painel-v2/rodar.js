@@ -79,6 +79,16 @@ function varredura(rotas, longo) {
     var t = (document.getElementById('view') || {}).innerText || '';
     rel.push({ r: 'motoristas · revezamento', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/Motorista Revezamento/.test(t) });
   });
+  // Mensagens do dia (servidor): marcar como enviada muda o selo; aba Telefones lista os condutores
+  if (/^http/.test(location.protocol)) fila.push(function () { location.hash = '#/motoristas?aba=mensagens'; }, function () {}, function () {}, function () {
+    var b = document.querySelector('[data-act=msgs-mark]'); if (b) b.click(); else erros.push('HARNESS sem botão Marcar enviada');
+  }, function () {}, function () {
+    var t = (document.getElementById('view') || {}).innerText || '';
+    rel.push({ r: 'mensagens · marcar enviada', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: (t.match(/ENVIADA \d/g) || []).length < 2 });
+  }, function () { location.hash = '#/motoristas?aba=telefones'; }, function () {}, function () {}, function () {
+    var t = (document.getElementById('view') || {}).innerText || '';
+    rel.push({ r: 'motoristas · telefones', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/Telefones dos condutores/.test(t) || !/TST0A10/.test(t) });
+  });
   // gaveta de veículo e troca de cliente
   fila.push(function () { location.hash = '#/geral'; }, function () { location.hash = '#/frota?aba=visao'; }, function () { var t = document.querySelector('#view tr.click'); if (t) t.click(); }, function () {
     var d = document.querySelector('.drawer'); rel.push({ r: 'gaveta do veículo', len: d ? d.innerText.length : 0, erros: erros.splice(0), sus: d && /NaN|undefined/.test(d.innerText) ? 1 : 0, ctx: [], attr: [], falhou: !d });
@@ -141,6 +151,16 @@ function servidor(html) {
     if (u.pathname === '/api/v1/base/premissas') return ok(res, [...premissas.entries()].map(([id, d]) => ({ id, dados: d })));
     const mp = u.pathname.match(/^\/api\/v1\/base\/premissas\/(.+)$/);
     if (mp && req.method === 'PUT') { let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => { premissas.set(decodeURIComponent(mp[1]), JSON.parse(b)); ok(res, null); }); return; }
+    // fila de mensagens do dia, marcar/desmarcar enviada e telefone (o que o painel clássico fazia)
+    if (/^\/api\/v1\/clientes\/\d+\/mensagens$/.test(u.pathname)) {
+      const d = u.searchParams.get('dia');
+      return ok(res, [
+        { motorista: 'Motorista TST0A10', dia: d, km: 400, kml: 2.1, nota: 72, foco: 'faixa_verde', foco_rotulo: 'Faixa verde', texto: 'Olá, Motorista! Seu dia: 400 km.', enviada: null, telefone: '5511999990000' },
+        { motorista: 'Motorista TST2A12', dia: d, km: 300, kml: 1.9, nota: 55, foco: '', foco_rotulo: '', texto: 'Olá! Continue assim.', enviada: '2026-01-01T10:00:00Z', telefone: '5511999990001' },
+        { motorista: 'Motorista TST3A13', dia: d, km: 250, kml: 1.8, nota: 40, foco: 'motor_ocioso', foco_rotulo: 'Motor ligado parado', texto: 'Olá! Evite o motor ligado parado.', enviada: null, telefone: '' }]);
+    }
+    if (/^\/api\/v1\/clientes\/\d+\/mensagens\/enviada$/.test(u.pathname)) return ok(res, req.method === 'PUT' ? { enviada: new Date().toISOString() } : null);
+    if (/^\/api\/v1\/clientes\/\d+\/mensagens\/telefone$/.test(u.pathname)) { let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => ok(res, { telefone: JSON.parse(b).telefone ? '5511988887777' : '' })); return; }
     let m = u.pathname.match(/^\/api\/v1\/clientes\/(\d+)\/(ao-vivo|mensagens\/enviadas|condutores)$/);
     if (m) {
       const c = dados.find((x) => String(x.id) === m[1]);

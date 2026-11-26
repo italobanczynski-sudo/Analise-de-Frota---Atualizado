@@ -1,4 +1,4 @@
-# Construído a partir da raiz do repositório (o painel index.html fica lá):
+# Construído a partir da raiz do repositório (o painel-v2 montado fica lá):
 #   docker build -f servidor/Dockerfile .      (o docker-compose.yml já faz assim)
 FROM golang:1.27-alpine AS build
 WORKDIR /src
@@ -7,9 +7,6 @@ RUN go mod download
 COPY servidor/ .
 # /painel: o painel novo, já montado (python painel-v2/build.py gera o dist/)
 COPY painel-v2/dist/analise-de-frota.html api/web/painel/novo.html
-# /painel/classico: o mesmo index.html do GitHub Pages
-COPY index.html api/web/painel/index.html
-COPY bibliotecas/xlsx.full.min.js api/web/painel/xlsx.full.min.js
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/servidor .
 
 FROM alpine:3.22

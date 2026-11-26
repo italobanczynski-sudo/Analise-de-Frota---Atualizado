@@ -1,4 +1,4 @@
-// Package base recebe os pedidos do painel (index.html) para a base de documentos e os dados da API.
+// Package base recebe os pedidos do painel para a base de documentos e os dados da API.
 package base
 
 import (

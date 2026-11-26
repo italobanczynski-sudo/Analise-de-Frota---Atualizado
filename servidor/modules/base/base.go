@@ -1,4 +1,4 @@
-// Package base guarda os documentos do painel (index.html) que ficavam na base compartilhada do Artifact.
+// Package base guarda os documentos do painel (premissas de cada cliente e o que veio da base do Artifact).
 package base
 
 import (

@@ -1,4 +1,4 @@
-// Package base tem os casos de uso do painel (index.html): a base de documentos e os dados da API Gobrax.
+// Package base tem os casos de uso do painel: a base de documentos e os dados da API Gobrax.
 package base
 
 import (

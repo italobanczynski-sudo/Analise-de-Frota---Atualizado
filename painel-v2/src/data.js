@@ -4,7 +4,7 @@
    - No servidor (rota /painel, com login): os registros vêm de /api/v1/painel/dados,
      a mesma base que o servidor busca de hora em hora na API Gobrax
      (v1/vehicle-statistics + v1/vehicle-performance).
-   - Fora do servidor (arquivo aberto direto, GitHub Pages): dados simulados.
+   - Fora do servidor (arquivo aberto direto): dados simulados.
    Formato do registro:
      { t:<dia em número>, date:'AAAA-MM-DD', veh:'PLACA',
        km  = totalMileage,  l  = totalConsumption (litros),

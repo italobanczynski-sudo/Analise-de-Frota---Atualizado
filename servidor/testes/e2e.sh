@@ -45,7 +45,7 @@ confere "pasta /estatico/ não é listada" 404 "$(curl -s -o /dev/null -w '%{htt
 confere "CSS da tela de entrada" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/estatico/login.css")"
 acao=$(curl -s -D - -o /dev/null -H 'Origin: https://site-malicioso.exemplo' "$BASE/api/v1/clientes" | grep -ci "access-control-allow-origin")
 confere "CORS da API recusa outra origem" 0 "$acao"
-# /saude é pública de propósito: o painel no GitHub Pages confere por ela se a plataforma está no ar
+# /saude é pública de propósito: o painel confere por ela se há versão nova e o GitHub Actions mantém o servidor acordado
 acao=$(curl -s -D - -o /dev/null -H 'Origin: https://site-malicioso.exemplo' "$BASE/saude" | grep -ci "access-control-allow-origin")
 confere "/saude aberta a qualquer origem" 1 "$acao"
 
@@ -127,8 +127,8 @@ confere "leitor não gera convite" 403 "$(req leitor POST /api/v1/usuarios/$ID_C
 echo "== painel e base do painel"
 confere "painel sem login volta para a entrada" 302 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/painel")"
 confere "painel com login" 200 "$(req admin GET /painel)"
-contem "painel ligado à base do servidor" "/estatico/painel-base.js"
-contem "painel com o ícone da Gobrax na aba" 'rel="icon" href="/estatico/icone.svg"'
+contem "painel com o ícone da Gobrax na aba" 'rel="icon"'
+confere "painel clássico vai para o painel" 302 "$(req admin GET /painel/classico)"
 confere "favicon.ico vai para o ícone" 301 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/favicon.ico")"
 confere "dados da API para o painel" 200 "$(req leitor GET /api/v1/painel/dados)"
 contem "clientes nos dados do painel" "Cliente E2E"

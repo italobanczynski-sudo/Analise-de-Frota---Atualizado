@@ -59,10 +59,10 @@ function drvRows(C){
 }
 function vDrivers(C0){
   const u=S.u;const C=drvCtx(C0);if(u.drvSel)u.drvSel=drvIdOf(C0,C,u.drvSel);if(u.msgDrv&&u.msgDrv!=='__frota')u.msgDrv=drvIdOf(C0,C,u.msgDrv);
-  const tabs=tabsHtml([['resumo','Resumo'],['comportamento','Comportamento'],['comparativo','Comparativo'],['semanal','Resultado semanal'],['lista','Condutores',null],['mensagens','Mensagens'],['premiacao','Nota e premiação']],u.drvTab,'drv-tab');
+  const tabs=tabsHtml([['resumo','Resumo'],['comportamento','Comportamento'],['comparativo','Comparativo'],['semanal','Resultado semanal'],['lista','Condutores',null],['mensagens','Mensagens'],['premiacao','Nota e premiação']].concat(REAL.on&&podeEditarContrato()?[['telefones','Telefones']]:[]),u.drvTab,'drv-tab');
   const head=pageH('Motoristas',`${esc(C.def.name)} · ${C.P.label} · comparado ao ${C.P.cmpLabel}`,`<button class="btn ghost" data-act="csv" data-w="drivers">${ico('download',16)} Exportar CSV</button>`);
   const note=REAL.on?`<div class="xs muted" style="margin:-12px 0 16px">${C.byDrv?'Cada linha é um motorista, com o dado só do tempo em que ele estava vinculado a cada veículo (vínculo da API Gobrax).':'Sem motorista vinculado na API: cada linha é um veículo.'}</div>`:'';
-  return head+tabs+note+({resumo:drvResumo,comportamento:drvBehavior,lista:drvList,comparativo:drvCompare2,semanal:drvWeekly2,mensagens:drvMessages,premiacao:drvPrize}[u.drvTab]||drvResumo)(C);
+  return head+tabs+note+({resumo:drvResumo,comportamento:drvBehavior,lista:drvList,comparativo:drvCompare2,semanal:drvWeekly2,mensagens:drvMessages,premiacao:drvPrize,telefones:drvPhones}[u.drvTab]||drvResumo)(C);
 }
 function drvList(C){
   const u=S.u;let rows=drvRows(C);
@@ -104,7 +104,65 @@ function drvMessages(C){
   const msgs=C.fleet.vehicles.map(v=>dayMessage(C.cid,ST,v.id,t)).filter(Boolean).sort((a,b)=>(a.score??999)-(b.score??999));
   const hist=msgHist(C);
   const evo=hist.length?msgEvolution(C,hist):REAL.on?`<div class="card rise"><div class="empty"><b>${REAL.busy['msg'+(C.rcid||C.cid)]?'Carregando as mensagens enviadas…':'Nenhuma mensagem marcada como enviada'}</b>Quando o CS ou o robô marcar uma mensagem como enviada, a evolução da nota aparece aqui.</div></div>`:'';
+  const nav=`<div class="row"><button class="btn sm ghost" data-act="msg-day" data-v="-1" aria-label="Dia anterior" style="transform:scaleX(-1)">${ico('chev',14)}</button><input class="inp" type="date" style="width:160px;height:34px" max="${TODAY}" value="${u.msgDay}" data-chg="msg-day" aria-label="Dia"><button class="btn sm ghost" data-act="msg-day" data-v="1" aria-label="Próximo dia">${ico('chev',14)}</button></div>`;
+  if(REAL.on)return evo+msgDiaBlock(C,u.msgDay,nav);
   return evo+`<div class="card rise sec">${cardH('Mensagem do dia',`${msgs.length} condutores rodaram em ${fmt.dmy(u.msgDay)}`,`<div class="row"><button class="btn sm ghost" data-act="msg-day" data-v="-1" aria-label="Dia anterior" style="transform:scaleX(-1)">${ico('chev',14)}</button><input class="inp" type="date" style="width:160px;height:34px" max="${TODAY}" value="${u.msgDay}" data-chg="msg-day" aria-label="Dia"><button class="btn sm ghost" data-act="msg-day" data-v="1" aria-label="Próximo dia">${ico('chev',14)}</button></div>`)}<div class="grid g2">${msgs.length?msgs.map(m=>msgCardHtml(C,m,t)).join(''):'<div class="empty" style="grid-column:1/-1"><b>Ninguém rodou nesse dia</b>Escolha outra data.</div>'}</div></div>`;
+}
+/* ---------- Mensagens do dia (servidor): o mesmo texto que o robô envia; CS marca e desmarca o que foi enviado ---------- */
+const MSGD={},CONDS={};
+const recarregaMot=aba=>()=>{if(CUR_ROUTE==='motoristas'&&S.u.drvTab===aba)softRender()};
+function msgDiaDe(C,dia){
+  const k=(C.rcid||C.cid)+'|'+dia;
+  if(!MSGD[k]){MSGD[k]={busy:true};srv('/api/v1/clientes/'+C.def.srvId+'/mensagens?dia='+dia).then(l=>{MSGD[k]={lista:l||[]}}).catch(e=>{MSGD[k]={err:e.message}}).finally(recarregaMot('mensagens'))}
+  return[k,MSGD[k]];
+}
+function msgDiaBlock(C,dia,nav){
+  const [k,x]=msgDiaDe(C,dia);const pode=podeEditarContrato();
+  const card=(sub,corpo)=>`<div class="card rise sec">${cardH('Mensagens do dia',sub,nav)}${corpo}</div>`;
+  if(x.busy)return card('Carregando…','<div class="skel" style="min-height:160px"></div>');
+  if(x.err)return card('Não foi possível carregar',`<div class="empty"><b>${esc(x.err)}</b></div>`);
+  const l=x.lista,env=l.filter(m=>m.enviada).length,semTel=l.filter(m=>!m.telefone).length;
+  const quando=d=>new Date(d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const cards=l.map((m,i)=>{const wa=m.telefone?waUrl(m.telefone,m.texto):null;const da=`data-k="${esc(k)}" data-i="${i}"`;
+    const tel=pode?(m.telefone?`<span class="xs muted">${esc(m.telefone)}</span>`:`<div class="row" style="flex-wrap:nowrap;gap:6px"><input class="inp" id="msgs-tel-${i}" type="tel" placeholder="Telefone (DDD + número)" style="height:32px;flex:1" aria-label="Telefone de ${esc(m.motorista)}"><button class="btn sm ghost" data-act="msgs-tel" ${da}>Salvar</button></div>`):'';
+    return`<div class="msgcard rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><b>${esc(m.motorista)}</b> <span class="xs muted">${m.foco_rotulo?'Foco: '+esc(m.foco_rotulo):''}</span></div>${m.enviada?`<span class="badge ok">ENVIADA ${quando(m.enviada)}</span>`:'<span class="badge n">A ENVIAR</span>'}</div>
+    <div class="bubble" style="white-space:pre-wrap">${esc(m.texto)}</div>${tel}
+    <div class="row">${pode&&wa?`<a class="btn sm primary" href="${wa}" target="_blank" rel="noopener" data-act="msgs-wa" ${da}>${ico('msg',14)} WhatsApp</a>`:''}<button class="btn sm ghost" data-act="msgs-copy" ${da}>${ico('copy',14)} Copiar</button>${pode?(m.enviada?`<button class="btn sm ghost" data-act="msgs-unmark" ${da}>Desmarcar enviada</button>`:`<button class="btn sm ghost" data-act="msgs-mark" ${da}>${ico('check',14)} Marcar enviada</button>`):''}</div></div>`}).join('');
+  const sub=l.length?`${l.length} condutores rodaram em ${fmt.dmy(dia)} · ${env} enviada${env===1?'':'s'}${pode&&semTel?` · ${semTel} sem telefone`:''}`:`Ninguém rodou em ${fmt.dmy(dia)}`;
+  return card(sub,l.length?`<div class="xs muted" style="margin:-4px 0 12px">Texto igual ao que o robô do WhatsApp envia. O WhatsApp abre a conversa com a mensagem pronta; depois de enviar, marque como enviada.</div><div class="grid g2">${cards}</div>`:'<div class="empty"><b>Sem mensagens nesse dia</b>Escolha outra data.</div>');
+}
+const msgsItem=el=>{const x=MSGD[el.dataset.k];return x&&x.lista?x.lista[+el.dataset.i]:null};
+/* telefone salvo: vale na fila, no botão WhatsApp do Resultado semanal e para o robô */
+function aplicaTelefone(cid,motorista,tel){
+  const k=nkey(motorista);
+  for(const id of [cid,cid+DRV_SUF]){const f=DB.fleets[id];if(!f)continue;const v=f.byId[f.drvPlate[k]];if(v&&(id!==cid||nkey(v.driver)===k))v.phone=tel}
+  for(const key in MSGD)if(key.startsWith(cid+'|')&&MSGD[key].lista)MSGD[key].lista.forEach(m=>{if(nkey(m.motorista)===k)m.telefone=tel});
+  const c=CONDS[cid];if(c&&c.lista)c.lista.forEach(m=>{if(nkey(m.motorista)===k)m.telefone=tel});
+}
+async function salvaTelefone(cid,motorista,valor){
+  const def=CLIENT_DEFS.find(c=>c.id===cid);
+  try{const r=await srv('/api/v1/clientes/'+def.srvId+'/mensagens/telefone','PUT',{motorista,telefone:valor});const t=(r&&r.telefone)||'';aplicaTelefone(cid,motorista,t);toast(t?'Telefone de '+motorista+' salvo.':'Telefone de '+motorista+' apagado.');return true}
+  catch(e){toast(e.message);return false}
+}
+
+/* ---------- Telefones dos condutores (CS e administrador): quem rodou nos últimos 90 dias e quem já tem telefone ---------- */
+function drvPhones(C){
+  const cid=C.rcid||C.cid;
+  if(!REAL.on)return'<div class="card rise"><div class="empty"><b>Telefones só na plataforma</b>Abra o painel pelo servidor (/painel) para cadastrar.</div></div>';
+  if(!CONDS[cid]){CONDS[cid]={busy:true};srv('/api/v1/clientes/'+C.def.srvId+'/condutores').then(l=>{CONDS[cid]={lista:l||[]}}).catch(e=>{CONDS[cid]={err:e.message}}).finally(recarregaMot('telefones'))}
+  const x=CONDS[cid];const pode=podeEditarContrato();
+  if(x.busy)return'<div class="skel" style="min-height:300px"></div>';
+  if(x.err)return`<div class="card rise"><div class="empty"><b>Não foi possível carregar</b>${esc(x.err)}</div></div>`;
+  const q=nkey(S.u.telQ||'');const filtro=S.u.telF||'all';
+  const todos=x.lista.map((c,i)=>({c,i}));const com=todos.filter(r=>r.c.telefone).length;
+  const rows=todos.filter(r=>(!q||nkey(r.c.motorista).includes(q))&&(filtro==='all'||(filtro==='sem')===!r.c.telefone));
+  const linha=({c,i})=>`<tr><td><b>${esc(c.motorista)}</b></td><td class="r muted">${c.ultimo_dia?fmt.dmy(c.ultimo_dia):'não rodou em 90 dias'}</td><td class="r num">${c.dias||0}</td>
+    <td>${pode?`<div class="row" style="flex-wrap:nowrap;gap:6px"><input class="inp" id="tel-${i}" type="tel" value="${esc(c.telefone||'')}" placeholder="DDD + número" style="height:32px;min-width:160px" aria-label="Telefone de ${esc(c.motorista)}"><button class="btn sm ghost" data-act="tel-save" data-i="${i}">Salvar</button></div>`:esc(c.telefone||'—')}</td>
+    <td>${c.telefone?`<a class="btn sm ghost" href="${waUrl(c.telefone,'')}" target="_blank" rel="noopener">${ico('msg',14)} Conferir</a>`:''}</td></tr>`;
+  return`<div class="card rise sec">${cardH('Telefones dos condutores',`${com} de ${x.lista.length} com telefone · quem rodou nos últimos 90 dias e quem já tem telefone. Usados pela fila de mensagens e pelo robô do WhatsApp.`,segHtml([['all','Todos'],['sem','Sem telefone'],['com','Com telefone']],filtro,'tel-filter'))}
+  <input class="inp" data-chg="tel-q" placeholder="Buscar condutor" value="${esc(S.u.telQ||'')}" style="margin-bottom:12px;max-width:320px" aria-label="Buscar condutor">
+  ${rows.length?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Condutor</th><th class="r">Último dia</th><th class="r">Dias (90)</th><th>Telefone</th><th></th></tr></thead><tbody>${rows.map(linha).join('')}</tbody></table></div>`:'<div class="empty"><b>Nenhum condutor</b>Ajuste o filtro ou a busca.</div>'}
+  <div class="xs muted" style="margin-top:10px">Com ou sem o 55, com ou sem DDD 0: o número é conferido ao salvar. Apague o campo e salve para tirar o telefone.</div></div>`;
 }
 function drvPrize(C){
   const u=S.u;const R=ST.rules;const months=premMonths(C.cid,ST);if(!u.premMonth||!months.includes(u.premMonth))u.premMonth=months.includes(TODAY.slice(0,7))?TODAY.slice(0,7):months[months.length-1]||TODAY.slice(0,7);

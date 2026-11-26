@@ -1,5 +1,3 @@
-Na construção da imagem (Dockerfile), estes arquivos da raiz do repositório são copiados para esta pasta e embutidos no binário:
+Na construção da imagem (Dockerfile), o painel montado é copiado para esta pasta e embutido no binário:
 - painel-v2/dist/analise-de-frota.html  ->  novo.html   (servido em /painel)
-- index.html                            ->  index.html  (o mesmo do GitHub Pages, servido em /painel/classico)
-- bibliotecas/xlsx.full.min.js          ->  xlsx.full.min.js
-As cópias ficam fora do Git (.gitignore). Sem novo.html, /painel cai no clássico; sem nenhum dos dois (go test, go build fora do Docker), responde 503.
+A cópia fica fora do Git (.gitignore). Sem ela (go test, go build fora do Docker), /painel responde 503.

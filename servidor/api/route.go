@@ -20,7 +20,7 @@ import (
 
 // GetRoutes registra todas as rotas do servidor
 func GetRoutes(r *gin.Engine) {
-	// público e sem credencial: o painel no GitHub Pages confere aqui se a plataforma está no ar antes de levar a pessoa para ela
+	// público e sem credencial: o painel confere aqui se há versão nova no ar, e o GitHub Actions mantém o servidor acordado
 	r.GET("/saude", func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		// versao: o commit publicado (o Render informa em RENDER_GIT_COMMIT), para conferir se a última mudança já está no ar
@@ -38,11 +38,10 @@ func GetRoutes(r *gin.Engine) {
 	r.StaticFS("/estatico", web.Estatico())
 	// navegadores pedem /favicon.ico por conta própria: vai para o ícone da Gobrax
 	r.GET("/favicon.ico", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/estatico/icone.svg") })
-	// painel completo (index.html): só com login; sem sessão volta para a tela de entrada
+	// painel (painel-v2): só com login; sem sessão volta para a tela de entrada
 	r.GET("/painel", paginaLogada(), web.Painel())
-	// painel anterior (importação de planilhas, fichas, combinados), enquanto as pessoas se acostumam com o novo
-	r.GET("/painel/classico", paginaLogada(), web.PainelClassico())
-	r.GET("/painel/xlsx.full.min.js", web.PainelXLSX())
+	// o painel clássico saiu: links antigos vão para o painel
+	r.GET("/painel/classico", func(c *gin.Context) { c.Redirect(http.StatusFound, "/painel") })
 	// fundo do mapa do painel, buscado pelo servidor no OpenStreetMap (só logado)
 	r.GET("/mapa/:z/:x/:y", autenticar(), ctmapa.Imagem)
 

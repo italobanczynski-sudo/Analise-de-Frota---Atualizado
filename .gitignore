@@ -1,10 +1,8 @@
 # Servidor (Go): configuração local com segredos
 servidor/.env
 
-# Cópias do painel embutidas no servidor na construção da imagem (a fonte é o index.html da raiz)
-servidor/api/web/painel/index.html
+# Cópia do painel embutida no servidor na construção da imagem (a fonte é painel-v2/dist)
 servidor/api/web/painel/novo.html
-servidor/api/web/painel/xlsx.full.min.js
 
 # URLs de banco usadas na migração (servidor/implantacao/trazer-dados-render.sh)
 servidor/.banco-render

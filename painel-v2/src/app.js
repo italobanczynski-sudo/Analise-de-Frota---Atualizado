@@ -11,7 +11,7 @@ const ROUTES={
   dados:{t:'Regras e integração',i:'sliders',f:vSettings,g:'Sistema'}
 };
 const LEGACY={churn:'retencao',visao:'frota','individual/veiculo':'frota','individual/motorista':'motoristas',premiacao:'motoristas?aba=premiacao',mensagens:'motoristas?aba=mensagens',api:'dados?aba=integracao',config:'dados',individual:'motoristas'};
-const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1,notaconsumo:1}]};
+const TABKEY={retencao:['retTab',{cliente:1,carteira:1}],frota:['fleetTab',{visao:1,indicadores:1,qualidade:1,mapa:1,veiculos:'visao'}],motoristas:['drvTab',{resumo:1,comportamento:1,lista:1,comparativo:1,semanal:1,mensagens:1,premiacao:1,telefones:1}],dados:['dataTab',{regras:1,integracao:1,diagnostico:1,notaconsumo:1}]};
 let LASTC=null,RTOK=0,CUR_ROUTE='geral';
 
 function parseHash(){
@@ -137,7 +137,7 @@ function shell(){
 function acctPop(){
   const eu=REAL.eu;const papel={admin:'Administrador',colaborador:'CS',leitor:'Leitura'};
   if(!eu)return`<div class="who"><b>Modo demonstração</b><span class="xs muted">Abra pelo servidor (/painel) para ver os dados reais.</span></div>`;
-  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="#/dados?aba=diagnostico" data-act="pop-close">${ico('alert',16)} Diagnóstico do dado</a><a href="/painel/classico">${ico('file',16)} Painel clássico</a><button data-act="logout">${ico('out',16)} Sair</button>`;
+  return`<div class="who"><b>${esc(eu.nome)}</b><span class="xs muted">${esc(papel[eu.papel]||eu.papel||'')}</span></div><a href="/plataforma">${ico('users',16)} Clientes e coleta${eu.papel==='admin'?' · usuários':''}</a><a href="#/dados?aba=diagnostico" data-act="pop-close">${ico('alert',16)} Diagnóstico do dado</a><button data-act="logout">${ico('out',16)} Sair</button>`;
 }
 function renderTop(){
   const C=LASTC;
@@ -255,6 +255,14 @@ const ACT={
   'msg-day':el=>{const t=Math.min(T0,dIdx(S.u.msgDay||dIso(T0-1))+ +el.dataset.v);S.u.msgDay=dIso(t);go()},
   'msg-copy':async el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
   'msg-wa':el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
+  /* Mensagens do dia (servidor) e telefones */
+  'msgs-copy':async el=>{const m=msgsItem(el);if(m)toast(await copyText(m.texto)?'Mensagem copiada':'Não foi possível copiar')},
+  'msgs-wa':el=>{const m=msgsItem(el);if(m)copyText(m.texto)},
+  'msgs-mark':el=>marcaEnviada(el,true),
+  'msgs-unmark':el=>marcaEnviada(el,false),
+  'msgs-tel':async el=>{const m=msgsItem(el);const i=$('#msgs-tel-'+el.dataset.i);if(!m||!i||!i.value.trim())return;el.disabled=true;await salvaTelefone(S.client,m.motorista,i.value);go()},
+  'tel-save':async el=>{const x=CONDS[S.client];const c=x&&x.lista&&x.lista[+el.dataset.i];const i=$('#tel-'+el.dataset.i);if(!c||!i)return;el.disabled=true;await salvaTelefone(S.client,c.motorista,i.value);go()},
+  'tel-filter':el=>{S.u.telF=el.dataset.v;go()},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
   'est-gran':el=>{S.u.estGran=el.dataset.v;go()},
   'contrato-salvar':async el=>{
@@ -266,6 +274,16 @@ const ACT={
     catch(e){el.disabled=false;toast(/403|permiss/i.test(e.message)?'Só CS e administrador mudam o contrato.':'Não foi possível salvar: '+e.message)}
   },
 };
+/* marca/desmarca a mensagem do dia como enviada; a evolução da nota (mensagens enviadas) é buscada de novo */
+async function marcaEnviada(el,on){
+  const m=msgsItem(el);const def=CLIENT_DEFS.find(c=>c.id===S.client);if(!m||!def)return;const dia=el.dataset.k.split('|').pop();el.disabled=true;
+  try{
+    if(on){const r=await srv('/api/v1/clientes/'+def.srvId+'/mensagens/enviada','PUT',{dia,motorista:m.motorista});m.enviada=(r&&r.enviada)||new Date().toISOString();toast('Mensagem de '+m.motorista+' marcada como enviada.')}
+    else{await srv('/api/v1/clientes/'+def.srvId+'/mensagens/enviada?dia='+encodeURIComponent(dia)+'&motorista='+encodeURIComponent(m.motorista),'DELETE');m.enviada=null;toast('Mensagem de '+m.motorista+' desmarcada.')}
+    delete REAL.msgs[S.client];loadExtras(S.client);
+  }catch(e){toast(e.message)}
+  go();
+}
 function setClient(id){S.client=id;S.u.drvSel=null;S.u.fleetFilial='';S.u.msgDay='';S.u.msgDrv=null;S.u.weekSel=null;S.u.premMonth='';savePrefs()}
 
 /* ---------- eventos ---------- */
@@ -288,7 +306,8 @@ function bind(){
     else if(k==='msg-day'){if(el.value){S.u.msgDay=el.value>TODAY?TODAY:el.value;go()}}
     else if(k==='pfrom'||k==='pto'){S.period[k==='pfrom'?'from':'to']=el.value;if(S.period.from&&S.period.to&&S.period.from<=S.period.to)go()}
   });
-  document.addEventListener('input',e=>{const el=e.target.closest('[data-chg="drv-q"]');if(el){S.u.drvQ=el.value;clearTimeout(bind.t);bind.t=setTimeout(go,180)}});
+  document.addEventListener('input',e=>{const el=e.target.closest('[data-chg="drv-q"]');if(el){S.u.drvQ=el.value;clearTimeout(bind.t);bind.t=setTimeout(go,180)}
+    const tq=e.target.closest('[data-chg="tel-q"]');if(tq){S.u.telQ=tq.value;clearTimeout(bind.t);bind.t=setTimeout(go,180)}});
   $('#clientSel').addEventListener('change',e=>{setClient(e.target.value);render({skeleton:true})});
   window.addEventListener('resize',()=>{clearTimeout(bind.rz);bind.rz=setTimeout(()=>fitCharts(document,true),180)});
   window.addEventListener('hashchange',()=>{const {path,q}=parseHash();const t=TABKEY[path];if(t&&q.aba&&t[1][q.aba]){S.u[t[0]]=t[1][q.aba]===1?q.aba:t[1][q.aba]}closeOv();closePops();$('#sidebar').classList.remove('open');render({skeleton:false})});

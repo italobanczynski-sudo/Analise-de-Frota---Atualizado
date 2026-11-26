@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   app:
-    # contexto na raiz do repositório: a imagem embute o painel index.html
+    # contexto na raiz do repositório: a imagem embute o painel (painel-v2/dist)
     build:
       context: ..
       dockerfile: servidor/Dockerfile

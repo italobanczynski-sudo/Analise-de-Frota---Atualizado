@@ -1,4 +1,4 @@
-# Testes a cada envio: o painel (todas as telas num Chrome sem janela, com dados sintéticos) e o servidor em Go
+# Testes a cada envio: o painel-v2 (todas as telas num Chrome sem janela, com dados sintéticos) e o servidor em Go
 name: Testes
 
 on:
@@ -19,8 +19,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Varredura das telas
-        run: node testes/painel/rodar.js
       - name: Painel novo montado a partir de src/ (rode python painel-v2/build.py e envie o dist/)
         run: |
           python3 painel-v2/build.py

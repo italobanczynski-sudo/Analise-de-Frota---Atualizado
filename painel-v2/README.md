@@ -7,7 +7,7 @@ Painel com a identidade visual Gobrax, num único HTML (JS puro, sem framework).
 | Onde | Dados |
 |---|---|
 | Servidor, em `/painel` (com login) | Os reais: o que o servidor busca de hora em hora na API Gobrax |
-| Arquivo aberto direto ou GitHub Pages | Simulados (selo **DADOS SIMULADOS** no topo) |
+| Arquivo aberto direto | Simulados (selo **DADOS SIMULADOS** no topo) |
 
 O painel descobre sozinho em qual dos dois está: se `/api/v1/auth/eu` responde, está na plataforma.
 
@@ -19,9 +19,11 @@ No servidor, ele lê:
 | `/api/v1/clientes/:id/ao-vivo` | Posição agora e rastro de hoje (mapa e trajeto do dia), atualizado a cada 2 minutos |
 | `/api/v1/clientes/:id/mensagens/enviadas` | Evolução da nota depois das mensagens marcadas como enviadas |
 | `/api/v1/clientes/:id/condutores` | Telefone do condutor para o botão WhatsApp (só CS e administrador) |
+| `/api/v1/clientes/:id/mensagens?dia=` | Mensagens do dia com o texto que o robô envia; `PUT`/`DELETE .../mensagens/enviada` marca e desmarca |
+| `PUT /api/v1/clientes/:id/mensagens/telefone` | Cadastra ou apaga o telefone do condutor (só CS e administrador) |
 | `/mapa/:z/:x/:y` | Mapa-base do OpenStreetMap, servido pelo próprio servidor |
 
-O painel anterior continua em `/painel/classico` (importação de planilhas, fichas e combinados).
+É o único painel: o clássico (`index.html`) saiu em 26/11/2026 e `/painel/classico` redireciona para `/painel`. A fila de Mensagens do dia (marcar e desmarcar enviada) e o cadastro de telefones dos condutores ficam em Motoristas › Mensagens e Motoristas › Telefones.
 
 ## Montar
 

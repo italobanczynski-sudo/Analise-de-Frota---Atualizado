@@ -57,11 +57,11 @@ function drvRows(C){
   const gl=Object.fromEntries(gainsLosses(C.cur,C.prev,C.price).map(g=>[g.id,g]));
   return C.fleet.vehicles.map(v=>({v,c:C.cur.byVeh[v.id],p:C.prev.byVeh[v.id],st:vehStatus(C.cur,C.prev,v.id),g:gl[v.id]})).filter(r=>r.c);
 }
-function vDrivers(C){
-  const u=S.u;
+function vDrivers(C0){
+  const u=S.u;const C=drvCtx(C0);if(u.drvSel)u.drvSel=drvIdOf(C0,C,u.drvSel);if(u.msgDrv&&u.msgDrv!=='__frota')u.msgDrv=drvIdOf(C0,C,u.msgDrv);
   const tabs=tabsHtml([['resumo','Resumo'],['comportamento','Comportamento'],['comparativo','Comparativo'],['semanal','Resultado semanal'],['lista','Condutores',null],['mensagens','Mensagens'],['premiacao','Nota e premiação']],u.drvTab,'drv-tab');
   const head=pageH('Motoristas',`${esc(C.def.name)} · ${C.P.label} · comparado ao ${C.P.cmpLabel}`,`<button class="btn ghost" data-act="csv" data-w="drivers">${ico('download',16)} Exportar CSV</button>`);
-  const note=REAL.on?`<div class="xs muted" style="margin:-12px 0 16px">Cada linha é um veículo com o motorista que mais o dirigiu no período (vínculo da API Gobrax).</div>`:'';
+  const note=REAL.on?`<div class="xs muted" style="margin:-12px 0 16px">${C.byDrv?'Cada linha é um motorista, com o dado só do tempo em que ele estava vinculado a cada veículo (vínculo da API Gobrax).':'Sem motorista vinculado na API: cada linha é um veículo.'}</div>`:'';
   return head+tabs+note+({resumo:drvResumo,comportamento:drvBehavior,lista:drvList,comparativo:drvCompare2,semanal:drvWeekly2,mensagens:drvMessages,premiacao:drvPrize}[u.drvTab]||drvResumo)(C);
 }
 function drvList(C){
@@ -72,14 +72,14 @@ function drvList(C){
   const so={money:(a,b)=>(a.g?a.g.money:0)-(b.g?b.g.money:0),kmpl:(a,b)=>(b.c.kmpl||0)-(a.c.kmpl||0),score:(a,b)=>(b.c.score??-1)-(a.c.score??-1),name:(a,b)=>a.v.driver.localeCompare(b.v.driver)}[u.drvSort];rows.sort(so);
   if(!u.drvSel||!C.fleet.byId[u.drvSel])u.drvSel=rows[0]?rows[0].v.id:null;
   const chip=(k,l)=>`<button class="chip ${u.drvFilter===k?'on':''}" data-act="drv-filter" data-v="${k}">${l} · ${counts[k]}</button>`;
-  const list=rows.length?rows.map(r=>`<div class="li ${r.v.id===u.drvSel?'on':''}" data-act="drv-sel" data-id="${esc(r.v.id)}"><div class="ava">${initials(r.v.driver)}</div><div style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.v.driver)}</b><span class="xs muted">${esc(r.v.id)} · ${fmt.kmpl(r.c.kmpl)} km/l</span></div><div style="text-align:right"><span class="badge ${r.st.cls}">${r.st.label}</span>${r.g?`<div class="xs num b" style="color:${r.g.money>=0?'var(--ok-t)':'var(--bad-t)'}">${r.g.money>=0?'+':'−'}${fmt.brl(Math.abs(r.g.money))}</div>`:''}</div></div>`).join(''):`<div class="empty"><b>Nenhum condutor</b>Ajuste o filtro ou a busca.</div>`;
+  const list=rows.length?rows.map(r=>`<div class="li ${r.v.id===u.drvSel?'on':''}" data-act="drv-sel" data-id="${esc(r.v.id)}"><div class="ava">${initials(r.v.driver)}</div><div style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.v.driver)}</b><span class="xs muted">${esc(vSub(r.v))} · ${fmt.kmpl(r.c.kmpl)} km/l</span></div><div style="text-align:right"><span class="badge ${r.st.cls}">${r.st.label}</span>${r.g?`<div class="xs num b" style="color:${r.g.money>=0?'var(--ok-t)':'var(--bad-t)'}">${r.g.money>=0?'+':'−'}${fmt.brl(Math.abs(r.g.money))}</div>`:''}</div></div>`).join(''):`<div class="empty"><b>Nenhum condutor</b>Ajuste o filtro ou a busca.</div>`;
   const left=`<div class="card listc rise" style="padding:18px"><div class="stack" style="gap:10px;margin-bottom:12px"><div class="chips">${chip('all','Todos')}${chip('up','Evoluíram')}${chip('down','Regrediram')}${chip('base','Sem base')}</div><div class="row" style="flex-wrap:nowrap"><input class="inp" data-chg="drv-q" placeholder="Buscar por nome ou placa" value="${esc(u.drvQ)}" style="flex:1" aria-label="Buscar condutor"><select class="inp" data-chg="drv-sort" style="width:auto" aria-label="Ordenar"><option value="money" ${u.drvSort==='money'?'selected':''}>Maior perda</option><option value="kmpl" ${u.drvSort==='kmpl'?'selected':''}>Melhor consumo</option><option value="score" ${u.drvSort==='score'?'selected':''}>Melhor nota</option><option value="name" ${u.drvSort==='name'?'selected':''}>Nome</option></select></div></div><div class="scrolly stack" style="gap:2px">${list}</div></div>`;
   return`<div class="md sec">${left}<div id="drv-detail">${u.drvSel?drvDetail(C,u.drvSel):'<div class="card empty"><b>Selecione um condutor</b></div>'}</div></div>`;
 }
 function drvDetail(C,id){
   const u=S.u;const v=C.fleet.byId[id];const c=C.cur.byVeh[id],p=C.prev.byVeh[id];const st=vehStatus(C.cur,C.prev,id);
   const dt=tabsHtml([['resumo','Painel'],['indicadores','Todos os indicadores'],['dia','Dia a dia'],['msg','Mensagens']],u.drvDet,'drv-det');
-  const head=`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><div class="ava lg">${initials(v.driver)}</div><div><h2 style="font-size:24px;font-weight:900">${esc(v.driver)}</h2><div class="muted">${esc(id)}</div></div></div><div class="row"><span class="badge ${st.cls}">${st.label}</span>${c?scoreBadge(c.score):''}</div></div></div>`;
+  const head=`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><div class="ava lg">${initials(v.driver)}</div><div><h2 style="font-size:24px;font-weight:900">${esc(v.driver)}</h2><div class="muted">${esc(vSub(v))}</div></div></div><div class="row"><span class="badge ${st.cls}">${st.label}</span>${c?scoreBadge(c.score):''}</div></div></div>`;
   let inner='';
   if(!c)return head+'<div class="card empty rise sec"><b>Sem rodagem no período</b></div>';
   if(u.drvDet==='resumo'){
@@ -97,13 +97,13 @@ function drvDetail(C,id){
   return head+dt+inner;
 }
 function msgCardHtml(C,m,t){
-  return`<div class="msgcard rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><b>${esc(m.name)}</b> <span class="xs muted">${esc(m.veh)} · ${fmt.dm(dIso(t))}</span></div>${scoreBadge(m.score)}</div><div class="bubble">${esc(m.text)}</div><div class="row"><button class="btn sm ghost" data-act="msg-copy" data-v="${esc(m.veh)}" data-t="${t}">${ico('copy',14)} Copiar mensagem</button>${m.phone?`<button class="btn sm primary" data-act="msg-wa" data-v="${esc(m.veh)}" data-t="${t}">${ico('msg',14)} WhatsApp</button>`:''}</div></div>`;
+  return`<div class="msgcard rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><b>${esc(m.name)}</b> <span class="xs muted">${esc(m.pl||m.veh)} · ${fmt.dm(dIso(t))}</span></div>${scoreBadge(m.score)}</div><div class="bubble">${esc(m.text)}</div><div class="row"><button class="btn sm ghost" data-act="msg-copy" data-v="${esc(m.veh)}" data-t="${t}">${ico('copy',14)} Copiar mensagem</button>${m.phone?`<button class="btn sm primary" data-act="msg-wa" data-v="${esc(m.veh)}" data-t="${t}">${ico('msg',14)} WhatsApp</button>`:''}</div></div>`;
 }
 function drvMessages(C){
   const u=S.u;if(!u.msgDay)u.msgDay=dIso(T0-1);const t=dIdx(u.msgDay);
   const msgs=C.fleet.vehicles.map(v=>dayMessage(C.cid,ST,v.id,t)).filter(Boolean).sort((a,b)=>(a.score??999)-(b.score??999));
   const hist=msgHist(C);
-  const evo=hist.length?msgEvolution(C,hist):REAL.on?`<div class="card rise"><div class="empty"><b>${REAL.busy['msg'+C.cid]?'Carregando as mensagens enviadas…':'Nenhuma mensagem marcada como enviada'}</b>Quando o CS ou o robô marcar uma mensagem como enviada, a evolução da nota aparece aqui.</div></div>`:'';
+  const evo=hist.length?msgEvolution(C,hist):REAL.on?`<div class="card rise"><div class="empty"><b>${REAL.busy['msg'+(C.rcid||C.cid)]?'Carregando as mensagens enviadas…':'Nenhuma mensagem marcada como enviada'}</b>Quando o CS ou o robô marcar uma mensagem como enviada, a evolução da nota aparece aqui.</div></div>`:'';
   return evo+`<div class="card rise sec">${cardH('Mensagem do dia',`${msgs.length} condutores rodaram em ${fmt.dmy(u.msgDay)}`,`<div class="row"><button class="btn sm ghost" data-act="msg-day" data-v="-1" aria-label="Dia anterior" style="transform:scaleX(-1)">${ico('chev',14)}</button><input class="inp" type="date" style="width:160px;height:34px" max="${TODAY}" value="${u.msgDay}" data-chg="msg-day" aria-label="Dia"><button class="btn sm ghost" data-act="msg-day" data-v="1" aria-label="Próximo dia">${ico('chev',14)}</button></div>`)}<div class="grid g2">${msgs.length?msgs.map(m=>msgCardHtml(C,m,t)).join(''):'<div class="empty" style="grid-column:1/-1"><b>Ninguém rodou nesse dia</b>Escolha outra data.</div>'}</div></div>`;
 }
 function drvPrize(C){

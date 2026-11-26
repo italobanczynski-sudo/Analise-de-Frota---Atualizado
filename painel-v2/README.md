@@ -50,7 +50,8 @@ O `dist/` vai para o Git: o Dockerfile copia esse arquivo para dentro do servido
 
 ## Regras de cálculo que valem para todas as telas
 
-- Cada linha de Motoristas é um veículo, com o motorista que mais o dirigiu no período.
+- Cada linha de Motoristas é um motorista (vínculos da API, `motoristas` de `/painel/dados`), com o dado só do tempo em que ele estava vinculado a cada veículo; quem só revezou um veículo também aparece. Cliente sem motorista vinculado na API (e o modo simulado) continua com uma linha por veículo. A linha de base da economia é a mesma da frota.
+- Na Frota, cada veículo mostra o motorista que mais o dirigiu no período.
 - Nota Gobrax: a performance diária da API não traz nota (o servidor grava vazio). O painel usa a nota do mês de cada motorista na premiação Gobrax (v2/driversOverview) em cada dia em que ele dirigiu o veículo. Por isso a nota muda de mês em mês, não de dia em dia.
 - Dia sem litros ou sem km fica fora do consumo. Indicador que a API não trouxe (nota, faixa verde, motor ocioso) fica fora da média daquele indicador; não vira zero.
 - Registro com consumo fora de 1 a 7 km/l ou mais de 1.200 km no dia fica fora das médias (aba Frota › Qualidade do dado).

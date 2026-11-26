@@ -126,7 +126,31 @@ function fleetFromServer(c){
   vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
-  return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
+  return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id,drv:driversFromServer(c,premNota)};
+}
+/* Frota de motoristas (tela Motoristas): uma linha por pessoa, com o dado só do tempo do vínculo dela com cada veículo
+   (registros_motoristas). Cada motorista ocupa o lugar de um "veículo" para as mesmas contas (metrics, dailySeries...). */
+const DRV_SUF='~m';
+const realCid=cid=>String(cid).endsWith(DRV_SUF)?String(cid).slice(0,-DRV_SUF.length):cid;
+function driversFromServer(c,premNota){
+  const nomes={},placas={},recs=[];
+  for(const r of c.motoristas||[]){
+    const nome=String(r.motorista||'').replace(/\s+/g,' ').trim();const k=nkey(nome);if(!k)continue;
+    const p=String(r.placa||'').trim();const dia=String(r.dia).slice(0,10);const t=dIdx(dia);
+    (nomes[k]=nomes[k]||{})[nome]=(nomes[k][nome]||0)+1;
+    const km=nv(r.km)||0,l=nv(r.litros)||0;
+    if(!r.rodou||km<=0||l<=0)continue;
+    if(p)(placas[k]=placas[k]||{})[p]=(placas[k][p]||0)+1;
+    let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
+    const nota=scd!=null?scd:premNota[k+'|'+dia.slice(0,7)]??null;
+    recs.push({t,date:dia,veh:k,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd,emb:nv(r.embalo),fm:nv(r.freio_motor),pa:nv(r.piloto_automatico),exv:nv(r.tempo_excesso_velocidade),hm:nv(r.horas_motor),drv:nome,pl:p});
+  }
+  /* id = o nome escrito do jeito mais frequente; as placas em ordem de quantos dias o motorista rodou em cada uma */
+  const idDe={};const vehicles=Object.keys(nomes).map(k=>{const id=Object.entries(nomes[k]).sort((a,b)=>b[1]-a[1])[0][0];idDe[k]=id;
+    const plates=Object.entries(placas[k]||{}).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);return{id,driver:id,filial:'Frota',phone:'',plates,noDriver:false}}).sort((a,b)=>a.id.localeCompare(b.id,'pt-BR'));
+  recs.forEach(r=>r.veh=idDe[r.veh]);recs.sort((a,b)=>a.t-b.t);
+  const drvPlate={};for(const k in idDe)drvPlate[k]=idDe[k];
+  return{vehicles,recs,lastComm:{},drvPlate,prem:c.premiacoes||[],srvId:c.id,isDrv:true};
 }
 function clientsFromServer(raw){
   return raw.map(c=>{const f=fleetFromServer(c);const first=f.recs.length?f.recs[0].date:null;
@@ -213,7 +237,9 @@ async function salvarContrato(def,unit,units){
 
 /* ---------- Banco em memória ---------- */
 const DB={fleets:{},cache:new Map(),ver:0,
-  async load(id){if(!this.fleets[id]){this.fleets[id]=await Gobrax.api.getFleet(id);this.fleets[id].byId=Object.fromEntries(this.fleets[id].vehicles.map(v=>[v.id,v]))}return this.fleets[id]},
+  async load(id){if(!this.fleets[id]){const f=this.fleets[id]=await Gobrax.api.getFleet(id);f.byId=Object.fromEntries(f.vehicles.map(v=>[v.id,v]));
+    /* motoristas (só no servidor): registrados como um cliente à parte, id + DRV_SUF */
+    if(f.drv&&f.drv.vehicles.length){f.drv.byId=Object.fromEntries(f.drv.vehicles.map(v=>[v.id,v]));this.fleets[id+DRV_SUF]=f.drv}}return this.fleets[id]},
   bump(){this.ver++;this.cache.clear()}
 };
 const flagId=(cid,r)=>cid+':'+r.veh+':'+r.t;
@@ -340,6 +366,7 @@ function opportunities(cur,prev,price){
    litros que a frota gastaria no consumo da linha de base do projeto nos mesmos km − litros realmente gastos, × preço do diesel.
    A linha de base é a do Estudo: primeiras 4 semanas do acompanhamento (com menos de 8 semanas, a primeira metade). */
 function baseOf(cid){
+  cid=realCid(cid); /* motoristas usam a mesma linha de base da frota */
   const k='base|'+cid+'|'+DB.ver;if(DB.cache.has(k))return DB.cache.get(k);
   const def=CLIENT_DEFS.find(c=>c.id===cid);const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
   const curto=weeklySeries(cid,ST,ps,T0).length<8;
@@ -457,5 +484,5 @@ function dayMessage(cid,store,veh,t){
   if(pk)txt+=' ('+fmt.sp((kmpl-pk)/pk*100)+' contra o último dia em que você rodou)';
   txt+='.';if(score!=null)txt+=' Sua nota no mês é '+score+' ('+scoreBand(score).label.toLowerCase()+').';
   txt+=worst?' Para melhorar: '+worst.txt+'. Conta com a gente!':' Continue assim!';
-  return{veh,name:v.driver,first,km:cur.km,kmpl,pk,point:worst?worst.k:null,pointD:worst?worst.d:null,score,text:txt,phone:v.phone};
+  return{veh,pl:cur.pl||'',name:v.driver,first,km:cur.km,kmpl,pk,point:worst?worst.k:null,pointD:worst?worst.d:null,score,text:txt,phone:v.phone};
 }

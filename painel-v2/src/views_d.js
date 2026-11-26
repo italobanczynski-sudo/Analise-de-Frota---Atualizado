@@ -39,14 +39,14 @@ function drvResumo(C){
   const gl=C.gl;const net=gl.reduce((a,g)=>a+g.money,0);
   const kpi=(t,v,s,c='',y='')=>`<div class="card kpi lift rise ${y}"><div class="tag">${t}</div><div class="v" ${c?`style="color:${c}"`:''}>${v}</div><div class="xs muted">${s}</div></div>`;
   const kp=`<div class="grid g4">${kpi('Condutores no período',count(rows.length,0),`${withBase.length} com base de comparação`)}${kpi('Evoluíram',count(up,0),'consumo subiu mais de 2%','var(--ok-t)')}${kpi('Regrediram',count(down,0),`${flat} estáveis`,'var(--bad-t)')}${kpi(net>=0?'Economia no período':'Perda no período',count(Math.abs(net),0,'R$ '),(net>=0?'diesel a menos':'diesel a mais')+' nos mesmos km','','yel')}</div>`;
-  const pts=withBase.map(r=>({id:r.v.id,x:r.c.kmpl,y:r.st.ch,tip:`<b>${esc(r.v.driver)}</b> · ${esc(r.v.id)}<br>${fmt.kmpl(r.c.kmpl)} km/l · ${fmt.sp(r.st.ch)} vs comparação`}));
+  const pts=withBase.map(r=>({id:r.v.id,x:r.c.kmpl,y:r.st.ch,tip:`<b>${esc(r.v.driver)}</b> · ${esc(vSub(r.v))}<br>${fmt.kmpl(r.c.kmpl)} km/l · ${fmt.sp(r.st.ch)} vs comparação`}));
   const sc=scatter(pts,{h:470,xMid:C.cur.kmpl||1,yMid:0,xl:'Média de consumo no período (km/l)',yl:'Variação contra a comparação',q:['Bom e evoluindo','Abaixo da média, mas melhorando','Bom, mas piorando','Abaixo da média e piorando'],aria:'Onde cada condutor está'});
   const top=[...gl.slice(0,6),...gl.slice(-6).filter(g=>g.money<0)].filter((g,i,a)=>a.findIndex(x=>x.id===g.id)===i);
-  const dv=diverging(top.map(g=>({id:g.id,l:C.fleet.byId[g.id].driver,s:g.id,v:g.money})));
+  const dv=diverging(top.map(g=>({id:g.id,l:C.fleet.byId[g.id].driver,s:vSub(C.fleet.byId[g.id]),v:g.money})));
   const sumG=gl.filter(g=>g.money>0).reduce((a,g)=>a+g.money,0),sumL=gl.filter(g=>g.money<0).reduce((a,g)=>a+g.money,0);
   /* pódio */
   const pod=rows.filter(r=>r.c.score!=null).sort((a,b)=>b.c.score-a.c.score).slice(0,3);const md=['#e0b100','#a9a9a3','#b5763a'];
-  const podium=pod.length?`<div class="podium">${[1,0,2].map(i=>{const r=pod[i];if(!r)return'<div></div>';return`<div class="pd p${i+1}" data-act="drv-open" data-id="${esc(r.v.id)}" style="--i:${i}"><svg class="medal" width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l4 12h-6zM28 2h-6l-4 12h6z" fill="${md[i]}" opacity=".5"/><circle cx="20" cy="25" r="11" fill="${md[i]}"/><text x="20" y="30" text-anchor="middle" style="fill:#fff;font:800 14px var(--num)">${i+1}</text></svg><b>${esc(r.v.driver)}</b><span class="xs muted">${esc(r.v.id)}</span><span class="num b" style="font-size:20px">${fmt.n(r.c.score,0)}</span><span class="tag">nota</span><div class="pdb"></div></div>`}).join('')}</div>`:'<div class="empty"><b>Sem nota no período</b></div>';
+  const podium=pod.length?`<div class="podium">${[1,0,2].map(i=>{const r=pod[i];if(!r)return'<div></div>';return`<div class="pd p${i+1}" data-act="drv-open" data-id="${esc(r.v.id)}" style="--i:${i}"><svg class="medal" width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l4 12h-6zM28 2h-6l-4 12h6z" fill="${md[i]}" opacity=".5"/><circle cx="20" cy="25" r="11" fill="${md[i]}"/><text x="20" y="30" text-anchor="middle" style="fill:#fff;font:800 14px var(--num)">${i+1}</text></svg><b>${esc(r.v.driver)}</b><span class="xs muted">${esc(vSub(r.v))}</span><span class="num b" style="font-size:20px">${fmt.n(r.c.score,0)}</span><span class="tag">nota</span><div class="pdb"></div></div>`}).join('')}</div>`:'<div class="empty"><b>Sem nota no período</b></div>';
   const imp=improvedRows(C,rows,['kmpl','br100','green','idle','score']);
   return kp+`<div class="grid sec" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))"><div class="card rise">${cardH('Onde cada condutor está','Cada ponto é um condutor. Clique para abrir. As linhas tracejadas são a média da frota e a variação zero.')}${sc}</div>
   <div class="card rise">${cardH('Quem ganhou e quem perdeu',`Diesel economizado ${esc(C.ec.b.rotulo)} · ganhos ${fmt.brl(sumG)} · perdas ${fmt.brl(Math.abs(sumL))}`)}${dv}</div></div>
@@ -97,7 +97,7 @@ function drvWeekly2(C){
     const circles=wl.map((l,k)=>{const t=w.from+(k-((wdOf(w.from)+6)%7));const d=r.days.find(x=>x.t===t);const cl=!d||!d.a?'e':d.a.kmpl>=fleetAvg?'g':'y';return`<div class="wdc"><span>${l}</span><i class="${cl}" ${d&&d.a?`data-tt="<b>${fmt.dm(dIso(t))}</b><br>${fmt.kmpl(d.a.kmpl)} km/l · ${fmt.n(d.a.km,0)} km"`:''}>${d&&d.a?fmt.kmpl(d.a.kmpl):''}</i></div>`}).join('');
     const chips=wk.map(x=>{const q=x.a.byVeh[r.a.id];return`<div class="wch ${x.n===w.n?'cur':''} ${pw&&x.n===pw.n?'cmp':''}"><span>S${x.n}</span><b class="num">${q&&q.kmpl?fmt.kmpl(q.kmpl):'–'}</b></div>`}).join('');
     const kmCh=r.pa?pc(r.a.km,r.pa.km):null;
-    return`<div class="card wcard rise" style="--i:${Math.min(i,10)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap;gap:8px"><span class="ava xs">${esc(r.v.driver[0])}</span><div><b style="display:block;line-height:1.2">${esc(r.v.id)}</b><span class="xs muted">${esc(r.v.driver)}</span></div></div><span class="badge ${st.c}">${st.l}</span></div>
+    return`<div class="card wcard rise" style="--i:${Math.min(i,10)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap;gap:8px"><span class="ava xs">${esc(r.v.driver[0])}</span><div><b style="display:block;line-height:1.2">${esc(C.byDrv?r.v.driver:r.v.id)}</b><span class="xs muted">${esc(C.byDrv?vSub(r.v):r.v.driver)}</span></div></div><span class="badge ${st.c}">${st.l}</span></div>
     <div class="wbig"><div class="tag">Média de consumo atual</div><div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-end"><span class="num" style="font-size:30px;font-weight:800">${fmt.kmpl(r.a.kmpl)} <small style="font-size:14px">km/l</small></span><span class="xs b">${i+1}º de ${n}</span></div><div class="xs">${r.ch!=null?dl(r.ch,true,1)+` <span class="muted">antes ${fmt.kmpl(r.pa.kmpl)} km/l</span>`:'<span class="muted">sem semana anterior</span>'}</div></div>
     <div class="xs muted" style="margin:8px 0">${r.tot?`Evoluiu em <b style="color:var(--text)">${r.evo}</b> de ${r.tot} indicadores`:'Sem indicadores para comparar'}</div>
     <div class="xs"><span class="muted">Km rodados</span><br><span class="muted">${r.pa?fmt.n(r.pa.km,0)+' km → ':''}</span><b>${fmt.n(r.a.km,0)} km</b> ${kmCh!=null?dl(kmCh,true,1):''}</div>
@@ -204,7 +204,7 @@ function msgHist(C){
   const by={};for(const r of validRecs(C.cid,ST))(by[r.veh]=by[r.veh]||[]).push(r);
   if(REAL.on){
     /* mensagens que o CS ou o robô marcaram como enviadas (/mensagens/enviadas) */
-    const sent=REAL.msgs[C.cid];if(!sent)return[];const out=[];
+    const sent=REAL.msgs[C.rcid||C.cid];if(!sent)return[];const out=[];
     for(const s of sent){
       const plate=C.fleet.drvPlate[nkey(s.motorista)];const rs=(by[plate]||[]).slice().sort((a,b)=>a.t-b.t);const ms=monthScores(rs);
       const msgs=(s.envios||[]).map(e=>{const t=dIdx(String(e.dia).slice(0,10));let k=null;for(const r of rs){if(r.t<=t)k=r.t;else break}

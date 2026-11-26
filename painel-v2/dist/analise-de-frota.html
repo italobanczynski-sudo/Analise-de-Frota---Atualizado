@@ -1379,7 +1379,31 @@ function fleetFromServer(c){
   vmap.forEach(v=>{const d=drv[v.id];v.driver=d?Object.entries(d).sort((a,b)=>b[1]-a[1])[0][0]:v.id;v.noDriver=!d;if(d)for(const n in d)if(!drvPlate[nkey(n)])drvPlate[nkey(n)]=v.id});
   recs.sort((a,b)=>a.t-b.t);
   const vehicles=[...vmap.values()].sort((a,b)=>a.id.localeCompare(b.id));
-  return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id};
+  return{vehicles,recs,lastComm,drvPlate,prem:c.premiacoes||[],srvId:c.id,drv:driversFromServer(c,premNota)};
+}
+/* Frota de motoristas (tela Motoristas): uma linha por pessoa, com o dado só do tempo do vínculo dela com cada veículo
+   (registros_motoristas). Cada motorista ocupa o lugar de um "veículo" para as mesmas contas (metrics, dailySeries...). */
+const DRV_SUF='~m';
+const realCid=cid=>String(cid).endsWith(DRV_SUF)?String(cid).slice(0,-DRV_SUF.length):cid;
+function driversFromServer(c,premNota){
+  const nomes={},placas={},recs=[];
+  for(const r of c.motoristas||[]){
+    const nome=String(r.motorista||'').replace(/\s+/g,' ').trim();const k=nkey(nome);if(!k)continue;
+    const p=String(r.placa||'').trim();const dia=String(r.dia).slice(0,10);const t=dIdx(dia);
+    (nomes[k]=nomes[k]||{})[nome]=(nomes[k][nome]||0)+1;
+    const km=nv(r.km)||0,l=nv(r.litros)||0;
+    if(!r.rodou||km<=0||l<=0)continue;
+    if(p)(placas[k]=placas[k]||{})[p]=(placas[k][p]||0)+1;
+    let scd=nv(r.nota);if(scd!=null&&(scd<0||scd>100))scd=null;
+    const nota=scd!=null?scd:premNota[k+'|'+dia.slice(0,7)]??null;
+    recs.push({t,date:dia,veh:k,km,l,br:nv(r.frenagens),brh:nv(r.frenagens_alta),sp:nv(r.velocidade_media),gr:nv(r.faixa_verde),ifv:nv(r.inicio_faixa_verde),id:nv(r.motor_ocioso),sc:nota,scd,emb:nv(r.embalo),fm:nv(r.freio_motor),pa:nv(r.piloto_automatico),exv:nv(r.tempo_excesso_velocidade),hm:nv(r.horas_motor),drv:nome,pl:p});
+  }
+  /* id = o nome escrito do jeito mais frequente; as placas em ordem de quantos dias o motorista rodou em cada uma */
+  const idDe={};const vehicles=Object.keys(nomes).map(k=>{const id=Object.entries(nomes[k]).sort((a,b)=>b[1]-a[1])[0][0];idDe[k]=id;
+    const plates=Object.entries(placas[k]||{}).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);return{id,driver:id,filial:'Frota',phone:'',plates,noDriver:false}}).sort((a,b)=>a.id.localeCompare(b.id,'pt-BR'));
+  recs.forEach(r=>r.veh=idDe[r.veh]);recs.sort((a,b)=>a.t-b.t);
+  const drvPlate={};for(const k in idDe)drvPlate[k]=idDe[k];
+  return{vehicles,recs,lastComm:{},drvPlate,prem:c.premiacoes||[],srvId:c.id,isDrv:true};
 }
 function clientsFromServer(raw){
   return raw.map(c=>{const f=fleetFromServer(c);const first=f.recs.length?f.recs[0].date:null;
@@ -1466,7 +1490,9 @@ async function salvarContrato(def,unit,units){
 
 /* ---------- Banco em memória ---------- */
 const DB={fleets:{},cache:new Map(),ver:0,
-  async load(id){if(!this.fleets[id]){this.fleets[id]=await Gobrax.api.getFleet(id);this.fleets[id].byId=Object.fromEntries(this.fleets[id].vehicles.map(v=>[v.id,v]))}return this.fleets[id]},
+  async load(id){if(!this.fleets[id]){const f=this.fleets[id]=await Gobrax.api.getFleet(id);f.byId=Object.fromEntries(f.vehicles.map(v=>[v.id,v]));
+    /* motoristas (só no servidor): registrados como um cliente à parte, id + DRV_SUF */
+    if(f.drv&&f.drv.vehicles.length){f.drv.byId=Object.fromEntries(f.drv.vehicles.map(v=>[v.id,v]));this.fleets[id+DRV_SUF]=f.drv}}return this.fleets[id]},
   bump(){this.ver++;this.cache.clear()}
 };
 const flagId=(cid,r)=>cid+':'+r.veh+':'+r.t;
@@ -1593,6 +1619,7 @@ function opportunities(cur,prev,price){
    litros que a frota gastaria no consumo da linha de base do projeto nos mesmos km − litros realmente gastos, × preço do diesel.
    A linha de base é a do Estudo: primeiras 4 semanas do acompanhamento (com menos de 8 semanas, a primeira metade). */
 function baseOf(cid){
+  cid=realCid(cid); /* motoristas usam a mesma linha de base da frota */
   const k='base|'+cid+'|'+DB.ver;if(DB.cache.has(k))return DB.cache.get(k);
   const def=CLIENT_DEFS.find(c=>c.id===cid);const ps=dIdx(def.start);const len=T0-ps+1;const half=ps+Math.floor(len/2)-1;
   const curto=weeklySeries(cid,ST,ps,T0).length<8;
@@ -1710,7 +1737,7 @@ function dayMessage(cid,store,veh,t){
   if(pk)txt+=' ('+fmt.sp((kmpl-pk)/pk*100)+' contra o último dia em que você rodou)';
   txt+='.';if(score!=null)txt+=' Sua nota no mês é '+score+' ('+scoreBand(score).label.toLowerCase()+').';
   txt+=worst?' Para melhorar: '+worst.txt+'. Conta com a gente!':' Continue assim!';
-  return{veh,name:v.driver,first,km:cur.km,kmpl,pk,point:worst?worst.k:null,pointD:worst?worst.d:null,score,text:txt,phone:v.phone};
+  return{veh,pl:cur.pl||'',name:v.driver,first,km:cur.km,kmpl,pk,point:worst?worst.k:null,pointD:worst?worst.d:null,score,text:txt,phone:v.phone};
 }
 
 /* =====================================================================
@@ -2540,11 +2567,11 @@ function drvRows(C){
   const gl=Object.fromEntries(gainsLosses(C.cur,C.prev,C.price).map(g=>[g.id,g]));
   return C.fleet.vehicles.map(v=>({v,c:C.cur.byVeh[v.id],p:C.prev.byVeh[v.id],st:vehStatus(C.cur,C.prev,v.id),g:gl[v.id]})).filter(r=>r.c);
 }
-function vDrivers(C){
-  const u=S.u;
+function vDrivers(C0){
+  const u=S.u;const C=drvCtx(C0);if(u.drvSel)u.drvSel=drvIdOf(C0,C,u.drvSel);if(u.msgDrv&&u.msgDrv!=='__frota')u.msgDrv=drvIdOf(C0,C,u.msgDrv);
   const tabs=tabsHtml([['resumo','Resumo'],['comportamento','Comportamento'],['comparativo','Comparativo'],['semanal','Resultado semanal'],['lista','Condutores',null],['mensagens','Mensagens'],['premiacao','Nota e premiação']],u.drvTab,'drv-tab');
   const head=pageH('Motoristas',`${esc(C.def.name)} · ${C.P.label} · comparado ao ${C.P.cmpLabel}`,`<button class="btn ghost" data-act="csv" data-w="drivers">${ico('download',16)} Exportar CSV</button>`);
-  const note=REAL.on?`<div class="xs muted" style="margin:-12px 0 16px">Cada linha é um veículo com o motorista que mais o dirigiu no período (vínculo da API Gobrax).</div>`:'';
+  const note=REAL.on?`<div class="xs muted" style="margin:-12px 0 16px">${C.byDrv?'Cada linha é um motorista, com o dado só do tempo em que ele estava vinculado a cada veículo (vínculo da API Gobrax).':'Sem motorista vinculado na API: cada linha é um veículo.'}</div>`:'';
   return head+tabs+note+({resumo:drvResumo,comportamento:drvBehavior,lista:drvList,comparativo:drvCompare2,semanal:drvWeekly2,mensagens:drvMessages,premiacao:drvPrize}[u.drvTab]||drvResumo)(C);
 }
 function drvList(C){
@@ -2555,14 +2582,14 @@ function drvList(C){
   const so={money:(a,b)=>(a.g?a.g.money:0)-(b.g?b.g.money:0),kmpl:(a,b)=>(b.c.kmpl||0)-(a.c.kmpl||0),score:(a,b)=>(b.c.score??-1)-(a.c.score??-1),name:(a,b)=>a.v.driver.localeCompare(b.v.driver)}[u.drvSort];rows.sort(so);
   if(!u.drvSel||!C.fleet.byId[u.drvSel])u.drvSel=rows[0]?rows[0].v.id:null;
   const chip=(k,l)=>`<button class="chip ${u.drvFilter===k?'on':''}" data-act="drv-filter" data-v="${k}">${l} · ${counts[k]}</button>`;
-  const list=rows.length?rows.map(r=>`<div class="li ${r.v.id===u.drvSel?'on':''}" data-act="drv-sel" data-id="${esc(r.v.id)}"><div class="ava">${initials(r.v.driver)}</div><div style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.v.driver)}</b><span class="xs muted">${esc(r.v.id)} · ${fmt.kmpl(r.c.kmpl)} km/l</span></div><div style="text-align:right"><span class="badge ${r.st.cls}">${r.st.label}</span>${r.g?`<div class="xs num b" style="color:${r.g.money>=0?'var(--ok-t)':'var(--bad-t)'}">${r.g.money>=0?'+':'−'}${fmt.brl(Math.abs(r.g.money))}</div>`:''}</div></div>`).join(''):`<div class="empty"><b>Nenhum condutor</b>Ajuste o filtro ou a busca.</div>`;
+  const list=rows.length?rows.map(r=>`<div class="li ${r.v.id===u.drvSel?'on':''}" data-act="drv-sel" data-id="${esc(r.v.id)}"><div class="ava">${initials(r.v.driver)}</div><div style="flex:1;min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.v.driver)}</b><span class="xs muted">${esc(vSub(r.v))} · ${fmt.kmpl(r.c.kmpl)} km/l</span></div><div style="text-align:right"><span class="badge ${r.st.cls}">${r.st.label}</span>${r.g?`<div class="xs num b" style="color:${r.g.money>=0?'var(--ok-t)':'var(--bad-t)'}">${r.g.money>=0?'+':'−'}${fmt.brl(Math.abs(r.g.money))}</div>`:''}</div></div>`).join(''):`<div class="empty"><b>Nenhum condutor</b>Ajuste o filtro ou a busca.</div>`;
   const left=`<div class="card listc rise" style="padding:18px"><div class="stack" style="gap:10px;margin-bottom:12px"><div class="chips">${chip('all','Todos')}${chip('up','Evoluíram')}${chip('down','Regrediram')}${chip('base','Sem base')}</div><div class="row" style="flex-wrap:nowrap"><input class="inp" data-chg="drv-q" placeholder="Buscar por nome ou placa" value="${esc(u.drvQ)}" style="flex:1" aria-label="Buscar condutor"><select class="inp" data-chg="drv-sort" style="width:auto" aria-label="Ordenar"><option value="money" ${u.drvSort==='money'?'selected':''}>Maior perda</option><option value="kmpl" ${u.drvSort==='kmpl'?'selected':''}>Melhor consumo</option><option value="score" ${u.drvSort==='score'?'selected':''}>Melhor nota</option><option value="name" ${u.drvSort==='name'?'selected':''}>Nome</option></select></div></div><div class="scrolly stack" style="gap:2px">${list}</div></div>`;
   return`<div class="md sec">${left}<div id="drv-detail">${u.drvSel?drvDetail(C,u.drvSel):'<div class="card empty"><b>Selecione um condutor</b></div>'}</div></div>`;
 }
 function drvDetail(C,id){
   const u=S.u;const v=C.fleet.byId[id];const c=C.cur.byVeh[id],p=C.prev.byVeh[id];const st=vehStatus(C.cur,C.prev,id);
   const dt=tabsHtml([['resumo','Painel'],['indicadores','Todos os indicadores'],['dia','Dia a dia'],['msg','Mensagens']],u.drvDet,'drv-det');
-  const head=`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><div class="ava lg">${initials(v.driver)}</div><div><h2 style="font-size:24px;font-weight:900">${esc(v.driver)}</h2><div class="muted">${esc(id)}</div></div></div><div class="row"><span class="badge ${st.cls}">${st.label}</span>${c?scoreBadge(c.score):''}</div></div></div>`;
+  const head=`<div class="card rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap"><div class="ava lg">${initials(v.driver)}</div><div><h2 style="font-size:24px;font-weight:900">${esc(v.driver)}</h2><div class="muted">${esc(vSub(v))}</div></div></div><div class="row"><span class="badge ${st.cls}">${st.label}</span>${c?scoreBadge(c.score):''}</div></div></div>`;
   let inner='';
   if(!c)return head+'<div class="card empty rise sec"><b>Sem rodagem no período</b></div>';
   if(u.drvDet==='resumo'){
@@ -2580,13 +2607,13 @@ function drvDetail(C,id){
   return head+dt+inner;
 }
 function msgCardHtml(C,m,t){
-  return`<div class="msgcard rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><b>${esc(m.name)}</b> <span class="xs muted">${esc(m.veh)} · ${fmt.dm(dIso(t))}</span></div>${scoreBadge(m.score)}</div><div class="bubble">${esc(m.text)}</div><div class="row"><button class="btn sm ghost" data-act="msg-copy" data-v="${esc(m.veh)}" data-t="${t}">${ico('copy',14)} Copiar mensagem</button>${m.phone?`<button class="btn sm primary" data-act="msg-wa" data-v="${esc(m.veh)}" data-t="${t}">${ico('msg',14)} WhatsApp</button>`:''}</div></div>`;
+  return`<div class="msgcard rise"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><b>${esc(m.name)}</b> <span class="xs muted">${esc(m.pl||m.veh)} · ${fmt.dm(dIso(t))}</span></div>${scoreBadge(m.score)}</div><div class="bubble">${esc(m.text)}</div><div class="row"><button class="btn sm ghost" data-act="msg-copy" data-v="${esc(m.veh)}" data-t="${t}">${ico('copy',14)} Copiar mensagem</button>${m.phone?`<button class="btn sm primary" data-act="msg-wa" data-v="${esc(m.veh)}" data-t="${t}">${ico('msg',14)} WhatsApp</button>`:''}</div></div>`;
 }
 function drvMessages(C){
   const u=S.u;if(!u.msgDay)u.msgDay=dIso(T0-1);const t=dIdx(u.msgDay);
   const msgs=C.fleet.vehicles.map(v=>dayMessage(C.cid,ST,v.id,t)).filter(Boolean).sort((a,b)=>(a.score??999)-(b.score??999));
   const hist=msgHist(C);
-  const evo=hist.length?msgEvolution(C,hist):REAL.on?`<div class="card rise"><div class="empty"><b>${REAL.busy['msg'+C.cid]?'Carregando as mensagens enviadas…':'Nenhuma mensagem marcada como enviada'}</b>Quando o CS ou o robô marcar uma mensagem como enviada, a evolução da nota aparece aqui.</div></div>`:'';
+  const evo=hist.length?msgEvolution(C,hist):REAL.on?`<div class="card rise"><div class="empty"><b>${REAL.busy['msg'+(C.rcid||C.cid)]?'Carregando as mensagens enviadas…':'Nenhuma mensagem marcada como enviada'}</b>Quando o CS ou o robô marcar uma mensagem como enviada, a evolução da nota aparece aqui.</div></div>`:'';
   return evo+`<div class="card rise sec">${cardH('Mensagem do dia',`${msgs.length} condutores rodaram em ${fmt.dmy(u.msgDay)}`,`<div class="row"><button class="btn sm ghost" data-act="msg-day" data-v="-1" aria-label="Dia anterior" style="transform:scaleX(-1)">${ico('chev',14)}</button><input class="inp" type="date" style="width:160px;height:34px" max="${TODAY}" value="${u.msgDay}" data-chg="msg-day" aria-label="Dia"><button class="btn sm ghost" data-act="msg-day" data-v="1" aria-label="Próximo dia">${ico('chev',14)}</button></div>`)}<div class="grid g2">${msgs.length?msgs.map(m=>msgCardHtml(C,m,t)).join(''):'<div class="empty" style="grid-column:1/-1"><b>Ninguém rodou nesse dia</b>Escolha outra data.</div>'}</div></div>`;
 }
 function drvPrize(C){
@@ -2650,14 +2677,14 @@ function drvResumo(C){
   const gl=C.gl;const net=gl.reduce((a,g)=>a+g.money,0);
   const kpi=(t,v,s,c='',y='')=>`<div class="card kpi lift rise ${y}"><div class="tag">${t}</div><div class="v" ${c?`style="color:${c}"`:''}>${v}</div><div class="xs muted">${s}</div></div>`;
   const kp=`<div class="grid g4">${kpi('Condutores no período',count(rows.length,0),`${withBase.length} com base de comparação`)}${kpi('Evoluíram',count(up,0),'consumo subiu mais de 2%','var(--ok-t)')}${kpi('Regrediram',count(down,0),`${flat} estáveis`,'var(--bad-t)')}${kpi(net>=0?'Economia no período':'Perda no período',count(Math.abs(net),0,'R$ '),(net>=0?'diesel a menos':'diesel a mais')+' nos mesmos km','','yel')}</div>`;
-  const pts=withBase.map(r=>({id:r.v.id,x:r.c.kmpl,y:r.st.ch,tip:`<b>${esc(r.v.driver)}</b> · ${esc(r.v.id)}<br>${fmt.kmpl(r.c.kmpl)} km/l · ${fmt.sp(r.st.ch)} vs comparação`}));
+  const pts=withBase.map(r=>({id:r.v.id,x:r.c.kmpl,y:r.st.ch,tip:`<b>${esc(r.v.driver)}</b> · ${esc(vSub(r.v))}<br>${fmt.kmpl(r.c.kmpl)} km/l · ${fmt.sp(r.st.ch)} vs comparação`}));
   const sc=scatter(pts,{h:470,xMid:C.cur.kmpl||1,yMid:0,xl:'Média de consumo no período (km/l)',yl:'Variação contra a comparação',q:['Bom e evoluindo','Abaixo da média, mas melhorando','Bom, mas piorando','Abaixo da média e piorando'],aria:'Onde cada condutor está'});
   const top=[...gl.slice(0,6),...gl.slice(-6).filter(g=>g.money<0)].filter((g,i,a)=>a.findIndex(x=>x.id===g.id)===i);
-  const dv=diverging(top.map(g=>({id:g.id,l:C.fleet.byId[g.id].driver,s:g.id,v:g.money})));
+  const dv=diverging(top.map(g=>({id:g.id,l:C.fleet.byId[g.id].driver,s:vSub(C.fleet.byId[g.id]),v:g.money})));
   const sumG=gl.filter(g=>g.money>0).reduce((a,g)=>a+g.money,0),sumL=gl.filter(g=>g.money<0).reduce((a,g)=>a+g.money,0);
   /* pódio */
   const pod=rows.filter(r=>r.c.score!=null).sort((a,b)=>b.c.score-a.c.score).slice(0,3);const md=['#e0b100','#a9a9a3','#b5763a'];
-  const podium=pod.length?`<div class="podium">${[1,0,2].map(i=>{const r=pod[i];if(!r)return'<div></div>';return`<div class="pd p${i+1}" data-act="drv-open" data-id="${esc(r.v.id)}" style="--i:${i}"><svg class="medal" width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l4 12h-6zM28 2h-6l-4 12h6z" fill="${md[i]}" opacity=".5"/><circle cx="20" cy="25" r="11" fill="${md[i]}"/><text x="20" y="30" text-anchor="middle" style="fill:#fff;font:800 14px var(--num)">${i+1}</text></svg><b>${esc(r.v.driver)}</b><span class="xs muted">${esc(r.v.id)}</span><span class="num b" style="font-size:20px">${fmt.n(r.c.score,0)}</span><span class="tag">nota</span><div class="pdb"></div></div>`}).join('')}</div>`:'<div class="empty"><b>Sem nota no período</b></div>';
+  const podium=pod.length?`<div class="podium">${[1,0,2].map(i=>{const r=pod[i];if(!r)return'<div></div>';return`<div class="pd p${i+1}" data-act="drv-open" data-id="${esc(r.v.id)}" style="--i:${i}"><svg class="medal" width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M12 2h6l4 12h-6zM28 2h-6l-4 12h6z" fill="${md[i]}" opacity=".5"/><circle cx="20" cy="25" r="11" fill="${md[i]}"/><text x="20" y="30" text-anchor="middle" style="fill:#fff;font:800 14px var(--num)">${i+1}</text></svg><b>${esc(r.v.driver)}</b><span class="xs muted">${esc(vSub(r.v))}</span><span class="num b" style="font-size:20px">${fmt.n(r.c.score,0)}</span><span class="tag">nota</span><div class="pdb"></div></div>`}).join('')}</div>`:'<div class="empty"><b>Sem nota no período</b></div>';
   const imp=improvedRows(C,rows,['kmpl','br100','green','idle','score']);
   return kp+`<div class="grid sec" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))"><div class="card rise">${cardH('Onde cada condutor está','Cada ponto é um condutor. Clique para abrir. As linhas tracejadas são a média da frota e a variação zero.')}${sc}</div>
   <div class="card rise">${cardH('Quem ganhou e quem perdeu',`Diesel economizado ${esc(C.ec.b.rotulo)} · ganhos ${fmt.brl(sumG)} · perdas ${fmt.brl(Math.abs(sumL))}`)}${dv}</div></div>
@@ -2708,7 +2735,7 @@ function drvWeekly2(C){
     const circles=wl.map((l,k)=>{const t=w.from+(k-((wdOf(w.from)+6)%7));const d=r.days.find(x=>x.t===t);const cl=!d||!d.a?'e':d.a.kmpl>=fleetAvg?'g':'y';return`<div class="wdc"><span>${l}</span><i class="${cl}" ${d&&d.a?`data-tt="<b>${fmt.dm(dIso(t))}</b><br>${fmt.kmpl(d.a.kmpl)} km/l · ${fmt.n(d.a.km,0)} km"`:''}>${d&&d.a?fmt.kmpl(d.a.kmpl):''}</i></div>`}).join('');
     const chips=wk.map(x=>{const q=x.a.byVeh[r.a.id];return`<div class="wch ${x.n===w.n?'cur':''} ${pw&&x.n===pw.n?'cmp':''}"><span>S${x.n}</span><b class="num">${q&&q.kmpl?fmt.kmpl(q.kmpl):'–'}</b></div>`}).join('');
     const kmCh=r.pa?pc(r.a.km,r.pa.km):null;
-    return`<div class="card wcard rise" style="--i:${Math.min(i,10)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap;gap:8px"><span class="ava xs">${esc(r.v.driver[0])}</span><div><b style="display:block;line-height:1.2">${esc(r.v.id)}</b><span class="xs muted">${esc(r.v.driver)}</span></div></div><span class="badge ${st.c}">${st.l}</span></div>
+    return`<div class="card wcard rise" style="--i:${Math.min(i,10)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div class="row" style="flex-wrap:nowrap;gap:8px"><span class="ava xs">${esc(r.v.driver[0])}</span><div><b style="display:block;line-height:1.2">${esc(C.byDrv?r.v.driver:r.v.id)}</b><span class="xs muted">${esc(C.byDrv?vSub(r.v):r.v.driver)}</span></div></div><span class="badge ${st.c}">${st.l}</span></div>
     <div class="wbig"><div class="tag">Média de consumo atual</div><div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-end"><span class="num" style="font-size:30px;font-weight:800">${fmt.kmpl(r.a.kmpl)} <small style="font-size:14px">km/l</small></span><span class="xs b">${i+1}º de ${n}</span></div><div class="xs">${r.ch!=null?dl(r.ch,true,1)+` <span class="muted">antes ${fmt.kmpl(r.pa.kmpl)} km/l</span>`:'<span class="muted">sem semana anterior</span>'}</div></div>
     <div class="xs muted" style="margin:8px 0">${r.tot?`Evoluiu em <b style="color:var(--text)">${r.evo}</b> de ${r.tot} indicadores`:'Sem indicadores para comparar'}</div>
     <div class="xs"><span class="muted">Km rodados</span><br><span class="muted">${r.pa?fmt.n(r.pa.km,0)+' km → ':''}</span><b>${fmt.n(r.a.km,0)} km</b> ${kmCh!=null?dl(kmCh,true,1):''}</div>
@@ -2815,7 +2842,7 @@ function msgHist(C){
   const by={};for(const r of validRecs(C.cid,ST))(by[r.veh]=by[r.veh]||[]).push(r);
   if(REAL.on){
     /* mensagens que o CS ou o robô marcaram como enviadas (/mensagens/enviadas) */
-    const sent=REAL.msgs[C.cid];if(!sent)return[];const out=[];
+    const sent=REAL.msgs[C.rcid||C.cid];if(!sent)return[];const out=[];
     for(const s of sent){
       const plate=C.fleet.drvPlate[nkey(s.motorista)];const rs=(by[plate]||[]).slice().sort((a,b)=>a.t-b.t);const ms=monthScores(rs);
       const msgs=(s.envios||[]).map(e=>{const t=dIdx(String(e.dia).slice(0,10));let k=null;for(const r of rs){if(r.t<=t)k=r.t;else break}
@@ -3088,6 +3115,22 @@ async function buildCtx(){
   C.st=study(cid,ST,C.price);C.ec=econOf(cur,C.price);C.gl=gainsLosses(cur,prev,C.price);C.conc=concOf(C.gl,ST.rules);C.conf=confOf(cid,cur,ST.rules);
   C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv});C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
 }
+/* contexto da tela Motoristas: uma linha por motorista (vínculos da API), não por veículo. Sem vínculos
+   (simulação ou cliente sem motorista identificado), fica o contexto por veículo. */
+function drvCtx(C){
+  if(!C)return C;if(C._drv!==undefined)return C._drv||C;
+  const id=C.cid+DRV_SUF,f=DB.fleets[id];if(!f){C._drv=null;return C}
+  const cur=metrics(id,ST,C.P.from,C.P.to),prev=metrics(id,ST,C.P.cf,C.P.ct);
+  const D={...C,cid:id,rcid:C.cid,fleet:f,cur,prev,byDrv:true};D.gl=gainsLosses(cur,prev,C.price);D._drv=D;
+  C._drv=D;return D;
+}
+/* placa(s) do motorista para mostrar ao lado do nome; no contexto por veículo, a própria placa */
+const vSub=v=>v.plates?(v.plates.length?v.plates.slice(0,3).join(', ')+(v.plates.length>3?' +'+(v.plates.length-3):''):'sem veículo'):v.id;
+/* id vindo de outra tela (placa) → o motorista que mais dirigiu aquele veículo */
+function drvIdOf(C,D,id){
+  if(!id||D.fleet.byId[id]||D===C)return id;const v=C.fleet.byId[id];
+  const k=v&&!v.noDriver?nkey(v.driver):nkey(id);return D.fleet.drvPlate[k]||id;
+}
 /* ---------- Situação dos equipamentos (item 4): critérios com nome, os mesmos em todas as telas ----------
    sem transmitir = nenhum dia de dado nos últimos 3 dias (dia a dia da API)
    sem sinal agora = a posição ao vivo não veio nesta consulta (pode ser momentâneo)
@@ -3144,7 +3187,7 @@ function loadExtras(cid,force){
     Gobrax.api.getSent(cid).then(d=>{REAL.msgs[cid]=d||[]}).catch(()=>{REAL.msgs[cid]=[]})
       .finally(()=>{REAL.busy['msg'+cid]=0;if(S.client===cid&&CUR_ROUTE==='motoristas'&&S.u.drvTab==='mensagens')softRender()})}
   if(!REAL.phones[cid]&&!REAL.busy['ph'+cid]){REAL.busy['ph'+cid]=1;
-    Gobrax.api.getPhones(cid).then(list=>{(list||[]).forEach(c=>{if(!c.telefone)return;const p=f.drvPlate[nkey(c.motorista)];if(p&&f.byId[p]&&!f.byId[p].phone)f.byId[p].phone=c.telefone})})
+    Gobrax.api.getPhones(cid).then(list=>{(list||[]).forEach(c=>{if(!c.telefone)return;const p=f.drvPlate[nkey(c.motorista)];if(p&&f.byId[p]&&!f.byId[p].phone)f.byId[p].phone=c.telefone;const df=DB.fleets[cid+DRV_SUF],dv=df&&df.byId[df.drvPlate[nkey(c.motorista)]];if(dv&&!dv.phone)dv.phone=c.telefone})})
       .catch(()=>{}).finally(()=>{REAL.phones[cid]=true;REAL.busy['ph'+cid]=0})}
 }
 /* posição nova sem redesenhar a tela (mantém o zoom do mapa) */
@@ -3236,14 +3279,14 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);return tru
 const csvQ=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 function csvFor(C,what){
   const gl=Object.fromEntries(gainsLosses(C.cur,C.prev,C.price).map(g=>[g.id,g]));const n=(v,d)=>v==null||!isFinite(v)?'':fmt.n(v,d).replace('−','-');
-  const head=['Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Diesel economizado vs. linha de base (R$)');
-  const rows=C.fleet.vehicles.map(v=>{const c=C.cur.byVeh[v.id];if(!c)return null;const r=[v.id,v.driver,n(c.km,0),n(c.l,0),n(c.kmpl,2),n(c.br100,1),n(c.green,1),n(c.idle,1),n(c.score,0)];if(what==='drivers'){const g=gl[v.id];r.push(vehStatus(C.cur,C.prev,v.id).label,g?n(g.money,0):'')}return r}).filter(Boolean);
+  const head=[C.byDrv?'Placas':'Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Diesel economizado vs. linha de base (R$)');
+  const rows=C.fleet.vehicles.map(v=>{const c=C.cur.byVeh[v.id];if(!c)return null;const r=[vSub(v),v.driver,n(c.km,0),n(c.l,0),n(c.kmpl,2),n(c.br100,1),n(c.green,1),n(c.idle,1),n(c.score,0)];if(what==='drivers'){const g=gl[v.id];r.push(vehStatus(C.cur,C.prev,v.id).label,g?n(g.money,0):'')}return r}).filter(Boolean);
   const pre=[['Cliente',C.def.name],['Período',fmt.dmy(dIso(C.P.from))+' a '+fmt.dmy(dIso(C.P.to))],['Diesel (R$/L)',fmt.n(C.price,2)+' ('+C.dsl.fonte+')'],['Economia',C.ec.b.rotulo],[]];
   return'﻿'+[...pre,head,...rows].map(r=>r.map(csvQ).join(';')).join('\n');
 }
-function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.drvSel)return;el.innerHTML=drvDetail(C,S.u.drvSel);enhance(el,true);$$('.md .li').forEach(l=>l.classList.toggle('on',l.dataset.id===S.u.drvSel))}
+function refreshDetail(){const C=drvCtx(LASTC);const el=$('#drv-detail');if(!el||!S.u.drvSel)return;el.innerHTML=drvDetail(C,S.u.drvSel);enhance(el,true);$$('.md .li').forEach(l=>l.classList.toggle('on',l.dataset.id===S.u.drvSel))}
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
-function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
+function weekWa(el,open){const C=drvCtx(LASTC),wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
   const good=[...Array(w.to-w.from+1).keys()].filter(k=>{const r=aggFor(C,w.from+k,w.from+k,id);return r.n&&r.kmpl>=w.a.kmpl}).length;
   const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w,v);const url=waUrl(v.phone,txt);
   if(open&&url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}else copyText(txt).then(ok=>toast(ok?(open?'Sem telefone cadastrado. Mensagem copiada':'Mensagem copiada'):'Não foi possível copiar'))}
@@ -3262,7 +3305,7 @@ const ACT={
   'go-prem':()=>{S.u.dataTab='regras';nav('dados')},
   'diesel-uf':async el=>{const C=LASTC;if(!C)return;try{await salvarUfDiesel(C.def,el.dataset.v);closePops();toast('Diesel: '+nomeUF(el.dataset.v));DB.bump();go()}catch(e){toast('Não foi possível salvar: '+e.message)}},
   print:()=>window.print(),
-  csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
+  csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(el.dataset.w==='drivers'?drvCtx(LASTC):LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'ov-metric':el=>{S.u.ovMetric=el.dataset.v;go()},
   'trend-win':el=>{S.u.trendWin=el.dataset.v;go()},
   'ret-tab':el=>{S.u.retTab=el.dataset.v;go(true)},
@@ -3283,7 +3326,7 @@ const ACT={
   'day-view':el=>{S.u.dayView=el.dataset.v;refreshDetail()},
   'wk-wa':el=>weekWa(el,true),
   'wk-copy':el=>weekWa(el,false),
-  'ind-csv':el=>{const C=LASTC,id=el.dataset.id,c=C.cur.byVeh[id],p=C.prev.byVeh[id];const rows=IND.map(i=>[i.l,fInd(i,i.get(c)),fInd(i,p?i.get(p):null),fInd(i,i.get(C.cur)),indRes(i,c,p).label]);download('indicadores-'+id+'-'+TODAY+'.csv','﻿'+[['Indicador','Período','Comparação','Média da frota','Resultado'],...rows].map(r=>r.map(csvQ).join(';')).join('\n'),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
+  'ind-csv':el=>{const C=drvCtx(LASTC),id=el.dataset.id,c=C.cur.byVeh[id],p=C.prev.byVeh[id];const rows=IND.map(i=>[i.l,fInd(i,i.get(c)),fInd(i,p?i.get(p):null),fInd(i,i.get(C.cur)),indRes(i,c,p).label]);download('indicadores-'+id+'-'+TODAY+'.csv','﻿'+[['Indicador','Período','Comparação','Média da frota','Resultado'],...rows].map(r=>r.map(csvQ).join(';')).join('\n'),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'map-filter':el=>{S.u.mapFilter=el.dataset.v;applyAllFilters()},
   'map-focus':el=>mapFocus(el.dataset.id),
   'map-route':el=>mapRoute(el.dataset.id),
@@ -3292,8 +3335,8 @@ const ACT={
   'week-sel':el=>{S.u.weekSel=+el.dataset.v;go()},
   'prem-month':el=>{S.u.premMonth=el.dataset.v;go()},
   'msg-day':el=>{const t=Math.min(T0,dIdx(S.u.msgDay||dIso(T0-1))+ +el.dataset.v);S.u.msgDay=dIso(t);go()},
-  'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
-  'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
+  'msg-copy':async el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
+  'msg-wa':el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
   'est-gran':el=>{S.u.estGran=el.dataset.v;go()},
   'contrato-salvar':async el=>{
@@ -3334,8 +3377,9 @@ function bind(){
   /* busca global */
   const gs=$('#gs'),sres=$('#sres');
   gs.addEventListener('input',()=>{const q=gs.value.trim().toLowerCase();if(q.length<2){sres.classList.remove('open');return}
-    const rs=(LASTC?LASTC.fleet.vehicles:[]).filter(v=>v.id.toLowerCase().includes(q)||v.driver.toLowerCase().includes(q)).slice(0,8);
-    sres.innerHTML=rs.length?rs.map(v=>`<button data-act="gs-pick" data-id="${esc(v.id)}"><div class="ava">${initials(v.driver)}</div><div><b>${esc(v.driver)}</b><div class="xs muted">${esc(v.id)}</div></div></button>`).join(''):'<div class="empty"><b>Nada encontrado</b></div>';sres.classList.add('open')});
+    const D=drvCtx(LASTC);const has=v=>v.id.toLowerCase().includes(q)||v.driver.toLowerCase().includes(q)||(v.plates||[]).some(p=>p.toLowerCase().includes(q));
+    const rs=(D?D.fleet.vehicles:[]).filter(has).slice(0,8);
+    sres.innerHTML=rs.length?rs.map(v=>`<button data-act="gs-pick" data-id="${esc(v.id)}"><div class="ava">${initials(v.driver)}</div><div><b>${esc(v.driver)}</b><div class="xs muted">${esc(vSub(v))}</div></div></button>`).join(''):'<div class="empty"><b>Nada encontrado</b></div>';sres.classList.add('open')});
   gs.addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('button',sres);if(b)b.click()}if(e.key==='Escape'){sres.classList.remove('open');gs.blur()}});
   ACT['gs-pick']=el=>{gs.value='';sres.classList.remove('open');ACT['drv-open'](el)};
   document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();gs.focus()}if(e.key==='Escape'){closeOv();closePops()}});

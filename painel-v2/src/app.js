@@ -32,6 +32,22 @@ async function buildCtx(){
   C.st=study(cid,ST,C.price);C.ec=econOf(cur,C.price);C.gl=gainsLosses(cur,prev,C.price);C.conc=concOf(C.gl,ST.rules);C.conf=confOf(cid,cur,ST.rules);
   C.hl=health(cur,prev,ST.rules,C.st.noBase?null:{econ:C.st.econ,inv:C.st.inv});C.eq=eqSit(C);LASTC=C;loadExtras(cid);return C;
 }
+/* contexto da tela Motoristas: uma linha por motorista (vínculos da API), não por veículo. Sem vínculos
+   (simulação ou cliente sem motorista identificado), fica o contexto por veículo. */
+function drvCtx(C){
+  if(!C)return C;if(C._drv!==undefined)return C._drv||C;
+  const id=C.cid+DRV_SUF,f=DB.fleets[id];if(!f){C._drv=null;return C}
+  const cur=metrics(id,ST,C.P.from,C.P.to),prev=metrics(id,ST,C.P.cf,C.P.ct);
+  const D={...C,cid:id,rcid:C.cid,fleet:f,cur,prev,byDrv:true};D.gl=gainsLosses(cur,prev,C.price);D._drv=D;
+  C._drv=D;return D;
+}
+/* placa(s) do motorista para mostrar ao lado do nome; no contexto por veículo, a própria placa */
+const vSub=v=>v.plates?(v.plates.length?v.plates.slice(0,3).join(', ')+(v.plates.length>3?' +'+(v.plates.length-3):''):'sem veículo'):v.id;
+/* id vindo de outra tela (placa) → o motorista que mais dirigiu aquele veículo */
+function drvIdOf(C,D,id){
+  if(!id||D.fleet.byId[id]||D===C)return id;const v=C.fleet.byId[id];
+  const k=v&&!v.noDriver?nkey(v.driver):nkey(id);return D.fleet.drvPlate[k]||id;
+}
 /* ---------- Situação dos equipamentos (item 4): critérios com nome, os mesmos em todas as telas ----------
    sem transmitir = nenhum dia de dado nos últimos 3 dias (dia a dia da API)
    sem sinal agora = a posição ao vivo não veio nesta consulta (pode ser momentâneo)
@@ -88,7 +104,7 @@ function loadExtras(cid,force){
     Gobrax.api.getSent(cid).then(d=>{REAL.msgs[cid]=d||[]}).catch(()=>{REAL.msgs[cid]=[]})
       .finally(()=>{REAL.busy['msg'+cid]=0;if(S.client===cid&&CUR_ROUTE==='motoristas'&&S.u.drvTab==='mensagens')softRender()})}
   if(!REAL.phones[cid]&&!REAL.busy['ph'+cid]){REAL.busy['ph'+cid]=1;
-    Gobrax.api.getPhones(cid).then(list=>{(list||[]).forEach(c=>{if(!c.telefone)return;const p=f.drvPlate[nkey(c.motorista)];if(p&&f.byId[p]&&!f.byId[p].phone)f.byId[p].phone=c.telefone})})
+    Gobrax.api.getPhones(cid).then(list=>{(list||[]).forEach(c=>{if(!c.telefone)return;const p=f.drvPlate[nkey(c.motorista)];if(p&&f.byId[p]&&!f.byId[p].phone)f.byId[p].phone=c.telefone;const df=DB.fleets[cid+DRV_SUF],dv=df&&df.byId[df.drvPlate[nkey(c.motorista)]];if(dv&&!dv.phone)dv.phone=c.telefone})})
       .catch(()=>{}).finally(()=>{REAL.phones[cid]=true;REAL.busy['ph'+cid]=0})}
 }
 /* posição nova sem redesenhar a tela (mantém o zoom do mapa) */
@@ -180,14 +196,14 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);return tru
 const csvQ=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 function csvFor(C,what){
   const gl=Object.fromEntries(gainsLosses(C.cur,C.prev,C.price).map(g=>[g.id,g]));const n=(v,d)=>v==null||!isFinite(v)?'':fmt.n(v,d).replace('−','-');
-  const head=['Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Diesel economizado vs. linha de base (R$)');
-  const rows=C.fleet.vehicles.map(v=>{const c=C.cur.byVeh[v.id];if(!c)return null;const r=[v.id,v.driver,n(c.km,0),n(c.l,0),n(c.kmpl,2),n(c.br100,1),n(c.green,1),n(c.idle,1),n(c.score,0)];if(what==='drivers'){const g=gl[v.id];r.push(vehStatus(C.cur,C.prev,v.id).label,g?n(g.money,0):'')}return r}).filter(Boolean);
+  const head=[C.byDrv?'Placas':'Placa','Condutor','Km','Litros','Km/l','Freadas /100 km','Faixa verde %','Motor ocioso %','Nota'];if(what==='drivers')head.push('Situação','Diesel economizado vs. linha de base (R$)');
+  const rows=C.fleet.vehicles.map(v=>{const c=C.cur.byVeh[v.id];if(!c)return null;const r=[vSub(v),v.driver,n(c.km,0),n(c.l,0),n(c.kmpl,2),n(c.br100,1),n(c.green,1),n(c.idle,1),n(c.score,0)];if(what==='drivers'){const g=gl[v.id];r.push(vehStatus(C.cur,C.prev,v.id).label,g?n(g.money,0):'')}return r}).filter(Boolean);
   const pre=[['Cliente',C.def.name],['Período',fmt.dmy(dIso(C.P.from))+' a '+fmt.dmy(dIso(C.P.to))],['Diesel (R$/L)',fmt.n(C.price,2)+' ('+C.dsl.fonte+')'],['Economia',C.ec.b.rotulo],[]];
   return'﻿'+[...pre,head,...rows].map(r=>r.map(csvQ).join(';')).join('\n');
 }
-function refreshDetail(){const C=LASTC;const el=$('#drv-detail');if(!el||!S.u.drvSel)return;el.innerHTML=drvDetail(C,S.u.drvSel);enhance(el,true);$$('.md .li').forEach(l=>l.classList.toggle('on',l.dataset.id===S.u.drvSel))}
+function refreshDetail(){const C=drvCtx(LASTC);const el=$('#drv-detail');if(!el||!S.u.drvSel)return;el.innerHTML=drvDetail(C,S.u.drvSel);enhance(el,true);$$('.md .li').forEach(l=>l.classList.toggle('on',l.dataset.id===S.u.drvSel))}
 function closePops(){$$('.pop.open').forEach(p=>p.classList.remove('open'))}
-function weekWa(el,open){const C=LASTC,wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
+function weekWa(el,open){const C=drvCtx(LASTC),wk=weeklySeries(C.cid,ST,C.P.from,C.P.to);const w=wk.find(x=>x.n===+el.dataset.w);if(!w)return;const pw=wk.find(x=>x.n===w.n-1);const id=el.dataset.id;const a=w.a.byVeh[id];if(!a)return;const pa=pw?pw.a.byVeh[id]:null;
   const good=[...Array(w.to-w.from+1).keys()].filter(k=>{const r=aggFor(C,w.from+k,w.from+k,id);return r.n&&r.kmpl>=w.a.kmpl}).length;
   const v=C.fleet.byId[id];const txt=weekMsg(v.driver,{a,ch:pa&&pa.kmpl?(a.kmpl-pa.kmpl)/pa.kmpl*100:null,good},w,v);const url=waUrl(v.phone,txt);
   if(open&&url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}else copyText(txt).then(ok=>toast(ok?(open?'Sem telefone cadastrado. Mensagem copiada':'Mensagem copiada'):'Não foi possível copiar'))}
@@ -206,7 +222,7 @@ const ACT={
   'go-prem':()=>{S.u.dataTab='regras';nav('dados')},
   'diesel-uf':async el=>{const C=LASTC;if(!C)return;try{await salvarUfDiesel(C.def,el.dataset.v);closePops();toast('Diesel: '+nomeUF(el.dataset.v));DB.bump();go()}catch(e){toast('Não foi possível salvar: '+e.message)}},
   print:()=>window.print(),
-  csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
+  csv:el=>{download((el.dataset.w==='fleet'?'frota':'motoristas')+'-'+S.client+'-'+TODAY+'.csv',csvFor(el.dataset.w==='drivers'?drvCtx(LASTC):LASTC,el.dataset.w),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'ov-metric':el=>{S.u.ovMetric=el.dataset.v;go()},
   'trend-win':el=>{S.u.trendWin=el.dataset.v;go()},
   'ret-tab':el=>{S.u.retTab=el.dataset.v;go(true)},
@@ -227,7 +243,7 @@ const ACT={
   'day-view':el=>{S.u.dayView=el.dataset.v;refreshDetail()},
   'wk-wa':el=>weekWa(el,true),
   'wk-copy':el=>weekWa(el,false),
-  'ind-csv':el=>{const C=LASTC,id=el.dataset.id,c=C.cur.byVeh[id],p=C.prev.byVeh[id];const rows=IND.map(i=>[i.l,fInd(i,i.get(c)),fInd(i,p?i.get(p):null),fInd(i,i.get(C.cur)),indRes(i,c,p).label]);download('indicadores-'+id+'-'+TODAY+'.csv','﻿'+[['Indicador','Período','Comparação','Média da frota','Resultado'],...rows].map(r=>r.map(csvQ).join(';')).join('\n'),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
+  'ind-csv':el=>{const C=drvCtx(LASTC),id=el.dataset.id,c=C.cur.byVeh[id],p=C.prev.byVeh[id];const rows=IND.map(i=>[i.l,fInd(i,i.get(c)),fInd(i,p?i.get(p):null),fInd(i,i.get(C.cur)),indRes(i,c,p).label]);download('indicadores-'+id+'-'+TODAY+'.csv','﻿'+[['Indicador','Período','Comparação','Média da frota','Resultado'],...rows].map(r=>r.map(csvQ).join(';')).join('\n'),'text/csv;charset=utf-8');toast('Arquivo CSV gerado')},
   'map-filter':el=>{S.u.mapFilter=el.dataset.v;applyAllFilters()},
   'map-focus':el=>mapFocus(el.dataset.id),
   'map-route':el=>mapRoute(el.dataset.id),
@@ -236,8 +252,8 @@ const ACT={
   'week-sel':el=>{S.u.weekSel=+el.dataset.v;go()},
   'prem-month':el=>{S.u.premMonth=el.dataset.v;go()},
   'msg-day':el=>{const t=Math.min(T0,dIdx(S.u.msgDay||dIso(T0-1))+ +el.dataset.v);S.u.msgDay=dIso(t);go()},
-  'msg-copy':async el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
-  'msg-wa':el=>{const m=dayMessage(S.client,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
+  'msg-copy':async el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);if(m)toast(await copyText(m.text)?'Mensagem copiada':'Não foi possível copiar')},
+  'msg-wa':el=>{const m=dayMessage(drvCtx(LASTC).cid,ST,el.dataset.v,+el.dataset.t);const url=m&&waUrl(m.phone,m.text);if(url){window.open(url,'_blank','noopener');toast('Abrindo o WhatsApp')}},
   'data-tab':el=>{S.u.dataTab=el.dataset.v;go(true)},
   'est-gran':el=>{S.u.estGran=el.dataset.v;go()},
   'contrato-salvar':async el=>{
@@ -278,8 +294,9 @@ function bind(){
   /* busca global */
   const gs=$('#gs'),sres=$('#sres');
   gs.addEventListener('input',()=>{const q=gs.value.trim().toLowerCase();if(q.length<2){sres.classList.remove('open');return}
-    const rs=(LASTC?LASTC.fleet.vehicles:[]).filter(v=>v.id.toLowerCase().includes(q)||v.driver.toLowerCase().includes(q)).slice(0,8);
-    sres.innerHTML=rs.length?rs.map(v=>`<button data-act="gs-pick" data-id="${esc(v.id)}"><div class="ava">${initials(v.driver)}</div><div><b>${esc(v.driver)}</b><div class="xs muted">${esc(v.id)}</div></div></button>`).join(''):'<div class="empty"><b>Nada encontrado</b></div>';sres.classList.add('open')});
+    const D=drvCtx(LASTC);const has=v=>v.id.toLowerCase().includes(q)||v.driver.toLowerCase().includes(q)||(v.plates||[]).some(p=>p.toLowerCase().includes(q));
+    const rs=(D?D.fleet.vehicles:[]).filter(has).slice(0,8);
+    sres.innerHTML=rs.length?rs.map(v=>`<button data-act="gs-pick" data-id="${esc(v.id)}"><div class="ava">${initials(v.driver)}</div><div><b>${esc(v.driver)}</b><div class="xs muted">${esc(vSub(v))}</div></div></button>`).join(''):'<div class="empty"><b>Nada encontrado</b></div>';sres.classList.add('open')});
   gs.addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('button',sres);if(b)b.click()}if(e.key==='Escape'){sres.classList.remove('open');gs.blur()}});
   ACT['gs-pick']=el=>{gs.value='';sres.classList.remove('open');ACT['drv-open'](el)};
   document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();gs.focus()}if(e.key==='Escape'){closeOv();closePops()}});

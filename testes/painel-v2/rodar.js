@@ -74,6 +74,11 @@ function varredura(rotas, longo) {
     var t = (document.getElementById('view') || {}).innerText || '';
     rel.push({ r: 'estudo · salvar contrato', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/2\.000,00/.test(t) });
   });
+  // Motoristas: uma linha por motorista, inclusive quem só revezou um veículo (no servidor)
+  if (/^http/.test(location.protocol)) fila.push(function () { location.hash = '#/motoristas?aba=lista'; }, function () {}, function () {
+    var t = (document.getElementById('view') || {}).innerText || '';
+    rel.push({ r: 'motoristas · revezamento', len: t.length, erros: erros.splice(0), sus: 0, ctx: [], attr: [], falhou: !/Motorista Revezamento/.test(t) });
+  });
   // gaveta de veículo e troca de cliente
   fila.push(function () { location.hash = '#/geral'; }, function () { location.hash = '#/frota?aba=visao'; }, function () { var t = document.querySelector('#view tr.click'); if (t) t.click(); }, function () {
     var d = document.querySelector('.drawer'); rel.push({ r: 'gaveta do veículo', len: d ? d.innerText.length : 0, erros: erros.splice(0), sus: d && /NaN|undefined/.test(d.innerText) ? 1 : 0, ctx: [], attr: [], falhou: !d });
@@ -111,6 +116,8 @@ function dadosServidor() {
         if (semPerf) { r.motorista = ''; r.faixa_verde = null; r.motor_ocioso = null; r.inicio_faixa_verde = null; r.embalo = null; r.freio_motor = null; r.piloto_automatico = null; r.tempo_excesso_velocidade = null; r.horas_motor = null; }
         registros.push(r);
         if (r.motorista) motoristas.push(r);
+        // revezamento: outro motorista dirige parte do dia no veículo 0 e nunca é o principal dele (tem de aparecer em Motoristas)
+        if (v === 0 && r.motorista && rodou && n % 3 === 0) motoristas.push({ ...r, motorista: 'Motorista Revezamento', km: Math.round(km / 3), litros: r.litros == null ? null : +(r.litros / 3).toFixed(1) });
       }
     });
     return { id, nome, registros, motoristas,
